@@ -1,0 +1,87 @@
+/* =============================================
+   NEACEA — base.css
+   Variabili, reset, tipografia — stile Neacea originale
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Palette identica al gestionale Neacea */
+  --blue:       #1c3144;
+  --blue-mid:   #26425c;
+  --blue-light: #3a5f80;
+  --blue-pale:  #e8eef4;
+  --blue-xpale: #f0f4f8;
+
+  --bg:     #f0f3f5;
+  --bg2:    #ffffff;
+  --border: #dce4ea;
+  --border2:#c4d0da;
+
+  --text:  #1c3144;
+  --text2: #5a7288;
+  --text3: #98aab8;
+
+  --gold:      #c9a84c;
+  --gold-pale: #fdf8ee;
+
+  --red:      #c0392b;
+  --red-pale: #fdecea;
+
+  --green:      #2d6a4f;
+  --green-pale: #e8f5ee;
+
+  /* Accenti servizi calendario */
+  --svc-pt11:       #2563EB;
+  --svc-pt11-pale:  #DBEAFE;
+  --svc-pt12:       #0EA5E9;
+  --svc-pt12-pale:  #E0F2FE;
+  --svc-nutri:      #2d6a4f;
+  --svc-nutri-pale: #e8f5ee;
+  --svc-check:      #4ADE80;
+  --svc-check-pale: #F0FDF4;
+  --svc-visbody:    #7C3AED;
+  --svc-visbody-pale:#EDE9FE;
+  --svc-baiobit:    #c9a84c;
+  --svc-baiobit-pale:#fdf8ee;
+  --svc-circuit:    #c0392b;
+  --svc-circuit-pale:#fdecea;
+  --svc-blocco:     #98aab8;
+  --svc-blocco-pale:#f0f3f5;
+
+  --radius:    14px;
+  --radius-sm: 9px;
+  --shadow:    0 1px 4px rgba(28,49,68,.07);
+  --shadow-md: 0 4px 16px rgba(28,49,68,.10);
+
+  /* Layout */
+  --topbar-h:  60px;
+  --sidebar-w: 0px; /* niente sidebar — navigazione in topbar */
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; min-height: 100vh; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+a { color: inherit; text-decoration: none; }
+input, select, textarea, button { font-family: 'Nunito', sans-serif; }
+
+.hidden { display: none !important; }
+.text-muted  { color: var(--text2); }
+.text-light  { color: var(--text3); }
+.text-red    { color: var(--red); }
+.text-green  { color: var(--green); }
+
+/* Spin loader */
+.spin { display: inline-block; width: 16px; height: 16px; border: 2.5px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Eyebrow + page title stile Neacea */
+.eyebrow { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+.page-title { font-size: 28px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
+.page-title em { color: var(--blue-light); font-style: normal; }
+.page-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }

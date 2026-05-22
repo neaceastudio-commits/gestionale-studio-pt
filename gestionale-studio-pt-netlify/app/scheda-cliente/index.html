@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Scheda Allenamento — Neacea Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Fogli di stile modulari -->
+<link rel="stylesheet" href="css/base.css?v=15">
+<link rel="stylesheet" href="css/layout.css?v=15">
+<link rel="stylesheet" href="css/scheda.css?v=15">
+<link rel="stylesheet" href="css/carichi.css?v=15">
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav class="nav">
+  <span class="logo-name">Neacea</span>
+  <div style="width:1px;height:18px;background:var(--border2)"></div>
+  <span class="logo-service">Allenamento</span>
+  <div id="nav-cliente-wrap" style="display:none;display:none;align-items:center;gap:8px;margin-left:16px">
+    <div style="width:1px;height:18px;background:var(--border2)"></div>
+    <span class="nav-cliente" id="nav-cliente-nome"></span>
+  </div>
+  <div class="nav-right">
+    <div id="nav-sezioni" style="display:none;gap:4px;display:none">
+      <button class="btn btn-ghost btn-sm" onclick="setSezione('home')" id="snav-home">Riepilogo</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSezione('fisici')" id="snav-fisici">Dati Fisici</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSezione('programma')" id="snav-programma">Programma</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSezione('foto')" id="snav-foto">Foto</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSezione('impostazioni')" id="snav-imp">Impostazioni</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="btn-back" onclick="tornaLista()" style="display:none">← Lista</button>
+    <button class="btn btn-ghost btn-sm" onclick="caricaClienti()">↻</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════
+     VIEW: LISTA CLIENTI
+══════════════════════════════════════ -->
+<div class="view active" id="view-lista">
+
+  <div class="api-warn" id="api-warn">
+    Connessione Supabase non configurata — i dati vengono salvati in locale.
+  </div>
+
+  <div class="eyebrow">Personal Training</div>
+  <div class="page-title">Gestione <em>Clienti</em></div>
+  <div class="page-sub" id="lista-sub">Caricamento…</div>
+
+  <div class="kpi-strip">
+    <div class="kpi" style="--kc:var(--accent)"><div class="kpi-label">Clienti</div><div class="kpi-val" id="kpi-tot">—</div><div class="kpi-sub">totali</div></div>
+    <div class="kpi" style="--kc:var(--green)"><div class="kpi-label">Attivi</div><div class="kpi-val" id="kpi-att">—</div><div class="kpi-sub">abbonamento attivo</div></div>
+    <div class="kpi" style="--kc:var(--amber)"><div class="kpi-label">Schede</div><div class="kpi-val" id="kpi-sch">—</div><div class="kpi-sub">programmi creati</div></div>
+    <div class="kpi" style="--kc:var(--red)"><div class="kpi-label">Da completare</div><div class="kpi-val" id="kpi-incomp">—</div><div class="kpi-sub">senza dati fisici</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search" type="text" id="search-input" placeholder="Cerca cliente…" oninput="renderLista()">
+    <button class="fbtn active" onclick="setFiltro('tutti',this)">Tutti</button>
+    <button class="fbtn" onclick="setFiltro('attivi',this)">Attivi</button>
+    <button class="fbtn" onclick="setFiltro('senza_scheda',this)">Senza scheda</button>
+  </div>
+
+  <div class="tw">
+    <div class="thead cols-cli">
+      <div class="th">Cliente</div>
+      <div class="th">PT assegnato</div>
+      <div class="th">Abbonamento</div>
+      <div class="th">Scheda</div>
+      <div class="th">Azioni</div>
+    </div>
+    <div id="lista-body"><div class="loading-state"><div class="spin"></div></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     VIEW: SCHEDA CLIENTE
+══════════════════════════════════════ -->
+<div class="view" id="view-scheda">
+
+  <!-- HERO -->
+  <div class="cliente-hero">
+    <div>
+      <div class="ch-nome" id="ch-nome">—</div>
+      <div class="ch-meta" id="ch-meta"></div>
+    </div>
+    <div class="ch-actions">
+      <button class="btn btn-gold btn-sm" onclick="apriDoppio()">👥 1:2</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-visita')">+ Visita</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-modifica')">✏ Modifica</button>
+    </div>
+  </div>
+
+  <!-- SEZIONE NAV BUTTONS -->
+  <div class="sezione-nav">
+    <button class="sez-btn active" id="sez-home" onclick="setSezione('home')">
+      <span class="sez-icon">📊</span>
+      <div class="sez-name">Riepilogo</div>
+      <div class="sez-sub">Obiettivi · Anamnesi · Visite</div>
+    </button>
+    <button class="sez-btn" id="sez-fisici" onclick="setSezione('fisici')">
+      <span class="sez-icon">⚖️</span>
+      <div class="sez-name">Dati Fisici</div>
+      <div class="sez-sub">Visbody · Baiobit · Statistiche</div>
+    </button>
+    <button class="sez-btn" id="sez-programma" onclick="setSezione('programma')">
+      <span class="sez-icon">🏋️</span>
+      <div class="sez-name">Programma</div>
+      <div class="sez-sub">Schede · Carichi · Progressione</div>
+    </button>
+    <button class="sez-btn" id="sez-foto" onclick="setSezione('foto')">
+      <span class="sez-icon">📸</span>
+      <div class="sez-name">Foto</div>
+      <div class="sez-sub">Galleria per visita</div>
+    </button>
+  </div>
+
+  <!-- ── SEZIONE: RIEPILOGO ── -->
+  <div id="sez-home-body">
+    <div class="riep-grid">
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-head"><span class="card-title">Pacchetto & Obiettivi</span><button class="act ae btn-sm" onclick="openMo('mo-modifica')">Modifica</button></div>
+          <div class="card-body">
+            <div class="dati-grid" id="riep-dati"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Note PT</span></div>
+          <div class="card-body">
+            <textarea id="note-pt-area" placeholder="Note libere, indicazioni, osservazioni…" style="width:100%;min-height:80px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;resize:vertical;"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="salvaNoteCliente()" style="margin-top:8px">Salva note</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Storico Visite</span>
+            <button class="act ar" onclick="openMo('mo-visita')">+ Aggiungi</button>
+          </div>
+          <div class="card-body" id="riep-visite">
+            <div class="empty"><div class="empty-title">Nessuna visita</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEZIONE: DATI FISICI ── -->
+  <div id="sez-fisici-body" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-family:var(--font-serif);font-size:22px;font-weight:300">Dati Fisici & Composizione</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px" id="fisici-data-label">Nessun rilevamento</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openMo('mo-dati-fisici')">+ Nuovo rilevamento</button>
+    </div>
+
+    <!-- Misure principali -->
+    <div class="misure-grid" id="mis-principali">
+      <div class="mis-box"><div class="mis-val" id="mis-peso">—</div><div class="mis-unit">kg</div><div class="mis-label">Peso</div></div>
+      <div class="mis-box"><div class="mis-val" id="mis-altezza">—</div><div class="mis-unit">cm</div><div class="mis-label">Altezza</div></div>
+      <div class="mis-box"><div class="mis-val" id="mis-bmi">—</div><div class="mis-unit"></div><div class="mis-label">BMI</div></div>
+      <div class="mis-box"><div class="mis-val" id="mis-pgc">—</div><div class="mis-unit">%</div><div class="mis-label">% Grasso</div></div>
+    </div>
+
+    <div class="g2" style="gap:16px">
+      <!-- Visbody -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Visbody — Composizione</span>
+          <button class="act ae btn-sm" onclick="openMo('mo-dati-fisici')">Aggiorna</button>
+        </div>
+        <div class="card-body">
+          <div class="dati-grid" id="visbody-dati"></div>
+          <div class="chart-wrap"><canvas id="chart-composizione"></canvas></div>
+        </div>
+      </div>
+      <!-- Baiobit -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Baiobit — Test Funzionali</span>
+          <button class="act ae btn-sm" onclick="openMo('mo-dati-fisici')">Aggiorna</button>
+        </div>
+        <div class="card-body">
+          <div class="test-grid" id="baiobit-tests"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grafico peso nel tempo -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-head"><span class="card-title">Andamento Peso</span></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-peso"></canvas></div></div>
+    </div>
+
+    <!-- Upload file dispositivi -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-head"><span class="card-title">Carica File Dispositivi</span></div>
+      <div class="card-body">
+        <div class="g2">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">File Visbody (PDF/Immagine)</div>
+            <div class="upload-area" onclick="document.getElementById('file-visbody').click()" id="ua-visbody"
+                 ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
+                 ondrop="handleDrop(event,'visbody')">
+              <input type="file" id="file-visbody" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'visbody')">
+              <div class="upload-icon">📊</div>
+              <div class="upload-text">Trascina o clicca per caricare</div>
+              <div class="upload-sub">PDF, JPG, PNG — max 10MB</div>
+            </div>
+            <div class="upload-progress" id="prog-visbody"><div class="upload-bar" id="bar-visbody"></div></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">File Baiobit (PDF/Immagine)</div>
+            <div class="upload-area" onclick="document.getElementById('file-baiobit').click()" id="ua-baiobit"
+                 ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
+                 ondrop="handleDrop(event,'baiobit')">
+              <input type="file" id="file-baiobit" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'baiobit')">
+              <div class="upload-icon">🔬</div>
+              <div class="upload-text">Trascina o clicca per caricare</div>
+              <div class="upload-sub">PDF, JPG, PNG — max 10MB</div>
+            </div>
+            <div class="upload-progress" id="prog-baiobit"><div class="upload-bar" id="bar-baiobit"></div></div>
+          </div>
+        </div>
+        <div id="file-lista" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEZIONE: PROGRAMMA ── -->
+  <div id="sez-programma-body" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:var(--font-serif);font-size:22px;font-weight:300">Programma Allenamento</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="scheda-select" onchange="switchScheda()" style="border:1px solid var(--border);border-radius:var(--r);padding:7px 28px 7px 10px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--bg2);outline:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg width=\'10\' height=\'6\' viewBox=\'0 0 10 6\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M1 1L5 5L9 1\' stroke=\'%23a89e92\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center">
+          <option value="">— Nessuna scheda —</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="openNuovaScheda()">+ Nuova scheda</button>
+      </div>
+    </div>
+
+    <div id="prog-body">
+      <div class="empty"><div class="empty-title">Nessuna scheda</div><div class="empty-sub">Crea la prima scheda di allenamento</div></div>
+    </div>
+  </div>
+
+  <!-- ── SEZIONE: FOTO ── -->
+  <div id="sez-foto-body" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:var(--font-serif);font-size:22px;font-weight:300">Fotografie</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="foto-visita-filter" onchange="renderFoto()" style="border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--bg2);outline:none">
+          <option value="">Tutte le visite</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('foto-upload-input').click()">+ Carica foto</button>
+        <input type="file" id="foto-upload-input" accept="image/*" multiple style="display:none" onchange="uploadFotoVisita(this.files)">
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-body">
+        <div class="upload-area" id="foto-drop-area"
+             onclick="document.getElementById('foto-upload-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="handleFotoDrop(event)">
+          <div class="upload-icon">📸</div>
+          <div class="upload-text">Trascina le foto o clicca per selezionare</div>
+          <div class="upload-sub">JPG, PNG — ridimensionamento automatico a 1200px</div>
+        </div>
+        <div class="upload-progress" id="prog-foto"><div class="upload-bar" id="bar-foto"></div></div>
+      </div>
+    </div>
+
+    <div class="foto-grid" id="foto-grid">
+      <div class="empty" style="grid-column:1/-1"><div class="empty-title">Nessuna foto</div><div class="empty-sub">Le foto caricate appariranno qui</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     VIEW: DOPPIO CLIENTE 1:2
+══════════════════════════════════════ -->
+<div class="view" id="view-doppio">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <button class="btn btn-ghost btn-sm" onclick="showView('view-scheda')">← Torna alla scheda</button>
+    <div style="font-family:var(--font-serif);font-size:22px;font-weight:300">Confronto 1:2</div>
+    <select id="doppio-select" onchange="caricaSecondoCliente()" style="margin-left:auto;border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--bg2);outline:none">
+      <option value="">— Seleziona secondo cliente —</option>
+    </select>
+  </div>
+  <div class="dual-wrap" id="dual-wrap">
+    <div class="dual-col">
+      <div class="dual-head"><span class="dual-nome" id="dual-nome-1">Cliente 1</span></div>
+      <div style="padding:16px" id="dual-prog-1"><div class="empty"><div class="empty-title">Caricamento…</div></div></div>
+    </div>
+    <div class="dual-col">
+      <div class="dual-head" style="background:var(--green)"><span class="dual-nome" id="dual-nome-2">Seleziona cliente 2</span></div>
+      <div style="padding:16px" id="dual-prog-2"><div class="empty"><div class="empty-title">Seleziona un cliente</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     LIGHTBOX
+══════════════════════════════════ -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
+  <button class="lightbox-close" onclick="document.getElementById('lightbox').classList.remove('open')">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<!-- ══════════════════════════════════
+     MODALI
+══════════════════════════════════ -->
+
+<!-- MODAL: NUOVA VISITA -->
+<div class="mo" id="mo-visita">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">Registra Visita</div><button class="mclose" onclick="closeMo('mo-visita')">✕</button></div>
+    <div class="mbody">
+      <div class="g2">
+        <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="v-data"></div>
+        <div class="field"><label>Peso (kg)</label><input type="number" id="v-peso" step="0.1" placeholder="75.5"></div>
+      </div>
+      <div class="field"><label>Note</label><textarea id="v-note" placeholder="Osservazioni, feedback, progressi…"></textarea></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-visita')">Annulla</button><button class="btn btn-primary" onclick="salvaVisita()">Salva Visita</button></div>
+  </div>
+</div>
+
+<!-- MODAL: DATI FISICI -->
+<div class="mo" id="mo-dati-fisici">
+  <div class="modal wide">
+    <div class="mhead"><div class="mtitle">Nuovo Rilevamento</div><button class="mclose" onclick="closeMo('mo-dati-fisici')">✕</button></div>
+    <div class="mbody">
+      <div class="sec-title">Antropometria</div>
+      <div class="g3">
+        <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="df-data"></div>
+        <div class="field"><label>Peso (kg)</label><input type="number" id="df-peso" step="0.1" placeholder="75.5"></div>
+        <div class="field"><label>Altezza (cm)</label><input type="number" id="df-altezza" placeholder="178"></div>
+      </div>
+      <div class="sec-title">Visbody — Composizione Corporea</div>
+      <div class="g3">
+        <div class="field"><label>Massa Grassa (kg)</label><input type="number" id="df-v-grassa" step="0.1"></div>
+        <div class="field"><label>Massa Muscolare (kg)</label><input type="number" id="df-v-muscolare" step="0.1"></div>
+        <div class="field"><label>% Grasso (PGC)</label><input type="number" id="df-v-pgc" step="0.1"></div>
+        <div class="field"><label>BMI</label><input type="number" id="df-v-bmi" step="0.1"></div>
+        <div class="field"><label>Metabolismo (kcal)</label><input type="number" id="df-v-metabolismo"></div>
+        <div class="field"><label>Età Metabolica</label><input type="number" id="df-v-eta-met"></div>
+        <div class="field"><label>FFM (kg)</label><input type="number" id="df-v-ffm" step="0.1"></div>
+        <div class="field"><label>Acqua Totale (lt)</label><input type="number" id="df-v-tbw" step="0.1"></div>
+        <div class="field"><label>Vita (cm)</label><input type="number" id="df-v-vita" step="0.1"></div>
+        <div class="field"><label>Fianchi (cm)</label><input type="number" id="df-v-fianchi" step="0.1"></div>
+        <div class="field"><label>Score</label><input type="number" id="df-v-score" step="0.1"></div>
+        <div class="field"><label>Indice Salute</label><input type="number" id="df-v-indice" step="0.1"></div>
+      </div>
+      <div class="sec-title">Baiobit — Test Funzionali</div>
+      <div class="g3">
+        <div class="field"><label>Test Cammino</label><input type="text" id="df-b-cammino" placeholder="es. 450m / normale"></div>
+        <div class="field"><label>Test Spalla</label><input type="text" id="df-b-spalla" placeholder="es. 8/10"></div>
+        <div class="field"><label>Squat Jump</label><input type="text" id="df-b-squat-jump" placeholder="es. 32 cm"></div>
+        <div class="field"><label>Rischio Caduta</label><input type="text" id="df-b-caduta" placeholder="basso / medio / alto"></div>
+        <div class="field"><label>Test Tronco</label><input type="text" id="df-b-tronco"></div>
+        <div class="field"><label>Test Cervicale</label><input type="text" id="df-b-cervicale"></div>
+        <div class="field"><label>Drop Jump (ms)</label><input type="text" id="df-b-drop-jump"></div>
+        <div class="field"><label>Jump Monopodalico</label><input type="text" id="df-b-jump-mono"></div>
+        <div class="field"><label>Stiffness Test</label><input type="text" id="df-b-stiffness"></div>
+      </div>
+      <div class="field"><label>Note</label><textarea id="df-note" placeholder="Osservazioni aggiuntive…"></textarea></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-dati-fisici')">Annulla</button><button class="btn btn-primary" onclick="salvaDatiFisici()">Salva Rilevamento</button></div>
+  </div>
+</div>
+
+<!-- MODAL: NUOVA SCHEDA -->
+<div class="mo" id="mo-nuova-scheda">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">Nuova Scheda</div><button class="mclose" onclick="closeMo('mo-nuova-scheda')">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>Nome scheda <span class="req">*</span></label><input type="text" id="ns-nome" placeholder="es. Blocco 1 — Forza Base · Aprile 2026"></div>
+      <div class="g2">
+        <div class="field"><label>Data inizio</label><input type="date" id="ns-inizio"></div>
+        <div class="field"><label>Settimane</label>
+          <select id="ns-sett"><option value="4">4 settimane</option><option value="6" selected>6 settimane</option><option value="8">8 settimane</option><option value="12">12 settimane</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Giorni allenamento</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="giorni-check">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Lunedì" checked onchange="limitaGiorniScheda(this)"> Lun</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Martedì" onchange="limitaGiorniScheda(this)"> Mar</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Mercoledì" checked onchange="limitaGiorniScheda(this)"> Mer</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Giovedì" onchange="limitaGiorniScheda(this)"> Gio</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Venerdì" checked onchange="limitaGiorniScheda(this)"> Ven</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Sabato" onchange="limitaGiorniScheda(this)"> Sab</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Domenica" onchange="limitaGiorniScheda(this)"> Dom</label>
+        </div>
+      </div>
+      <div class="field"><label>Note</label><textarea id="ns-note" placeholder="Obiettivi del blocco…"></textarea></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-nuova-scheda')">Annulla</button><button class="btn btn-primary" onclick="creaScheda()">Crea Scheda</button></div>
+  </div>
+</div>
+
+<!-- MODAL: AGGIUNGI ESERCIZIO -->
+<div class="mo" id="mo-esercizio">
+  <div class="modal wide">
+    <div class="mhead"><div class="mtitle" id="me-title">Aggiungi Esercizio</div><button class="mclose" onclick="closeMo('mo-esercizio')">✕</button></div>
+    <div class="mbody">
+      <div class="g2" style="gap:16px">
+        <div>
+          <div class="sec-title" style="margin-top:0">Scegli Esercizio</div>
+          <input class="search" type="text" id="me-search" placeholder="Cerca esercizio…" oninput="renderEserciziList()" style="margin-bottom:8px;width:100%">
+          <div class="eserc-list" id="me-eserc-list"></div>
+          <div class="field" style="margin-top:10px;margin-bottom:0">
+            <label>Oppure inserisci manuale</label>
+            <input type="text" id="me-custom" placeholder="Nome esercizio personalizzato">
+          </div>
+        </div>
+        <div>
+          <div class="sec-title" style="margin-top:0">Progressione</div>
+          <div class="prog-blocchi" id="pb-tabs"></div>
+          <div class="prog-list" id="pb-list"></div>
+          <div class="prog-selected-preview" id="pb-preview"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">Lascia vuoto per progressione manuale</div>
+          <div class="field" style="margin-top:12px">
+            <label>Recupero</label>
+            <select id="me-recupero">
+              <option>60"</option><option>90"</option><option value="2'" selected>2'</option>
+              <option>3'</option><option>4'</option><option>5'</option><option>Libero</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Note esercizio</label>
+            <textarea id="me-note" placeholder="Setup, indicazioni tecniche…" style="min-height:60px"></textarea>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--ab);border-radius:var(--r);font-size:12px;color:var(--accent)">
+        Esercizio selezionato: <strong id="me-sel-label">—</strong>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-esercizio')">Annulla</button><button class="btn btn-primary" onclick="salvaEsercizio()">Aggiungi</button></div>
+  </div>
+</div>
+
+<!-- MODAL: SEDUTA MANUALE -->
+<div class="mo" id="mo-seduta">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle" id="msed-title">Compila Sedute</div><button class="mclose" onclick="closeMo('mo-seduta')">✕</button></div>
+    <div class="mbody" id="msed-body"></div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-seduta')">Annulla</button><button class="btn btn-primary" onclick="salvaSedutaManuale()">Salva</button></div>
+  </div>
+</div>
+
+<!-- MODAL: IMPOSTAZIONI / PT -->
+<div class="mo" id="mo-impostazioni">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">Impostazioni Cliente</div><button class="mclose" onclick="closeMo('mo-impostazioni')">✕</button></div>
+    <div class="mbody">
+      <div class="sec-title" style="margin-top:0">PT Assegnato</div>
+      <div class="field">
+        <label>Personal Trainer</label>
+        <select id="imp-pt">
+          <option value="">— Nessun PT —</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Sposta da PT attuale a</label>
+        <select id="imp-sposta">
+          <option value="">— Stesso PT —</option>
+        </select>
+      </div>
+      <div class="sec-title">Pacchetto</div>
+      <div class="g2">
+        <div class="field"><label>Tipo abbonamento</label>
+          <select id="imp-tipo-abb">
+            <option>Mensile</option><option>Trimestrale</option><option>Semestrale</option>
+            <option>Annuale</option><option>Pacchetto 2</option><option>Pacchetto 10</option><option>Pacchetto 20</option><option>A sessione</option>
+          </select>
+        </div>
+        <div class="field"><label>Data inizio</label><input type="date" id="imp-data-inizio"></div>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-impostazioni')">Annulla</button><button class="btn btn-primary" onclick="salvaImpostazioni()">Salva</button></div>
+  </div>
+</div>
+
+<!-- MODAL: MODIFICA CLIENTE -->
+<div class="mo" id="mo-modifica">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">Modifica Cliente</div><button class="mclose" onclick="closeMo('mo-modifica')">✕</button></div>
+    <div class="mbody">
+      <div class="g2">
+        <div class="field"><label>Nome</label><input type="text" id="mod-nome"></div>
+        <div class="field"><label>Cognome</label><input type="text" id="mod-cognome"></div>
+      </div>
+      <div class="g2">
+        <div class="field"><label>Telefono</label><input type="text" id="mod-tel"></div>
+        <div class="field"><label>Email</label><input type="email" id="mod-email"></div>
+      </div>
+      <div class="field"><label>Obiettivo</label><input type="text" id="mod-obiettivo"></div>
+      <div class="field"><label>Servizi</label><input type="text" id="mod-servizi"></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeMo('mo-modifica')">Annulla</button><button class="btn btn-primary" onclick="salvaModifica()">Salva</button></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     Script modulari — ordine di caricamento importante
+     ═══════════════════════════════════════════════════════ -->
+
+<!-- 1. Base: config, stato, utility -->
+<script src="js/config.js?v=15"></script>
+<script src="js/stato.js?v=15"></script>
+<script src="js/utils.js?v=15"></script>
+<script src="js/database.js?v=15"></script>
+
+<!-- 2. Comunicazione con backend -->
+<script src="js/api.js?v=15"></script>
+
+<!-- 3. Moduli funzionali -->
+<script src="js/lista-clienti.js?v=15"></script>
+<script src="js/scheda-cliente.js?v=15"></script>
+<script src="js/dati-fisici.js?v=15"></script>
+<script src="js/programma.js?v=15"></script>
+<script src="js/foto.js?v=15"></script>
+<script src="js/carichi.js?v=15"></script>
+<script src="js/impostazioni.js?v=15"></script>
+
+<!-- 4. Entry point: dopo che tutto è definito -->
+<script src="js/main.js?v=15"></script>
+<script>
+window.NEACEA_SCHEDE_BUILD = 'schede-hotfix-15';
+
+(function forceSchedeLabels() {
+  function fixPlural(root) {
+    const node = root || document;
+    node.querySelectorAll('.badge').forEach(el => {
+      el.textContent = el.textContent.replace(/\bschedae\b/g, 'schede');
+    });
+  }
+
+  fixPlural();
+  new MutationObserver(() => fixPlural()).observe(document.body, { childList: true, subtree: true });
+})();
+
+(function forceFullProgressions() {
+  if (typeof PROGRESSIONI === 'undefined') return;
+
+  renderProgList = function(blocco) {
+    const progs = PROGRESSIONI[blocco] || [];
+    const senzaProg = `
+      <div class="prog-item ${meProg === 'NONE' ? 'sel' : ''}" onclick="selProg('__none__',0)" style="border-left:3px solid var(--gold)">
+        <div class="prog-card-head">
+          <div class="prog-nome">Senza progressione</div>
+          <div class="prog-preview">Compila liberamente le serie seduta per seduta</div>
+        </div>
+      </div>`;
+    const progHtml = progs.map((p, i) => `
+      <div class="prog-item ${meProg?.nome === p.nome ? 'sel' : ''}" onclick="selProg('${blocco}',${i})">
+        <div class="prog-card-head">
+          <div>
+            <div class="prog-nome">${p.nome}</div>
+            <div class="prog-preview">${p.sedute.length} sedute · TUT ${p.tut}</div>
+          </div>
+          <span class="prog-pick">${meProg?.nome === p.nome ? 'Selezionata' : 'Scegli'}</span>
+        </div>
+        <div class="prog-card-sedute">
+          ${p.sedute.map((sed, n) => `
+            <div class="prog-card-seduta">
+              <span>Sed.${n + 1}</span>
+              <strong>${sed}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </div>`).join('');
+    document.getElementById('pb-list').innerHTML = senzaProg + progHtml;
+    if (typeof renderProgPreview === 'function') renderProgPreview();
+  };
+})();
+</script>
+
+</body>
+</html>

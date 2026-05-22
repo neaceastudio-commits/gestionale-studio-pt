@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEACEA — Calendario Gestionale</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/calendar.css">
+</head>
+<body>
+
+<!-- ── TOPBAR ──────────────────────────────────── -->
+<div class="topbar">
+  <span class="topbar-brand">Neacea</span>
+  <div class="topbar-divider"></div>
+  <span class="topbar-sub">Calendario</span>
+  <div class="topbar-divider"></div>
+
+  <div class="topbar-tabs">
+    <button class="topbar-tab active" data-view="dashboard">◻ Dashboard</button>
+    <button class="topbar-tab" data-view="day">📋 Giorno</button>
+    <button class="topbar-tab" data-view="week">🗓 Settimana</button>
+    <button class="topbar-tab" data-view="room">📊 Sale</button>
+    <button class="topbar-tab" data-view="clients">👤 Clienti</button>
+    <button class="topbar-tab" data-view="operators">👥 Staff</button>
+  </div>
+
+  <div class="topbar-right">
+    <span id="topbar-clock" style="font-size:11px;color:rgba(255,255,255,.5);font-weight:600"></span>
+    <button class="topbar-btn primary" onclick="App.openNewAppointment()">+ Appuntamento</button>
+  </div>
+</div>
+
+<!-- ── MAIN ──────────────────────────────────────── -->
+<div class="main-content">
+
+  <!-- Dashboard -->
+  <div id="view-dashboard" class="view-panel active"></div>
+
+  <!-- Vista Giorno -->
+  <div id="view-day" class="view-panel"></div>
+
+  <!-- Vista Settimana -->
+  <div id="view-week" class="view-panel"></div>
+
+  <!-- Sale / Saturazione -->
+  <div id="view-room" class="view-panel"></div>
+
+  <!-- Clienti -->
+  <div id="view-clients" class="view-panel"></div>
+
+  <!-- Staff / Operatori -->
+  <div id="view-operators" class="view-panel"></div>
+
+</div>
+
+<!-- ── MODAL ────────────────────────────────────── -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal-box">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ────────────────────────────────────── -->
+<div id="toast-area"></div>
+
+<!-- ── SCRIPTS ──────────────────────────────────── -->
+<script>
+  // Pulizia anti-demo: il gestionale ora usa Supabase come sorgente dati.
+  // A ogni avvio rimuoviamo solo la cache locale di clienti/appuntamenti,
+  // poi app.js rilegge i dati reali dal database.
+  localStorage.removeItem('neacea_clients');
+  localStorage.removeItem('neacea_appointments');
+</script>
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/services.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/clients.js"></script>
+<script src="js/operators.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  // Orologio topbar
+  function updateClock() {
+    const now = new Date();
+    const d = now.toLocaleDateString('it-IT', { weekday:'short', day:'2-digit', month:'short' });
+    const t = now.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+    const el = document.getElementById('topbar-clock');
+    if (el) el.textContent = d + ' · ' + t;
+  }
+  updateClock();
+  setInterval(updateClock, 30000);
+</script>
+</body>
+</html>

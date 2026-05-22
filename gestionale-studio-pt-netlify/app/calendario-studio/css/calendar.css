@@ -1,0 +1,99 @@
+/* =============================================
+   NEACEA — calendar.css
+   Viste Giorno, Settimana, Sala — stile Neacea
+   ============================================= */
+
+/* ── DAY VIEW ────────────────────────────────── */
+
+.day-layout { display: grid; grid-template-columns: 1fr 260px; gap: 16px; align-items: start; }
+
+.day-timeline-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: auto;
+  max-height: calc(100vh - 160px); box-shadow: var(--shadow);
+}
+
+.day-timeline { position: relative; min-width: 500px; margin-left: 64px; }
+
+.hour-line {
+  position: absolute; left: -64px; right: 0;
+  height: 66px; border-top: 1px solid var(--border);
+  display: flex; align-items: flex-start;
+}
+.hour-line span { font-size: 10px; color: var(--text3); padding: 2px 6px; white-space: nowrap; font-weight: 700; }
+
+.cal-event {
+  position: absolute; border-radius: var(--radius-sm);
+  padding: 5px 8px; overflow: hidden;
+  transition: box-shadow .12s; z-index: 1; min-width: 80px;
+}
+.cal-event:hover { box-shadow: var(--shadow-md); z-index: 10; }
+.event-time   { font-size: 10px; font-weight: 800; opacity: .7; display: block; }
+.event-svc    { font-size: 12px; font-weight: 800; line-height: 1.2; }
+.event-client { font-size: 11px; opacity: .8; margin-top: 2px; }
+.event-op     { font-size: 10px; opacity: .65; }
+.event-circuit{ font-size: 10px; font-weight: 800; margin-top: 2px; }
+
+/* Blocco agenda — stile attenuato */
+.cal-event-block {
+  border-style: dashed !important; opacity: .7;
+}
+
+/* ── DAY SIDEBAR ────────────────────────────── */
+
+.day-sidebar { position: sticky; top: 12px; }
+
+/* ── SAT LIST ───────────────────────────────── */
+
+.sat-list { padding: 4px 0; }
+.sat-slot  { display: flex; align-items: center; gap: 8px; padding: 5px 14px; }
+.sat-label { font-size: 10px; font-weight: 700; color: var(--text3); width: 36px; flex-shrink: 0; }
+.sat-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.sat-bar { height: 100%; border-radius: 3px; transition: width .3s; }
+.sat-pct { font-size: 10px; color: var(--text3); font-weight: 700; min-width: 32px; text-align: right; }
+
+/* ── WEEK VIEW ────────────────────────────────── */
+
+.week-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; align-items: start; }
+
+.week-col {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  min-height: 180px; box-shadow: var(--shadow);
+}
+.week-col.week-today { border-color: var(--blue); }
+.week-col.week-today .week-col-header { background: var(--blue); }
+
+.week-col-header {
+  padding: 8px 10px; background: var(--blue-xpale);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .12s; text-align: center;
+}
+.week-col-header:hover { background: var(--blue-pale); }
+.week-dayname { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); font-weight: 800; }
+.week-today .week-dayname { color: rgba(255,255,255,.75); }
+.week-daynum { display: block; font-size: 18px; font-weight: 800; color: var(--text); }
+.week-today .week-daynum { color: #fff; }
+
+.week-events  { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.week-event   { border-radius: var(--radius-sm); padding: 5px 7px; cursor: pointer; transition: box-shadow .12s; font-size: 11px; }
+.week-event:hover { box-shadow: var(--shadow-md); }
+.week-event-time   { display: block; font-weight: 800; font-size: 10px; opacity: .7; }
+.week-event-svc    { display: block; font-weight: 800; font-size: 12px; }
+.week-event-client { display: block; opacity: .7; font-size: 10px; margin-top: 1px; }
+.week-empty        { color: var(--text3); text-align: center; padding: 16px 8px; font-size: 12px; font-weight: 600; }
+
+.week-add-btn {
+  width: 100%; background: none; border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm); padding: 4px; cursor: pointer;
+  color: var(--text3); font-size: 14px; transition: all .12s; margin-top: 2px;
+}
+.week-add-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
+
+/* Evento blocco agenda in week view */
+.week-event-block { opacity: .65; border-style: dashed !important; }
+
+/* ── RESPONSIVE ──────────────────────────────── */
+
+@media (max-width: 900px)  { .week-grid { grid-template-columns: repeat(3,1fr); } .day-layout { grid-template-columns: 1fr; } .day-sidebar { position: static; } }
+@media (max-width: 600px)  { .week-grid { grid-template-columns: 1fr 1fr; } }

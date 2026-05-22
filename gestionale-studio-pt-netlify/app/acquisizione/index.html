@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acquisizione — Neacea</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:#1c3144;--blue-mid:#26425c;--blue-light:#3a5f80;
+  --blue-pale:#e8eef4;--blue-xpale:#f0f4f8;
+  --bg:#f0f3f5;--bg2:#ffffff;
+  --border:#dce4ea;--border2:#c4d0da;
+  --text:#1c3144;--text2:#5a7288;--text3:#98aab8;
+  --gold:#c9a84c;--gold-pale:#fdf8ee;
+  --red:#c0392b;--red-pale:#fdecea;
+  --green:#2d6a4f;--green-pale:#e8f5ee;
+  --amber:#b45309;--amber-pale:#fef3c7;
+  --radius:14px;--radius-sm:9px;
+  --shadow:0 1px 4px rgba(28,49,68,.07);--shadow-md:0 4px 16px rgba(28,49,68,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-height:100vh}
+.topbar{position:fixed;top:0;left:0;right:0;height:60px;background:var(--blue);z-index:100;display:flex;align-items:center;padding:0 28px;gap:16px;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.topbar-brand{font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}
+.topbar-sub{font-size:12px;color:rgba(255,255,255,.5);font-weight:600}
+.topbar-divider{width:1px;height:22px;background:rgba(255,255,255,.2)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topbar-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-sm);padding:7px 16px;color:rgba(255,255,255,.9);font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.topbar-btn:hover{background:rgba(255,255,255,.22)}
+.topbar-btn.primary{background:var(--gold);border-color:var(--gold);color:#1a2000}
+.topbar-btn.primary:hover{background:#d4b45a}
+.topbar-btn.confirm{background:var(--green);border-color:var(--green);color:#fff}
+.topbar-btn.danger{background:rgba(192,57,43,.8);border-color:rgba(192,57,43,.5);color:#fff}
+.view{display:none}.view.active{display:block}
+.main{margin-top:60px;padding:32px;max-width:1280px;margin-left:auto;margin-right:auto}
+.eyebrow{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.page-title{font-size:32px;font-weight:800;margin-bottom:4px}
+.page-title em{color:var(--blue-light);font-style:normal}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+
+/* KPI STATS */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kpi-color,var(--blue))}
+.kpi-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.kpi-value{font-size:28px;font-weight:800;color:var(--kpi-color,var(--blue));line-height:1}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:5px;font-weight:600}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.toolbar-search{flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 14px;font-size:14px;font-family:'Nunito',sans-serif;color:var(--text);outline:none}
+.toolbar-search:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(28,49,68,.08)}
+.toolbar-search::placeholder{color:var(--text3)}
+.filter-btn{padding:9px 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-family:'Nunito',sans-serif;transition:all .15s;white-space:nowrap}
+.filter-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.filter-btn:hover:not(.active){border-color:var(--blue);color:var(--blue)}
+
+/* CARDS GRID */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.prospect-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;cursor:pointer;transition:all .15s}
+.prospect-card:hover{box-shadow:var(--shadow-md);border-color:var(--border2);transform:translateY(-1px)}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.avatar{width:44px;height:44px;background:var(--blue);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0}
+.card-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.card-name{font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px}
+.card-info{font-size:12px;color:var(--text3);margin-bottom:12px}
+.card-confirm-btn{width:100%;padding:9px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;margin-bottom:10px;transition:background .15s}
+.card-confirm-btn:hover{background:#3a8a67}
+.card-meta{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--text2);font-weight:600}
+.card-meta span{display:flex;align-items:center;gap:5px}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-pt{background:var(--blue-pale);color:var(--blue)}
+.badge-nut{background:var(--green-pale);color:var(--green)}
+.badge-new{background:var(--amber-pale);color:var(--amber)}
+.badge-pronto{background:var(--green-pale);color:var(--green)}
+.badge-int{background:var(--blue-pale);color:var(--blue-mid)}
+.badge-val{background:#f0f0f0;color:#888}
+.badge-non{background:var(--red-pale);color:var(--red)}
+
+/* EMPTY STATE */
+.empty-state{padding:60px;text-align:center;color:var(--text3)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-text{font-size:15px;font-weight:700;color:var(--text2)}
+.empty-sub{font-size:13px;margin-top:4px}
+.dash-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;margin-bottom:24px}
+.dash-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.dash-head{padding:13px 16px;background:var(--blue-xpale);border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.dash-body{padding:12px 16px;display:flex;flex-direction:column;gap:10px;min-height:112px}
+.dash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:9px}
+.dash-row:last-child{border-bottom:none;padding-bottom:0}
+.dash-name{font-size:13px;font-weight:800;color:var(--text)}
+.dash-meta{font-size:11px;color:var(--text3);font-weight:700;margin-top:2px}
+.dash-action{font-size:11px;font-weight:800;color:var(--blue);background:var(--blue-pale);border:1px solid var(--border2);border-radius:20px;padding:4px 9px;white-space:nowrap}
+.dash-empty{font-size:13px;color:var(--text3);font-weight:700;padding:10px 0}
+.kpi-sub.warn{color:var(--red);font-weight:800}
+.spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* FORM */
+.form-wrap{max-width:800px;margin:0 auto}
+.section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.sec-head{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--blue-xpale);border-bottom:1px solid var(--border)}
+.sec-num{width:24px;height:24px;background:var(--blue);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.sec-label{font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.1em}
+.sec-body{padding:20px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.field label .req{color:var(--red);margin-left:2px}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:14px;font-family:'Nunito',sans-serif;font-weight:500;outline:none;transition:border-color .15s,box-shadow .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(28,49,68,.08)}
+.field textarea{resize:vertical;min-height:70px;line-height:1.5}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg{display:flex;flex-direction:column;gap:0}
+.form-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+
+/* SERVIZI */
+.srv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.srv-card{background:var(--bg);border:2px solid var(--border2);border-radius:var(--radius-sm);padding:16px;cursor:pointer;transition:all .15s;text-align:center}
+.srv-card.sel-pt{background:var(--blue-pale);border-color:var(--blue)}
+.srv-card.sel-nut{background:var(--green-pale);border-color:var(--green)}
+.srv-icon{font-size:28px;display:block;margin-bottom:8px}
+.srv-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
+.srv-desc{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border2);background:var(--bg2);color:var(--text2);font-family:'Nunito',sans-serif;transition:all .15s}
+.chip.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chip:hover:not(.sel){border-color:var(--blue);color:var(--blue)}
+
+/* SCALA */
+.scala-wrap{display:flex;align-items:center;gap:12px;margin-top:6px}
+.scala-wrap input[type=range]{flex:1;accent-color:var(--blue)}
+.scala-val{font-size:18px;font-weight:800;color:var(--blue);min-width:24px}
+.scala-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px}
+
+/* SCHEDA */
+.scheda-wrap{max-width:820px;margin:0 auto}
+.scheda-hero{background:var(--blue);border-radius:var(--radius);padding:28px 32px;margin-bottom:24px;position:relative}
+.sch-eyebrow{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.sch-nome{font-size:32px;font-weight:800;color:#fff;margin-bottom:6px}
+.sch-meta{font-size:13px;color:rgba(255,255,255,.65);margin-bottom:10px}
+.sch-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.sch-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.sch-actions{display:flex;gap:10px;flex-wrap:wrap}
+.sch-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.sch-block{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px}
+.sch-block.full{grid-column:1/-1}
+.sb-title{font-size:10px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--blue-pale)}
+.sb-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.sb-row:last-child{border-bottom:none}
+.sb-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.sb-val{font-size:13px;font-weight:700;color:var(--text);max-width:55%;text-align:right}
+.sch-quote{font-size:15px;font-style:italic;color:var(--text2);line-height:1.6;padding:8px 0}
+.sch-nota{font-size:13px;color:var(--text2);line-height:1.7;padding:4px 0}
+.sch-footer{font-size:11px;color:var(--text3);font-weight:600;margin-top:8px;text-align:right}
+
+/* CONFERMA MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:var(--radius);width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-head{background:var(--blue);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1}
+.modal-title{font-size:16px;font-weight:800;color:#fff}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer}
+.modal-close:hover{color:#fff}
+.modal-body{padding:24px}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:var(--bg2);position:sticky;bottom:0}
+.confirm-banner{background:var(--green-pale);border:1px solid var(--green);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:700;color:var(--green);margin-bottom:16px}
+.conf-note{background:var(--gold-pale);border-left:3px solid var(--gold);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.5;margin-top:12px}
+
+/* BUTTONS */
+.btn-primary{background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s}
+.btn-primary:hover{background:var(--blue-mid)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 16px;color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn-confirm{background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s}
+.btn-confirm:hover{background:#3a8a67}
+.btn-danger{background:var(--red-pale);color:var(--red);border:1px solid rgba(192,57,43,.2);border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.btn-danger:hover{background:var(--red);color:#fff}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;z-index:300;background:var(--blue);color:#fff;padding:13px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;box-shadow:var(--shadow-md);transform:translateY(80px);opacity:0;transition:all .3s;max-width:340px;display:flex;align-items:center;gap:8px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:var(--red)}
+.toast.success{background:var(--green)}
+
+@media(max-width:980px){.dash-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.kpi-strip{grid-template-columns:repeat(2,1fr)};.sch-grid{grid-template-columns:1fr};.main{padding:16px};.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-brand">Neacea</span>
+  <div class="topbar-divider"></div>
+  <span class="topbar-sub">Acquisizione</span>
+  <div class="topbar-right">
+    <button class="topbar-btn" onclick="window.open('../calendario-studio/','_blank')">Studio →</button>
+    <button class="topbar-btn" onclick="carica()">↻</button>
+    <button class="topbar-btn primary" id="btn-nuova" onclick="apriForm()">+ Nuova anamnesi</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL CONFERMA -->
+<div class="modal-overlay" id="mo-conferma">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Conferma cliente</div><button class="modal-close" onclick="closeMo('mo-conferma')">✕</button></div>
+    <div class="modal-body">
+      <div class="confirm-banner">✓ <strong id="conf-nome">—</strong> passa allo studio. I dati anamnesi verranno trasferiti automaticamente.</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">Vuoi aggiungere subito l'abbonamento? Puoi farlo anche dopo dallo studio.</p>
+      <div class="grid-2">
+        <div class="field"><label>Pacchetto servizio</label>
+          <select id="conf-package">
+            <option>PT 1:1</option>
+            <option>PT 1:2</option>
+            <option>Circuit</option>
+            <option>Nutrizione</option>
+            <option>Valutazioni</option>
+          </select>
+        </div>
+        <div class="field"><label>PT assegnato</label>
+          <select id="conf-pt"><option value="">— seleziona dopo —</option></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Tipo abbonamento</label>
+          <select id="conf-tipo" onchange="toggleConfSess()">
+            <option value="">— aggiungi dopo —</option>
+            <option>Mensile</option><option>Trimestrale</option><option>Semestrale</option>
+            <option>Annuale</option><option>Pacchetto 2</option><option>Pacchetto 10</option><option>Pacchetto 20</option><option>A sessione</option>
+          </select>
+        </div>
+        <div class="field"><label>Data inizio</label><input type="date" id="conf-data"></div>
+      </div>
+      <div class="grid-2" id="conf-sess-row" style="display:none">
+        <div class="field"><label>Sessioni totali</label><input type="number" id="conf-sess-tot" min="1" onchange="limitConfDays()"></div>
+        <div class="field"><label>Sessioni usate</label><input type="number" id="conf-sess-used" value="0" min="0"></div>
+      </div>
+      <div class="field" id="conf-days-row" style="display:none">
+        <label>Giorni del pacchetto</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="conf-days">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Lunedì" onchange="limitConfDays(this)"> Lun</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Martedì" onchange="limitConfDays(this)"> Mar</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Mercoledì" onchange="limitConfDays(this)"> Mer</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Giovedì" onchange="limitConfDays(this)"> Gio</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Venerdì" onchange="limitConfDays(this)"> Ven</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Sabato" onchange="limitConfDays(this)"> Sab</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Domenica" onchange="limitConfDays(this)"> Dom</label>
+        </div>
+      </div>
+      <div class="grid-2" id="conf-abb-row" style="display:none">
+        <div class="field"><label>Importo (€)</label><input type="number" id="conf-importo" step="0.01"></div>
+        <div class="field"><label>Stato pagamento</label>
+          <select id="conf-pagamento"><option>Da pagare</option><option>Pagato</option><option>Parziale</option></select>
+        </div>
+      </div>
+      <div class="conf-note">💡 Dopo la conferma il prospect sparirà dall'acquisizione e apparirà nello studio con tutti i dati precompilati.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeMo('mo-conferma')">Annulla</button>
+      <button class="btn-confirm" id="btn-conf" onclick="eseguiConferma()">Conferma e trasferisci →</button>
+    </div>
+  </div>
+</div>
+
+<!-- LISTA -->
+<div class="view active main" id="view-lista">
+  <div class="eyebrow">Gestione prospect</div>
+  <div class="page-title">Anamnesi <em>acquisizione</em></div>
+  <div class="page-sub" id="lista-sub">Caricamento…</div>
+
+  <div class="kpi-strip">
+    <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Totale prospect</div><div class="kpi-value" id="st-tot">—</div><div class="kpi-sub">in acquisizione</div></div>
+    <div class="kpi" style="--kpi-color:var(--green)"><div class="kpi-label">Pronti</div><div class="kpi-value" id="st-pronti">—</div><div class="kpi-sub">da confermare</div></div>
+    <div class="kpi" style="--kpi-color:var(--gold)"><div class="kpi-label">Interessati</div><div class="kpi-value" id="st-int">—</div><div class="kpi-sub">in trattativa</div></div>
+    <div class="kpi" style="--kpi-color:var(--red)"><div class="kpi-label">Da richiamare</div><div class="kpi-value" id="st-follow">—</div><div class="kpi-sub" id="st-follow-sub">follow-up scaduti/oggi</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-panel">
+      <div class="dash-head">Follow-up da fare</div>
+      <div class="dash-body" id="dash-follow"></div>
+    </div>
+    <div class="dash-panel">
+      <div class="dash-head">Pronti da confermare</div>
+      <div class="dash-body" id="dash-pronti"></div>
+    </div>
+    <div class="dash-panel">
+      <div class="dash-head">Ultimi inseriti</div>
+      <div class="dash-body" id="dash-recenti"></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input class="toolbar-search" id="search" type="text" placeholder="Cerca per nome, email, telefono…" oninput="renderLista()">
+    <button class="filter-btn active" onclick="setFiltro('tutti',this)">Tutti</button>
+    <button class="filter-btn" onclick="setFiltro('pronti',this)">Pronti</button>
+    <button class="filter-btn" onclick="setFiltro('interessati',this)">Interessati</button>
+    <button class="filter-btn" onclick="setFiltro('valutazione',this)">In valutazione</button>
+  </div>
+
+  <div class="cards-grid" id="grid"></div>
+</div>
+
+<!-- FORM -->
+<div class="view main" id="view-form">
+  <div class="form-wrap">
+    <div class="eyebrow" id="form-eyebrow">Nuovo prospect</div>
+    <div class="page-title" id="form-title" style="margin-bottom:4px">Anamnesi acquisizione</div>
+    <div class="page-sub">Compila durante il primo colloquio in studio</div>
+
+    <!-- 1 · DATI PERSONALI -->
+    <div class="section">
+      <div class="sec-head"><div class="sec-num">1</div><div class="sec-label">Dati personali</div></div>
+      <div class="sec-body">
+        <div class="grid-2">
+          <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="f-nome" autocomplete="off"></div>
+          <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="f-cognome" autocomplete="off"></div>
+          <div class="field"><label>Data di nascita</label><input type="date" id="f-nascita"></div>
+          <div class="field"><label>Sesso</label><select id="f-sesso"><option value="">— seleziona —</option><option>Maschio</option><option>Femmina</option><option>Altro</option></select></div>
+          <div class="field"><label>Telefono</label><input type="tel" id="f-telefono"></div>
+          <div class="field"><label>Email</label><input type="email" id="f-email"></div>
+          <div class="field"><label>Professione</label><input type="text" id="f-professione"></div>
+          <div class="field"><label>Come ci ha trovato</label>
+            <select id="f-come"><option value="">— seleziona —</option><option>Passaparola</option><option>Instagram</option><option>Google</option><option>Facebook</option><option>Sito web</option><option>Altro</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · SERVIZI -->
+    <div class="section">
+      <div class="sec-head"><div class="sec-num">2</div><div class="sec-label">Servizi di interesse</div></div>
+      <div class="sec-body">
+        <div class="srv-grid">
+          <div class="srv-card sel-pt" id="srv-pt" onclick="togSrv('pt')">
+            <span class="srv-icon">🏋️</span>
+            <div class="srv-name">Personal Training</div>
+            <div class="srv-desc">Allenamento personalizzato in studio con PT dedicato</div>
+          </div>
+          <div class="srv-card" id="srv-nut" onclick="togSrv('nut')">
+            <span class="srv-icon">🥗</span>
+            <div class="srv-name">Nutrizione</div>
+            <div class="srv-desc">Piano alimentare personalizzato con nutrizionista</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · OBIETTIVI -->
+    <div class="section">
+      <div class="sec-head"><div class="sec-num">3</div><div class="sec-label">Obiettivi</div></div>
+      <div class="sec-body">
+        <div class="field"><label>Obiettivo principale <span class="req">*</span></label>
+          <div class="chips" id="chips-ob">
+            <div class="chip" onclick="selChip(this,'ob')">Dimagrimento</div>
+            <div class="chip" onclick="selChip(this,'ob')">Massa muscolare</div>
+            <div class="chip" onclick="selChip(this,'ob')">Tonificazione</div>
+            <div class="chip" onclick="selChip(this,'ob')">Benessere generale</div>
+            <div class="chip" onclick="selChip(this,'ob')">Performance sportiva</div>
+            <div class="chip" onclick="selChip(this,'ob')">Riabilitazione</div>
+            <div class="chip" onclick="selChip(this,'ob')">Postura</div>
+          </div>
+        </div>
+        <div class="field"><label>Obiettivo con le sue parole</label>
+          <textarea id="f-ob-libero" placeholder="Descrivi con le sue stesse parole cosa vuole ottenere…"></textarea>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Tempistica desiderata</label>
+            <select id="f-tempistica"><option value="">— seleziona —</option><option>1–2 mesi</option><option>3–6 mesi</option><option>6–12 mesi</option><option>Lungo termine</option><option>Senza scadenza</option></select>
+          </div>
+          <div class="field"><label>Livello di motivazione</label>
+            <div class="scala-wrap"><input type="range" min="1" max="10" value="7" id="f-motiv" oninput="document.getElementById('motiv-val').textContent=this.value"><div class="scala-val" id="motiv-val">7</div></div>
+            <div class="scala-labels"><span>Bassa</span><span>Massima</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 · STORIA FITNESS -->
+    <div class="section">
+      <div class="sec-head"><div class="sec-num">4</div><div class="sec-label">Storia fitness</div></div>
+      <div class="sec-body">
+        <div class="field"><label>Esperienza pregressa</label>
+          <div class="chips" id="chips-esp">
+            <div class="chip" onclick="selChip(this,'esp')">Nessuna</div>
+            <div class="chip" onclick="selChip(this,'esp')">Palestra in passato</div>
+            <div class="chip" onclick="selChip(this,'esp')">Attività sportiva</div>
+            <div class="chip" onclick="selChip(this,'esp')">Già con un PT</div>
+            <div class="chip" onclick="selChip(this,'esp')">Allenamento autonomo</div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Periodo di inattività</label>
+            <select id="f-inattivo"><option value="">— seleziona —</option><option>È ancora attivo/a</option><option>Meno di 3 mesi</option><option>3–12 mesi</option><option>1–3 anni</option><option>Più di 3 anni</option><option>Mai praticato</option></select>
+          </div>
+          <div class="field"><label>Sport / attività praticate</label><input type="text" id="f-sport" placeholder="Es. calcio, nuoto, corsa…"></div>
+        </div>
+        <div class="field"><label>Cosa non ha funzionato in passato</label>
+          <textarea id="f-non-funz" placeholder="Motivi di abbandono, ostacoli, esperienze negative…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 · DISPONIBILITÀ -->
+    <div class="section">
+      <div class="sec-head"><div class="sec-num">5</div><div class="sec-label">Disponibilità</div></div>
+      <div class="sec-body">
+        <div class="field"><label>Sessioni a settimana desiderate</label>
+          <div class="chips" id="chips-sess">
+            <div class="chip" onclick="selChip(this,'sess')">1×</div>
+            <div class="chip" onclick="selChip(this,'sess')">2×</div>
+            <div class="chip" onclick="selChip(this,'sess')">3×</div>
+            <div class="chip" onclick="selChip(this,'sess')">4×+</div>
+          </div>
+        </div>
+        <div class="field"><label>Orari preferiti <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0">(selezione multipla)</span></label>
+          <div class="chips" id="chips-orari">
+            <div class="chip" onclick="togChipM(this,'orari')">Mattina 6–9</div>
+            <div class="chip" onclick="togChipM(this,'orari')">Mattina 9–12</div>
+            <div class="chip" onclick="togChipM(this,'orari')">Pausa pranzo</div>
+            <div class="chip" onclick="togChipM(this,'orari')">Pomeriggio</div>
+            <div class="chip" onclick="togChipM(this,'orari')">Sera 18–20</div>
+            <div class="chip" onclick="togChipM(this,'orari')">Sera 20+</div>
+            <div class="chip" onclick="togChipM(this,'orari')">Weekend</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 · NOTE PT -->
+    <div class="section">
+      <div class="sec-head"><div class="sec-num">6</div><div class="sec-label">Note del PT</div></div>
+      <div class="sec-body">
+        <div class="field"><label>Impressioni dal colloquio</label>
+          <textarea id="f-impressioni" style="min-height:90px" placeholder="Carattere, atteggiamento, aspettative, punti di forza o criticità…"></textarea>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Proposta commerciale</label><input type="text" id="f-proposta" placeholder="Es. 3× sett., pacchetto 12 sessioni…"></div>
+          <div class="field"><label>Follow-up previsto</label><input type="date" id="f-followup"></div>
+        </div>
+        <div class="field"><label>Stato acquisizione</label>
+          <div class="chips" id="chips-stato">
+            <div class="chip" onclick="selChip(this,'stato')">In valutazione</div>
+            <div class="chip sel" onclick="selChip(this,'stato')">Interessato</div>
+            <div class="chip" onclick="selChip(this,'stato')">Pronto a iniziare</div>
+            <div class="chip" onclick="selChip(this,'stato')">Non convinto</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-ghost" onclick="showView('lista')">Annulla</button>
+      <button class="btn-primary" id="btn-salva" onclick="salva()">Salva anamnesi</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDA -->
+<div class="view main" id="view-scheda">
+  <div class="scheda-wrap">
+    <div class="scheda-hero">
+      <div class="sch-eyebrow">Prospect · Acquisizione PT</div>
+      <div class="sch-nome" id="sch-nome">—</div>
+      <div class="sch-meta" id="sch-meta"></div>
+      <div class="sch-badges" id="sch-badges"></div>
+      <div class="sch-actions">
+        <button class="btn-ghost" onclick="showView('lista')" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">← Lista</button>
+        <button class="btn-ghost" onclick="apriModifica()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">✏ Modifica</button>
+        <button class="btn-confirm" onclick="apriConferma()">Conferma cliente →</button>
+        <button class="btn-danger" onclick="confElimina()">Elimina</button>
+      </div>
+    </div>
+    <div class="sch-grid" id="sch-content"></div>
+    <div class="sch-footer" id="sch-footer"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://cdywqyqqmjhgkzwrrixc.supabase.co';
+const SUPABASE_KEY='sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+let acquisizioni=[],staffAll=[],filtro='tutti',chips={stato:'Interessato'},servizi={pt:true,nut:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,toastTimer=null;
+
+function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
+async function sb(table,{method='GET',query='',body=null,headers={}}={}){
+  const r=await fetch(sbUrl(table,query),{method,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',...headers},body:body?JSON.stringify(body):undefined});
+  if(!r.ok)return{error:await r.text()};if(r.status===204)return null;const text=await r.text();return text?JSON.parse(text):null;
+}
+function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
+function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
+function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
+async function apiGet(a){
+  if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
+  if(a==='getStaff'){const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
+  return{error:'Azione non supportata'}
+}
+async function apiFetch(p){
+  if(p.action==='saveAcquisizione'){const body=acqToDb(p);const res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body});return res?.error?res:{success:true,id:body.id}}
+  if(p.action==='deleteAcquisizione'){const res=await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});return res?.error?res:{success:true}}
+  if(p.action==='confermaCliente'){
+    const acq=acquisizioni.find(x=>x.id===p.id);if(!acq)return{error:'Prospect non trovato'};
+    const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    const sessionsTotal=parseInt(p.sessioni_totali)||0;
+    const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
+    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',email:acq.email||'',telefono:acq.telefono||'',package_types:[p.packageType||'PT 1:1'],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:acq.servizi||'',tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
+    const ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body});if(ins?.error)return ins;
+    await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});
+    return{success:true,clientId};
+  }
+  return{error:'Azione non supportata'}
+}
+
+async function carica(){
+  if(!initialized)document.getElementById('grid').innerHTML='<div class="empty-state"><div class="spin"></div></div>';
+  showToast('Aggiornamento…','loading');
+  try{
+    const [d,ops]=await Promise.all([apiGet('getAcquisizioni'),apiGet('getStaff')]);
+    if(d.error)throw new Error(d.error);
+    if(ops.error)throw new Error(ops.error);
+    acquisizioni=d.acquisizioni||[];staffAll=ops.staff||[];initialized=true;
+    renderStats();renderLista();
+    const t=acquisizioni.length;
+    document.getElementById('lista-sub').textContent=t===0?'Nessun prospect registrato — aggiungi la prima anamnesi':t+' prospect registrat'+(t===1?'o':'i');
+    showToast('Aggiornato ✓','success');
+  }catch(e){document.getElementById('grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">Errore connessione Supabase</div><div class="empty-sub">'+String(e.message||e).slice(0,180)+'</div></div>';showToast('Errore Supabase','error')}
+}
+
+function renderStats(){
+  const t=acquisizioni.length;const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').length;const int=acquisizioni.filter(c=>c.stato==='Interessato').length;
+  const oggi=new Date();oggi.setHours(23,59,59,999);
+  const follow=acquisizioni.filter(c=>c.followup&&new Date(c.followup+'T00:00:00')<=oggi&&c.stato!=='Pronto a iniziare');
+  document.getElementById('st-tot').textContent=t;document.getElementById('st-pronti').textContent=pronti;document.getElementById('st-int').textContent=int;document.getElementById('st-follow').textContent=follow.length;
+  document.getElementById('st-follow-sub').className='kpi-sub'+(follow.length?' warn':'');
+  renderDashPanels(follow);
+}
+
+function renderDashPanels(follow){
+  const byDate=(a,b)=>String(a.followup||'9999').localeCompare(String(b.followup||'9999'));
+  const recenti=[...acquisizioni].sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
+  const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').slice(0,4);
+  fillDash('dash-follow',[...follow].sort(byDate).slice(0,4),'Nessun follow-up urgente',c=>fmtData(c.followup));
+  fillDash('dash-pronti',pronti,'Nessun cliente pronto',c=>c.sessioni_pref||'da definire');
+  fillDash('dash-recenti',recenti,'Nessun prospect ancora',c=>fmtData(c.dataAcquisizione));
+}
+
+function fillDash(id,items,empty,metaFn){
+  const el=document.getElementById(id);if(!el)return;
+  if(!items.length){el.innerHTML='<div class="dash-empty">'+empty+'</div>';return}
+  el.innerHTML=items.map(c=>`<div class="dash-row" onclick="apriScheda('${c.id}')" style="cursor:pointer">
+    <div><div class="dash-name">${c.nome||''} ${c.cognome||''}</div><div class="dash-meta">${metaFn(c)||'—'} · ${c.stato||'—'}</div></div>
+    <span class="dash-action">Apri</span>
+  </div>`).join('');
+}
+
+function renderLista(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const f=acquisizioni.filter(c=>{
+    const m=((c.nome||'')+(c.cognome||'')+(c.email||'')+(c.telefono||'')).toLowerCase().includes(q);if(!m)return false;
+    if(filtro==='pronti')return c.stato==='Pronto a iniziare';if(filtro==='interessati')return c.stato==='Interessato';if(filtro==='valutazione')return c.stato==='In valutazione';return true;
+  });
+  const grid=document.getElementById('grid');
+  if(!f.length){grid.innerHTML=`<div class="empty-state"><div class="empty-icon">${acquisizioni.length===0?'📋':'🔍'}</div><div class="empty-text">${acquisizioni.length===0?'Nessun prospect ancora':'Nessun risultato'}</div><div class="empty-sub">${acquisizioni.length===0?'Usa il pulsante in alto per la prima anamnesi':'Prova a cambiare i filtri'}</div></div>`;return}
+  const sm={'Pronto a iniziare':'badge-pronto','Interessato':'badge-int','In valutazione':'badge-val','Non convinto':'badge-non'};
+  grid.innerHTML=f.map(c=>{
+    const ini=((c.nome||'')[0]||'').toUpperCase()+((c.cognome||'')[0]||'').toUpperCase();
+    const eta=c.nascita?calcEta(c.nascita)+' anni':'';const srv=normSrv(c.servizi);
+    const srvB=srv.map(s=>s==='PT'?'<span class="badge badge-pt">🏋️ PT</span>':'<span class="badge badge-nut">🥗 Nutrizione</span>').join('');
+    const isNew=isNuovo(c.dataAcquisizione);const sc=sm[c.stato]||'badge-val';const isPronto=c.stato==='Pronto a iniziare';
+    return`<div class="prospect-card" onclick="apriScheda('${c.id}')">
+      <div class="card-top"><div class="avatar">${ini}</div><div class="card-badges">${srvB}${isNew?'<span class="badge badge-new">Nuovo</span>':''}</div></div>
+      <div class="card-name">${c.nome||''} ${c.cognome||''}</div>
+      <div class="card-info">${[eta,c.professione].filter(Boolean).join(' · ')}</div>
+      ${isPronto?`<button class="card-confirm-btn" onclick="event.stopPropagation();apriConfermaById('${c.id}')">Conferma cliente →</button>`:''}
+      <div class="card-meta">
+        <span>🎯 ${c.obiettivo||'—'}</span>
+        <span>📅 ${c.sessioni_pref||'—'}</span>
+        <span><span class="badge ${sc}">${c.stato||'—'}</span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFiltro(f,btn){filtro=f;document.querySelectorAll('#view-lista .filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderLista()}
+
+function showView(n){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+n).classList.add('active');
+  document.getElementById('btn-nuova').style.display=n==='form'?'none':'inline-block';
+  if(n==='lista')carica();
+}
+
+function apriForm(){isEdit=false;idCorrente=null;resetForm();document.getElementById('form-eyebrow').textContent='Nuovo prospect';document.getElementById('form-title').textContent='Anamnesi acquisizione';showView('form')}
+
+function resetForm(){
+  ['f-nome','f-cognome','f-nascita','f-sesso','f-telefono','f-email','f-professione','f-come','f-ob-libero','f-tempistica','f-inattivo','f-sport','f-non-funz','f-impressioni','f-proposta','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('f-motiv').value=7;document.getElementById('motiv-val').textContent='7';
+  servizi={pt:true,nut:false};document.getElementById('srv-pt').className='srv-card sel-pt';document.getElementById('srv-nut').className='srv-card';
+  chips={stato:'Interessato'};document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  const sc=document.querySelectorAll('#chips-stato .chip');if(sc[1])sc[1].classList.add('sel');
+}
+
+function togSrv(s){servizi[s]=!servizi[s];document.getElementById('srv-'+s).className='srv-card'+(servizi[s]?' sel-'+s:'')}
+function selChip(el,g){document.querySelectorAll('#chips-'+g+' .chip').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');chips[g]=el.textContent.trim()}
+function togChipM(el,g){el.classList.toggle('sel');if(!chips[g])chips[g]=[];const v=el.textContent.trim();if(el.classList.contains('sel')){if(!chips[g].includes(v))chips[g].push(v)}else{chips[g]=chips[g].filter(x=>x!==v)}}
+
+async function salva(){
+  const nome=document.getElementById('f-nome').value.trim(),cognome=document.getElementById('f-cognome').value.trim();
+  if(!nome||!cognome){showToast('Inserisci nome e cognome','error');return}
+  if(!chips['ob']){showToast('Seleziona almeno un obiettivo','error');return}
+  const btn=document.getElementById('btn-salva');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
+  const srv=[];if(servizi.pt)srv.push('PT');if(servizi.nut)srv.push('Nutrizione');const orari=chips['orari']||[];
+  const payload={action:'saveAcquisizione',id:isEdit?idCorrente:undefined,nome,cognome,
+    nascita:document.getElementById('f-nascita').value,sesso:document.getElementById('f-sesso').value,
+    telefono:document.getElementById('f-telefono').value,email:document.getElementById('f-email').value,
+    professione:document.getElementById('f-professione').value,come:document.getElementById('f-come').value,
+    servizi:srv.join(','),obiettivo:chips['ob']||'',obiettivoLibero:document.getElementById('f-ob-libero').value,
+    tempistica:document.getElementById('f-tempistica').value,motivazione:document.getElementById('f-motiv').value,
+    esperienza:chips['esp']||'',inattivo:document.getElementById('f-inattivo').value,sport:document.getElementById('f-sport').value,
+    nonFunzionato:document.getElementById('f-non-funz').value,sessioni_pref:chips['sess']||'',
+    orari:Array.isArray(orari)?orari.join(', '):orari,impressioni:document.getElementById('f-impressioni').value,
+    proposta:document.getElementById('f-proposta').value,followup:document.getElementById('f-followup').value,
+    stato:chips['stato']||'Interessato'};
+  try{
+    const res=await apiFetch(payload);
+    if(res.success){showToast(isEdit?'Anamnesi aggiornata!':'Anamnesi salvata!','success');
+      if(isEdit){const idx=acquisizioni.findIndex(x=>x.id===idCorrente);if(idx>=0)acquisizioni[idx]={...acquisizioni[idx],...payload,id:idCorrente}}
+      else acquisizioni.unshift({...payload,id:res.id,dataAcquisizione:new Date().toISOString()});
+      idCorrente=res.id||idCorrente;apriScheda(idCorrente);
+    }else showToast('Errore salvataggio: '+(res.error||''),'error');
+  }catch(e){showToast('Errore salvataggio Supabase: '+String(e.message||e).slice(0,120),'error')}
+  btn.innerHTML='Salva anamnesi';btn.disabled=false;
+}
+
+function apriScheda(id){
+  const c=acquisizioni.find(x=>x.id===id);if(!c){carica();return}
+  idCorrente=id;document.getElementById('sch-nome').textContent=`${c.nome||''} ${c.cognome||''}`;
+  const meta=[];if(c.nascita)meta.push(calcEta(c.nascita)+' anni');if(c.sesso)meta.push(c.sesso);if(c.professione)meta.push(c.professione);if(c.telefono)meta.push(c.telefono);if(c.email)meta.push(c.email);
+  document.getElementById('sch-meta').innerHTML=meta.join(' · ');
+  const srv=normSrv(c.servizi);
+  let badges=srv.map(s=>s==='PT'?'<span class="sch-badge" style="background:var(--blue-pale);color:var(--blue)">🏋️ PT</span>':'<span class="sch-badge" style="background:var(--green-pale);color:var(--green)">🥗 Nutrizione</span>').join('');
+  const ss={'Pronto a iniziare':'background:var(--green-pale);color:var(--green)','Interessato':'background:var(--blue-pale);color:var(--blue)','Non convinto':'background:var(--red-pale);color:var(--red)','In valutazione':'background:#f0f0f0;color:#888'};
+  badges+=`<span class="sch-badge" style="${ss[c.stato]||ss['In valutazione']}">${c.stato||'—'}</span>`;
+  document.getElementById('sch-badges').innerHTML=badges;
+  let h='';
+  if(c.obiettivoLibero)h+=`<div class="sch-block full"><div class="sb-title">Obiettivo</div><div class="sch-quote">"${c.obiettivoLibero}"</div></div>`;
+  h+=`<div class="sch-block"><div class="sb-title">Profilo</div>${sr('Obiettivo',c.obiettivo)}${sr('Tempistica',c.tempistica)}${sr('Motivazione',c.motivazione?c.motivazione+'/10':'')}${sr('Come ci ha trovato',c.come)}</div>`;
+  h+=`<div class="sch-block"><div class="sb-title">Disponibilità</div>${sr('Sessioni/sett.',c.sessioni_pref)}${sr('Orari',c.orari)}</div>`;
+  h+=`<div class="sch-block"><div class="sb-title">Storia fitness</div>${sr('Esperienza',c.esperienza)}${sr('Inattività',c.inattivo)}${sr('Sport',c.sport)}</div>`;
+  h+=`<div class="sch-block"><div class="sb-title">Note PT</div>${sr('Proposta',c.proposta)}${sr('Follow-up',c.followup?fmtData(c.followup):'')}</div>`;
+  if(c.nonFunzionato)h+=`<div class="sch-block full"><div class="sb-title">Cosa non ha funzionato</div><div class="sch-nota">${c.nonFunzionato}</div></div>`;
+  if(c.impressioni)h+=`<div class="sch-block full"><div class="sb-title">Impressioni del PT</div><div class="sch-nota">${c.impressioni}</div></div>`;
+  document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione);
+  showView('scheda');
+}
+
+function sr(l,v){if(!v)return'';return`<div class="sb-row"><span class="sb-label">${l}</span><span class="sb-val">${v}</span></div>`}
+
+function apriModifica(){
+  const c=acquisizioni.find(x=>x.id===idCorrente);if(!c)return;isEdit=true;
+  const fields={'f-nome':c.nome,'f-cognome':c.cognome,'f-nascita':c.nascita,'f-sesso':c.sesso,'f-telefono':c.telefono,'f-email':c.email,'f-professione':c.professione,'f-come':c.come,'f-ob-libero':c.obiettivoLibero,'f-tempistica':c.tempistica,'f-inattivo':c.inattivo,'f-sport':c.sport,'f-non-funz':c.nonFunzionato,'f-impressioni':c.impressioni,'f-proposta':c.proposta,'f-followup':c.followup};
+  Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el&&val)el.value=val});
+  document.getElementById('f-motiv').value=c.motivazione||7;document.getElementById('motiv-val').textContent=c.motivazione||7;
+  const srv=normSrv(c.servizi);servizi={pt:srv.includes('PT'),nut:srv.includes('Nutrizione')};
+  document.getElementById('srv-pt').className='srv-card'+(servizi.pt?' sel-pt':'');document.getElementById('srv-nut').className='srv-card'+(servizi.nut?' sel-nut':'');
+  chips={};document.querySelectorAll('.chip').forEach(ch=>ch.classList.remove('sel'));
+  const chipMap={ob:c.obiettivo,esp:c.esperienza,sess:c.sessioni_pref,stato:c.stato};
+  Object.entries(chipMap).forEach(([g,val])=>{if(!val)return;const el=[...document.querySelectorAll('#chips-'+g+' .chip')].find(x=>x.textContent.trim()===val);if(el){el.classList.add('sel');chips[g]=val}});
+  if(c.orari){const orariArr=c.orari.split(',').map(x=>x.trim());chips['orari']=orariArr;document.querySelectorAll('#chips-orari .chip').forEach(ch=>{if(orariArr.includes(ch.textContent.trim()))ch.classList.add('sel')})}
+  document.getElementById('form-eyebrow').textContent='Modifica prospect';document.getElementById('form-title').textContent=`${c.nome||''} ${c.cognome||''}`;showView('form');
+}
+
+function apriConferma(){apriConfermaById(idCorrente)}
+function apriConfermaById(id){
+  const c=acquisizioni.find(x=>x.id===id);if(!c)return;idConferma=id;
+  document.getElementById('conf-nome').textContent=`${c.nome||''} ${c.cognome||''}`;
+  const srv=normSrv(c.servizi);document.getElementById('conf-package').value=srv.includes('Nutrizione')&&!srv.includes('PT')?'Nutrizione':'PT 1:1';
+  document.getElementById('conf-pt').innerHTML='<option value="">— seleziona dopo —</option>'+staffAll.map(s=>`<option value="${s.id}">${s.nome||''} ${s.cognome||''}</option>`).join('');
+  document.getElementById('conf-tipo').value='';document.getElementById('conf-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('conf-importo').value='';document.getElementById('conf-pagamento').value='Da pagare';
+  document.getElementById('conf-sess-row').style.display='none';document.getElementById('conf-abb-row').style.display='none';document.getElementById('conf-days-row').style.display='none';document.querySelectorAll('#conf-days input').forEach(c=>{c.checked=false});
+  openMo('mo-conferma');
+}
+function maxConfDays(){const t=document.getElementById('conf-tipo').value;const tot=parseInt(document.getElementById('conf-sess-tot').value)||0;if(t==='Pacchetto 2'||tot===2)return 1;const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
+function limitConfDays(changed){const max=maxConfDays();if(!max)return true;const checked=[...document.querySelectorAll('#conf-days input:checked')];if(checked.length<=max)return true;if(changed)changed.checked=false;else checked.slice(max).forEach(c=>{c.checked=false});showToast('Il pacchetto prevede massimo '+max+' giorni a settimana','error');return false}
+function toggleConfSess(){const t=document.getElementById('conf-tipo').value;document.getElementById('conf-sess-row').style.display=t.startsWith('Pacchetto')?'grid':'none';document.getElementById('conf-abb-row').style.display=t?'grid':'none';document.getElementById('conf-days-row').style.display=t?'block':'none';if(t==='Pacchetto 2')document.getElementById('conf-sess-tot').value=2;if(t==='Pacchetto 10')document.getElementById('conf-sess-tot').value=10;if(t==='Pacchetto 20')document.getElementById('conf-sess-tot').value=20;limitConfDays()}
+async function eseguiConferma(){
+  const btn=document.getElementById('btn-conf');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
+  if(!limitConfDays()){btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
+  const giorniSettimana=[...document.querySelectorAll('#conf-days input:checked')].map(c=>c.value);
+  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType:document.getElementById('conf-package').value,ptId:document.getElementById('conf-pt').value,tipoAbbonamento:document.getElementById('conf-tipo').value,dataInizio:document.getElementById('conf-data').value,sessioni_totali:document.getElementById('conf-sess-tot').value||0,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
+  if(res.success){showToast('Cliente confermato e trasferito allo studio!','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
+  else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
+  btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
+}
+function confElimina(){
+  const c=acquisizioni.find(x=>x.id===idCorrente);if(!confirm(`Eliminare ${c?.nome||''} ${c?.cognome||''}?`))return;
+  apiFetch({action:'deleteAcquisizione',id:idCorrente}).then(res=>{if(res.success){showToast('Prospect eliminato');acquisizioni=acquisizioni.filter(x=>x.id!==idCorrente);renderStats();showView('lista')}else showToast('Errore','error')}).catch(()=>showToast('Errore connessione','error'));
+}
+function normSrv(s){if(!s)return[];if(Array.isArray(s))return s;return s.split(',').map(x=>x.trim()).filter(Boolean)}
+function calcEta(n){const o=new Date(),d=new Date(n);let e=o.getFullYear()-d.getFullYear();const m=o.getMonth()-d.getMonth();if(m<0||(m===0&&o.getDate()<d.getDate()))e--;return e}
+function fmtData(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}catch{return d}}
+function isNuovo(iso){return iso&&(Date.now()-new Date(iso).getTime())<7*24*60*60*1000}
+function openMo(id){document.getElementById(id).classList.add('open')}
+function closeMo(id){document.getElementById(id).classList.remove('open')}
+function showToast(msg,type){const t=document.getElementById('toast');t.innerHTML=(type==='loading'?'<span class="spin"></span> ':type==='success'?'✓  ':type==='error'?'✕  ':'')+msg;t.className='toast show'+(type?' '+type:'');if(toastTimer)clearTimeout(toastTimer);if(type!=='loading')toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
+
+carica();
+</script>
+</body>
+</html>
