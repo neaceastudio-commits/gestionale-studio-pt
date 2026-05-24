@@ -79,6 +79,11 @@ const Services = (() => {
     return packageTypes(client).some(pkg => compatiblePkgs.includes(pkg));
   }
 
+  function serviceUsesPackageSessions(serviceOrId) {
+    const svc = typeof serviceOrId === 'string' ? getService(serviceOrId) : serviceOrId;
+    return !!svc && !svc.isBlock && !svc.isNutri && !svc.isValuation;
+  }
+
   function opHasRole(op, svc) {
     if (!svc?.requiredRoles?.length) return true;
     const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
@@ -172,19 +177,21 @@ const Services = (() => {
       errors.push(`${clientFullName(incompatibleClient.id)} non ha un pacchetto compatibile con ${svc.label}`);
     }
 
-    const apptDay = weekdayName(appt.date);
-    const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
-      const days = c?.giorniSettimana || c?.giorni_settimana || [];
-      return Array.isArray(days) && days.length && !days.includes(apptDay);
-    });
-    if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nel pacchetto`);
+    if (serviceUsesPackageSessions(svc)) {
+      const apptDay = weekdayName(appt.date);
+      const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
+        const days = c?.giorniSettimana || c?.giorni_settimana || [];
+        return Array.isArray(days) && days.length && !days.includes(apptDay);
+      });
+      if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nel pacchetto`);
 
-    const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
-      const total = Number(c?.sessionsTotal ?? c?.sessions_total ?? 0);
-      const remaining = Number(c?.sessionsRemaining ?? c?.sessions_remaining ?? 0);
-      return total > 0 && remaining <= 0;
-    });
-    if (noSessionsClient) errors.push(`${clientFullName(noSessionsClient.id)} non ha sessioni rimanenti`);
+      const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
+        const total = Number(c?.sessionsTotal ?? c?.sessions_total ?? 0);
+        const remaining = Number(c?.sessionsRemaining ?? c?.sessions_remaining ?? 0);
+        return total > 0 && remaining <= 0;
+      });
+      if (noSessionsClient) errors.push(`${clientFullName(noSessionsClient.id)} non ha sessioni rimanenti`);
+    }
 
     if (svc?.room) {
       const current = getRoomLoadAt(appt.date, appt.startTime, appt.durationMin, svc.room, appt.id);
@@ -284,6 +291,7 @@ const Services = (() => {
     clientFullName,
     operatorFullName,
     clientCanUseService,
+    serviceUsesPackageSessions,
     getCompatibleClients,
     getAvailableOperatorsForSlot,
     autoAssignOperator,
