@@ -327,10 +327,13 @@ const App = {
 
     let saved;
     if (apptId) {
+      const before = State.getAppointments().find(a => a.id === apptId);
       saved = Services.updateAppointment(apptId, apptData);
+      if (before?.status !== 'fatto' && saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento aggiornato', 'success');
     } else {
       saved = Services.addAppointment(apptData);
+      if (saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento creato', 'success');
     }
 
@@ -441,10 +444,32 @@ const App = {
     if (appt) App._renderDetailModal(appt);
   },
   _markDone(apptId) {
+    const before = State.getAppointments().find(a => a.id === apptId);
     const doneAppt = Services.updateAppointment(apptId, { status: 'fatto' });
+    if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
     SupabaseSync.pushAppointment(doneAppt);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(doneAppt);
+  },
+  _consumeClientSessions(appt) {
+    if (!appt?.clientIds?.length) return;
+    const clients = State.getClients();
+    const touched = [];
+    appt.clientIds.forEach(id => {
+      const idx = clients.findIndex(c => c.id === id);
+      if (idx < 0) return;
+      const total = Number(clients[idx].sessionsTotal ?? clients[idx].sessions_total ?? 0);
+      const remaining = Number(clients[idx].sessionsRemaining ?? clients[idx].sessions_remaining ?? 0);
+      if (total <= 0 || remaining <= 0) return;
+      clients[idx] = { ...clients[idx], sessionsRemaining: Math.max(0, remaining - 1) };
+      touched.push(clients[idx]);
+    });
+    if (!touched.length) return;
+    State.saveClients(clients);
+    touched.forEach(client => {
+      SupabaseSync.pushClient(client);
+      if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
+    });
   },
   _markNoShow(apptId) {
     const nsAppt = Services.updateAppointment(apptId, { status: 'noshow' });
@@ -601,7 +626,8 @@ const App = {
     const pkgs      = [...document.querySelectorAll('input[name="pkg"]:checked')].map(el=>el.value);
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
-    const sessRem   = parseInt(document.getElementById('cl-sessions-rem')?.value)||0;
+    const remRaw    = document.getElementById('cl-sessions-rem')?.value;
+    const sessRem   = remRaw === '' && sessTotal > 0 ? sessTotal : parseInt(remRaw)||0;
     const notes     = document.getElementById('cl-notes')?.value.trim();
     if (!App._limitClientDays()) return;
     const giorniSettimana = [...document.querySelectorAll('input[name="client-day"]:checked')].map(el=>el.value);
