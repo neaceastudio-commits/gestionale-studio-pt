@@ -38,12 +38,11 @@ const Clients = (() => {
               const pkgs = Array.isArray(c.packageTypes) ? c.packageTypes : (c.packageType ? [c.packageType] : []);
               const services = [...new Set(pkgs.flatMap(p => CONFIG.PACKAGE_SERVICE_MAP[p]||[]))]
                 .map(id => CONFIG.SERVICES[id])
-                .map(id => CONFIG.SERVICES[id])
                 .filter(Boolean);
               const svcColor = services[0]?.color || '#94A3B8';
               const pct = c.sessionsTotal ? Math.round((c.sessionsRemaining / c.sessionsTotal) * 100) : 0;
               return `
-              <tr class="${c.active === false ? 'row-inactive' : ''}">
+              <tr class="${c.active === false ? 'row-inactive' : ''}" onclick="App.openEditClient('${c.id}')">
                 <td>
                   <div class="op-name-cell">
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
@@ -74,9 +73,9 @@ const Clients = (() => {
                 </td>
                 <td>
                   <div class="action-btns">
-                    <button class="btn-icon-sm" title="Modifica" onclick="App.openEditClient('${c.id}')">✏️</button>
-                    <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="App.openNewAppointment()">📅</button>
-                    <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="Clients.toggleActive('${c.id}')">
+                    <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
+                    <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
+                    <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">
                       ${c.active === false ? '🟢' : '🔴'}
                     </button>
                   </div>
