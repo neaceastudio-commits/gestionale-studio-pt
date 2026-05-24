@@ -39,6 +39,7 @@ const SupabaseSync = (() => {
       giorniSettimana: Array.isArray(r.giorni_settimana) ? r.giorni_settimana : [],
       packageStart: r.package_start || r.data_inizio || '',
       notes: r.notes || '',
+      ptAssegnato: r.pt_assegnato || null,
       active: r.active !== false,
     };
   }
@@ -91,6 +92,87 @@ const SupabaseSync = (() => {
     };
   }
 
+  const DAY_INDEX = { 'Domenica': 0, 'Lunedì': 1, 'Martedì': 2, 'Mercoledì': 3, 'Giovedì': 4, 'Venerdì': 5, 'Sabato': 6 };
+
+  function localDateStr(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function parseLocalDate(value) {
+    const parts = String(value || new Date().toISOString().slice(0, 10)).split('-').map(Number);
+    return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+  }
+
+  function serviceIdForClient(client) {
+    const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
+    if (pkgs.includes('PT 1:1')) return 'pt11';
+    if (pkgs.includes('PT 1:2')) return 'pt12';
+    if (pkgs.includes('Circuit')) return 'circuit';
+    if (pkgs.includes('Nutrizione')) return 'nutrizione';
+    if (pkgs.includes('Valutazioni') || pkgs.includes('Visbody')) return 'visbody';
+    if (pkgs.includes('Baiobit')) return 'baiobit';
+    return 'pt11';
+  }
+
+  function nextPackageDates(start, giorni, count) {
+    const wanted = new Set((giorni || []).map(day => DAY_INDEX[day]).filter(day => day !== undefined));
+    if (!wanted.size || !count) return [];
+    const out = [];
+    const d = parseLocalDate(start);
+    for (let guard = 0; out.length < count && guard < 370; guard += 1) {
+      if (wanted.has(d.getDay())) out.push(localDateStr(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  async function ensurePackageAppointments(clients) {
+    const current = State.getAppointments();
+    const created = [];
+
+    clients.forEach(client => {
+      const total = Number(client.sessionsTotal || 0);
+      const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
+      if (!total || !days.length) return;
+
+      const existing = current.filter(appt =>
+        appt.status !== 'annullato' &&
+        Array.isArray(appt.clientIds) &&
+        appt.clientIds.includes(client.id)
+      );
+      const missing = Math.max(0, total - existing.length);
+      if (!missing) return;
+
+      const usedDates = new Set(existing.map(appt => appt.date));
+      const dates = nextPackageDates(client.packageStart, days, total + existing.length)
+        .filter(date => !usedDates.has(date))
+        .slice(0, missing);
+      const serviceId = serviceIdForClient(client);
+      const service = CONFIG.SERVICES[serviceId] || CONFIG.SERVICES.pt11;
+
+      dates.forEach(date => {
+        created.push({
+          id: State.genId('a'),
+          serviceId,
+          clientIds: [client.id],
+          operatorId: client.ptAssegnato || null,
+          date,
+          startTime: '09:00',
+          durationMin: service.durationMin || 60,
+          bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+          status: 'prenotato',
+          notes: 'Programmazione generata dal pacchetto',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+    });
+
+    if (!created.length) return;
+    State.saveAppointments([...current, ...created].sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)));
+    await Promise.all(created.map(pushAppointment));
+  }
+
   function appointmentToDb(a) {
     return {
       id: a.id,
@@ -116,6 +198,7 @@ const SupabaseSync = (() => {
     if (!clients?.error && Array.isArray(clients)) State.saveClients(clients.map(clientFromDb));
     if (!operators?.error && Array.isArray(operators)) State.saveOperators(operators.map(operatorFromDb));
     if (!appointments?.error && Array.isArray(appointments)) State.saveAppointments(appointments.map(appointmentFromDb));
+    if (!clients?.error && Array.isArray(clients)) await ensurePackageAppointments(clients.map(clientFromDb));
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
   }
 
