@@ -108,10 +108,9 @@ const SupabaseSync = (() => {
     if (pkgs.includes('PT 1:1')) return 'pt11';
     if (pkgs.includes('PT 1:2')) return 'pt12';
     if (pkgs.includes('Circuit')) return 'circuit';
-    if (pkgs.includes('Nutrizione')) return 'nutrizione';
     if (pkgs.includes('Valutazioni') || pkgs.includes('Visbody')) return 'visbody';
     if (pkgs.includes('Baiobit')) return 'baiobit';
-    return 'pt11';
+    return null;
   }
 
   function nextPackageDates(start, giorni, count) {
@@ -131,41 +130,69 @@ const SupabaseSync = (() => {
     const created = [];
 
     clients.forEach(client => {
+      const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
       const total = Number(client.sessionsTotal || 0);
       const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
-      if (!total || !days.length) return;
+      const trainingServiceId = serviceIdForClient(client);
 
-      const existing = current.filter(appt =>
+      const existingTraining = current.filter(appt =>
         appt.status !== 'annullato' &&
         Array.isArray(appt.clientIds) &&
-        appt.clientIds.includes(client.id)
+        appt.clientIds.includes(client.id) &&
+        appt.serviceId === trainingServiceId
       );
-      const missing = Math.max(0, total - existing.length);
-      if (!missing) return;
 
-      const usedDates = new Set(existing.map(appt => appt.date));
-      const dates = nextPackageDates(client.packageStart, days, total + existing.length)
-        .filter(date => !usedDates.has(date))
-        .slice(0, missing);
-      const serviceId = serviceIdForClient(client);
-      const service = CONFIG.SERVICES[serviceId] || CONFIG.SERVICES.pt11;
+      if (trainingServiceId && total && days.length) {
+        const missing = Math.max(0, total - existingTraining.length);
+        const usedDates = new Set(existingTraining.map(appt => appt.date));
+        const dates = nextPackageDates(client.packageStart, days, total + existingTraining.length)
+          .filter(date => !usedDates.has(date))
+          .slice(0, missing);
+        const service = CONFIG.SERVICES[trainingServiceId] || CONFIG.SERVICES.pt11;
 
-      dates.forEach(date => {
-        created.push({
-          id: State.genId('a'),
-          serviceId,
-          clientIds: [client.id],
-          operatorId: client.ptAssegnato || null,
-          date,
-          startTime: '09:00',
-          durationMin: service.durationMin || 60,
-          bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
-          status: 'prenotato',
-          notes: 'Programmazione generata dal pacchetto',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+        dates.forEach(date => {
+          created.push({
+            id: State.genId('a'),
+            serviceId: trainingServiceId,
+            clientIds: [client.id],
+            operatorId: client.ptAssegnato || null,
+            date,
+            startTime: '09:00',
+            durationMin: service.durationMin || 60,
+            bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+            status: 'prenotato',
+            notes: 'Programmazione generata dal pacchetto',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
         });
-      });
+      }
+
+      if (pkgs.includes('Nutrizione')) {
+        const hasNutrition = current.concat(created).some(appt =>
+          appt.status !== 'annullato' &&
+          Array.isArray(appt.clientIds) &&
+          appt.clientIds.includes(client.id) &&
+          (appt.serviceId === 'nutrizione' || appt.serviceId === 'check')
+        );
+        if (!hasNutrition) {
+          const service = CONFIG.SERVICES.nutrizione;
+          created.push({
+            id: State.genId('a'),
+            serviceId: 'nutrizione',
+            clientIds: [client.id],
+            operatorId: null,
+            date: client.packageStart || localDateStr(new Date()),
+            startTime: '10:30',
+            durationMin: service.durationMin || 60,
+            bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+            status: 'prenotato',
+            notes: 'Visita nutrizionale generata dal pacchetto',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        }
+      }
     });
 
     if (!created.length) return;
