@@ -71,6 +71,14 @@ const Services = (() => {
       .sort((a, b) => Number(b.compatible) - Number(a.compatible) || `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
   }
 
+  function clientCanUseService(client, serviceId) {
+    const compatiblePkgs = Object.entries(CONFIG.PACKAGE_SERVICE_MAP)
+      .filter(([, services]) => services.includes(serviceId))
+      .map(([pkg]) => pkg);
+    if (!compatiblePkgs.length) return true;
+    return packageTypes(client).some(pkg => compatiblePkgs.includes(pkg));
+  }
+
   function opHasRole(op, svc) {
     if (!svc?.requiredRoles?.length) return true;
     const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
@@ -157,12 +165,26 @@ const Services = (() => {
     );
     if (clientConflict) errors.push('Cliente gia prenotato nello slot');
 
+    const incompatibleClient = (appt.clientIds || []).map(getClient).find(c =>
+      c && svc && !svc.isBlock && !clientCanUseService(c, appt.serviceId)
+    );
+    if (incompatibleClient) {
+      errors.push(`${clientFullName(incompatibleClient.id)} non ha un pacchetto compatibile con ${svc.label}`);
+    }
+
     const apptDay = weekdayName(appt.date);
     const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
       const days = c?.giorniSettimana || c?.giorni_settimana || [];
       return Array.isArray(days) && days.length && !days.includes(apptDay);
     });
     if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nel pacchetto`);
+
+    const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
+      const total = Number(c?.sessionsTotal ?? c?.sessions_total ?? 0);
+      const remaining = Number(c?.sessionsRemaining ?? c?.sessions_remaining ?? 0);
+      return total > 0 && remaining <= 0;
+    });
+    if (noSessionsClient) errors.push(`${clientFullName(noSessionsClient.id)} non ha sessioni rimanenti`);
 
     if (svc?.room) {
       const current = getRoomLoadAt(appt.date, appt.startTime, appt.durationMin, svc.room, appt.id);
@@ -261,6 +283,7 @@ const Services = (() => {
     getOperator,
     clientFullName,
     operatorFullName,
+    clientCanUseService,
     getCompatibleClients,
     getAvailableOperatorsForSlot,
     autoAssignOperator,
