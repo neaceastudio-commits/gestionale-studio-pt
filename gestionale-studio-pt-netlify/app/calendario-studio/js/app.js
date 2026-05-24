@@ -8,11 +8,11 @@
 const UI = {
   openModal(html) {
     document.getElementById('modal-content').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById('modal-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   },
   closeModal() {
-    document.getElementById('modal-overlay').classList.remove('active');
+    document.getElementById('modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
   },
   showToast(msg, type = 'info') {
@@ -31,8 +31,8 @@ const App = {
 
   // ── APERTURA MODALI ──────────────────────────────────
 
-  openNewAppointment(dateStr = null) {
-    App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr());
+  openNewAppointment(dateStr = null, clientId = null) {
+    App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : []);
   },
   openDetail(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
@@ -41,7 +41,7 @@ const App = {
 
   // ── MODAL APPUNTAMENTO ───────────────────────────────
 
-  _renderAppointmentModal(apptId, defaultDate) {
+  _renderAppointmentModal(apptId, defaultDate, preselectedClientIds = []) {
     const appt   = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     const isEdit = !!appt;
     const curSvcId = appt?.serviceId || 'pt11';
@@ -107,7 +107,7 @@ const App = {
 
         <!-- Clienti: ricostruito da _buildClientsSection -->
         <div id="clients-section">
-          ${isBlock ? '' : App._buildClientsSection(curSvcId, appt?.clientIds||[])}
+          ${isBlock ? '' : App._buildClientsSection(curSvcId, appt?.clientIds || preselectedClientIds)}
         </div>
 
         <!-- Operatore: ricostruito da _buildOperatorSection -->
