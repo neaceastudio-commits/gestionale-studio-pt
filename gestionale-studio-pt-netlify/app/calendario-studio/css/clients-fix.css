@@ -1,0 +1,89 @@
+/* Fix vista Clienti calendario */
+.card .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.data-table th {
+  padding: 13px 16px;
+  background: var(--blue-xpale);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  text-align: left;
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 13px;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--blue-xpale); }
+.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 30%; }
+.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 21%; }
+.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 17%; }
+.data-table th:nth-child(4), .data-table td:nth-child(4) { width: 14%; }
+.data-table th:nth-child(5), .data-table td:nth-child(5) { width: 10%; }
+.data-table th:nth-child(6), .data-table td:nth-child(6) { width: 110px; }
+.op-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.op-avatar {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  flex: 0 0 34px;
+}
+.sessions-cell { display: flex; align-items: center; gap: 10px; }
+.sessions-count { min-width: 44px; font-weight: 800; color: var(--text); }
+.sessions-count.sessions-low { color: var(--red); }
+.sessions-bar-wrap {
+  flex: 1;
+  min-width: 54px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sessions-bar { height: 100%; border-radius: 999px; }
+.action-btns { display: flex; align-items: center; gap: 7px; }
+.btn-icon-sm {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.btn-icon-sm:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-pale);
+}
+.row-inactive { opacity: .55; }
+
+@media (max-width: 860px) {
+  .card { overflow-x: auto; }
+  .card .data-table { min-width: 760px; }
+}
