@@ -22,13 +22,27 @@ function oggi()      { return new Date().toISOString().split('T')[0]; }
 function fmtData(d)  { if (!d) return '—'; try { return new Date(d + 'T00:00:00').toLocaleDateString('it-IT', { day:'2-digit', month:'short', year:'numeric' }); } catch(e) { return d; } }
 
 function salvaStorage(clienteId, key, val) {
-  const s = JSON.parse(localStorage.getItem('nc_' + clienteId) || '{}');
+  let s = {};
+  try {
+    s = JSON.parse(localStorage.getItem('nc_' + clienteId) || '{}') || {};
+  } catch (e) {
+    s = {};
+  }
   s[key] = val;
-  localStorage.setItem('nc_' + clienteId, JSON.stringify(s));
+  try {
+    localStorage.setItem('nc_' + clienteId, JSON.stringify(s));
+  } catch (e) {
+    console.warn('[Scheda Cliente] Impossibile salvare localStorage:', e);
+  }
 }
 function leggiStorage(clienteId, key) {
-  const s = JSON.parse(localStorage.getItem('nc_' + clienteId) || '{}');
-  return s[key];
+  try {
+    const s = JSON.parse(localStorage.getItem('nc_' + clienteId) || '{}') || {};
+    return s[key];
+  } catch (e) {
+    console.warn('[Scheda Cliente] localStorage non valido, lo ignoro:', clienteId, key);
+    return undefined;
+  }
 }
 
 let toastTimer;
