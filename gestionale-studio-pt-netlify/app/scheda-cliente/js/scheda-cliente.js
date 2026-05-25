@@ -56,6 +56,11 @@ async function apriScheda(id) {
 //  SEZIONI
 // ═══════════════════════════════════════════════════════
 function setSezione(sez) {
+  if (sez === 'impostazioni') {
+    if (clienteAtt && typeof apriImpostazioni === 'function') apriImpostazioni(clienteAtt.id);
+    return;
+  }
+
   sezioneAtt = sez;
   ['home','fisici','programma','foto'].forEach(s => {
     const body = document.getElementById('sez-' + s + '-body');
