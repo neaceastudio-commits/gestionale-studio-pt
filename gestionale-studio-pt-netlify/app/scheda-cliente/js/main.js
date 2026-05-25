@@ -66,11 +66,24 @@ async function caricaClienti() {
     }
     clientiAll = [];
     staffAll = [];
-    aggiornaKPI();
-    renderLista();
+    try {
+      aggiornaKPI();
+      renderLista();
+    } catch (renderErr) {
+      console.error('[Scheda Cliente] Errore rendering lista:', renderErr);
+      if (body) {
+        body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Aggiorna la pagina o svuota i dati locali del sito.</div></div>';
+      }
+    }
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  caricaClienti();
+  caricaClienti().catch(err => {
+    console.error('[Scheda Cliente] Avvio non riuscito:', err);
+    const body = document.getElementById('lista-body');
+    if (body) {
+      body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Ricarica la pagina. Se resta bloccata, cancella i dati locali del sito.</div></div>';
+    }
+  });
 });
