@@ -7,20 +7,29 @@ function sbUrl(table, query = '') {
 }
 
 async function sb(table, { method = 'GET', query = '', body = null, headers = {} } = {}) {
-  const r = await fetch(sbUrl(table, query), {
-    method,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!r.ok) return { error: await r.text() };
-  if (r.status === 204) return null;
-  const text = await r.text();
-  return text ? JSON.parse(text) : null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  try {
+    const r = await fetch(sbUrl(table, query), {
+      method,
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!r.ok) return { error: await r.text() };
+    if (r.status === 204) return null;
+    const text = await r.text();
+    return text ? JSON.parse(text) : null;
+  } catch (err) {
+    return { error: err.name === 'AbortError' ? 'Timeout Supabase' : (err.message || String(err)) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function genId(prefix) {
