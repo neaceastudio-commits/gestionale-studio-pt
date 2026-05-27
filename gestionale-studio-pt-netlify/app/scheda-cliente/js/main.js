@@ -78,7 +78,7 @@ async function caricaClienti() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function avviaSchedaCliente() {
   caricaClienti().catch(err => {
     console.error('[Scheda Cliente] Avvio non riuscito:', err);
     const body = document.getElementById('lista-body');
@@ -86,4 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
       body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Ricarica la pagina. Se resta bloccata, cancella i dati locali del sito.</div></div>';
     }
   });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', avviaSchedaCliente);
+} else {
+  avviaSchedaCliente();
+}
+
+window.addEventListener('load', () => {
+  const body = document.getElementById('lista-body');
+  if (body && body.querySelector('.loading-state')) avviaSchedaCliente();
 });
