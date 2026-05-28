@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <!-- Fogli di stile modulari -->
-<link rel="stylesheet" href="css/base.css?v=15">
-<link rel="stylesheet" href="css/layout.css?v=15">
-<link rel="stylesheet" href="css/scheda.css?v=15">
-<link rel="stylesheet" href="css/carichi.css?v=15">
+<link rel="stylesheet" href="css/base.css?v=16">
+<link rel="stylesheet" href="css/layout.css?v=16">
+<link rel="stylesheet" href="css/scheda.css?v=16">
+<link rel="stylesheet" href="css/carichi.css?v=16">
 </head>
 <body>
 
@@ -33,7 +33,7 @@
       <button class="btn btn-ghost btn-sm" onclick="setSezione('fisici')" id="snav-fisici">Dati Fisici</button>
       <button class="btn btn-ghost btn-sm" onclick="setSezione('programma')" id="snav-programma">Programma</button>
       <button class="btn btn-ghost btn-sm" onclick="setSezione('foto')" id="snav-foto">Foto</button>
-      <button class="btn btn-ghost btn-sm" onclick="setSezione('impostazioni')" id="snav-imp">Impostazioni</button>
+      <button class="btn btn-ghost btn-sm" onclick="apriImpostazioni(clienteAtt && clienteAtt.id)" id="snav-imp">Impostazioni</button>
     </div>
     <button class="btn btn-ghost btn-sm" id="btn-back" onclick="tornaLista()" style="display:none">← Lista</button>
     <button class="btn btn-ghost btn-sm" onclick="caricaClienti()">↻</button>
@@ -437,7 +437,7 @@
           <div class="field" style="margin-top:12px">
             <label>Recupero</label>
             <select id="me-recupero">
-              <option>60"</option><option>90"</option><option value="2'" selected>2'</option>
+              <option>60&quot;</option><option>90&quot;</option><option value="2'" selected>2'</option>
               <option>3'</option><option>4'</option><option>5'</option><option>Libero</option>
             </select>
           </div>
@@ -522,27 +522,27 @@
      ═══════════════════════════════════════════════════════ -->
 
 <!-- 1. Base: config, stato, utility -->
-<script src="js/config.js?v=15"></script>
-<script src="js/stato.js?v=15"></script>
-<script src="js/utils.js?v=15"></script>
-<script src="js/database.js?v=15"></script>
+<script src="js/config.js?v=16"></script>
+<script src="js/stato.js?v=16"></script>
+<script src="js/utils.js?v=16"></script>
+<script src="js/database.js?v=16"></script>
 
 <!-- 2. Comunicazione con backend -->
-<script src="js/api.js?v=15"></script>
+<script src="js/api.js?v=16"></script>
 
 <!-- 3. Moduli funzionali -->
-<script src="js/lista-clienti.js?v=15"></script>
-<script src="js/scheda-cliente.js?v=15"></script>
-<script src="js/dati-fisici.js?v=15"></script>
-<script src="js/programma.js?v=15"></script>
-<script src="js/foto.js?v=15"></script>
-<script src="js/carichi.js?v=15"></script>
-<script src="js/impostazioni.js?v=15"></script>
+<script src="js/lista-clienti.js?v=16"></script>
+<script src="js/scheda-cliente.js?v=16"></script>
+<script src="js/dati-fisici.js?v=16"></script>
+<script src="js/programma.js?v=16"></script>
+<script src="js/foto.js?v=16"></script>
+<script src="js/carichi.js?v=16"></script>
+<script src="js/impostazioni.js?v=16"></script>
 
 <!-- 4. Entry point: dopo che tutto è definito -->
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
-window.NEACEA_SCHEDE_BUILD = 'schede-hotfix-15';
+window.NEACEA_SCHEDE_BUILD = 'schede-hotfix-16';
 
 (function forceSchedeLabels() {
   function fixPlural(root) {
@@ -589,6 +589,43 @@ window.NEACEA_SCHEDE_BUILD = 'schede-hotfix-15';
     document.getElementById('pb-list').innerHTML = senzaProg + progHtml;
     if (typeof renderProgPreview === 'function') renderProgPreview();
   };
+})();
+
+(function schedaClienteFallback() {
+  async function loadDirectClients() {
+    const body = document.getElementById('lista-body');
+    if (!body || !body.querySelector('.loading-state')) return;
+    const warn = document.getElementById('api-warn');
+    try {
+      const headers = {
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+      };
+      const [clientiRes, staffRes] = await Promise.all([
+        fetch(SUPABASE_URL + '/rest/v1/clients?select=*&active=eq.true&order=cognome.asc,nome.asc', { headers }),
+        fetch(SUPABASE_URL + '/rest/v1/operators?select=*&active=eq.true&order=cognome.asc,nome.asc', { headers }),
+      ]);
+      if (!clientiRes.ok) throw new Error(await clientiRes.text());
+      if (!staffRes.ok) throw new Error(await staffRes.text());
+      const clienti = await clientiRes.json();
+      const staff = await staffRes.json();
+      clientiAll = clienti.map(normalizzaCliente);
+      staffAll = staff.map(normalizzaStaff);
+      if (warn) warn.style.display = 'none';
+      aggiornaKPI();
+      renderLista();
+    } catch (err) {
+      console.error('[Scheda Cliente] fallback non riuscito:', err);
+      if (warn) {
+        warn.style.display = '';
+        warn.textContent = 'Errore caricamento dati: ' + (err.message || err);
+      }
+      body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Supabase non ha risposto correttamente. Controlla console o policy.</div></div>';
+    }
+  }
+  window.addEventListener('load', () => setTimeout(loadDirectClients, 3500));
+  setTimeout(loadDirectClients, 6500);
 })();
 </script>
 
