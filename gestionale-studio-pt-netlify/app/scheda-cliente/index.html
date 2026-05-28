@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <!-- Fogli di stile modulari -->
-<link rel="stylesheet" href="css/base.css?v=17">
-<link rel="stylesheet" href="css/layout.css?v=17">
-<link rel="stylesheet" href="css/scheda.css?v=17">
-<link rel="stylesheet" href="css/carichi.css?v=17">
+<link rel="stylesheet" href="css/base.css?v=18">
+<link rel="stylesheet" href="css/layout.css?v=18">
+<link rel="stylesheet" href="css/scheda.css?v=18">
+<link rel="stylesheet" href="css/carichi.css?v=18">
 </head>
 <body>
 
@@ -522,174 +522,27 @@
      ═══════════════════════════════════════════════════════ -->
 
 <!-- 1. Base: config, stato, utility -->
-<script src="js/config.js?v=17"></script>
-<script src="js/stato.js?v=17"></script>
-<script src="js/utils.js?v=17"></script>
-<script src="js/database.js?v=17"></script>
+<script src="js/config.js?v=18"></script>
+<script src="js/stato.js?v=18"></script>
+<script src="js/utils.js?v=18"></script>
+<script src="js/database.js?v=18"></script>
 
 <!-- 2. Comunicazione con backend -->
-<script src="js/api.js?v=17"></script>
+<script src="js/api.js?v=18"></script>
 
 <!-- 3. Moduli funzionali -->
-<script src="js/lista-clienti.js?v=17"></script>
-<script src="js/scheda-cliente.js?v=17"></script>
-<script src="js/dati-fisici.js?v=17"></script>
-<script src="js/programma.js?v=17"></script>
-<script src="js/foto.js?v=17"></script>
-<script src="js/carichi.js?v=17"></script>
-<script src="js/impostazioni.js?v=17"></script>
+<script src="js/lista-clienti.js?v=18"></script>
+<script src="js/scheda-cliente.js?v=18"></script>
+<script src="js/dati-fisici.js?v=18"></script>
+<script src="js/programma.js?v=18"></script>
+<script src="js/foto.js?v=18"></script>
+<script src="js/carichi.js?v=18"></script>
+<script src="js/impostazioni.js?v=18"></script>
 
 <!-- 4. Entry point: dopo che tutto è definito -->
-<script src="js/main.js?v=17"></script>
+<script src="js/main.js?v=18"></script>
 <script>
-window.NEACEA_SCHEDE_BUILD = 'schede-hotfix-17';
-
-(function forceSchedeLabels() {
-  function fixPlural(root) {
-    const node = root || document;
-    node.querySelectorAll('.badge').forEach(el => {
-      el.textContent = el.textContent.replace(/\bschedae\b/g, 'schede');
-    });
-  }
-
-  fixPlural();
-  new MutationObserver(() => fixPlural()).observe(document.body, { childList: true, subtree: true });
-})();
-
-(function forceFullProgressions() {
-  if (typeof PROGRESSIONI === 'undefined') return;
-
-  renderProgList = function(blocco) {
-    const progs = PROGRESSIONI[blocco] || [];
-    const senzaProg = `
-      <div class="prog-item ${meProg === 'NONE' ? 'sel' : ''}" onclick="selProg('__none__',0)" style="border-left:3px solid var(--gold)">
-        <div class="prog-card-head">
-          <div class="prog-nome">Senza progressione</div>
-          <div class="prog-preview">Compila liberamente le serie seduta per seduta</div>
-        </div>
-      </div>`;
-    const progHtml = progs.map((p, i) => `
-      <div class="prog-item ${meProg?.nome === p.nome ? 'sel' : ''}" onclick="selProg('${blocco}',${i})">
-        <div class="prog-card-head">
-          <div>
-            <div class="prog-nome">${p.nome}</div>
-            <div class="prog-preview">${p.sedute.length} sedute · TUT ${p.tut}</div>
-          </div>
-          <span class="prog-pick">${meProg?.nome === p.nome ? 'Selezionata' : 'Scegli'}</span>
-        </div>
-        <div class="prog-card-sedute">
-          ${p.sedute.map((sed, n) => `
-            <div class="prog-card-seduta">
-              <span>Sed.${n + 1}</span>
-              <strong>${sed}</strong>
-            </div>
-          `).join('')}
-        </div>
-      </div>`).join('');
-    document.getElementById('pb-list').innerHTML = senzaProg + progHtml;
-    if (typeof renderProgPreview === 'function') renderProgPreview();
-  };
-})();
-
-(function schedaClienteFallback() {
-  const FALLBACK_SUPABASE_URL = window.SUPABASE_URL || 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
-  const FALLBACK_SUPABASE_KEY = window.SUPABASE_KEY || 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
-
-  function showDiagnostic(message, tone) {
-    let box = document.getElementById('scheda-diagnostic');
-    if (!box) {
-      box = document.createElement('div');
-      box.id = 'scheda-diagnostic';
-      box.style.cssText = 'margin:0 0 14px;padding:12px 14px;border-radius:8px;border:1px solid #d7e0ea;background:#f8fbff;color:#24364a;font:600 13px Nunito,Arial,sans-serif;';
-      const view = document.getElementById('view-lista');
-      const anchor = document.querySelector('.eyebrow');
-      if (view && anchor) view.insertBefore(box, anchor);
-    }
-    if (tone === 'error') box.style.cssText += 'border-color:#efb5b5;background:#fff6f6;color:#8a1f1f;';
-    if (tone === 'warn') box.style.cssText += 'border-color:#e9d08b;background:#fff9e8;color:#6b4b00;';
-    box.textContent = message;
-  }
-
-  function clientName(c) {
-    return ((c.nome || '') + ' ' + (c.cognome || '')).trim() || 'Cliente senza nome';
-  }
-
-  function renderEmergencyClients(clienti, staff) {
-    const body = document.getElementById('lista-body');
-    if (!body) return;
-    const staffById = new Map((staff || []).map(s => [s.id, ((s.nome || '') + ' ' + (s.cognome || '')).trim()]));
-    document.getElementById('kpi-tot').textContent = clienti.length;
-    document.getElementById('kpi-att').textContent = clienti.filter(c => c.active !== false).length;
-    document.getElementById('kpi-sch').textContent = '0';
-    document.getElementById('kpi-incomp').textContent = clienti.length;
-    document.getElementById('lista-sub').textContent = clienti.length + ' clienti caricati da Supabase';
-    if (!clienti.length) {
-      body.innerHTML = '<div class="empty"><div class="empty-title">Nessun cliente attivo</div><div class="empty-sub">Supabase risponde, ma non ci sono clienti attivi.</div></div>';
-      return;
-    }
-    body.innerHTML = clienti.map(c => {
-      const pack = Array.isArray(c.package_types) ? c.package_types.join(', ') : (c.tipo_servizio || c.tipo_abbonamento || '—');
-      const pt = staffById.get(c.pt_assegnato) || '—';
-      const sessions = Number(c.sessions_remaining ?? c.sessions_total ?? 0);
-      return `<div class="trow cols-cli" data-client-id="${c.id}">
-        <div class="td"><div class="client-name">${clientName(c)}</div><div class="client-sub">${c.email || c.telefono || ''}</div></div>
-        <div class="td" style="font-size:12px;color:var(--text2)">${pt}</div>
-        <div class="td"><span class="badge b-att">${pack}</span></div>
-        <div class="td"><span class="badge b-acc">${sessions} sessioni</span></div>
-        <div class="td"><div class="acts"><button class="act ar" onclick="apriScheda && apriScheda('${c.id}')">Apri</button></div></div>
-      </div>`;
-    }).join('');
-  }
-
-  async function loadDirectClients() {
-    const body = document.getElementById('lista-body');
-    if (!body) return;
-    if (location.protocol === 'file:') {
-      showDiagnostic('Stai aprendo una copia locale file://. Per lavorare usa https://scheda-pt-cliente.netlify.app', 'warn');
-    }
-    if (!body.querySelector('.loading-state') && body.querySelector('.trow')) {
-      showDiagnostic('Scheda caricata. Build ' + (window.NEACEA_SCHEDE_BUILD || 'non rilevata') + ' - origine: ' + location.origin);
-      return;
-    }
-    const warn = document.getElementById('api-warn');
-    try {
-      const headers = {
-        apikey: FALLBACK_SUPABASE_KEY,
-        Authorization: 'Bearer ' + FALLBACK_SUPABASE_KEY,
-        'Content-Type': 'application/json',
-      };
-      const [clientiRes, staffRes] = await Promise.all([
-        fetch(FALLBACK_SUPABASE_URL + '/rest/v1/clients?select=*&active=eq.true&order=cognome.asc,nome.asc', { headers }),
-        fetch(FALLBACK_SUPABASE_URL + '/rest/v1/operators?select=*&active=eq.true&order=cognome.asc,nome.asc', { headers }),
-      ]);
-      if (!clientiRes.ok) throw new Error(await clientiRes.text());
-      if (!staffRes.ok) throw new Error(await staffRes.text());
-      const clienti = await clientiRes.json();
-      const staff = await staffRes.json();
-      if (warn) warn.style.display = 'none';
-      if (typeof normalizzaCliente === 'function' && typeof normalizzaStaff === 'function' && typeof renderLista === 'function') {
-        clientiAll = clienti.map(normalizzaCliente);
-        staffAll = staff.map(normalizzaStaff);
-        aggiornaKPI();
-        renderLista();
-      } else {
-        renderEmergencyClients(clienti, staff);
-      }
-      showDiagnostic('Dati caricati da Supabase: ' + clienti.length + ' clienti. Build ' + (window.NEACEA_SCHEDE_BUILD || 'non rilevata') + ' - origine: ' + location.origin);
-    } catch (err) {
-      console.error('[Scheda Cliente] fallback non riuscito:', err);
-      if (warn) {
-        warn.style.display = '';
-        warn.textContent = 'Errore caricamento dati: ' + (err.message || err);
-      }
-      showDiagnostic('Errore reale caricamento Supabase: ' + (err.message || err), 'error');
-      body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Supabase non ha risposto correttamente. Controlla console o policy.</div></div>';
-    }
-  }
-  window.addEventListener('load', () => setTimeout(loadDirectClients, 1500));
-  setTimeout(loadDirectClients, 3000);
-  setTimeout(loadDirectClients, 6500);
-})();
+window.NEACEA_SCHEDE_BUILD = 'scheda-cliente-18';
 </script>
 
 </body>
