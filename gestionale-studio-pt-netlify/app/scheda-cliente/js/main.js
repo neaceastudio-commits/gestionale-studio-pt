@@ -1,5 +1,16 @@
 // Entry point Scheda Cliente.
 
+let schedaClienteAvviata = false;
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function normalizzaCliente(c) {
   return {
     id: c.id,
@@ -42,49 +53,52 @@ async function caricaClienti() {
   const warn = document.getElementById('api-warn');
   const body = document.getElementById('lista-body');
   if (body) body.innerHTML = '<div class="loading-state"><div class="spin"></div></div>';
+  if (warn) {
+    warn.style.display = 'none';
+    warn.textContent = '';
+  }
 
   try {
+    if (typeof apiGet !== 'function') throw new Error('Modulo API non caricato');
+    if (typeof renderLista !== 'function') throw new Error('Modulo lista clienti non caricato');
+    if (typeof aggiornaKPI !== 'function') throw new Error('Modulo KPI non caricato');
+
     const [clientiRes, staffRes] = await Promise.all([
       apiGet('getClienti'),
       apiGet('getStaff'),
     ]);
 
-    if (clientiRes.error) throw new Error(clientiRes.error);
-    if (staffRes.error) throw new Error(staffRes.error);
+    if (clientiRes && clientiRes.error) throw new Error('Clienti: ' + clientiRes.error);
+    if (staffRes && staffRes.error) throw new Error('Staff: ' + staffRes.error);
 
     clientiAll = (clientiRes.clienti || []).map(normalizzaCliente);
     staffAll = (staffRes.staff || []).map(normalizzaStaff);
 
-    if (warn) warn.style.display = 'none';
     aggiornaKPI();
     renderLista();
+    return { clienti: clientiAll.length, staff: staffAll.length };
   } catch (err) {
-    console.warn('[Scheda Cliente] Supabase non disponibile:', err);
+    console.error('[Scheda Cliente] caricamento non riuscito:', err);
     if (warn) {
       warn.style.display = '';
-      warn.textContent = 'Connessione Supabase non disponibile — verifica URL, key e policy.';
+      warn.textContent = 'Errore caricamento dati: ' + (err.message || String(err));
     }
     clientiAll = [];
     staffAll = [];
-    try {
-      aggiornaKPI();
-      renderLista();
-    } catch (renderErr) {
-      console.error('[Scheda Cliente] Errore rendering lista:', renderErr);
-      if (body) {
-        body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Aggiorna la pagina o svuota i dati locali del sito.</div></div>';
-      }
+    if (body) {
+      body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">' +
+        escapeHtml(err.message || String(err)) +
+        '</div></div>';
     }
+    throw err;
   }
 }
 
 function avviaSchedaCliente() {
+  if (schedaClienteAvviata) return;
+  schedaClienteAvviata = true;
   caricaClienti().catch(err => {
     console.error('[Scheda Cliente] Avvio non riuscito:', err);
-    const body = document.getElementById('lista-body');
-    if (body) {
-      body.innerHTML = '<div class="empty"><div class="empty-title">Errore caricamento clienti</div><div class="empty-sub">Ricarica la pagina. Se resta bloccata, cancella i dati locali del sito.</div></div>';
-    }
   });
 }
 
@@ -94,7 +108,10 @@ if (document.readyState === 'loading') {
   avviaSchedaCliente();
 }
 
-window.addEventListener('load', () => {
-  const body = document.getElementById('lista-body');
-  if (body && body.querySelector('.loading-state')) avviaSchedaCliente();
+window.addEventListener('error', event => {
+  const warn = document.getElementById('api-warn');
+  if (warn) {
+    warn.style.display = '';
+    warn.textContent = 'Errore JavaScript: ' + (event.message || 'errore sconosciuto');
+  }
 });
