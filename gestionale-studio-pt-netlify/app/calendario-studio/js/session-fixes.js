@@ -1,4 +1,4 @@
-// Ricalcolo robusto delle sessioni rimanenti quando un allenamento viene segnato fatto.
+// Ricalcolo robusto delle sessioni rimanenti quando cambia lo stato di una seduta.
 (function () {
   if (!window.App || !window.Services || !window.State) return;
 
@@ -36,4 +36,55 @@
       if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
     });
   };
+
+  const recalcIfPackageSession = function (appt) {
+    if (appt && Services.serviceUsesPackageSessions(appt.serviceId)) App._consumeClientSessions(appt);
+  };
+
+  const originalSaveAppointment = App._saveAppointment?.bind(App);
+  if (originalSaveAppointment) {
+    App._saveAppointment = function (apptId) {
+      const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+      const result = originalSaveAppointment(apptId);
+      const after = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+      if (before && after && before.status !== after.status) recalcIfPackageSession(after);
+      return result;
+    };
+  }
+
+  const originalMarkNoShow = App._markNoShow?.bind(App);
+  if (originalMarkNoShow) {
+    App._markNoShow = function (apptId) {
+      const before = State.getAppointments().find(a => a.id === apptId);
+      const result = originalMarkNoShow(apptId);
+      const after = State.getAppointments().find(a => a.id === apptId);
+      if (before?.status === 'fatto') recalcIfPackageSession(after || before);
+      return result;
+    };
+  }
+
+  const originalDeleteAppt = App._deleteAppt?.bind(App);
+  if (originalDeleteAppt) {
+    App._deleteAppt = function (apptId) {
+      const before = State.getAppointments().find(a => a.id === apptId);
+      const result = originalDeleteAppt(apptId);
+      const after = State.getAppointments().find(a => a.id === apptId);
+      if (before?.status === 'fatto' && !after) recalcIfPackageSession(before);
+      return result;
+    };
+  }
+
+  ['_addParticipant', '_removeParticipant'].forEach(method => {
+    const original = App[method]?.bind(App);
+    if (!original) return;
+    App[method] = function (apptId, ...args) {
+      const result = original(apptId, ...args);
+      const appt = State.getAppointments().find(a => a.id === apptId);
+      if (appt) {
+        SupabaseSync.pushAppointment(appt);
+        if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(appt);
+      }
+      return result;
+    };
+  });
 })();
