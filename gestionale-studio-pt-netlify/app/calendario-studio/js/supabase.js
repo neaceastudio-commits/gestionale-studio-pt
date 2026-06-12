@@ -92,7 +92,7 @@ const SupabaseSync = (() => {
     };
   }
 
-  const DAY_INDEX = { 'Domenica': 0, 'Lunedì': 1, 'Martedì': 2, 'Mercoledì': 3, 'Giovedì': 4, 'Venerdì': 5, 'Sabato': 6 };
+  const DAY_INDEX = { 'Domenica': 0, 'Lunedi': 1, 'Lunedì': 1, 'Martedi': 2, 'Martedì': 2, 'Mercoledi': 3, 'Mercoledì': 3, 'Giovedi': 4, 'Giovedì': 4, 'Venerdi': 5, 'Venerdì': 5, 'Sabato': 6 };
 
   function localDateStr(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -225,7 +225,6 @@ const SupabaseSync = (() => {
     if (!clients?.error && Array.isArray(clients)) State.saveClients(clients.map(clientFromDb));
     if (!operators?.error && Array.isArray(operators)) State.saveOperators(operators.map(operatorFromDb));
     if (!appointments?.error && Array.isArray(appointments)) State.saveAppointments(appointments.map(appointmentFromDb));
-    if (!clients?.error && Array.isArray(clients)) await ensurePackageAppointments(clients.map(clientFromDb));
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
   }
 
@@ -276,5 +275,5 @@ const SupabaseSync = (() => {
     });
   }
 
-  return { pullAll, pushAppointment, pushClient, pushOperator, deleteAppointment };
+  return { pullAll, pushAppointment, pushClient, pushOperator, deleteAppointment, ensurePackageAppointments };
 })();
