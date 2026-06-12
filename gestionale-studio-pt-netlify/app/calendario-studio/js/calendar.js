@@ -144,6 +144,15 @@ const Calendar = (() => {
             }).join('')}
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Gestione pacchetti clienti</span>
+        </div>
+        <div class="package-alert-list">
+          ${Clients.renderDashboardAlerts ? Clients.renderDashboardAlerts() : '<p class="empty-state">Indicatori clienti non disponibili</p>'}
+        </div>
+      </div>
     `;
   }
 
