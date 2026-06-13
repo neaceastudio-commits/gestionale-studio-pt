@@ -157,11 +157,7 @@ const Clients = (() => {
         <div>
           <div class="eyebrow">Anagrafica</div>
           <div class="page-title">Clienti <em>attivi</em></div>
-          
         </div>
-        <button class="btn-primary" onclick="App.openNewClient()">
-          <span>+</span> Nuovo cliente
-        </button>
       </div>
       ${renderManagementSummary(clients)}
       <div class="card">
