@@ -253,7 +253,7 @@ function renderEsercizioCard(e, idx) {
       <div class="eserc-nuova-bottom">
         <button class="btn-inline ghost" onclick="aggiungiSerie(${idx})">+ Serie</button>
         <input type="text" class="ns-note-es" id="${prefix}note" placeholder="Note esercizio (opzionale)">
-        <button class="btn btn-primary btn-sm" onclick="salvaSedutaEsercizio(${idx})">💾 Salva seduta</button>
+        <button class="btn btn-primary btn-sm" onclick="salvaSedutaEsercizio(${idx})">Salva seduta</button>
       </div>
     </div>`;
 

@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <!-- Fogli di stile modulari -->
-<link rel="stylesheet" href="css/base.css?v=18">
-<link rel="stylesheet" href="css/layout.css?v=18">
-<link rel="stylesheet" href="css/scheda.css?v=18">
-<link rel="stylesheet" href="css/carichi.css?v=18">
+<link rel="stylesheet" href="css/base.css?v=19">
+<link rel="stylesheet" href="css/layout.css?v=19">
+<link rel="stylesheet" href="css/scheda.css?v=19">
+<link rel="stylesheet" href="css/carichi.css?v=19">
 </head>
 <body>
 
@@ -93,31 +93,27 @@
       <div class="ch-meta" id="ch-meta"></div>
     </div>
     <div class="ch-actions">
-      <button class="btn btn-gold btn-sm" onclick="apriDoppio()">👥 1:2</button>
+      <button class="btn btn-gold btn-sm" onclick="apriDoppio()">1:2</button>
       <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-visita')">+ Visita</button>
-      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-modifica')">✏ Modifica</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-modifica')">Modifica</button>
     </div>
   </div>
 
   <!-- SEZIONE NAV BUTTONS -->
   <div class="sezione-nav">
     <button class="sez-btn active" id="sez-home" onclick="setSezione('home')">
-      <span class="sez-icon">📊</span>
       <div class="sez-name">Riepilogo</div>
       <div class="sez-sub">Obiettivi · Anamnesi · Visite</div>
     </button>
     <button class="sez-btn" id="sez-fisici" onclick="setSezione('fisici')">
-      <span class="sez-icon">⚖️</span>
       <div class="sez-name">Dati Fisici</div>
       <div class="sez-sub">Visbody · Baiobit · Statistiche</div>
     </button>
     <button class="sez-btn" id="sez-programma" onclick="setSezione('programma')">
-      <span class="sez-icon">🏋️</span>
       <div class="sez-name">Programma</div>
       <div class="sez-sub">Schede · Carichi · Progressione</div>
     </button>
     <button class="sez-btn" id="sez-foto" onclick="setSezione('foto')">
-      <span class="sez-icon">📸</span>
       <div class="sez-name">Foto</div>
       <div class="sez-sub">Galleria per visita</div>
     </button>
@@ -214,7 +210,7 @@
                  ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
                  ondrop="handleDrop(event,'visbody')">
               <input type="file" id="file-visbody" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'visbody')">
-              <div class="upload-icon">📊</div>
+              <div class="upload-icon">File</div>
               <div class="upload-text">Trascina o clicca per caricare</div>
               <div class="upload-sub">PDF, JPG, PNG — max 10MB</div>
             </div>
@@ -275,7 +271,7 @@
              ondragover="event.preventDefault();this.classList.add('drag')"
              ondragleave="this.classList.remove('drag')"
              ondrop="handleFotoDrop(event)">
-          <div class="upload-icon">📸</div>
+          <div class="upload-icon">Foto</div>
           <div class="upload-text">Trascina le foto o clicca per selezionare</div>
           <div class="upload-sub">JPG, PNG — ridimensionamento automatico a 1200px</div>
         </div>
@@ -522,27 +518,27 @@
      ═══════════════════════════════════════════════════════ -->
 
 <!-- 1. Base: config, stato, utility -->
-<script src="js/config.js?v=18"></script>
-<script src="js/stato.js?v=18"></script>
-<script src="js/utils.js?v=18"></script>
-<script src="js/database.js?v=18"></script>
+<script src="js/config.js?v=19"></script>
+<script src="js/stato.js?v=19"></script>
+<script src="js/utils.js?v=19"></script>
+<script src="js/database.js?v=19"></script>
 
 <!-- 2. Comunicazione con backend -->
-<script src="js/api.js?v=18"></script>
+<script src="js/api.js?v=19"></script>
 
 <!-- 3. Moduli funzionali -->
-<script src="js/lista-clienti.js?v=18"></script>
-<script src="js/scheda-cliente.js?v=18"></script>
-<script src="js/dati-fisici.js?v=18"></script>
-<script src="js/programma.js?v=18"></script>
-<script src="js/foto.js?v=18"></script>
-<script src="js/carichi.js?v=18"></script>
-<script src="js/impostazioni.js?v=18"></script>
+<script src="js/lista-clienti.js?v=19"></script>
+<script src="js/scheda-cliente.js?v=19"></script>
+<script src="js/dati-fisici.js?v=19"></script>
+<script src="js/programma.js?v=19"></script>
+<script src="js/foto.js?v=19"></script>
+<script src="js/carichi.js?v=19"></script>
+<script src="js/impostazioni.js?v=19"></script>
 
 <!-- 4. Entry point: dopo che tutto è definito -->
-<script src="js/main.js?v=18"></script>
+<script src="js/main.js?v=19"></script>
 <script>
-window.NEACEA_SCHEDE_BUILD = 'scheda-cliente-18';
+window.NEACEA_SCHEDE_BUILD = 'scheda-cliente-19';
 </script>
 
 </body>

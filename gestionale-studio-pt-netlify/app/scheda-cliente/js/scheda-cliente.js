@@ -41,10 +41,10 @@ async function apriScheda(id) {
   document.getElementById('ch-nome').textContent = clienteAtt.nome + ' ' + clienteAtt.cognome;
   const eta = clienteAtt.nascita ? Math.floor((Date.now() - new Date(clienteAtt.nascita)) / 3.15576e10) : null;
   document.getElementById('ch-meta').innerHTML = [
-    clienteAtt.email    ? `<span>✉ ${clienteAtt.email}</span>` : '',
-    clienteAtt.telefono ? `<span>📞 ${clienteAtt.telefono}</span>` : '',
-    eta                 ? `<span>🎂 ${eta} anni</span>` : '',
-    clienteAtt.sessioni_pref ? `<span>📅 ${clienteAtt.sessioni_pref}/sett</span>` : '',
+    clienteAtt.email    ? `<span>Email ${clienteAtt.email}</span>` : '',
+    clienteAtt.telefono ? `<span>Tel ${clienteAtt.telefono}</span>` : '',
+    eta                 ? `<span>${eta} anni</span>` : '',
+    clienteAtt.sessioni_pref ? `<span>${clienteAtt.sessioni_pref}/sett</span>` : '',
   ].filter(Boolean).join('');
 
   setSezione('home');
