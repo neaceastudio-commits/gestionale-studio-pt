@@ -496,6 +496,62 @@ async function sb(table,{method='GET',query='',body=null,headers={}}={}){
 function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
 function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
 function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
+const CONF_DAY_INDEX={'Domenica':0,'Lunedì':1,'Martedì':2,'Mercoledì':3,'Giovedì':4,'Venerdì':5,'Sabato':6};
+const CONF_SERVICE_META={
+  'PT 1:1':{id:'pt11',duration:60,buffer:10},
+  'PT 1:2':{id:'pt12',duration:60,buffer:10},
+  'Circuit':{id:'circuit',duration:60,buffer:10},
+  'Nutrizione':{id:'nutrizione',duration:60,buffer:10},
+  'Valutazioni':{id:'visbody',duration:30,buffer:10},
+};
+function confStartTime(acq){
+  const raw=String(acq?.orari||'');
+  if(raw.includes('6–9'))return'07:00';
+  if(raw.includes('9–12'))return'09:00';
+  if(raw.includes('Pausa'))return'13:00';
+  if(raw.includes('Pomeriggio'))return'16:00';
+  if(raw.includes('18–20'))return'18:00';
+  if(raw.includes('20+'))return'20:00';
+  return'09:00';
+}
+function confNextPackageDates(start,days,total){
+  const wanted=new Set((days||[]).map(d=>CONF_DAY_INDEX[d]).filter(v=>v!==undefined));
+  if(!wanted.size||!total)return[];
+  const startStr=start||new Date().toISOString().slice(0,10);
+  const parts=startStr.split('-').map(Number);
+  const d=new Date(parts[0],(parts[1]||1)-1,parts[2]||1);
+  const out=[];
+  for(let guard=0;out.length<total&&guard<370;guard++){
+    if(wanted.has(d.getDay()))out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+async function creaProgrammazionePacchetto(clientId,acq,p){
+  const total=Math.max(0,(parseInt(p.sessioni_totali)||0)-(parseInt(p.sessioni_usate)||0));
+  const days=p.giorniSettimana||[];
+  if(!clientId||!total||!days.length)return 0;
+  const svc=CONF_SERVICE_META[p.packageType]||CONF_SERVICE_META['PT 1:1'];
+  const dates=confNextPackageDates(p.dataInizio,days,total);
+  const startTime=confStartTime(acq);
+  const rows=dates.map(date=>({
+    id:genId('a'),
+    service_id:svc.id,
+    client_ids:[clientId],
+    operator_id:p.ptId||null,
+    date,
+    start_time:startTime,
+    duration_min:svc.duration,
+    buffer_min:svc.buffer,
+    status:'prenotato',
+    notes:'Programmazione generata da acquisizione',
+    updated_at:new Date().toISOString()
+  }));
+  if(!rows.length)return 0;
+  const res=await sb('appointments',{method:'POST',headers:{Prefer:'return=minimal'},body:rows});
+  if(res?.error)throw new Error(res.error);
+  return rows.length;
+}
 async function apiGet(a){
   if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
   if(a==='getStaff'){const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
@@ -511,8 +567,9 @@ async function apiFetch(p){
     const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
     const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',email:acq.email||'',telefono:acq.telefono||'',package_types:[p.packageType||'PT 1:1'],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:acq.servizi||'',tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
     const ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body});if(ins?.error)return ins;
+    const appuntamentiCreati=await creaProgrammazionePacchetto(clientId,acq,p);
     await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});
-    return{success:true,clientId};
+    return{success:true,clientId,appuntamentiCreati};
   }
   return{error:'Azione non supportata'}
 }
@@ -695,7 +752,7 @@ async function eseguiConferma(){
   if(!limitConfDays()){btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   const giorniSettimana=[...document.querySelectorAll('#conf-days input:checked')].map(c=>c.value);
   try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType:document.getElementById('conf-package').value,ptId:document.getElementById('conf-pt').value,tipoAbbonamento:document.getElementById('conf-tipo').value,dataInizio:document.getElementById('conf-data').value,sessioni_totali:document.getElementById('conf-sess-tot').value||0,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
-  if(res.success){showToast('Cliente confermato e trasferito allo studio!','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
+  if(res.success){showToast('Cliente trasferito: '+(res.appuntamentiCreati||0)+' appuntamenti creati in calendario','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
   else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
   btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
 }
