@@ -452,15 +452,21 @@ function openMoEsercizio() {
 
 function renderEserciziList() {
   const q = document.getElementById('me-search').value.toLowerCase();
+  const esc = v => String(v || '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+  const js = v => String(v || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   let html = '';
   for (const [cat, list] of Object.entries(ESERCIZI)) {
     const filtered = list.filter(e => !q || e.toLowerCase().includes(q));
     if (!filtered.length) continue;
-    html += `<div class="eserc-cat-hd">${cat}</div>`;
+    html += `<div class="eserc-cat-label">${esc(cat)}</div>`;
     html += filtered.map(e => `
-      <div class="eserc-row ${meEserc?.nome === e ? 'sel' : ''}" onclick="selEserc('${e}','${cat}')">
-        <span>${e}</span><span style="font-size:10px;color:var(--text3)">${cat}</span>
-      </div>`).join('');
+      <button type="button" class="eserc-item ${meEserc?.nome === e ? 'selected' : ''}" onclick="selEserc('${js(e)}','${js(cat)}')">
+        <span class="eserc-item-name">${esc(e)}</span>
+        <span class="eserc-item-cat">${esc(cat)}</span>
+        <span class="eserc-item-pick">${meEserc?.nome === e ? 'Scelto' : 'Scegli'}</span>
+      </button>`).join('');
   }
   document.getElementById('me-eserc-list').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Nessun risultato</div>';
 }
