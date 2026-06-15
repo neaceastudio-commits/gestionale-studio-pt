@@ -84,6 +84,29 @@ const Services = (() => {
     return !!svc && !svc.isBlock && !svc.isNutri && !svc.isValuation;
   }
 
+  function getClientSessionMetrics(client, excludeAppointmentId = null) {
+    if (!client) {
+      return { total: 0, completed: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
+    const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
+    const activeAppts = State.getAppointments().filter(a =>
+      a.id !== excludeAppointmentId &&
+      a.status !== 'annullato' &&
+      Array.isArray(a.clientIds) &&
+      a.clientIds.includes(client.id) &&
+      serviceUsesPackageSessions(a.serviceId)
+    );
+    const completed = activeAppts.filter(a => a.status === 'fatto').length;
+    const scheduled = activeAppts.filter(a => a.status !== 'fatto' && a.date >= today).length;
+    const remaining = total > 0 ? Math.max(0, total - completed) : storedRemaining;
+    const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
+
+    return { total, completed, scheduled, remaining, toSchedule, storedRemaining };
+  }
+
   function opHasRole(op, svc) {
     if (!svc?.requiredRoles?.length) return true;
     const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
@@ -186,11 +209,16 @@ const Services = (() => {
       if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nel pacchetto`);
 
       const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
-        const total = Number(c?.sessionsTotal ?? c?.sessions_total ?? 0);
-        const remaining = Number(c?.sessionsRemaining ?? c?.sessions_remaining ?? 0);
-        return total > 0 && remaining <= 0;
+        const metrics = getClientSessionMetrics(c, appt.id || null);
+        return metrics.total > 0 && metrics.remaining <= 0;
       });
       if (noSessionsClient) errors.push(`${clientFullName(noSessionsClient.id)} non ha sessioni rimanenti`);
+
+      const fullyPlannedClient = (appt.clientIds || []).map(getClient).find(c => {
+        const metrics = getClientSessionMetrics(c, appt.id || null);
+        return metrics.total > 0 && appt.status !== 'fatto' && metrics.toSchedule <= 0;
+      });
+      if (fullyPlannedClient) errors.push(`${clientFullName(fullyPlannedClient.id)} ha gia tutte le sedute programmate`);
     }
 
     if (svc?.room) {
@@ -292,6 +320,7 @@ const Services = (() => {
     operatorFullName,
     clientCanUseService,
     serviceUsesPackageSessions,
+    getClientSessionMetrics,
     getCompatibleClients,
     getAvailableOperatorsForSlot,
     autoAssignOperator,

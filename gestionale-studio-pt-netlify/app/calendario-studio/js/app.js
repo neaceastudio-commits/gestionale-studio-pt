@@ -168,11 +168,48 @@ const App = {
         </label>
         <select id="appt-clients" class="form-input"
                 size="${Math.min(5, compatible.length+1)}"
-                ${isMulti?'multiple':''}>
+                ${isMulti?'multiple':''}
+                onchange="App._onClientSelectionChange()">
           ${options}
         </select>
         <div class="form-hint">${hint}</div>
+        <div id="appt-package-preview" class="appt-package-preview">
+          ${App._clientPackagePreview(selectedIds)}
+        </div>
       </div>`;
+  },
+
+  _clientPackagePreview(clientIds = []) {
+    if (!clientIds.length) return '<div class="package-mini-empty">Seleziona un cliente per vedere il quadro pacchetto.</div>';
+    return clientIds.map(id => {
+      const c = Services.getClient(id);
+      if (!c) return '';
+      const metrics = Services.getClientSessionMetrics(c);
+      const pkgs = Array.isArray(c.packageTypes) ? c.packageTypes : (c.packageType ? [c.packageType] : []);
+      const days = Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [];
+      const totalLabel = metrics.total || 'da impostare';
+      const remainingLabel = metrics.total ? metrics.remaining : '—';
+      return `
+        <div class="package-mini-card">
+          <div>
+            <strong>${c.nome} ${c.cognome}</strong>
+            <span>${pkgs.join(', ') || 'Nessun pacchetto'} · ${days.join(', ') || 'giorni non impostati'}</span>
+          </div>
+          <div class="package-mini-stats">
+            <span>${metrics.completed}/${totalLabel} fatte</span>
+            <span>${remainingLabel} residue</span>
+            <span>${metrics.scheduled} programmate</span>
+            <span>${metrics.toSchedule} da pianificare</span>
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  _onClientSelectionChange() {
+    const selected = [...(document.getElementById('appt-clients')?.selectedOptions || [])].map(el => el.value);
+    const target = document.getElementById('appt-package-preview');
+    if (target) target.innerHTML = App._clientPackagePreview(selected);
+    App._onSlotChange();
   },
 
   // ── SEZIONE OPERATORE ─────────────────────────────────
@@ -659,6 +696,236 @@ const App = {
     UI.closeModal();
     if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
     UI.showToast(clientId?'Cliente aggiornato':'Cliente salvato','success');
+  },
+
+  // ── QUADRO PACCHETTO CLIENTE ─────────────────────────
+  _packageServiceId(client) {
+    const pkgs = Array.isArray(client?.packageTypes) ? client.packageTypes : [];
+    if (pkgs.includes('PT 1:1')) return 'pt11';
+    if (pkgs.includes('PT 1:2')) return 'pt12';
+    if (pkgs.includes('Circuit')) return 'circuit';
+    if (pkgs.includes('Valutazioni') || pkgs.includes('Visbody')) return 'visbody';
+    if (pkgs.includes('Baiobit')) return 'baiobit';
+    return null;
+  },
+
+  _packageAppointments(client, includeNutrition = true) {
+    const trainingServiceId = App._packageServiceId(client);
+    return State.getAppointments()
+      .filter(a => a.status !== 'annullato')
+      .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
+      .filter(a => {
+        if (trainingServiceId && a.serviceId === trainingServiceId) return true;
+        return includeNutrition && (a.serviceId === 'nutrizione' || a.serviceId === 'check');
+      })
+      .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
+  },
+
+  _fmtLongDate(dateStr) {
+    if (!dateStr) return '—';
+    const parts = String(dateStr).split('-').map(Number);
+    const d = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+  },
+
+  _dateStr(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  },
+
+  _parseDate(dateStr) {
+    const parts = String(dateStr || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return new Date();
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  },
+
+  _weekdayName(dateStr) {
+    const names = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const d = App._parseDate(dateStr);
+    return names[d.getDay()];
+  },
+
+  _suggestPackageDates(client, count) {
+    const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
+    if (!days.length || count <= 0) return [];
+
+    const wanted = new Set(days);
+    const trainingServiceId = App._packageServiceId(client);
+    const existing = App._packageAppointments(client, false).filter(a => a.serviceId === trainingServiceId);
+    const usedDates = new Set(existing.map(a => a.date));
+    const lastPlanned = existing[existing.length - 1]?.date;
+    const today = App._dateStr(new Date());
+    const startSeed = [today, client.packageStart, lastPlanned].filter(Boolean).sort().pop();
+    const cursor = App._parseDate(startSeed);
+    if (usedDates.has(App._dateStr(cursor))) cursor.setDate(cursor.getDate() + 1);
+
+    const out = [];
+    for (let guard = 0; out.length < count && guard < 420; guard += 1) {
+      const date = App._dateStr(cursor);
+      if (wanted.has(App._weekdayName(date)) && !usedDates.has(date)) {
+        out.push(date);
+        usedDates.add(date);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return out;
+  },
+
+  openPackageOverview(clientId) {
+    const client = State.getClients().find(c => c.id === clientId);
+    if (!client) return;
+
+    const metrics = Services.getClientSessionMetrics(client);
+    const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
+    const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
+    const serviceId = App._packageServiceId(client);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    const appointments = App._packageAppointments(client, true);
+    const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
+    const hasTotal = metrics.total > 0;
+
+    const rows = appointments.length ? appointments.map(a => {
+      const svc = Services.getService(a.serviceId);
+      const op = Services.getOperator(a.operatorId);
+      return `
+        <tr>
+          <td>${App._fmtLongDate(a.date)}</td>
+          <td>${a.startTime}</td>
+          <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
+          <td>${op ? `${op.nome} ${op.cognome}` : '—'}</td>
+          <td><span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span></td>
+        </tr>`;
+    }).join('') : `
+        <tr><td colspan="5" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
+
+    const html = `
+      <div class="modal-header">
+        <div>
+          <h3>Quadro pacchetto</h3>
+          <p class="modal-subtitle">${client.nome} ${client.cognome}</p>
+        </div>
+        <button class="modal-close" onclick="UI.closeModal()">✕</button>
+      </div>
+      <div class="modal-body package-overview">
+        <div class="package-overview-head">
+          <div>
+            <div class="eyebrow">Pacchetto acquistato</div>
+            <div class="package-overview-title">${pkgs.join(' + ') || 'Nessun pacchetto impostato'}</div>
+            <div class="package-overview-sub">
+              ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
+            </div>
+          </div>
+          <button class="btn" onclick="UI.closeModal();App.openEditClient('${client.id}')">Modifica dati</button>
+        </div>
+
+        <div class="package-overview-kpis">
+          <div class="${hasTotal ? '' : 'warn'}"><span>Totali</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
+          <div><span>Fatte</span><strong>${metrics.completed}</strong></div>
+          <div><span>Programmate</span><strong>${metrics.scheduled}</strong></div>
+          <div><span>Residue</span><strong>${hasTotal ? metrics.remaining : '—'}</strong></div>
+          <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
+        </div>
+
+        <div class="package-overview-grid">
+          <section class="package-panel">
+            <h4>Giornate acquistate</h4>
+            <div class="day-chip-row">
+              ${days.length ? days.map(day => `<span>${day}</span>`).join('') : '<em>Nessun giorno impostato</em>'}
+            </div>
+            <p>Ogni seduta PT viene accettata solo in queste giornate. Se il pacchetto è da 2 sedute totali, resta selezionabile un solo giorno.</p>
+          </section>
+
+          <section class="package-panel">
+            <h4>Prossime date suggerite</h4>
+            <div class="suggested-date-row">
+              ${hasTotal
+                ? (suggested.length ? suggested.map(date => `<span>${App._fmtLongDate(date)}</span>`).join('') : '<em>Nessuna data da generare</em>')
+                : '<em>Imposta prima il numero di sessioni totali del pacchetto.</em>'}
+            </div>
+            <div class="package-generate-row">
+              <label>Ora</label>
+              <input id="pkg-gen-time" class="form-input" type="time" value="09:00" step="900">
+              <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="package-panel">
+          <h4>Appuntamenti collegati</h4>
+          <table class="package-timeline-table">
+            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
+        <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
+      </div>
+    `;
+    UI.openModal(html);
+  },
+
+  async _generateMissingPackageAppointments(clientId) {
+    const client = State.getClients().find(c => c.id === clientId);
+    if (!client) return;
+
+    const serviceId = App._packageServiceId(client);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    if (!service) {
+      UI.showToast('Pacchetto PT non impostato per questo cliente', 'error');
+      return;
+    }
+
+    const metrics = Services.getClientSessionMetrics(client);
+    if (metrics.total <= 0) {
+      UI.showToast('Imposta prima le sessioni totali del pacchetto', 'error');
+      return;
+    }
+    const missing = metrics.toSchedule;
+    if (missing <= 0) {
+      UI.showToast('Non ci sono sedute mancanti da programmare', 'success');
+      return;
+    }
+
+    const time = document.getElementById('pkg-gen-time')?.value || '09:00';
+    const dates = App._suggestPackageDates(client, missing);
+    const created = [];
+    const skipped = [];
+
+    dates.forEach(date => {
+      const draft = {
+        serviceId,
+        clientIds: [client.id],
+        operatorId: client.ptAssegnato || null,
+        date,
+        startTime: time,
+        durationMin: service.durationMin || 60,
+        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        status: 'prenotato',
+        notes: 'Programmazione generata dal quadro pacchetto',
+      };
+      const validation = Services.canBookAppointment(draft);
+      if (!validation.ok) {
+        skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+        return;
+      }
+      created.push(Services.addAppointment(draft));
+    });
+
+    if (created.length) {
+      await Promise.all(created.map(appt => SupabaseSync.pushAppointment(appt)));
+      if (CONFIG.SHEETS.enabled) created.forEach(appt => Sheets.pushAppointment(appt));
+      Calendar.render();
+    }
+
+    if (skipped.length) {
+      UI.showToast(`${created.length} create, ${skipped.length} saltate per conflitti`, created.length ? 'info' : 'error');
+      console.warn('[Pacchetto] Sedute saltate:', skipped);
+    } else {
+      UI.showToast(`${created.length} sedute programmate`, 'success');
+    }
+    App.openPackageOverview(client.id);
   },
 
 

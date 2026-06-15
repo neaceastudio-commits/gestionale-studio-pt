@@ -51,6 +51,8 @@ const Clients = (() => {
     const scheduled = activeAppts.filter(a => a.status !== 'fatto' && a.date >= today).length;
     const noShow = activeAppts.filter(a => a.status === 'noshow').length;
     const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
+    const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : (client.packageType ? [client.packageType] : []);
+    const hasPackage = pkgs.length > 0;
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
     const computedRemaining = total > 0 ? Math.max(0, total - completed) : 0;
     const remaining = total > 0 ? computedRemaining : storedRemaining;
@@ -69,6 +71,7 @@ const Clients = (() => {
     }
 
     const alerts = [];
+    if (hasPackage && total <= 0) alerts.push('Sessioni totali mancanti');
     if (total > 0 && Math.abs(storedRemaining - computedRemaining) > 0) alerts.push('Residuo da riallineare');
     if (total > 0 && remaining <= 2 && remaining > 0) alerts.push('Pacchetto quasi finito');
     if (toSchedule > 0) alerts.push(`${toSchedule} da programmare`);
@@ -77,6 +80,7 @@ const Clients = (() => {
 
     return {
       total,
+      hasPackage,
       completed,
       scheduled,
       noShow,
@@ -94,7 +98,7 @@ const Clients = (() => {
 
   function renderManagementSummary(clients) {
     const metrics = clients.map(client => ({ client, metrics: getPackageMetrics(client) }));
-    const activePackages = metrics.filter(x => x.metrics.total > 0);
+    const activePackages = metrics.filter(x => x.metrics.hasPackage);
     const sessionsLeft = activePackages.reduce((sum, x) => sum + x.metrics.remaining, 0);
     const toSchedule = activePackages.reduce((sum, x) => sum + x.metrics.toSchedule, 0);
     const alerts = metrics.filter(x => x.metrics.alerts.length);
@@ -211,10 +215,14 @@ const Clients = (() => {
                         <div class="sessions-bar" style="width:${remainingPct}%;background:${remainingPct < 20 ? '#DC2626' : remainingPct < 50 ? '#F59E0B' : '#16A34A'}"></div>
                       </div>
                       <span class="session-mini">${metrics.completed} fatte</span>
-                    </div>` : '<span class="text-muted">—</span>'}
+                    </div>` : (metrics.hasPackage ? `
+                    <div class="sessions-cell sessions-missing">
+                      <span class="sessions-count sessions-low">Da impostare</span>
+                      <span class="session-mini">${metrics.completed} fatte rilevate</span>
+                    </div>` : '<span class="text-muted">—</span>')}
                 </td>
                 <td>
-                  <div class="package-status">
+                  <div class="package-status" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">
                     <div>${metrics.scheduled} programmate · ${metrics.toSchedule} da pianificare</div>
                     <div class="text-muted">Prossima: ${fmtDate(metrics.next?.date)} · Fine stimata: ${fmtDate(metrics.projectedEnd)}</div>
                     ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
@@ -222,6 +230,7 @@ const Clients = (() => {
                 </td>
                 <td>
                   <div class="action-btns">
+                    <button class="btn-icon-sm" title="Quadro pacchetto" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">📊</button>
                     <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
                     <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
                     <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">

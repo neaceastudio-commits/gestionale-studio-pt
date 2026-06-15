@@ -129,7 +129,7 @@
 .data-table th:nth-child(6),
 .data-table td:nth-child(6) { width: 19%; }
 .data-table th:nth-child(7),
-.data-table td:nth-child(7) { width: 110px; }
+.data-table td:nth-child(7) { width: 160px; }
 .op-name-cell {
   display: flex;
   align-items: center;
@@ -258,6 +258,216 @@
 .package-alert-row:hover {
   border-color: var(--blue);
   background: var(--blue-xpale);
+}
+.action-btns {
+  flex-wrap: wrap;
+}
+
+.appt-package-preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.package-mini-empty {
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+}
+.package-mini-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--blue-xpale);
+  padding: 11px 12px;
+}
+.package-mini-card strong,
+.package-mini-card span {
+  display: block;
+}
+.package-mini-card strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.package-mini-card span {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 800;
+}
+.package-mini-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.package-mini-stats span {
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: var(--bg2);
+  padding: 5px 8px;
+  color: var(--text2);
+  line-height: 1;
+}
+
+.package-status {
+  cursor: pointer;
+}
+.package-status:hover {
+  color: var(--blue);
+}
+.package-overview {
+  display: grid;
+  gap: 16px;
+}
+.package-overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.package-overview-title {
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.package-overview-sub {
+  margin-top: 5px;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 800;
+}
+.package-overview-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.package-overview-kpis div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  padding: 13px;
+  box-shadow: var(--shadow);
+}
+.package-overview-kpis div.warn {
+  border-color: rgba(245,158,11,.45);
+  background: #fffbeb;
+}
+.package-overview-kpis span {
+  display: block;
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.package-overview-kpis strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+}
+.package-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.package-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  padding: 15px;
+  box-shadow: var(--shadow);
+}
+.package-panel h4 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.package-panel p,
+.package-panel em {
+  margin: 10px 0 0;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+.day-chip-row,
+.suggested-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.day-chip-row span,
+.suggested-date-row span {
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: var(--blue-xpale);
+  color: var(--text2);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.package-generate-row {
+  display: grid;
+  grid-template-columns: auto 130px auto;
+  align-items: end;
+  gap: 9px;
+  margin-top: 14px;
+}
+.package-generate-row label {
+  align-self: center;
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.package-timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.package-timeline-table th,
+.package-timeline-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.package-timeline-table th {
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.package-timeline-table tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 920px) {
+  .package-overview-kpis,
+  .package-overview-grid {
+    grid-template-columns: 1fr;
+  }
+  .package-mini-card,
+  .package-generate-row {
+    grid-template-columns: 1fr;
+  }
+  .package-mini-stats {
+    justify-content: flex-start;
+  }
 }
 .package-alert-name {
   color: var(--text);

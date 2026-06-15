@@ -216,7 +216,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">Vuoi aggiungere subito l'abbonamento? Puoi farlo anche dopo dallo studio.</p>
       <div class="grid-2">
         <div class="field"><label>Pacchetto servizio</label>
-          <select id="conf-package">
+          <select id="conf-package" onchange="toggleConfSess()">
             <option>PT 1:1</option>
             <option>PT 1:2</option>
             <option>Circuit</option>
@@ -746,12 +746,19 @@ function apriConfermaById(id){
 }
 function maxConfDays(){const t=document.getElementById('conf-tipo').value;const tot=parseInt(document.getElementById('conf-sess-tot').value)||0;if(t==='Pacchetto 2'||tot===2)return 1;const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
 function limitConfDays(changed){const max=maxConfDays();if(!max)return true;const checked=[...document.querySelectorAll('#conf-days input:checked')];if(checked.length<=max)return true;if(changed)changed.checked=false;else checked.slice(max).forEach(c=>{c.checked=false});showToast('Il pacchetto prevede massimo '+max+' giorni a settimana','error');return false}
-function toggleConfSess(){const t=document.getElementById('conf-tipo').value;document.getElementById('conf-sess-row').style.display=t.startsWith('Pacchetto')?'grid':'none';document.getElementById('conf-abb-row').style.display=t?'grid':'none';document.getElementById('conf-days-row').style.display=t?'block':'none';if(t==='Pacchetto 2')document.getElementById('conf-sess-tot').value=2;if(t==='Pacchetto 10')document.getElementById('conf-sess-tot').value=10;if(t==='Pacchetto 20')document.getElementById('conf-sess-tot').value=20;limitConfDays()}
+function toggleConfSess(){const t=document.getElementById('conf-tipo').value;const p=document.getElementById('conf-package').value;const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(p);document.getElementById('conf-sess-row').style.display=t&&needsPlan?'grid':'none';document.getElementById('conf-abb-row').style.display=t?'grid':'none';document.getElementById('conf-days-row').style.display=t&&needsPlan?'block':'none';if(t==='Pacchetto 2')document.getElementById('conf-sess-tot').value=2;if(t==='Pacchetto 10')document.getElementById('conf-sess-tot').value=10;if(t==='Pacchetto 20')document.getElementById('conf-sess-tot').value=20;limitConfDays()}
 async function eseguiConferma(){
   const btn=document.getElementById('btn-conf');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
   if(!limitConfDays()){btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
+  const packageType=document.getElementById('conf-package').value;
+  const tipoAbbonamento=document.getElementById('conf-tipo').value;
+  const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(packageType);
   const giorniSettimana=[...document.querySelectorAll('#conf-days input:checked')].map(c=>c.value);
-  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType:document.getElementById('conf-package').value,ptId:document.getElementById('conf-pt').value,tipoAbbonamento:document.getElementById('conf-tipo').value,dataInizio:document.getElementById('conf-data').value,sessioni_totali:document.getElementById('conf-sess-tot').value||0,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
+  const sessioniTotali=parseInt(document.getElementById('conf-sess-tot').value)||0;
+  if(needsPlan&&!tipoAbbonamento){showToast('Seleziona il tipo di abbonamento','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
+  if(needsPlan&&sessioniTotali<=0){showToast('Inserisci le sessioni totali acquistate','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
+  if(needsPlan&&!giorniSettimana.length){showToast('Seleziona almeno un giorno del pacchetto','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
+  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType,ptId:document.getElementById('conf-pt').value,tipoAbbonamento,dataInizio:document.getElementById('conf-data').value,sessioni_totali:sessioniTotali,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
   if(res.success){showToast('Cliente trasferito: '+(res.appuntamentiCreati||0)+' appuntamenti creati in calendario','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
   else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
   btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
