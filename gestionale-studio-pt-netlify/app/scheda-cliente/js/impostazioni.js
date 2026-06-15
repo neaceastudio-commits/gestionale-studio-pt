@@ -95,10 +95,18 @@ function caricaSecondoCliente() {
 
 function renderDualScheda(s) {
   if (!s) return '<div class="empty"><div class="empty-title">Nessuna scheda</div></div>';
-  const giorni = s.giorni || [];
+  let datiJSON = s.datiJSON || null;
+  if (typeof datiJSON === 'string') {
+    try { datiJSON = JSON.parse(datiJSON); } catch (e) { datiJSON = null; }
+  }
+  let giorni = Array.isArray(s.giorni) ? s.giorni : (Array.isArray(datiJSON?.giorni) ? datiJSON.giorni : []);
+  let eserciziByDay = s.esercizi && typeof s.esercizi === 'object' && !Array.isArray(s.esercizi)
+    ? s.esercizi
+    : (datiJSON?.esercizi && typeof datiJSON.esercizi === 'object' ? datiJSON.esercizi : {});
+  if (!giorni.length) giorni = Object.keys(eserciziByDay);
   return `<div style="font-size:13px;font-weight:600;margin-bottom:10px">${s.nome}</div>
     ${giorni.map(g => {
-      const esercizi = s.esercizi?.[g] || [];
+      const esercizi = eserciziByDay[g] || [];
       return `<div style="margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;padding:4px 8px;background:var(--ab);border-radius:var(--r)">${g}</div>
         ${esercizi.length ? esercizi.map((e,i) => `

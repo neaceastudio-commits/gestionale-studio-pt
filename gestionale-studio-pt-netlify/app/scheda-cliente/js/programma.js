@@ -85,7 +85,7 @@ function renderSchedaBody() {
     <div class="giorni-tabs">${tabsHtml}</div>
     <div id="eserc-list">
       ${eserciziHtml}
-      <button class="add-eserc-btn" onclick="openMoEsercizio()">
+      <button class="add-esercizio-btn" onclick="openMoEsercizio()">
         <span>+</span> Aggiungi esercizio — ${giornoAtt}
       </button>
     </div>
@@ -140,13 +140,13 @@ function renderEsercizioCard(e, idx) {
 
   // ── 1. HEAD CARD ──
   const progTag = prog
-    ? `<span class="eserc-prog">${prog.nome}</span>`
-    : `<span class="eserc-prog" style="background:#f0f0f0;color:var(--text3);border-color:var(--border)">Senza progressione</span>`;
+    ? `<span class="esercizio-prog-badge">${prog.nome}</span>`
+    : `<span class="esercizio-prog-badge muted">Senza progressione</span>`;
 
   const headHtml = `
-    <div class="eserc-head">
-      <div class="eserc-num">${idx+1}</div>
-      <div><div class="eserc-nome">${e.nome}</div><div class="eserc-cat">${e.categoria || ''} · Recupero: ${e.recupero || '—'}</div></div>
+    <div class="esercizio-head">
+      <div class="esercizio-num">${idx+1}</div>
+      <div><div class="esercizio-nome">${e.nome}</div><div class="esercizio-muscolo">${e.categoria || ''} · Recupero: ${e.recupero || '—'}</div></div>
       ${progTag}
       <button class="act ad btn-sm" onclick="eliminaEsercizio(${idx})" style="margin-left:4px">✕</button>
     </div>`;
@@ -186,7 +186,7 @@ function renderEsercizioCard(e, idx) {
           return `<span class="serie-pill"><b>S${s.n}</b>&nbsp;${s.kg || '0'}kg × ${s.rip || '?'} ${u}</span>`;
         }).join('')}
       </div>
-      ${ultima.note ? `<div class="eserc-ultima-note">📝 ${ultima.note}</div>` : ''}
+      ${ultima.note ? `<div class="eserc-ultima-note">${ultima.note}</div>` : ''}
     </div>` : '';
 
   // ── 4. STORICO (nascosto di default, toggle on click) ──
@@ -211,7 +211,7 @@ function renderEsercizioCard(e, idx) {
               return `<span class="serie-pill"><b>S${x.n}</b>&nbsp;${x.kg || '0'}kg × ${x.rip || '?'} ${u}</span>`;
             }).join('')}
           </div>
-          ${s.note ? `<div class="eserc-ultima-note">📝 ${s.note}</div>` : ''}
+          ${s.note ? `<div class="eserc-ultima-note">${s.note}</div>` : ''}
         </div>
       `).join('')}
     </div>` : '';
@@ -259,13 +259,13 @@ function renderEsercizioCard(e, idx) {
 
   // ── 6. NOTE ESERCIZIO (quelle del template scheda, non del log) ──
   const noteTemplateHtml = e.note
-    ? `<div style="margin-top:10px;padding:8px 12px;background:var(--amb);border-left:2px solid var(--amber);border-radius:0 var(--r) var(--r) 0;font-size:12px;color:var(--amber)">📝 ${e.note}</div>`
+    ? `<div class="esercizio-note">${e.note}</div>`
     : '';
 
   return `
     <div class="esercizio-card" data-eserc-card="${idx}">
       ${headHtml}
-      <div class="eserc-body">
+      <div class="esercizio-body">
         ${progHtml}
         ${ultimaHtml}
         ${storicoHtml}
@@ -491,8 +491,10 @@ function renderProgBloccoTabs() {
     return;
   }
   const blocchi = Object.keys(PROGRESSIONI);
-  document.getElementById('pb-tabs').innerHTML = blocchi.map((b, i) => `
-    <button class="pb-tab ${i===0?'active':''}" onclick="switchProgBlocco('${b}',this)">${b}</button>`).join('');
+  document.getElementById('pb-tabs').innerHTML = blocchi.map((b, i) => {
+    const label = b.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    return `<button class="pb-tab ${i===0?'active':''}" onclick="switchProgBlocco('${b}',this)">${label}</button>`;
+  }).join('');
   renderProgList(blocchi[0]);
 }
 

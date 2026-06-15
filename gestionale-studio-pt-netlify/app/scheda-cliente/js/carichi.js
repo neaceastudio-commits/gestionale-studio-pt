@@ -94,7 +94,7 @@ function rigaSerieHtml(esercizioIdx, n, precompile, esercizio, ultimaSed) {
     const ult = (ultimaSed.serie || []).find(s => Number(s.n) === Number(n));
     if (ult) {
       const ripLabel = ult.unita === 'sec' ? 'sec' : 'rip';
-      hint = `<span class="ns-hint">💡 ult: ${ult.kg || '0'}kg × ${ult.rip || '?'} ${ripLabel}</span>`;
+      hint = `<span class="ns-hint">ult: ${ult.kg || '0'}kg × ${ult.rip || '?'} ${ripLabel}</span>`;
     }
   }
 

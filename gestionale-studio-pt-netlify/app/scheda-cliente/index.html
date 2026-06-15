@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <!-- Fogli di stile modulari -->
-<link rel="stylesheet" href="css/base.css?v=20">
-<link rel="stylesheet" href="css/layout.css?v=20">
-<link rel="stylesheet" href="css/scheda.css?v=20">
-<link rel="stylesheet" href="css/carichi.css?v=20">
+<link rel="stylesheet" href="css/base.css?v=21">
+<link rel="stylesheet" href="css/layout.css?v=21">
+<link rel="stylesheet" href="css/scheda.css?v=21">
+<link rel="stylesheet" href="css/carichi.css?v=21">
 </head>
 <body>
 
@@ -95,7 +95,7 @@
     <div class="ch-actions">
       <button class="btn btn-gold btn-sm" onclick="apriDoppio()">1:2</button>
       <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-visita')">+ Visita</button>
-      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-modifica')">Modifica</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-modifica')">Modifica cliente</button>
     </div>
   </div>
 
@@ -124,7 +124,7 @@
     <div class="riep-grid">
       <div>
         <div class="card" style="margin-bottom:14px">
-          <div class="card-head"><span class="card-title">Pacchetto & Obiettivi</span><button class="act ae btn-sm" onclick="openMo('mo-modifica')">Modifica</button></div>
+          <div class="card-head"><span class="card-title">Pacchetto & Obiettivi</span><button class="act ae btn-sm" onclick="openMo('mo-modifica')">Modifica pacchetto</button></div>
           <div class="card-body">
             <div class="dati-grid" id="riep-dati"></div>
           </div>
@@ -222,7 +222,7 @@
                  ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
                  ondrop="handleDrop(event,'baiobit')">
               <input type="file" id="file-baiobit" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'baiobit')">
-              <div class="upload-icon">🔬</div>
+              <div class="upload-icon">Test</div>
               <div class="upload-text">Trascina o clicca per caricare</div>
               <div class="upload-sub">PDF, JPG, PNG — max 10MB</div>
             </div>
@@ -518,27 +518,27 @@
      ═══════════════════════════════════════════════════════ -->
 
 <!-- 1. Base: config, stato, utility -->
-<script src="js/config.js?v=20"></script>
-<script src="js/stato.js?v=20"></script>
-<script src="js/utils.js?v=20"></script>
-<script src="js/database.js?v=20"></script>
+<script src="js/config.js?v=21"></script>
+<script src="js/stato.js?v=21"></script>
+<script src="js/utils.js?v=21"></script>
+<script src="js/database.js?v=21"></script>
 
 <!-- 2. Comunicazione con backend -->
-<script src="js/api.js?v=20"></script>
+<script src="js/api.js?v=21"></script>
 
 <!-- 3. Moduli funzionali -->
-<script src="js/lista-clienti.js?v=20"></script>
-<script src="js/scheda-cliente.js?v=20"></script>
-<script src="js/dati-fisici.js?v=20"></script>
-<script src="js/programma.js?v=20"></script>
-<script src="js/foto.js?v=20"></script>
-<script src="js/carichi.js?v=20"></script>
-<script src="js/impostazioni.js?v=20"></script>
+<script src="js/lista-clienti.js?v=21"></script>
+<script src="js/scheda-cliente.js?v=21"></script>
+<script src="js/dati-fisici.js?v=21"></script>
+<script src="js/programma.js?v=21"></script>
+<script src="js/foto.js?v=21"></script>
+<script src="js/carichi.js?v=21"></script>
+<script src="js/impostazioni.js?v=21"></script>
 
 <!-- 4. Entry point: dopo che tutto è definito -->
-<script src="js/main.js?v=20"></script>
+<script src="js/main.js?v=21"></script>
 <script>
-window.NEACEA_SCHEDE_BUILD = 'scheda-cliente-20';
+window.NEACEA_SCHEDE_BUILD = 'scheda-cliente-21';
 </script>
 
 </body>

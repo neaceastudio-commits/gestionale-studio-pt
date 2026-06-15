@@ -12,7 +12,7 @@ function renderDatiFisici() {
     document.getElementById('mis-pgc').textContent     = '—';
     document.getElementById('visbody-dati').innerHTML  = '<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
     document.getElementById('baiobit-tests').innerHTML = BAIOBIT_TESTS.map(t => `
-      <div class="test-item"><span class="test-nome">${t}</span><span class="test-empty">—</span></div>`).join('');
+      <div class="test-item"><span class="test-name">${t}</span><span class="test-empty">—</span></div>`).join('');
     return;
   }
 
@@ -44,7 +44,7 @@ function renderDatiFisici() {
   const bKeys = ['b_cammino','b_spalla','b_squat_jump','b_caduta','b_tronco','b_cervicale','b_drop_jump','b_jump_mono','b_stiffness'];
   document.getElementById('baiobit-tests').innerHTML = BAIOBIT_TESTS.map((t, i) => {
     const val = ultimo[bKeys[i]];
-    return `<div class="test-item"><span class="test-nome">${t}</span>${val ? `<span class="test-val">${val}</span>` : '<span class="test-empty">—</span>'}</div>`;
+    return `<div class="test-item"><span class="test-name">${t}</span>${val ? `<span class="test-val">${val}</span>` : '<span class="test-empty">—</span>'}</div>`;
   }).join('');
 
   // Grafici
