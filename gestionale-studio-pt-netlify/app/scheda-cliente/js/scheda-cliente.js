@@ -81,10 +81,16 @@ function setSezione(sez) {
 // ═══════════════════════════════════════════════════════
 function renderRiepilogo() {
   const c = clienteAtt;
+  const pacchetto = Array.isArray(c.packageTypes) && c.packageTypes.length
+    ? c.packageTypes.join(', ')
+    : (c.tipoServizio || c.tipoAbbonamento || '');
   const campi = [
+    ['Pacchetto', pacchetto],
     ['Obiettivo', c.obiettivo || c.obiettivoLibero],
     ['Esperienza', c.esperienza],
     ['Sessioni/sett', c.sessioni_pref],
+    ['Sessioni residue', c.sessionsRemaining || c.sessions_remaining],
+    ['Sessioni totali', c.sessionsTotal || c.sessions_total],
     ['Orari pref.', c.orari],
     ['Sport', c.sport],
     ['Abbonamento', c.tipoAbbonamento],
@@ -92,7 +98,7 @@ function renderRiepilogo() {
     ['PT assegnato', staffAll.find(s => s.id === c.ptAssegnato)?.nome || '—'],
     ['Motivazione', c.motivazione ? c.motivazione + '/10' : null],
     ['Impressioni', c.impressioni],
-  ].filter(([,v]) => v);
+  ].filter(([,v]) => v !== null && v !== undefined && v !== '');
 
   document.getElementById('riep-dati').innerHTML = campi.map(([l,v]) => `
     <div class="dati-item">

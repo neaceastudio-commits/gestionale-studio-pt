@@ -22,6 +22,7 @@ function normalizzaCliente(c) {
     ptAssegnato: c.ptAssegnato || c.pt_assegnato || '',
     tipoServizio: c.tipoServizio || c.tipo_servizio || '',
     tipoAbbonamento: c.tipoAbbonamento || c.tipo_abbonamento || '',
+    packageTypes: Array.isArray(c.packageTypes) ? c.packageTypes : (Array.isArray(c.package_types) ? c.package_types : []),
     dataInizio: c.dataInizio || c.data_inizio || '',
     dataScadenza: c.dataScadenza || c.data_scadenza || '',
     statoAbbonamento: c.statoAbbonamento || c.stato_abbonamento || (c.active === false ? 'Non attivo' : 'Attivo'),

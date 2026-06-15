@@ -180,7 +180,7 @@
 }
 .esercizio-card:hover { border-color: var(--border2); }
 .esercizio-head {
-  display: grid; grid-template-columns: auto 1fr auto auto;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center; gap: 12px; padding: 12px 16px;
   background: var(--blue-xpale); border-bottom: 1px solid var(--border);
   cursor: pointer;

@@ -90,7 +90,57 @@ function renderSchedaBody() {
       </button>
     </div>
     ${esercizi.length ? renderConfrontoCarichi(esercizi) : ''}
+    ${renderStoricoCarichiCliente()}
   `;
+}
+
+function addMonthsToDate(dateValue, months) {
+  const base = dateValue ? new Date(dateValue + 'T00:00:00') : new Date();
+  if (Number.isNaN(base.getTime())) return oggi();
+  base.setMonth(base.getMonth() + months);
+  return base.toISOString().slice(0, 10);
+}
+
+function nomeMese(dateValue) {
+  if (!dateValue) return '';
+  const d = new Date(dateValue + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+}
+
+function prossimoNomeScheda(s) {
+  const nextStart = addMonthsToDate(s.inizio || oggi(), 1);
+  const mese = nomeMese(nextStart);
+  const base = (s.nome || 'Scheda').replace(/\s+·\s+[a-zàèéìòù]+\s+\d{4}$/i, '');
+  return mese ? `${base} · ${mese}` : `${base} · copia`;
+}
+
+async function duplicaSchedaMese() {
+  if (!clienteAtt || !schedaAtt) {
+    toast('Seleziona prima una scheda da replicare', 'err');
+    return;
+  }
+  const nome = prompt('Nome della nuova scheda', prossimoNomeScheda(schedaAtt));
+  if (!nome) return;
+  const clone = JSON.parse(JSON.stringify(schedaAtt));
+  clone.id = 'sch_' + Date.now();
+  clone.clienteId = clienteAtt.id;
+  clone.nome = nome.trim();
+  clone.inizio = addMonthsToDate(schedaAtt.inizio || oggi(), 1);
+  clone.duplicataDa = schedaAtt.id;
+  clone.duplicataIl = new Date().toISOString();
+  clone.note = [clone.note, 'Replicata da: ' + (schedaAtt.nome || schedaAtt.id)].filter(Boolean).join('\n');
+
+  const res = await apiPost({ action: 'saveScheda', ...clone, datiJSON: clone });
+  if (!res || res.error || res.success === false) {
+    toast((res && res.error) || 'Errore replica scheda', 'err');
+    return;
+  }
+  schedeAtt.unshift(clone);
+  schedaAtt = clone;
+  giornoAtt = clone.giorni[0];
+  renderProgramma();
+  toast('Scheda replicata su Supabase', 'ok');
 }
 
 function renderRiepilogoProgrammazione(s) {
@@ -148,6 +198,7 @@ function renderEsercizioCard(e, idx) {
       <div class="esercizio-num">${idx+1}</div>
       <div><div class="esercizio-nome">${e.nome}</div><div class="esercizio-muscolo">${e.categoria || ''} · Recupero: ${e.recupero || '—'}</div></div>
       ${progTag}
+      <button class="act ae btn-sm" onclick="openModificaEsercizio(${idx})" style="margin-left:4px">Modifica</button>
       <button class="act ad btn-sm" onclick="eliminaEsercizio(${idx})" style="margin-left:4px">✕</button>
     </div>`;
 
@@ -165,6 +216,16 @@ function renderEsercizioCard(e, idx) {
   // ── 3. ULTIMA SEDUTA ESEGUITA ──
   const tutteSed = typeof sedutePerEsercizio === 'function' ? sedutePerEsercizio(e.nome) : [];
   const ultima   = tutteSed.length ? tutteSed[0] : null;
+  const seriePillsHtml = serie => {
+    const seen = new Set();
+    return (serie || []).map((s, i) => {
+      let numeroSerie = Number(s.n) || i + 1;
+      if (seen.has(numeroSerie)) numeroSerie = i + 1;
+      seen.add(numeroSerie);
+      const u = s.unita === 'sec' ? 'sec' : 'rip';
+      return `<span class="serie-pill"><b>S${numeroSerie}</b>&nbsp;${s.kg || '0'}kg × ${s.rip || '?'} ${u}</span>`;
+    }).join('');
+  };
 
   const ultimaHtml = ultima ? `
     <div class="eserc-ultima-block">
@@ -181,10 +242,7 @@ function renderEsercizioCard(e, idx) {
         </div>
       </div>
       <div class="eserc-ultima-serie">
-        ${ultima.serie.map(s => {
-          const u = s.unita === 'sec' ? 'sec' : 'rip';
-          return `<span class="serie-pill"><b>S${s.n}</b>&nbsp;${s.kg || '0'}kg × ${s.rip || '?'} ${u}</span>`;
-        }).join('')}
+        ${seriePillsHtml(ultima.serie)}
       </div>
       ${ultima.note ? `<div class="eserc-ultima-note">${ultima.note}</div>` : ''}
     </div>` : '';
@@ -206,10 +264,7 @@ function renderEsercizioCard(e, idx) {
             </div>
           </div>
           <div class="eserc-storico-serie">
-            ${s.serie.map(x => {
-              const u = x.unita === 'sec' ? 'sec' : 'rip';
-              return `<span class="serie-pill"><b>S${x.n}</b>&nbsp;${x.kg || '0'}kg × ${x.rip || '?'} ${u}</span>`;
-            }).join('')}
+            ${seriePillsHtml(s.serie)}
           </div>
           ${s.note ? `<div class="eserc-ultima-note">${s.note}</div>` : ''}
         </div>
@@ -292,6 +347,92 @@ function renderConfrontoCarichi(esercizi) {
           </div>`;
         }).join('')}
       </div>
+    </div>`;
+}
+
+function meseKey(data) {
+  return String(data || '').slice(0, 7);
+}
+
+function meseLabel(key) {
+  if (!key) return 'Senza data';
+  const d = new Date(key + '-01T00:00:00');
+  if (Number.isNaN(d.getTime())) return key;
+  return d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+}
+
+function carichiNormalizzatiCliente() {
+  if (!Array.isArray(carichiAtt)) return [];
+  const out = [];
+  carichiAtt.forEach(c => {
+    if (String(c.clienteId || '') !== String(clienteAtt?.id || '')) return;
+    if (Array.isArray(c.righe)) {
+      c.righe.forEach((r, i) => out.push({
+        ...c,
+        serie: r.serie || i + 1,
+        kg: r.kg,
+        rip: r.rip,
+        note: r.note || c.note || '',
+      }));
+      return;
+    }
+    if (c.serie == null && c.kg == null && c.rip == null) return;
+    out.push(c);
+  });
+  return out;
+}
+
+function renderStoricoCarichiCliente() {
+  const righe = carichiNormalizzatiCliente()
+    .filter(c => c.data && c.esercizio)
+    .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  if (!righe.length) return '';
+
+  const mesi = [...new Set(righe.map(c => meseKey(c.data)).filter(Boolean))];
+  const meseCorrente = meseKey(oggi());
+  const defaultMese = mesi.find(m => m !== meseCorrente) || mesi[0];
+  const meseScelto = window.storicoCarichiMese && mesi.includes(window.storicoCarichiMese)
+    ? window.storicoCarichiMese
+    : defaultMese;
+  window.storicoCarichiMese = meseScelto;
+
+  const gruppi = {};
+  righe.filter(c => meseKey(c.data) === meseScelto).forEach(c => {
+    const key = `${c.esercizio}__${c.data}__${c.seduta || ''}`;
+    if (!gruppi[key]) {
+      gruppi[key] = { esercizio: c.esercizio, data: c.data, seduta: c.seduta, giorno: c.giorno, serie: [] };
+    }
+    gruppi[key].serie.push(c);
+  });
+
+  const rows = Object.values(gruppi).map(g => {
+    g.serie.sort((a, b) => (Number(a.serie) || 0) - (Number(b.serie) || 0));
+    const seen = new Set();
+    const serie = g.serie.map((s, i) => {
+      let numeroSerie = Number(s.serie) || i + 1;
+      if (seen.has(numeroSerie)) numeroSerie = i + 1;
+      seen.add(numeroSerie);
+      const unita = String(s.note || '').includes('unita:sec') ? 'sec' : 'rip';
+      return `<span class="serie-pill"><b>S${numeroSerie}</b>&nbsp;${s.kg || '0'}kg × ${s.rip || '?'} ${unita}</span>`;
+    }).join('');
+    return `
+      <div class="storico-cliente-row">
+        <div>
+          <strong>${escapeHtml(g.esercizio)}</strong>
+          <span>${fmtData(g.data)}${g.seduta ? ' · Sed.' + escapeHtml(g.seduta) : ''}${g.giorno ? ' · ' + escapeHtml(g.giorno) : ''}</span>
+        </div>
+        <div class="storico-cliente-serie">${serie}</div>
+      </div>`;
+  }).join('');
+
+  const options = mesi.map(m => `<option value="${m}" ${m === meseScelto ? 'selected' : ''}>${meseLabel(m)}</option>`).join('');
+  return `
+    <div class="storico-cliente card">
+      <div class="card-head">
+        <span class="card-title">Storico carichi cliente</span>
+        <select class="storico-select" onchange="window.storicoCarichiMese=this.value;renderSchedaBody()">${options}</select>
+      </div>
+      <div class="card-body">${rows || '<div class="empty-title">Nessun carico nel mese selezionato</div>'}</div>
     </div>`;
 }
 
@@ -417,7 +558,6 @@ async function creaScheda() {
     return;
   }
   schedeAtt.unshift(scheda);
-  salvaStorage(clienteAtt.id, 'schede', schedeAtt);
   closeMo('mo-nuova-scheda');
   renderProgramma();
   toast('Scheda creata', 'ok');
@@ -427,7 +567,6 @@ async function eliminaScheda(id) {
   if (!confirm('Eliminare questa scheda?')) return;
   await apiPost({ action: 'deleteScheda', id });
   schedeAtt = schedeAtt.filter(s => s.id !== id);
-  salvaStorage(clienteAtt.id, 'schede', schedeAtt);
   renderProgramma();
   toast('Scheda eliminata');
 }
@@ -437,6 +576,7 @@ async function eliminaScheda(id) {
 //  MODAL ESERCIZIO
 // ═══════════════════════════════════════════════════════
 function openMoEsercizio() {
+  meEditIdx = null;
   meEserc = null; meProg = null;
   document.getElementById('me-title').textContent = 'Aggiungi Esercizio — ' + giornoAtt;
   document.getElementById('me-search').value = '';
@@ -445,6 +585,23 @@ function openMoEsercizio() {
   document.getElementById('me-recupero').value = "2'";
   document.getElementById('me-sel-label').textContent = '—';
   document.getElementById('pb-preview').innerHTML = '';
+  renderEserciziList();
+  renderProgBloccoTabs();
+  openMo('mo-esercizio');
+}
+
+function openModificaEsercizio(idx) {
+  const e = schedaAtt?.esercizi?.[giornoAtt]?.[idx];
+  if (!e) return;
+  meEditIdx = idx;
+  meEserc = { nome: e.nome, categoria: e.categoria || '' };
+  meProg = e.progressione || 'NONE';
+  document.getElementById('me-title').textContent = 'Modifica esercizio — ' + giornoAtt;
+  document.getElementById('me-search').value = '';
+  document.getElementById('me-custom').value = e.nome || '';
+  document.getElementById('me-note').value = e.note || '';
+  document.getElementById('me-recupero').value = e.recupero || "2'";
+  document.getElementById('me-sel-label').textContent = e.nome || '—';
   renderEserciziList();
   renderProgBloccoTabs();
   openMo('mo-esercizio');
@@ -568,32 +725,48 @@ function renderProgPreview() {
     </div>`;
 }
 
-function salvaEsercizio() {
+async function salvaEsercizio() {
   const custom = document.getElementById('me-custom').value.trim();
   const nome = meEserc?.nome || custom;
   if (!nome) { toast('Seleziona o inserisci un esercizio', 'err'); return; }
 
   const eserc = {
-    id: 'e_' + Date.now(),
+    id: meEditIdx !== null ? (schedaAtt.esercizi[giornoAtt][meEditIdx].id || 'e_' + Date.now()) : 'e_' + Date.now(),
     nome, categoria: meEserc?.categoria || '',
     recupero: document.getElementById('me-recupero').value,
     note: document.getElementById('me-note').value,
     progressione: (meProg && meProg !== 'NONE') ? meProg : null,
-    seduteManuale: null,
+    seduteManuale: meEditIdx !== null ? (schedaAtt.esercizi[giornoAtt][meEditIdx].seduteManuale || null) : null,
   };
 
   if (!schedaAtt.esercizi[giornoAtt]) schedaAtt.esercizi[giornoAtt] = [];
-  schedaAtt.esercizi[giornoAtt].push(eserc);
-  salvaSchedaAttuale();
+  let backup = null;
+  if (meEditIdx !== null) {
+    backup = schedaAtt.esercizi[giornoAtt][meEditIdx];
+    schedaAtt.esercizi[giornoAtt][meEditIdx] = eserc;
+  } else {
+    schedaAtt.esercizi[giornoAtt].push(eserc);
+  }
+  const ok = await salvaSchedaAttuale();
+  if (!ok) {
+    if (meEditIdx !== null) schedaAtt.esercizi[giornoAtt][meEditIdx] = backup;
+    else schedaAtt.esercizi[giornoAtt].pop();
+    return;
+  }
   closeMo('mo-esercizio');
   renderSchedaBody();
-  toast('Esercizio aggiunto', 'ok');
+  toast(meEditIdx !== null ? 'Esercizio aggiornato' : 'Esercizio aggiunto', 'ok');
+  meEditIdx = null;
 }
 
-function eliminaEsercizio(idx) {
+async function eliminaEsercizio(idx) {
   if (!confirm('Rimuovere esercizio?')) return;
-  schedaAtt.esercizi[giornoAtt].splice(idx, 1);
-  salvaSchedaAttuale();
+  const rimossi = schedaAtt.esercizi[giornoAtt].splice(idx, 1);
+  const ok = await salvaSchedaAttuale();
+  if (!ok) {
+    schedaAtt.esercizi[giornoAtt].splice(idx, 0, ...rimossi);
+    return;
+  }
   renderSchedaBody();
 }
 
@@ -616,18 +789,23 @@ function openSedutaManuale(idx) {
   openMo('mo-seduta');
 }
 
-function salvaSedutaManuale() {
+async function salvaSedutaManuale() {
   const e = schedaAtt.esercizi[giornoAtt][meSedutaIdx];
   e.seduteManuale = Array(6).fill(null).map((_,i) => ({ prescrizione: gv('s-p-'+i), carico: gv('s-c-'+i), note: gv('s-n-'+i) }));
-  salvaSchedaAttuale();
+  const ok = await salvaSchedaAttuale();
+  if (!ok) return;
   closeMo('mo-seduta');
   renderSchedaBody();
   toast('Sedute salvate', 'ok');
 }
 
-function salvaSchedaAttuale() {
+async function salvaSchedaAttuale() {
   const idx = schedeAtt.findIndex(s => s.id === schedaAtt.id);
   if (idx >= 0) schedeAtt[idx] = schedaAtt;
-  salvaStorage(clienteAtt.id, 'schede', schedeAtt);
-  apiPost({ action: 'saveScheda', ...schedaAtt, datiJSON: schedaAtt });
+  const res = await apiPost({ action: 'saveScheda', ...schedaAtt, datiJSON: schedaAtt });
+  if (!res || res.error || res.success === false) {
+    toast((res && res.error) || 'Errore salvataggio scheda', 'err');
+    return false;
+  }
+  return true;
 }

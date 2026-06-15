@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <!-- Fogli di stile modulari -->
-<link rel="stylesheet" href="css/base.css?v=21">
-<link rel="stylesheet" href="css/layout.css?v=21">
-<link rel="stylesheet" href="css/scheda.css?v=21">
-<link rel="stylesheet" href="css/carichi.css?v=21">
+<link rel="stylesheet" href="css/base.css?v=22">
+<link rel="stylesheet" href="css/layout.css?v=22">
+<link rel="stylesheet" href="css/scheda.css?v=22">
+<link rel="stylesheet" href="css/carichi.css?v=22">
 </head>
 <body>
 
@@ -93,7 +93,7 @@
       <div class="ch-meta" id="ch-meta"></div>
     </div>
     <div class="ch-actions">
-      <button class="btn btn-gold btn-sm" onclick="apriDoppio()">1:2</button>
+      <button class="btn btn-gold btn-sm" onclick="apriDoppio()">Confronto 1:2</button>
       <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-visita')">+ Visita</button>
       <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="openMo('mo-modifica')">Modifica cliente</button>
     </div>
@@ -242,6 +242,7 @@
         <select id="scheda-select" onchange="switchScheda()" style="border:1px solid var(--border);border-radius:var(--r);padding:7px 28px 7px 10px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--bg2);outline:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg width=\'10\' height=\'6\' viewBox=\'0 0 10 6\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M1 1L5 5L9 1\' stroke=\'%23a89e92\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center">
           <option value="">— Nessuna scheda —</option>
         </select>
+        <button class="btn btn-ghost btn-sm" onclick="duplicaSchedaMese()">Replica mese</button>
         <button class="btn btn-primary btn-sm" onclick="openNuovaScheda()">+ Nuova scheda</button>
       </div>
     </div>
@@ -518,25 +519,25 @@
      ═══════════════════════════════════════════════════════ -->
 
 <!-- 1. Base: config, stato, utility -->
-<script src="js/config.js?v=21"></script>
-<script src="js/stato.js?v=21"></script>
-<script src="js/utils.js?v=21"></script>
-<script src="js/database.js?v=21"></script>
+<script src="js/config.js?v=22"></script>
+<script src="js/stato.js?v=22"></script>
+<script src="js/utils.js?v=22"></script>
+<script src="js/database.js?v=22"></script>
 
 <!-- 2. Comunicazione con backend -->
-<script src="js/api.js?v=21"></script>
+<script src="js/api.js?v=22"></script>
 
 <!-- 3. Moduli funzionali -->
-<script src="js/lista-clienti.js?v=21"></script>
-<script src="js/scheda-cliente.js?v=21"></script>
-<script src="js/dati-fisici.js?v=21"></script>
-<script src="js/programma.js?v=21"></script>
-<script src="js/foto.js?v=21"></script>
-<script src="js/carichi.js?v=21"></script>
-<script src="js/impostazioni.js?v=21"></script>
+<script src="js/lista-clienti.js?v=22"></script>
+<script src="js/scheda-cliente.js?v=22"></script>
+<script src="js/dati-fisici.js?v=22"></script>
+<script src="js/programma.js?v=22"></script>
+<script src="js/foto.js?v=22"></script>
+<script src="js/carichi.js?v=22"></script>
+<script src="js/impostazioni.js?v=22"></script>
 
 <!-- 4. Entry point: dopo che tutto è definito -->
-<script src="js/main.js?v=21"></script>
+<script src="js/main.js?v=22"></script>
 <script>
 window.NEACEA_SCHEDE_BUILD = 'scheda-cliente-21';
 </script>

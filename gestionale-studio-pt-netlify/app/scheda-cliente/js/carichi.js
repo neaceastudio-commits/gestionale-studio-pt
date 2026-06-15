@@ -37,9 +37,24 @@ function isMobilita(categoria) {
 // ─── SEDUTE DI UN ESERCIZIO (raggruppate per data+seduta) ─
 function sedutePerEsercizio(nomeEsercizio) {
   if (!Array.isArray(carichiAtt)) return [];
-  const righe = carichiAtt.filter(c =>
-    String(c.esercizio).toLowerCase() === String(nomeEsercizio).toLowerCase()
-  );
+  const righe = [];
+  carichiAtt.forEach(c => {
+    if (String(c.esercizio).toLowerCase() !== String(nomeEsercizio).toLowerCase()) return;
+    if (Array.isArray(c.righe)) {
+      c.righe.forEach((r, i) => {
+        righe.push({
+          ...c,
+          serie: r.serie || i + 1,
+          kg: r.kg,
+          rip: r.rip,
+          note: r.note || c.note || '',
+        });
+      });
+      return;
+    }
+    if (c.serie == null && c.kg == null && c.rip == null) return;
+    righe.push(c);
+  });
   const gruppi = {};
   righe.forEach(r => {
     const key = `${r.data}__${r.seduta || ''}`;
@@ -65,7 +80,15 @@ function sedutePerEsercizio(nomeEsercizio) {
       kg: r.kg, rip: r.rip, unita, noteSerie
     });
   });
-  Object.values(gruppi).forEach(g => g.serie.sort((a, b) => (a.n || 0) - (b.n || 0)));
+  Object.values(gruppi).forEach(g => {
+    g.serie.sort((a, b) => (a.n || 0) - (b.n || 0));
+    const seen = new Set();
+    g.serie.forEach((s, i) => {
+      const n = Number(s.n) || 0;
+      if (!n || seen.has(n)) s.n = i + 1;
+      seen.add(Number(s.n));
+    });
+  });
   return Object.values(gruppi).sort((a, b) => String(b.data).localeCompare(String(a.data)));
 }
 

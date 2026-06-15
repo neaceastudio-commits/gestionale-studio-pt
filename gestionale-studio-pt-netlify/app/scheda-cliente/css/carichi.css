@@ -212,6 +212,51 @@
 .btn-inline.danger:hover { background: var(--red); color: #fff; border-color: var(--red); }
 .btn-inline.small { padding: 3px 8px; font-size: 10px; }
 
+.storico-cliente {
+  margin-top: 16px;
+}
+.storico-select {
+  max-width: 220px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text);
+  padding: 7px 10px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+.storico-cliente-row {
+  display: grid;
+  grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr);
+  gap: 14px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.storico-cliente-row:last-child {
+  border-bottom: 0;
+}
+.storico-cliente-row strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+.storico-cliente-row span {
+  display: inline-flex;
+  margin-top: 4px;
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 800;
+}
+.storico-cliente-serie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* Responsive mobile */
 @media (max-width: 640px) {
   .ns-row {
@@ -228,6 +273,7 @@
   }
   .eserc-nuova-top { flex-direction: column; align-items: stretch; }
   .eserc-nuova-top .field { width: 100%; }
+  .storico-cliente-row { grid-template-columns: 1fr; }
 }
 
 /* ── SCHEDA CLIENTE: shell usata da index.html ── */

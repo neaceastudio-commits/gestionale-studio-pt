@@ -175,13 +175,15 @@ async function apiPost(payload) {
   if (action === 'deleteFoto') return deleteRow('foto_allenamento', p.id);
   if (action === 'deleteScheda') return deleteRow('schede_allenamento', p.id);
   if (action === 'deleteVisitaAlle') return deleteRow('visite_allenamento', p.id);
-  if (action === 'deleteCarico' || action === 'deleteCarichiSeduta') return deleteRow('carichi_allenamento', p.id);
+  if (action === 'deleteCarico') return deleteRow('carichi_allenamento', p.id);
+  if (action === 'deleteCarichiSeduta') return deleteCarichiSeduta(p);
+
+  if (action === 'saveCarichiBulk') return saveCarichiBulk(p);
 
   const saveMap = {
     saveDatiFisici: ['dati_fisici', 'df'],
     saveVisitaAlle: ['visite_allenamento', 'vis'],
     saveScheda: ['schede_allenamento', 'sch'],
-    saveCarichiBulk: ['carichi_allenamento', 'car'],
   };
   if (saveMap[action]) {
     const [table, prefix] = saveMap[action];
@@ -198,4 +200,76 @@ async function apiPost(payload) {
 async function deleteRow(table, id) {
   const res = await sb(table, { method: 'DELETE', query: '?id=eq.' + encodeURIComponent(id), headers: { Prefer: 'return=minimal' } });
   return res && res.error ? res : { success: true };
+}
+
+function jsonEq(field, value) {
+  return '&data-%3E%3E' + encodeURIComponent(field) + '=eq.' + encodeURIComponent(String(value || ''));
+}
+
+async function deleteCarichiSeduta(p) {
+  const clienteId = p.clienteId || clienteAtt?.id || '';
+  const query = '?cliente_id=eq.' + encodeURIComponent(clienteId)
+    + jsonEq('esercizio', p.esercizio)
+    + jsonEq('data', p.data)
+    + jsonEq('seduta', p.seduta);
+  const res = await sb('carichi_allenamento', { method: 'DELETE', query, headers: { Prefer: 'return=minimal' } });
+  return res && res.error ? res : { success: true };
+}
+
+async function saveCarichiBulk(p) {
+  const clienteId = p.clienteId || clienteAtt?.id || '';
+  const righe = Array.isArray(p.righe) ? p.righe : [];
+  if (!clienteId || !p.esercizio || !p.data || !p.seduta || !righe.length) {
+    return { error: 'Dati carichi incompleti' };
+  }
+
+  await deleteCarichiSeduta(p);
+
+  const clean = value => String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase()
+    .slice(0, 70);
+
+  const rows = righe.map((r, i) => {
+    const serie = Number(r.serie) || i + 1;
+    const id = [
+      'car',
+      clean(clienteId),
+      clean(p.schedaId || 'scheda'),
+      clean(p.esercizio),
+      clean(p.data),
+      clean(p.seduta),
+      serie,
+    ].join('_');
+    return {
+      id,
+      cliente_id: clienteId,
+      data: {
+        id,
+        clienteId,
+        schedaId: p.schedaId || '',
+        esercizio: p.esercizio,
+        progressione: p.progressione || '',
+        giorno: p.giorno || '',
+        seduta: String(p.seduta),
+        data: p.data,
+        serie,
+        kg: r.kg,
+        rip: r.rip,
+        note: r.note || '',
+        dataCreazione: oggi(),
+      },
+      updated_at: new Date().toISOString(),
+    };
+  });
+
+  const res = await sb('carichi_allenamento', {
+    method: 'POST',
+    query: '?on_conflict=id',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: rows,
+  });
+  return res && res.error ? res : { success: true, count: rows.length };
 }

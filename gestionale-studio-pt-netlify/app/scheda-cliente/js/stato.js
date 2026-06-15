@@ -13,4 +13,7 @@ let fotoAtt = [];
 let carichiAtt = [];
 let schedaAtt = null;
 let giornoAtt = null;
-
+let meEserc = null;
+let meProg = null;
+let meEditIdx = null;
+let meSedutaIdx = null;
