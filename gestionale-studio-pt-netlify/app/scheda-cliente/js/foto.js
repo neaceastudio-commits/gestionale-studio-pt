@@ -5,12 +5,14 @@
 function renderFoto() {
   // Popola filtro visite
   const filtro = document.getElementById('foto-visita-filter');
+  const filtroPrecedente = filtro.value || '';
   filtro.innerHTML = '<option value="">Tutte le visite</option>';
   visiteAtt.forEach(v => {
     const o = document.createElement('option');
     o.value = v.id; o.textContent = fmtData(v.data);
     filtro.appendChild(o);
   });
+  filtro.value = [...filtro.options].some(o => o.value === filtroPrecedente) ? filtroPrecedente : '';
 
   const visitaFiltro = filtro.value;
   const foto = visitaFiltro ? fotoAtt.filter(f => f.visitaId === visitaFiltro) : fotoAtt;
@@ -22,8 +24,8 @@ function renderFoto() {
   }
 
   grid.innerHTML = foto.map(f => `
-    <div class="foto-item" onclick="apriLightbox('${f.url}')">
-      <img src="${f.url}" alt="${f.filename || ''}" loading="lazy">
+    <div class="foto-item" onclick="apriLightbox('${String(f.url || '').replace(/'/g, "\\'")}')">
+      <img src="${f.url}" alt="${escapeHtml(f.filename || '')}" loading="lazy">
       <div class="foto-meta">${fmtData(f.data)}</div>
       <button class="foto-del" onclick="event.stopPropagation();eliminaFoto('${f.id}')">✕</button>
     </div>`).join('');
@@ -33,7 +35,9 @@ async function uploadFotoVisita(files) {
   if (!files || !files.length) return;
   const prog = document.getElementById('prog-foto');
   const bar  = document.getElementById('bar-foto');
+  const visitaId = document.getElementById('foto-visita-filter')?.value || '';
   prog.classList.add('show');
+  let caricamentiOk = 0;
 
   for (let i = 0; i < files.length; i++) {
     bar.style.width = Math.round((i / files.length) * 100) + '%';
@@ -48,19 +52,36 @@ async function uploadFotoVisita(files) {
         filename,
         mimeType: 'image/jpeg',
         data: oggi(),
+        visitaId,
       });
       if (r.success) {
-        const nuova = { id: r.id, clienteId: clienteAtt.id, url: r.url, filename, data: oggi() };
+        const nuova = {
+          id: r.id,
+          clienteId: clienteAtt.id,
+          url: r.url,
+          filename,
+          data: oggi(),
+          visitaId,
+          bucket: r.bucket,
+          storagePath: r.path,
+          storage_path: r.path,
+          source: 'storage',
+        };
         fotoAtt.unshift(nuova);
-        salvaStorage(clienteAtt.id, 'foto', fotoAtt);
+        caricamentiOk++;
+      } else {
+        toast(r.error || 'Errore caricamento foto', 'err');
       }
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error(e);
+      toast('Errore foto: ' + (e.message || e), 'err');
+    }
   }
 
   bar.style.width = '100%';
   setTimeout(() => { prog.classList.remove('show'); bar.style.width = '0'; }, 600);
   renderFoto();
-  toast('Foto caricate', 'ok');
+  if (caricamentiOk) toast(caricamentiOk + ' foto caricate', 'ok');
 }
 
 async function handleFotoDrop(e) {
@@ -71,9 +92,18 @@ async function handleFotoDrop(e) {
 
 async function eliminaFoto(id) {
   if (!confirm('Eliminare questa foto?')) return;
-  await apiPost({ action: 'deleteFoto', id });
+  const foto = fotoAtt.find(f => f.id === id) || {};
+  const res = await apiPost({
+    action: 'deleteFoto',
+    id,
+    bucket: foto.bucket,
+    path: foto.storagePath || foto.storage_path,
+  });
+  if (res && res.error) {
+    toast(res.error, 'err');
+    return;
+  }
   fotoAtt = fotoAtt.filter(f => f.id !== id);
-  salvaStorage(clienteAtt.id, 'foto', fotoAtt);
   renderFoto();
   toast('Foto eliminata');
 }

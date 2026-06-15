@@ -166,13 +166,29 @@ async function apiPost(payload) {
 
   if (action === 'uploadFoto') {
     const id = genId('foto');
-    const url = 'data:' + (p.mimeType || 'image/jpeg') + ';base64,' + p.base64;
-    const data = { url, filename: p.filename || '', data: p.data || new Date().toISOString().slice(0, 10), visitaId: p.visitaId || '' };
+    const uploaded = await uploadFotoStorage({
+      clienteId: p.clienteId,
+      base64: p.base64,
+      filename: p.filename || id + '.jpg',
+      mimeType: p.mimeType || 'image/jpeg',
+      data: p.data || new Date().toISOString().slice(0, 10),
+    });
+    if (uploaded.error) return uploaded;
+    const data = {
+      url: uploaded.url,
+      filename: p.filename || '',
+      data: p.data || new Date().toISOString().slice(0, 10),
+      visitaId: p.visitaId || '',
+      bucket: uploaded.bucket,
+      storagePath: uploaded.path,
+      storage_path: uploaded.path,
+      source: 'storage',
+    };
     const res = await sb('foto_allenamento', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { id, cliente_id: p.clienteId, data } });
-    return res && res.error ? res : { success: true, id, url };
+    return res && res.error ? res : { success: true, id, url: uploaded.url, bucket: uploaded.bucket, path: uploaded.path };
   }
 
-  if (action === 'deleteFoto') return deleteRow('foto_allenamento', p.id);
+  if (action === 'deleteFoto') return deleteFoto(p);
   if (action === 'deleteScheda') return deleteRow('schede_allenamento', p.id);
   if (action === 'deleteVisitaAlle') return deleteRow('visite_allenamento', p.id);
   if (action === 'deleteCarico') return deleteRow('carichi_allenamento', p.id);
@@ -200,6 +216,139 @@ async function apiPost(payload) {
 async function deleteRow(table, id) {
   const res = await sb(table, { method: 'DELETE', query: '?id=eq.' + encodeURIComponent(id), headers: { Prefer: 'return=minimal' } });
   return res && res.error ? res : { success: true };
+}
+
+function storageBucket() {
+  return typeof FOTO_STORAGE_BUCKET !== 'undefined' && FOTO_STORAGE_BUCKET ? FOTO_STORAGE_BUCKET : 'client-photos';
+}
+
+function encodeStoragePath(path) {
+  return String(path || '').split('/').map(encodeURIComponent).join('/');
+}
+
+function safeStorageSegment(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 90) || 'file';
+}
+
+function extFromMime(mimeType, filename) {
+  const mime = String(mimeType || '').toLowerCase();
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('webp')) return 'webp';
+  const ext = String(filename || '').split('.').pop();
+  return ext && /^[a-z0-9]{2,5}$/i.test(ext) ? ext.toLowerCase() : 'jpg';
+}
+
+function blobFromBase64(base64, mimeType) {
+  const bin = atob(String(base64 || ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType || 'image/jpeg' });
+}
+
+async function uploadFotoStorage({ clienteId, base64, filename, mimeType, data }) {
+  if (!clienteId || !base64) return { error: 'Foto o cliente mancanti' };
+  const viaFunction = await callFotoFunction({
+    action: 'uploadFoto',
+    clienteId,
+    base64,
+    filename,
+    mimeType,
+    data,
+  });
+  if (viaFunction && viaFunction.success) return viaFunction;
+  if (viaFunction && viaFunction.error) return viaFunction;
+
+  const bucket = storageBucket();
+  const date = data || oggi();
+  const ext = extFromMime(mimeType, filename);
+  const path = [
+    safeStorageSegment(clienteId),
+    date,
+    Date.now() + '-' + Math.random().toString(16).slice(2) + '-' + safeStorageSegment(filename || 'foto') + '.' + ext,
+  ].join('/');
+
+  const res = await fetch(SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/' + bucket + '/' + encodeStoragePath(path), {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': mimeType || 'image/jpeg',
+      upsert: 'false',
+    },
+    body: blobFromBase64(base64, mimeType || 'image/jpeg'),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    return { error: storageErrorMessage(text || res.statusText) };
+  }
+  return {
+    bucket,
+    path,
+    url: SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/' + bucket + '/' + encodeStoragePath(path),
+  };
+}
+
+async function callFotoFunction(payload) {
+  try {
+    const r = await fetch('/.netlify/functions/foto-pt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (r.status === 404) return null;
+    const text = await r.text();
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch (_) { json = { success: false, error: text }; }
+    if (!r.ok) return { error: json?.error || text || 'Function foto non disponibile' };
+    return json;
+  } catch (_) {
+    return null;
+  }
+}
+
+function storageErrorMessage(text) {
+  const raw = String(text || '');
+  if (/Bucket not found/i.test(raw) || /not found/i.test(raw)) {
+    return 'Bucket foto Supabase non configurato: crea il bucket "' + storageBucket() + '" con upload pubblico/autorizzato.';
+  }
+  if (/row-level security|permission|policy|unauthorized|forbidden/i.test(raw)) {
+    return 'Policy Supabase Storage non abilitate per upload/eliminazione foto nel bucket "' + storageBucket() + '".';
+  }
+  return raw || 'Upload foto fallito';
+}
+
+async function deleteStorageObject(bucket, path) {
+  if (!bucket || !path) return { success: true };
+  const viaFunction = await callFotoFunction({ action: 'deleteFoto', bucket, path });
+  if (viaFunction && viaFunction.success) return { success: true };
+  if (viaFunction && viaFunction.error) return viaFunction;
+
+  const res = await fetch(SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/' + bucket + '/' + encodeStoragePath(path), {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+    },
+  });
+  if (res.ok || res.status === 404) return { success: true };
+  return { error: storageErrorMessage(await res.text()) };
+}
+
+async function deleteFoto(p) {
+  const rows = await sb('foto_allenamento', { query: '?id=eq.' + encodeURIComponent(p.id) + '&select=*' });
+  const row = Array.isArray(rows) ? rows[0] : null;
+  const data = row && row.data ? row.data : {};
+  const bucket = data.bucket || p.bucket;
+  const path = data.storagePath || data.storage_path || p.path || p.storagePath || p.storage_path;
+  const storageRes = await deleteStorageObject(bucket, path);
+  if (storageRes && storageRes.error) return storageRes;
+  return deleteRow('foto_allenamento', p.id);
 }
 
 function jsonEq(field, value) {
