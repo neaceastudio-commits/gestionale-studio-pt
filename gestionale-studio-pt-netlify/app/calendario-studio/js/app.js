@@ -543,6 +543,7 @@ const App = {
       `<option value="${f}" ${client?.packageFrequency===f?'selected':''}>${f}</option>`
     ).join('');
     const curDays = Array.isArray(client?.giorniSettimana) ? client.giorniSettimana : [];
+    const currentMetrics = client ? Services.getClientSessionMetrics(client) : null;
     const dayOptions = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label">
         <input type="checkbox" name="client-day" value="${g}" ${curDays.includes(g)?'checked':''} onchange="App._limitClientDays(this)">
@@ -596,8 +597,11 @@ const App = {
             <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${client?.sessionsTotal||''}" onchange="App._limitClientDays()">
           </div>
           <div class="form-group">
-            <label>Sessioni rimanenti</label>
-            <input type="number" id="cl-sessions-rem" class="form-input" min="0" value="${client?.sessionsRemaining||''}">
+            <label>Sessioni residue automatiche</label>
+            <div class="computed-field">
+              ${client ? (currentMetrics?.total ? `${currentMetrics.remaining} residue · ${currentMetrics.completed} fatte` : 'Imposta le sessioni totali') : 'Calcolate dopo il salvataggio'}
+            </div>
+            <div class="form-hint">Si aggiornano segnando le sedute come fatto.</div>
           </div>
         </div>
 
@@ -663,8 +667,6 @@ const App = {
     const pkgs      = [...document.querySelectorAll('input[name="pkg"]:checked')].map(el=>el.value);
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
-    const remRaw    = document.getElementById('cl-sessions-rem')?.value;
-    const sessRem   = remRaw === '' && sessTotal > 0 ? sessTotal : parseInt(remRaw)||0;
     const notes     = document.getElementById('cl-notes')?.value.trim();
     if (!App._limitClientDays()) return;
     const giorniSettimana = [...document.querySelectorAll('input[name="client-day"]:checked')].map(el=>el.value);
@@ -672,6 +674,9 @@ const App = {
     if (!nome||!cognome) { UI.showToast('Nome e cognome obbligatori','error'); return; }
 
     const clients = State.getClients();
+    const currentClient = clientId ? clients.find(c => c.id === clientId) : null;
+    const completedSessions = currentClient ? Services.getClientSessionMetrics({ ...currentClient, sessionsTotal: sessTotal }).completed : 0;
+    const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
     const data = {
       nome, cognome, email, telefono,
       packageTypes: pkgs,
@@ -790,7 +795,12 @@ const App = {
       return `
         <tr>
           <td>${App._fmtLongDate(a.date)}</td>
-          <td>${a.startTime}</td>
+          <td>
+            <div class="time-edit-cell">
+              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900">
+              <button class="btn-icon-sm" title="Salva ora" onclick="App._updatePackageAppointmentTime('${a.id}')">✓</button>
+            </div>
+          </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>${op ? `${op.nome} ${op.cognome}` : '—'}</td>
           <td><span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span></td>
@@ -864,6 +874,31 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+  },
+
+  async _updatePackageAppointmentTime(apptId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
+    if (!appt || !nextTime) return;
+    if (appt.startTime === nextTime) {
+      UI.showToast('Ora gia aggiornata', 'success');
+      return;
+    }
+
+    const patch = { ...appt, startTime: nextTime };
+    const validation = Services.canBookAppointment(patch);
+    if (!validation.ok) {
+      UI.showToast(validation.errors[0], 'error');
+      return;
+    }
+
+    const saved = Services.updateAppointment(apptId, { startTime: nextTime });
+    await SupabaseSync.pushAppointment(saved);
+    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
+    Calendar.render();
+    UI.showToast('Ora appuntamento aggiornata', 'success');
+    const clientId = saved?.clientIds?.[0];
+    if (clientId) App.openPackageOverview(clientId);
   },
 
   async _generateMissingPackageAppointments(clientId) {

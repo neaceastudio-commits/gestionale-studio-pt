@@ -216,7 +216,7 @@ const Services = (() => {
 
       const fullyPlannedClient = (appt.clientIds || []).map(getClient).find(c => {
         const metrics = getClientSessionMetrics(c, appt.id || null);
-        return metrics.total > 0 && appt.status !== 'fatto' && metrics.toSchedule <= 0;
+        return !appt.id && metrics.total > 0 && appt.status !== 'fatto' && metrics.toSchedule <= 0;
       });
       if (fullyPlannedClient) errors.push(`${clientFullName(fullyPlannedClient.id)} ha gia tutte le sedute programmate`);
     }

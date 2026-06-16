@@ -313,6 +313,16 @@
   color: var(--text2);
   line-height: 1;
 }
+.computed-field {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--blue-xpale);
+  color: var(--text2);
+  padding: 11px 12px;
+  font-size: 13px;
+  font-weight: 900;
+}
 
 .package-status {
   cursor: pointer;
@@ -454,6 +464,15 @@
 }
 .package-timeline-table tr:last-child td {
   border-bottom: none;
+}
+.time-edit-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.package-time-input {
+  width: 96px;
+  padding: 8px 9px;
 }
 
 @media (max-width: 920px) {
