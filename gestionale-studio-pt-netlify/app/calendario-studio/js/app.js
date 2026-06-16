@@ -576,6 +576,30 @@ const App = {
             <input type="text" id="cl-telefono" class="form-input" value="${client?.telefono||''}">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data di nascita</label>
+            <input type="date" id="cl-nascita" class="form-input" value="${client?.nascita||''}">
+          </div>
+          <div class="form-group">
+            <label>Codice fiscale</label>
+            <input type="text" id="cl-codice-fiscale" class="form-input" value="${client?.codiceFiscale||''}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Documento</label>
+            <input type="text" id="cl-documento" class="form-input" value="${client?.documento||''}">
+          </div>
+          <div class="form-group">
+            <label>Contatto emergenza</label>
+            <input type="text" id="cl-contatto-emergenza" class="form-input" value="${client?.contattoEmergenza||''}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Indirizzo</label>
+          <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}">
+        </div>
 
         <div class="form-section-label">Pacchetti acquistati</div>
         <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
@@ -664,6 +688,11 @@ const App = {
     const cognome   = document.getElementById('cl-cognome')?.value.trim();
     const email     = document.getElementById('cl-email')?.value.trim();
     const telefono  = document.getElementById('cl-telefono')?.value.trim();
+    const nascita   = document.getElementById('cl-nascita')?.value || null;
+    const codiceFiscale = document.getElementById('cl-codice-fiscale')?.value.trim();
+    const documento = document.getElementById('cl-documento')?.value.trim();
+    const indirizzo = document.getElementById('cl-indirizzo')?.value.trim();
+    const contattoEmergenza = document.getElementById('cl-contatto-emergenza')?.value.trim();
     const pkgs      = [...document.querySelectorAll('input[name="pkg"]:checked')].map(el=>el.value);
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
@@ -678,7 +707,7 @@ const App = {
     const completedSessions = currentClient ? Services.getClientSessionMetrics({ ...currentClient, sessionsTotal: sessTotal }).completed : 0;
     const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
     const data = {
-      nome, cognome, email, telefono,
+      nome, cognome, email, telefono, nascita, codiceFiscale, documento, indirizzo, contattoEmergenza,
       packageTypes: pkgs,
       packageFrequency: frequency,
       giorniSettimana,

@@ -32,6 +32,12 @@ const SupabaseSync = (() => {
       cognome: r.cognome || '',
       email: r.email || '',
       telefono: r.telefono || '',
+      nascita: r.nascita || null,
+      sesso: r.sesso || '',
+      codiceFiscale: r.codice_fiscale || '',
+      documento: r.documento || '',
+      indirizzo: r.indirizzo || '',
+      contattoEmergenza: r.contatto_emergenza || '',
       packageTypes: Array.isArray(r.package_types) ? r.package_types : [],
       packageFrequency: r.package_frequency || r.sessioni_pref || '',
       sessionsTotal: r.sessions_total || 0,
@@ -51,6 +57,12 @@ const SupabaseSync = (() => {
       cognome: c.cognome || '',
       email: c.email || '',
       telefono: c.telefono || '',
+      nascita: c.nascita || null,
+      sesso: c.sesso || '',
+      codice_fiscale: c.codiceFiscale || c.codice_fiscale || '',
+      documento: c.documento || '',
+      indirizzo: c.indirizzo || '',
+      contatto_emergenza: c.contattoEmergenza || c.contatto_emergenza || '',
       package_types: Array.isArray(c.packageTypes) ? c.packageTypes : [],
       package_frequency: c.packageFrequency || '',
       sessions_total: parseInt(c.sessionsTotal) || 0,
@@ -240,11 +252,22 @@ const SupabaseSync = (() => {
 
   async function pushClient(client) {
     if (!client) return;
+    const body = clientToDb(client);
+    const res = await request('clients', {
+      method: 'POST',
+      query: '?on_conflict=id',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body,
+    });
+    if (!res?.error) return res;
+    if (!String(res.error).includes('column')) return res;
+    const fallback = { ...body };
+    ['nascita', 'sesso', 'codice_fiscale', 'documento', 'indirizzo', 'contatto_emergenza'].forEach(k => delete fallback[k]);
     return request('clients', {
       method: 'POST',
       query: '?on_conflict=id',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: clientToDb(client),
+      body: fallback,
     });
   }
 
