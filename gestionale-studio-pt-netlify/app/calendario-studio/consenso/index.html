@@ -28,6 +28,7 @@
       display: flex;
       justify-content: space-between;
       gap: 12px;
+      flex-wrap: wrap;
       align-items: center;
       padding: 12px 18px;
       background: var(--ink);
@@ -35,6 +36,7 @@
       box-shadow: 0 8px 24px rgba(15, 23, 42, .18);
     }
     .toolbar-title { font-weight: 800; }
+    .toolbar > div:first-child { min-width: 260px; }
     .toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     button {
       border: 1px solid var(--line);
@@ -192,6 +194,11 @@
       button { display: none; }
       @page { size: A4; margin: 14mm 13mm; }
     }
+    @media (max-width: 900px) {
+      .toolbar { position: static; }
+      .page { width: calc(100vw - 24px); padding: 18px; margin: 12px; }
+      .grid, .signature-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -241,10 +248,22 @@
       </div>
     </section>
 
+    <section>
+      <h2 contenteditable="true">3. Riepilogo percorso attivato</h2>
+      <div class="grid">
+        <div class="field"><span class="label">Servizio</span><span id="service-summary" class="value" contenteditable="true"></span></div>
+        <div class="field"><span class="label">Pacchetto</span><span id="package-summary" class="value" contenteditable="true"></span></div>
+        <div class="field"><span class="label">Frequenza / giorni</span><span id="days-summary" class="value" contenteditable="true"></span></div>
+        <div class="field"><span class="label">Sessioni</span><span id="sessions-summary" class="value" contenteditable="true"></span></div>
+        <div class="field full"><span class="label">Obiettivo dichiarato</span><span id="goal-summary" class="value" contenteditable="true"></span></div>
+        <div class="field full"><span class="label">Note da anamnesi</span><span id="notes-summary" class="value" contenteditable="true"></span></div>
+      </div>
+    </section>
+
     <section id="dynamic-sections">
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">3. Oggetto del servizio</h2>
+        <h2 contenteditable="true">4. Oggetto del servizio</h2>
         <p contenteditable="true">Il cliente richiede l'accesso ai servizi di Personal Training, valutazione e programmazione dell'allenamento presso NEACEA Studio. Le attivita' potranno includere:</p>
         <ul>
           <li contenteditable="true">anamnesi motoria e raccolta di informazioni utili alla programmazione dell'attivita' fisica;</li>
@@ -257,21 +276,21 @@
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">4. Dichiarazioni sullo stato di salute</h2>
+        <h2 contenteditable="true">5. Dichiarazioni sullo stato di salute</h2>
         <p contenteditable="true">Il cliente dichiara di aver comunicato in modo completo e veritiero eventuali patologie, dolori, infortuni, interventi chirurgici, terapie farmacologiche, limitazioni funzionali, gravidanza o altre condizioni rilevanti per lo svolgimento dell'attivita' fisica.</p>
         <p contenteditable="true">Il cliente si impegna a informare tempestivamente lo staff NEACEA di qualsiasi variazione dello stato di salute e a interrompere l'attivita' in caso di dolore, malessere, vertigini, difficolta' respiratoria o sintomi anomali.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">5. Rischi e limiti della prestazione</h2>
+        <h2 contenteditable="true">6. Rischi e limiti della prestazione</h2>
         <p contenteditable="true">Il cliente e' consapevole che l'attivita' fisica, anche se programmata e supervisionata, puo' comportare rischi quali affaticamento, indolenzimento muscolare, irritazioni articolari, cadute, traumi o altri eventi non prevedibili.</p>
         <p contenteditable="true">Il servizio di Personal Training non sostituisce visite mediche, diagnosi, terapie o trattamenti sanitari. Eventuali indicazioni tecniche hanno finalita' di educazione motoria, miglioramento della performance, benessere e organizzazione dell'allenamento.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">6. Regole di utilizzo dello studio</h2>
+        <h2 contenteditable="true">7. Regole di utilizzo dello studio</h2>
         <ul>
           <li contenteditable="true">Il cliente utilizza attrezzature e spazi seguendo le indicazioni dello staff.</li>
           <li contenteditable="true">Il cliente non modifica autonomamente esercizi, carichi o impostazioni degli attrezzi se non autorizzato.</li>
@@ -282,26 +301,26 @@
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">7. Raccolta e trattamento dei dati personali</h2>
+        <h2 contenteditable="true">8. Raccolta e trattamento dei dati personali</h2>
         <p contenteditable="true">Ai sensi del Regolamento UE 2016/679 (GDPR), il cliente prende atto che NEACEA potra' trattare dati anagrafici, di contatto, amministrativi, informazioni relative allo stato fisico, abitudini di allenamento, obiettivi, misurazioni, fotografie tecniche e dati necessari alla gestione del percorso.</p>
         <p contenteditable="true">I dati saranno utilizzati per gestione del cliente, programmazione e monitoraggio dell'allenamento, organizzazione appuntamenti, comunicazioni operative, adempimenti amministrativi e tutela dei diritti della struttura.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">8. Documentazione fotografica e video tecnica</h2>
+        <h2 contenteditable="true">9. Documentazione fotografica e video tecnica</h2>
         <p contenteditable="true">La raccolta di fotografie o brevi riprese tecniche potra' essere proposta per valutazione posturale, confronto dei progressi, analisi esecutiva degli esercizi e documentazione interna del percorso. Tali contenuti non saranno utilizzati per finalita' promozionali senza consenso specifico.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">9. Videosorveglianza interna</h2>
+        <h2 contenteditable="true">10. Videosorveglianza interna</h2>
         <p contenteditable="true">Il cliente prende atto che all'interno dello studio possono essere presenti telecamere a circuito chiuso, utilizzate per finalita' di sicurezza, tutela delle persone, protezione dei beni e verifica di eventuali eventi rilevanti. Le immagini non sono destinate alla diffusione pubblica e sono trattate secondo la normativa vigente.</p>
       </div>
     </section>
 
     <section id="consent-rows">
-      <h2 contenteditable="true">10. Consensi e dichiarazioni da barrare</h2>
+      <h2 contenteditable="true">11. Consensi e dichiarazioni da barrare</h2>
       <div class="consent-row">
         <span class="box"></span>
         <span contenteditable="true">Dichiaro di essere in possesso di certificazione medica/idoneita' ove richiesta.</span>
@@ -325,13 +344,13 @@
     </section>
 
     <section>
-      <h2 contenteditable="true">11. Dichiarazione finale</h2>
+      <h2 contenteditable="true">12. Dichiarazione finale</h2>
       <p contenteditable="true">Il sottoscritto dichiara di aver letto e compreso il presente documento, di aver ricevuto spiegazioni chiare sulle attivita' proposte, sui limiti del servizio, sui rischi connessi all'attivita' fisica e sul trattamento dei dati personali.</p>
       <p contenteditable="true">Il cliente presta il proprio consenso libero e informato allo svolgimento del percorso di Personal Training presso NEACEA Studio.</p>
     </section>
 
     <section>
-      <h2 contenteditable="true">12. Firma</h2>
+      <h2 contenteditable="true">13. Firma</h2>
       <div class="grid">
         <div class="field"><span class="label">Luogo e data</span><span id="place-date" class="value" contenteditable="true"></span></div>
         <div class="field"><span class="label">Nome leggibile cliente</span><span id="readable-name" class="value" contenteditable="true"></span></div>
@@ -371,6 +390,10 @@
     function setText(id, value) {
       const el = document.getElementById(id);
       if (el) el.textContent = value || '';
+    }
+    function joinList(value) {
+      if (Array.isArray(value)) return value.filter(Boolean).join(', ');
+      return value || '';
     }
 
     function removeBlock(btn) {
@@ -425,6 +448,12 @@
         setText('client-doc', client.documento || '');
         setText('client-address', client.indirizzo || '');
         setText('client-emergency', client.contatto_emergenza || '');
+        setText('service-summary', client.tipo_servizio || joinList(client.package_types));
+        setText('package-summary', [joinList(client.package_types), client.tipo_abbonamento, client.stato_pagamento].filter(Boolean).join(' · '));
+        setText('days-summary', [client.package_frequency || client.sessioni_pref, joinList(client.giorni_settimana)].filter(Boolean).join(' · '));
+        setText('sessions-summary', client.sessions_total ? `${client.sessions_remaining || 0} residue su ${client.sessions_total}` : '');
+        setText('goal-summary', client.obiettivo || '');
+        setText('notes-summary', client.notes || '');
         setText('pt-name', opName);
         setText('readable-name', fullName);
         setText('operator-readable', opName);
