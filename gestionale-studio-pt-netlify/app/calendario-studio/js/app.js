@@ -390,13 +390,13 @@ const App = {
 
     let bodyHtml = '';
     if (isBlock) {
-      bodyHtml = `<div class="detail-section">
+      bodyHtml = `<div class="detail-section detail-section-full">
         <div class="detail-label">Tipo</div>
         <div class="detail-value" style="color:var(--text3)">Blocco agenda — operatore non disponibile</div>
       </div>`;
     } else if (isCircuit) {
       bodyHtml = `
-        <div class="detail-section">
+        <div class="detail-section detail-section-full">
           <div class="detail-label">Partecipanti (${appt.clientIds.length}/${svc.maxClients})</div>
           <div class="participant-list">
             ${appt.clientIds.map(id => {
@@ -435,9 +435,9 @@ const App = {
         </div>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
-      <div class="modal-body">
-        ${bodyHtml}
+      <div class="modal-body appt-detail-body">
         <div class="detail-grid">
+          ${bodyHtml}
           <div class="detail-section">
             <div class="detail-label">Operatore</div>
             <div class="detail-value">${op?`${op.nome} ${op.cognome}`:'—'}</div>
@@ -449,7 +449,7 @@ const App = {
             </div>
           </div>
         </div>
-        ${appt.notes?`<div class="detail-section"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
+        ${appt.notes?`<div class="detail-section detail-section-full detail-notes"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
       </div>
       <div class="modal-footer">
         <button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>
