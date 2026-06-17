@@ -594,7 +594,7 @@ async function apiFetch(p){
     }
     if(ins?.error)return ins;
     const appuntamentiCreati=await creaProgrammazionePacchetto(clientId,acq,p);
-    await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});
+    await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
     return{success:true,clientId,appuntamentiCreati};
   }
   return{error:'Azione non supportata'}
@@ -609,16 +609,17 @@ async function carica(){
     if(ops.error)throw new Error(ops.error);
     acquisizioni=d.acquisizioni||[];staffAll=ops.staff||[];initialized=true;
     renderStats();renderLista();
-    const t=acquisizioni.length;
+    const t=acquisizioni.filter(c=>c.stato!=='Convertito').length;
     document.getElementById('lista-sub').textContent=t===0?'Nessun prospect registrato — aggiungi la prima anamnesi':t+' prospect registrat'+(t===1?'o':'i');
     showToast('Aggiornato ✓','success');
   }catch(e){document.getElementById('grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">Errore connessione Supabase</div><div class="empty-sub">'+String(e.message||e).slice(0,180)+'</div></div>';showToast('Errore Supabase','error')}
 }
 
 function renderStats(){
-  const t=acquisizioni.length;const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').length;const int=acquisizioni.filter(c=>c.stato==='Interessato').length;
+  const attive=acquisizioni.filter(c=>c.stato!=='Convertito');
+  const t=attive.length;const pronti=attive.filter(c=>c.stato==='Pronto a iniziare').length;const int=attive.filter(c=>c.stato==='Interessato').length;
   const oggi=new Date();oggi.setHours(23,59,59,999);
-  const follow=acquisizioni.filter(c=>c.followup&&new Date(c.followup+'T00:00:00')<=oggi&&c.stato!=='Pronto a iniziare');
+  const follow=attive.filter(c=>c.followup&&new Date(c.followup+'T00:00:00')<=oggi&&c.stato!=='Pronto a iniziare');
   document.getElementById('st-tot').textContent=t;document.getElementById('st-pronti').textContent=pronti;document.getElementById('st-int').textContent=int;document.getElementById('st-follow').textContent=follow.length;
   document.getElementById('st-follow-sub').className='kpi-sub'+(follow.length?' warn':'');
   renderDashPanels(follow);
@@ -626,7 +627,7 @@ function renderStats(){
 
 function renderDashPanels(follow){
   const byDate=(a,b)=>String(a.followup||'9999').localeCompare(String(b.followup||'9999'));
-  const recenti=[...acquisizioni].sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
+  const recenti=[...acquisizioni.filter(c=>c.stato!=='Convertito')].sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
   const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').slice(0,4);
   fillDash('dash-follow',[...follow].sort(byDate).slice(0,4),'Nessun follow-up urgente',c=>fmtData(c.followup));
   fillDash('dash-pronti',pronti,'Nessun cliente pronto',c=>c.sessioni_pref||'da definire');
@@ -645,6 +646,7 @@ function fillDash(id,items,empty,metaFn){
 function renderLista(){
   const q=document.getElementById('search').value.toLowerCase();
   const f=acquisizioni.filter(c=>{
+    if(c.stato==='Convertito')return false;
     const m=((c.nome||'')+(c.cognome||'')+(c.email||'')+(c.telefono||'')).toLowerCase().includes(q);if(!m)return false;
     if(filtro==='pronti')return c.stato==='Pronto a iniziare';if(filtro==='interessati')return c.stato==='Interessato';if(filtro==='valutazione')return c.stato==='In valutazione';return true;
   });

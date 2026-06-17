@@ -9,7 +9,8 @@
       const routes = {
         'scheda-pt-cliente.netlify.app': './scheda-cliente/',
         'new-calendar-neacea.netlify.app': './calendario-studio/',
-        'anamnesi-acquisizione-cliente.netlify.app': './acquisizione/'
+        'anamnesi-acquisizione-cliente.netlify.app': './acquisizione/',
+        'portale-pt.netlify.app': './portale-pt/'
       };
       const target = routes[window.location.hostname];
       const isHome = window.location.pathname === '/' || window.location.pathname.endsWith('/index.html');
@@ -38,6 +39,7 @@
       <a href="./scheda-cliente/"><strong>Scheda Cliente</strong><span>Clienti PT, dati fisici, programma, foto e carichi.</span></a>
       <a href="./calendario-studio/"><strong>Calendario Studio</strong><span>Agenda sale, appuntamenti, clienti e staff.</span></a>
       <a href="./acquisizione/"><strong>Acquisizione</strong><span>Anamnesi prospect e conferma cliente.</span></a>
+      <a href="./portale-pt/"><strong>Resoconto Studio</strong><span>Cruscotto direzione, anamnesi, pagamenti e statistiche.</span></a>
     </div>
   </main>
 </body>
