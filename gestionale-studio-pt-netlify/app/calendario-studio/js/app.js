@@ -524,8 +524,9 @@ const App = {
   // ── MODAL CLIENTE ────────────────────────────────────
   openNewClient()        { App._renderClientModal(null); },
   openEditClient(cid)    { App._renderClientModal(cid); },
+  openEditPackage(cid)   { App._renderClientModal(cid, true); },
 
-  _renderClientModal(clientId) {
+  _renderClientModal(clientId, packageOnly = false) {
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
     const isEdit = !!client;
     // Supporta sia vecchio schema stringa che nuovo array
@@ -552,7 +553,7 @@ const App = {
 
     const html = `
       <div class="modal-header">
-        <h3>${isEdit?'Modifica Cliente':'Nuovo Cliente'}</h3>
+        <h3>${packageOnly ? 'Modifica pacchetto e giorni' : (isEdit?'Modifica Cliente':'Nuovo Cliente')}</h3>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body">
@@ -602,6 +603,7 @@ const App = {
         </div>
 
         <div class="form-section-label">Pacchetti acquistati</div>
+        ${packageOnly ? '<div class="form-hint" style="margin-bottom:8px">Qui modifichi pacchetto, frequenza, sessioni totali e giorni acquistati. Le sedute gia in calendario restano sotto controllo nel Quadro pacchetto.</div>' : ''}
         <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
           ${pkgCheckboxes}
         </div>
@@ -854,7 +856,7 @@ const App = {
               ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
             </div>
           </div>
-          <button class="btn" onclick="UI.closeModal();App.openEditClient('${client.id}')">Modifica dati</button>
+          <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto/giorni</button>
         </div>
 
         <div class="package-overview-kpis">
