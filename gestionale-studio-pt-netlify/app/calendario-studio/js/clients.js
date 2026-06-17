@@ -230,7 +230,10 @@ const Clients = (() => {
                     ${metrics.residualMismatch ? `
                       <div class="text-muted" style="font-size:0.72rem">
                         Residuo salvato nel cliente: ${metrics.storedRemaining} · residuo corretto dagli appuntamenti fatti: ${metrics.computedRemaining}
-                      </div>` : ''}
+                      </div>
+                      <button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
+                        Allinea residuo
+                      </button>` : ''}
                     ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
                   </div>
                 </td>
@@ -263,5 +266,23 @@ const Clients = (() => {
     }
   }
 
-  return { render, toggleActive, getPackageMetrics, renderDashboardAlerts };
+  function alignResidual(clientId) {
+    const clients = State.getClients();
+    const idx = clients.findIndex(c => c.id === clientId);
+    if (idx === -1) return;
+
+    const metrics = getPackageMetrics(clients[idx]);
+    clients[idx] = {
+      ...clients[idx],
+      sessionsRemaining: metrics.computedRemaining,
+      sessions_remaining: metrics.computedRemaining,
+    };
+    State.saveClients(clients);
+    SupabaseSync.pushClient(clients[idx]);
+    if (CONFIG.SHEETS.enabled) Sheets.pushClient(clients[idx]);
+    render();
+    UI.showToast('Residuo allineato al calendario', 'success');
+  }
+
+  return { render, toggleActive, alignResidual, getPackageMetrics, renderDashboardAlerts };
 })();
