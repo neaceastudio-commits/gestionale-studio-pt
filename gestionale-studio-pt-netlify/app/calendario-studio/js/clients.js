@@ -55,6 +55,7 @@ const Clients = (() => {
     const hasPackage = pkgs.length > 0;
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
     const computedRemaining = total > 0 ? Math.max(0, total - completed) : 0;
+    const residualMismatch = total > 0 && Math.abs(storedRemaining - computedRemaining) > 0;
     const remaining = total > 0 ? computedRemaining : storedRemaining;
     const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
     const pctDone = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
@@ -72,7 +73,7 @@ const Clients = (() => {
 
     const alerts = [];
     if (hasPackage && total <= 0) alerts.push('Sessioni totali mancanti');
-    if (total > 0 && Math.abs(storedRemaining - computedRemaining) > 0) alerts.push('Residuo da riallineare');
+    if (residualMismatch) alerts.push(`Residuo da riallineare: salvato ${storedRemaining}, corretto ${computedRemaining}`);
     if (total > 0 && remaining <= 2 && remaining > 0) alerts.push('Pacchetto quasi finito');
     if (toSchedule > 0) alerts.push(`${toSchedule} da programmare`);
     if (remaining > 0 && !next) alerts.push('Nessun prossimo appuntamento');
@@ -87,6 +88,7 @@ const Clients = (() => {
       remaining,
       storedRemaining,
       computedRemaining,
+      residualMismatch,
       toSchedule,
       pctDone,
       next,
@@ -225,6 +227,10 @@ const Clients = (() => {
                   <div class="package-status" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">
                     <div>${metrics.scheduled} programmate · ${metrics.toSchedule} da pianificare</div>
                     <div class="text-muted">Prossima: ${fmtDate(metrics.next?.date)} · Fine stimata: ${fmtDate(metrics.projectedEnd)}</div>
+                    ${metrics.residualMismatch ? `
+                      <div class="text-muted" style="font-size:0.72rem">
+                        Residuo salvato nel cliente: ${metrics.storedRemaining} · residuo corretto dagli appuntamenti fatti: ${metrics.computedRemaining}
+                      </div>` : ''}
                     ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
                   </div>
                 </td>
