@@ -115,12 +115,13 @@ const Services = (() => {
     return svc.requiredRoles.some(r => roles.includes(r));
   }
 
-  function getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin) {
+  function getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId = null) {
     const svc = getService(serviceId);
     const tmp = { serviceId, date, startTime, durationMin, bufferMin };
     return State.getOperators().filter(o => o.active !== false).map(op => {
       const hasRole = opHasRole(op, svc);
       const conflicts = State.getAppointments().filter(a =>
+        a.id !== excludeId &&
         a.status !== 'annullato' &&
         a.operatorId === op.id &&
         a.date === date &&
@@ -130,8 +131,8 @@ const Services = (() => {
     });
   }
 
-  function autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin) {
-    const ops = getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin);
+  function autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin, excludeId = null) {
+    const ops = getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId);
     const best = ops.find(o => o.hasRole && o.available);
     return best ? best.id : null;
   }

@@ -76,6 +76,7 @@ const App = {
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="appt-id" value="${apptId || ''}">
 
         <div class="form-row">
           <div class="form-group">
@@ -112,7 +113,7 @@ const App = {
 
         <!-- Operatore: ricostruito da _buildOperatorSection -->
         <div id="operator-section">
-          ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||'09:00', appt?.durationMin||svc?.durationMin||60)}
+          ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
         </div>
 
         <div id="slot-validation" class="slot-validation" style="margin-bottom:8px"></div>
@@ -213,20 +214,21 @@ const App = {
   },
 
   // ── SEZIONE OPERATORE ─────────────────────────────────
-  _buildOperatorSection(serviceId, selectedOpId, date, startTime, durationMin) {
+  _buildOperatorSection(serviceId, selectedOpId, date, startTime, durationMin, excludeAppointmentId = null) {
     const svc = Services.getService(serviceId);
     const bufferMin = svc?.bufferMin || 0;
-    const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin);
+    const excludeId = excludeAppointmentId || document.getElementById('appt-id')?.value || null;
+    const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId);
 
     // Se selectedOpId non valido, prova auto-assign
     if (!selectedOpId && date && startTime) {
-      selectedOpId = Services.autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin) || '';
+      selectedOpId = Services.autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin, excludeId) || '';
     }
 
     const opsHtml = `<option value="">— nessuno / scegli —</option>` + ops.map(op => {
       let icon = '';
       if (!op.hasRole)    icon = ' 🚫 ruolo mancante';
-      else if (!op.available) icon = ` ⚠ occupato ${op.conflicts.map(c=>c.startTime).join(',')}`;
+      else if (!op.available) icon = ` ⚠ occupato ${[...new Set(op.conflicts.map(c=>c.startTime))].join(', ')}`;
       else                icon = ' ✓';
       return `<option value="${op.id}"
         ${op.id===selectedOpId?'selected':''}
@@ -294,9 +296,10 @@ const App = {
     const opId = document.getElementById('appt-operator')?.value || null;
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
     const clientIds = clientEls.map(el => el.value);
+    const apptId = document.getElementById('appt-id')?.value || null;
 
     const tmpAppt = {
-      id: null, serviceId: svcId, clientIds, operatorId: opId,
+      id: apptId, serviceId: svcId, clientIds, operatorId: opId,
       date, startTime: time, durationMin: dur, bufferMin: svc?.bufferMin||0, status: 'prenotato',
     };
 
@@ -306,7 +309,7 @@ const App = {
       if (validation.ok) {
         let roomInfo = '';
         if (svc?.room) {
-          const load = Services.getRoomLoadAt(date, time, dur, svc.room);
+          const load = Services.getRoomLoadAt(date, time, dur, svc.room, apptId);
           const eff  = svc.isGroup ? clientIds.length : (svc.roomLoad||0);
           const max  = Services.getRoomMax(svc.room);
           roomInfo = ` · ${CONFIG.ROOMS[svc.room].label}: ${load+eff}/${max}`;
@@ -326,9 +329,10 @@ const App = {
     const time  = document.getElementById('appt-time')?.value;
     const dur   = parseInt(document.getElementById('appt-duration')?.value) || 60;
     const curOp = document.getElementById('appt-operator')?.value || null;
+    const apptId = document.getElementById('appt-id')?.value || null;
     const os = document.getElementById('operator-section');
     if (os && svcId && date && time) {
-      os.innerHTML = App._buildOperatorSection(svcId, curOp, date, time, dur);
+      os.innerHTML = App._buildOperatorSection(svcId, curOp, date, time, dur, apptId);
     }
   },
 
@@ -354,7 +358,21 @@ const App = {
       bufferMin: svc?.bufferMin ?? 10, status, notes,
     };
 
-    const validation = Services.canBookAppointment({ ...apptData, id: apptId||null });
+    const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    const sameClients = before
+      ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
+      : false;
+    const sameSlot = before &&
+      before.serviceId === svcId &&
+      before.date === date &&
+      before.startTime === time &&
+      Number(before.durationMin || 60) === dur &&
+      (before.operatorId || null) === opId &&
+      sameClients;
+
+    const validation = sameSlot
+      ? { ok: true, errors: [] }
+      : Services.canBookAppointment({ ...apptData, id: apptId||null });
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       const ve = document.getElementById('slot-validation');
@@ -364,7 +382,6 @@ const App = {
 
     let saved;
     if (apptId) {
-      const before = State.getAppointments().find(a => a.id === apptId);
       saved = Services.updateAppointment(apptId, apptData);
       if (before?.status !== 'fatto' && saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento aggiornato', 'success');
