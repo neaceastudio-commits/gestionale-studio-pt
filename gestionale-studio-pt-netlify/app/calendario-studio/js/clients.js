@@ -58,6 +58,8 @@ const Clients = (() => {
     const residualMismatch = total > 0 && Math.abs(storedRemaining - computedRemaining) > 0;
     const remaining = total > 0 ? computedRemaining : storedRemaining;
     const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
+    const plannedTotal = completed + scheduled;
+    const overPlanned = total > 0 ? Math.max(0, plannedTotal - total) : 0;
     const pctDone = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
     const next = activeAppts.find(a => a.date >= today && a.status !== 'fatto');
     const lastDone = [...activeAppts].reverse().find(a => a.status === 'fatto');
@@ -76,6 +78,7 @@ const Clients = (() => {
     if (residualMismatch) alerts.push(`Residuo da riallineare: salvato ${storedRemaining}, corretto ${computedRemaining}`);
     if (total > 0 && remaining <= 2 && remaining > 0) alerts.push('Pacchetto quasi finito');
     if (toSchedule > 0) alerts.push(`${toSchedule} da programmare`);
+    if (overPlanned > 0) alerts.push(`${overPlanned} oltre pacchetto`);
     if (remaining > 0 && !next) alerts.push('Nessun prossimo appuntamento');
     if (total > 0 && completed >= total) alerts.push('Pacchetto completato');
 
@@ -84,12 +87,14 @@ const Clients = (() => {
       hasPackage,
       completed,
       scheduled,
+      plannedTotal,
       noShow,
       remaining,
       storedRemaining,
       computedRemaining,
       residualMismatch,
       toSchedule,
+      overPlanned,
       pctDone,
       next,
       lastDone,
@@ -226,6 +231,7 @@ const Clients = (() => {
                 <td>
                   <div class="package-status" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">
                     <div>${metrics.scheduled} programmate · ${metrics.toSchedule} da pianificare</div>
+                    ${metrics.overPlanned ? `<div class="text-muted" style="font-size:0.72rem;color:#DC2626">In calendario: ${metrics.plannedTotal}/${metrics.total} · ${metrics.overPlanned} lezioni oltre pacchetto</div>` : ''}
                     <div class="text-muted">Prossima: ${fmtDate(metrics.next?.date)} · Fine stimata: ${fmtDate(metrics.projectedEnd)}</div>
                     ${metrics.residualMismatch ? `
                       <div class="text-muted" style="font-size:0.72rem">

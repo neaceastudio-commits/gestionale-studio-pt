@@ -101,10 +101,12 @@ const Services = (() => {
     );
     const completed = activeAppts.filter(a => a.status === 'fatto').length;
     const scheduled = activeAppts.filter(a => a.status !== 'fatto' && a.date >= today).length;
+    const plannedTotal = completed + scheduled;
     const remaining = total > 0 ? Math.max(0, total - completed) : storedRemaining;
     const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
+    const overPlanned = total > 0 ? Math.max(0, plannedTotal - total) : 0;
 
-    return { total, completed, scheduled, remaining, toSchedule, storedRemaining };
+    return { total, completed, scheduled, plannedTotal, remaining, toSchedule, overPlanned, storedRemaining };
   }
 
   function opHasRole(op, svc) {

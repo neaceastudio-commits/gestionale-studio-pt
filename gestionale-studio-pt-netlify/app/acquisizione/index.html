@@ -259,7 +259,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
           <select id="conf-pagamento"><option>Da pagare</option><option>Pagato</option><option>Parziale</option></select>
         </div>
       </div>
-      <div class="conf-note">💡 Dopo la conferma il prospect sparirà dall'acquisizione e apparirà nello studio con tutti i dati precompilati.</div>
+      <div class="conf-note">💡 Dopo la conferma il prospect sparirà dall'acquisizione e apparirà nello studio. Le lezioni si programmano da Calendario → Clienti → Quadro pacchetto, unico punto operativo del pacchetto.</div>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost" onclick="closeMo('mo-conferma')">Annulla</button>
@@ -535,30 +535,11 @@ function confNextPackageDates(start,days,total){
   }
   return out;
 }
-async function creaProgrammazionePacchetto(clientId,acq,p){
-  const total=Math.max(0,(parseInt(p.sessioni_totali)||0)-(parseInt(p.sessioni_usate)||0));
-  const days=p.giorniSettimana||[];
-  if(!clientId||!total||!days.length)return 0;
-  const svc=CONF_SERVICE_META[p.packageType]||CONF_SERVICE_META['PT 1:1'];
-  const dates=confNextPackageDates(p.dataInizio,days,total);
-  const startTime=confStartTime(acq);
-  const rows=dates.map(date=>({
-    id:genId('a'),
-    service_id:svc.id,
-    client_ids:[clientId],
-    operator_id:p.ptId||null,
-    date,
-    start_time:startTime,
-    duration_min:svc.duration,
-    buffer_min:svc.buffer,
-    status:'prenotato',
-    notes:'Programmazione generata da acquisizione',
-    updated_at:new Date().toISOString()
-  }));
-  if(!rows.length)return 0;
-  const res=await sb('appointments',{method:'POST',headers:{Prefer:'return=minimal'},body:rows});
-  if(res?.error)throw new Error(res.error);
-  return rows.length;
+function servizioDaPacchetto(packageType){
+  if(packageType==='Nutrizione')return'Nutrizione';
+  if(packageType==='Valutazioni')return'Valutazioni';
+  if(packageType==='Circuit')return'Circuit';
+  return packageType||'PT 1:1';
 }
 async function apiGet(a){
   if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
@@ -580,7 +561,8 @@ async function apiFetch(p){
     const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
     const sessionsTotal=parseInt(p.sessioni_totali)||0;
     const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
-    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[p.packageType||'PT 1:1'],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:acq.servizi||'',tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
+    const packageType=p.packageType||'PT 1:1';
+    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
     let ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body});
     if(ins?.error&&String(ins.error).toLowerCase().includes('column')){
       const fallback={...body};
@@ -593,9 +575,8 @@ async function apiFetch(p){
       ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body:fallback});
     }
     if(ins?.error)return ins;
-    const appuntamentiCreati=await creaProgrammazionePacchetto(clientId,acq,p);
     await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
-    return{success:true,clientId,appuntamentiCreati};
+    return{success:true,clientId,appuntamentiCreati:0};
   }
   return{error:'Azione non supportata'}
 }
@@ -789,7 +770,7 @@ async function eseguiConferma(){
   if(needsPlan&&sessioniTotali<=0){showToast('Inserisci le sessioni totali acquistate','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   if(needsPlan&&!giorniSettimana.length){showToast('Seleziona almeno un giorno del pacchetto','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType,ptId:document.getElementById('conf-pt').value,tipoAbbonamento,dataInizio:document.getElementById('conf-data').value,sessioni_totali:sessioniTotali,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
-  if(res.success){showToast('Cliente trasferito: '+(res.appuntamentiCreati||0)+' appuntamenti creati in calendario','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
+  if(res.success){showToast('Cliente trasferito. Programma le lezioni da Calendario → Clienti → Quadro pacchetto','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
   else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
   btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
 }

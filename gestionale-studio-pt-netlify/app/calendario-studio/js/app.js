@@ -860,9 +860,10 @@ const App = {
         <div class="package-overview-kpis">
           <div class="${hasTotal ? '' : 'warn'}"><span>Totali</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
           <div><span>Fatte</span><strong>${metrics.completed}</strong></div>
-          <div><span>Programmate</span><strong>${metrics.scheduled}</strong></div>
+          <div><span>Future</span><strong>${metrics.scheduled}</strong></div>
           <div><span>Residue</span><strong>${hasTotal ? metrics.remaining : '—'}</strong></div>
           <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
+          <div class="${metrics.overPlanned ? 'warn' : ''}"><span>Oltre pacchetto</span><strong>${metrics.overPlanned || 0}</strong></div>
         </div>
 
         <div class="package-overview-grid">
