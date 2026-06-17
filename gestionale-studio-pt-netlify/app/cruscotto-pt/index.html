@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resoconto Studio PT - NEACEA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+    :root {
+      --blue: #1c3144;
+      --blue-mid: #26425c;
+      --blue-light: #3a5f80;
+      --blue-xpale: #f0f4f8;
+      --bg: #f0f3f5;
+      --bg2: #fff;
+      --border: #dce4ea;
+      --border2: #c4d0da;
+      --text: #1c3144;
+      --text2: #5a7288;
+      --text3: #98aab8;
+      --gold: #c9a84c;
+      --green: #2d6a4f;
+      --green-pale: #e8f5ee;
+      --red: #c0392b;
+      --red-pale: #fdecea;
+      --shadow: 0 8px 28px rgba(28,49,68,.09);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+    }
+    button, select, input { font-family: inherit; }
+    .topbar {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 28px;
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .18);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+      font-weight: 900;
+      font-size: 20px;
+    }
+    .brand span {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      border-left: 1px solid rgba(255,255,255,.24);
+      padding-left: 16px;
+      color: rgba(255,255,255,.68);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .select-pt {
+      min-width: 210px;
+      height: 40px;
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 800;
+      outline: none;
+    }
+    .select-pt option { color: var(--text); background: #fff; }
+    .ghost-btn {
+      height: 40px;
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .main {
+      width: min(1280px, calc(100vw - 48px));
+      margin: 32px auto 56px;
+    }
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+    .eyebrow {
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    h1 {
+      color: var(--text);
+      font-size: 34px;
+      line-height: 1.05;
+      font-weight: 900;
+    }
+    .hero-sub {
+      margin-top: 8px;
+      color: var(--text2);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .status {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg2);
+      color: var(--text2);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .metric {
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--blue);
+      border-radius: var(--radius);
+      background: var(--bg2);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-height: 110px;
+    }
+    .metric:nth-child(2) { border-top-color: var(--green); }
+    .metric:nth-child(3) { border-top-color: var(--gold); }
+    .metric:nth-child(4) { border-top-color: var(--red); }
+    .metric-label {
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      color: var(--text);
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .metric-note {
+      margin-top: 9px;
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg2);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--blue-xpale);
+      padding: 15px 17px;
+    }
+    .panel-title {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .panel-body { padding: 14px; }
+    .search {
+      width: 280px;
+      height: 38px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      outline: none;
+    }
+    .client-list, .appt-list, .finance-list {
+      display: grid;
+      gap: 10px;
+    }
+    .client-card, .appt-card {
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 14px;
+    }
+    .client-card:hover, .appt-card:hover {
+      border-color: var(--blue-light);
+      background: #fbfdff;
+    }
+    .anamnesis-list {
+      display: grid;
+      gap: 12px;
+    }
+    .anamnesis-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 14px;
+    }
+    .anamnesis-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .anamnesis-field {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--blue-xpale);
+      padding: 10px;
+      min-height: 68px;
+    }
+    .anamnesis-field.wide { grid-column: span 2; }
+    .anamnesis-field.full { grid-column: 1 / -1; }
+    .field-label {
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .field-value {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .name {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+    .muted {
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 3px;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      background: var(--blue-xpale);
+      color: var(--text2);
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .tag.green { background: var(--green-pale); color: var(--green); border-color: #bfe4cc; }
+    .tag.gold { background: #fff8e4; color: #8a6a16; border-color: #efd88e; }
+    .tag.red { background: var(--red-pale); color: var(--red); border-color: #f0b8b0; }
+    .progress {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--green);
+    }
+    .money {
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+    }
+    .admin-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, .55fr);
+      gap: 18px;
+      align-items: start;
+      margin-top: 18px;
+    }
+    .finance-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 13px 14px;
+    }
+    .meeting-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .meeting-grid .panel {
+      min-height: 260px;
+    }
+    .stat-list {
+      display: grid;
+      gap: 12px;
+    }
+    .stat-row {
+      display: grid;
+      gap: 7px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 12px;
+    }
+    .stat-row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .stat-row-title {
+      min-width: 0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+    .stat-row-value {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue-light);
+    }
+    .bar.green span { background: var(--green); }
+    .bar.gold span { background: var(--gold); }
+    .bar.red span { background: var(--red); }
+    .discussion-list {
+      display: grid;
+      gap: 10px;
+    }
+    .discussion-item {
+      border-left: 4px solid var(--blue);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 12px 13px;
+      box-shadow: 0 1px 0 rgba(28,49,68,.06);
+    }
+    .discussion-item.gold { border-left-color: var(--gold); }
+    .discussion-item.red { border-left-color: var(--red); }
+    .discussion-item.green { border-left-color: var(--green); }
+    .empty {
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius);
+      padding: 30px 18px;
+      color: var(--text2);
+      text-align: center;
+      font-weight: 800;
+    }
+    .error {
+      border: 1px solid #f0b8b0;
+      border-radius: var(--radius);
+      background: var(--red-pale);
+      color: var(--red);
+      padding: 14px;
+      font-weight: 800;
+    }
+    .loader {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 980px) {
+      .topbar, .hero { align-items: stretch; flex-direction: column; }
+      .top-actions { width: 100%; }
+      .select-pt { flex: 1; min-width: 0; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout, .admin-grid, .meeting-grid { grid-template-columns: 1fr; }
+      .anamnesis-grid { grid-template-columns: 1fr; }
+      .anamnesis-field.wide { grid-column: auto; }
+      .main { width: min(100vw - 24px, 760px); margin-top: 24px; }
+    }
+    @media (max-width: 560px) {
+      h1 { font-size: 28px; }
+      .metrics { grid-template-columns: 1fr; }
+      .panel-head { align-items: stretch; flex-direction: column; }
+      .search { width: 100%; }
+      .row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Neacea <span>Resoconto Studio PT</span></div>
+    <div class="top-actions">
+      <select id="operatorSelect" class="select-pt" onchange="render()">
+        <option value="">Tutti i PT</option>
+      </select>
+      <select id="paymentSelect" class="select-pt" onchange="render()">
+        <option value="">Tutti i pagamenti</option>
+        <option value="Da pagare">Da pagare</option>
+        <option value="Parziale">Parziale</option>
+        <option value="Pagato">Pagato</option>
+      </select>
+      <button class="ghost-btn" onclick="loadData()">Aggiorna</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Area riservata studio</div>
+        <h1 id="pageTitle">Resoconto Studio PT</h1>
+        <div class="hero-sub" id="pageSub">Quadro clienti, pacchetti, sedute, pagamenti e appuntamenti collegati a Supabase.</div>
+      </div>
+      <div class="status" id="syncStatus">In attesa di sincronizzazione</div>
+    </section>
+
+    <section class="metrics">
+      <div class="metric">
+        <div class="metric-label">Clienti attivi</div>
+        <div class="metric-value" id="mClients">-</div>
+        <div class="metric-note">Clienti con pacchetto o percorso attivo</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Incassato</div>
+        <div class="metric-value" id="mPaid">-</div>
+        <div class="metric-note">Somma clienti segnati come pagati</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Da incassare</div>
+        <div class="metric-value" id="mOpen">-</div>
+        <div class="metric-note">Da pagare o parziali</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Alert gestione</div>
+        <div class="metric-value" id="mAlerts">-</div>
+        <div class="metric-note">Sedute basse o pagamento aperto</div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Clienti e pacchetti</div>
+          <input id="clientSearch" class="search" type="search" placeholder="Cerca cliente..." oninput="render()">
+        </div>
+        <div class="panel-body">
+          <div id="clientsList" class="client-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Agenda studio</div>
+          <div class="tag" id="todayLabel"></div>
+        </div>
+        <div class="panel-body">
+          <div id="appointmentsList" class="appt-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Riepilogo pagamenti</div>
+          <div class="tag">Admin</div>
+        </div>
+        <div class="panel-body">
+          <div id="financeList" class="finance-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Scadenze e criticita</div>
+          <div class="tag gold">Monitor</div>
+        </div>
+        <div class="panel-body">
+          <div id="alertsList" class="finance-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head">
+        <div class="panel-title">Anamnesi clienti</div>
+        <div class="tag green">Archivio acquisizione</div>
+      </div>
+      <div class="panel-body">
+        <div id="anamnesisList" class="anamnesis-list"><div class="empty"><span class="loader"></span></div></div>
+      </div>
+    </section>
+
+    <section class="meeting-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Performance PT</div>
+          <div class="tag">Meeting</div>
+        </div>
+        <div class="panel-body">
+          <div id="ptStatsList" class="stat-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Mix servizi</div>
+          <div class="tag gold">Focus</div>
+        </div>
+        <div class="panel-body">
+          <div id="serviceStatsList" class="stat-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Presenze e qualita</div>
+          <div class="tag green">Agenda</div>
+        </div>
+        <div class="panel-body">
+          <div id="attendanceStatsList" class="stat-list"><div class="empty"><span class="loader"></span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head">
+        <div class="panel-title">Punti per meeting e brainstorming</div>
+        <div class="tag red">Azioni</div>
+      </div>
+      <div class="panel-body">
+        <div id="discussionList" class="discussion-list"><div class="empty"><span class="loader"></span></div></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+    const SERVICE_LABELS = {
+      pt11: 'PT 1:1',
+      pt12: 'PT 1:2',
+      circuit: 'Circuit',
+      nutrizione: 'Nutrizione',
+      check: 'Check',
+      visbody: 'Valutazione',
+      baiobit: 'Baiobit',
+      blocco: 'Blocco'
+    };
+    const STATUS_LABELS = {
+      prenotato: 'Prenotato',
+      fatto: 'Fatto',
+      noshow: 'No-show',
+      annullato: 'Annullato'
+    };
+    const state = {
+      operators: [],
+      clients: [],
+      appointments: [],
+      acquisitions: [],
+      operatorId: '',
+      payment: ''
+    };
+
+    function endpoint(table, query = '') {
+      return SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/' + table + query;
+    }
+    async function supabase(table, query = '') {
+      const res = await fetch(endpoint(table, query), {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function addDaysStr(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function fmtDate(value) {
+      if (!value) return '-';
+      const parts = String(value).split('-').map(Number);
+      const d = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+      return d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+    }
+    function fullName(item) {
+      return [item?.nome, item?.cognome].filter(Boolean).join(' ') || '-';
+    }
+    function clientFullName(id) {
+      const client = state.clients.find(c => c.id === id);
+      return client ? fullName(client) : id;
+    }
+    function cleanText(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+    function operatorName(id) {
+      const operator = state.operators.find(op => op.id === id);
+      return operator ? fullName(operator) : 'PT non assegnato';
+    }
+    function money(value) {
+      return Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    }
+    function paymentStatus(client) {
+      return client.stato_pagamento || 'Da pagare';
+    }
+    function paymentClass(status) {
+      if (status === 'Pagato') return 'green';
+      if (status === 'Parziale') return 'gold';
+      return 'red';
+    }
+    function packageText(client) {
+      const pkgs = Array.isArray(client.package_types) ? client.package_types : [];
+      return pkgs.length ? pkgs.join(', ') : (client.tipo_servizio || 'Percorso PT');
+    }
+    function remainingPct(client) {
+      const total = Number(client.sessions_total || 0);
+      if (!total) return 0;
+      return Math.max(0, Math.min(100, Math.round((Number(client.sessions_remaining || 0) / total) * 100)));
+    }
+    function selectedOperator() {
+      return state.operators.find(op => op.id === state.operatorId) || null;
+    }
+    function filteredClients() {
+      const q = (document.getElementById('clientSearch')?.value || '').trim().toLowerCase();
+      const opId = document.getElementById('operatorSelect')?.value || '';
+      const pay = document.getElementById('paymentSelect')?.value || '';
+      return state.clients
+        .filter(c => c.active !== false)
+        .filter(c => !opId || c.pt_assegnato === opId)
+        .filter(c => !pay || paymentStatus(c) === pay)
+        .filter(c => !q || `${c.nome || ''} ${c.cognome || ''} ${c.email || ''} ${c.telefono || ''}`.toLowerCase().includes(q));
+    }
+    function filteredAppointments(days = 7) {
+      const start = todayStr();
+      const end = addDaysStr(days);
+      const opId = document.getElementById('operatorSelect')?.value || '';
+      return state.appointments
+        .filter(a => !opId || a.operator_id === opId)
+        .filter(a => a.status !== 'annullato')
+        .filter(a => a.date >= start && a.date <= end)
+        .sort((a, b) => `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`));
+    }
+    function filteredAllAppointments() {
+      const opId = document.getElementById('operatorSelect')?.value || '';
+      return state.appointments
+        .filter(a => !opId || a.operator_id === opId)
+        .filter(a => a.status !== 'annullato');
+    }
+    function percent(value, total) {
+      if (!total) return 0;
+      return Math.max(0, Math.min(100, Math.round((value / total) * 100)));
+    }
+    function serviceFromClient(client) {
+      const pkgs = Array.isArray(client.package_types) ? client.package_types : [];
+      if (pkgs.length) return pkgs;
+      if (client.tipo_servizio) return String(client.tipo_servizio).split(',').map(s => s.trim()).filter(Boolean);
+      return ['Non specificato'];
+    }
+    function acquisitionForClient(client) {
+      if (!client) return null;
+      const email = cleanText(client.email);
+      const phone = cleanText(client.telefono).replace(/\s+/g, '');
+      const name = cleanText(`${client.nome || ''} ${client.cognome || ''}`);
+      return state.acquisitions.find(acq => {
+        const acqEmail = cleanText(acq.email);
+        const acqPhone = cleanText(acq.telefono).replace(/\s+/g, '');
+        const acqName = cleanText(`${acq.nome || ''} ${acq.cognome || ''}`);
+        return (email && acqEmail === email) || (phone && acqPhone === phone) || (name && acqName === name);
+      }) || null;
+    }
+    function field(label, value, cls = '') {
+      const display = Array.isArray(value) ? value.join(', ') : value;
+      if (!display) return '';
+      return `<div class="anamnesis-field ${cls}"><div class="field-label">${label}</div><div class="field-value">${display}</div></div>`;
+    }
+    function normalizeClientAssignments() {
+      const byClient = new Map();
+      state.appointments
+        .filter(appt => appt.operator_id && Array.isArray(appt.client_ids))
+        .forEach(appt => {
+          appt.client_ids.forEach(id => {
+            if (!byClient.has(id)) byClient.set(id, new Map());
+            const ops = byClient.get(id);
+            ops.set(appt.operator_id, (ops.get(appt.operator_id) || 0) + 1);
+          });
+        });
+      state.clients = state.clients.map(client => {
+        if (client.pt_assegnato || !byClient.has(client.id)) return client;
+        const best = [...byClient.get(client.id).entries()].sort((a, b) => b[1] - a[1])[0];
+        return best ? { ...client, pt_assegnato: best[0] } : client;
+      });
+    }
+    function renderOperatorSelect() {
+      const select = document.getElementById('operatorSelect');
+      const options = state.operators
+        .filter(op => op.active !== false)
+        .map(op => `<option value="${op.id}">${fullName(op)}</option>`)
+        .join('');
+      const current = select.value;
+      select.innerHTML = `<option value="">Tutti i PT</option>${options}`;
+      if ([...select.options].some(opt => opt.value === current)) select.value = current;
+    }
+    function render() {
+      renderOperatorSelect();
+      const opId = document.getElementById('operatorSelect')?.value || '';
+      const op = state.operators.find(item => item.id === opId) || null;
+      document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+      document.getElementById('pageTitle').textContent = op ? `Resoconto ${op.nome || fullName(op)}` : 'Resoconto Studio PT';
+      document.getElementById('pageSub').textContent = op
+        ? 'Vista filtrata per singolo trainer: clienti, sedute, pagamenti e appuntamenti.'
+        : 'Vista completa studio: clienti, pacchetti, sedute, pagamenti e agenda.';
+
+      const clients = filteredClients();
+      const appts = filteredAppointments(7);
+      const paid = clients.filter(c => paymentStatus(c) === 'Pagato').reduce((sum, c) => sum + Number(c.importo || 0), 0);
+      const open = clients.filter(c => paymentStatus(c) !== 'Pagato').reduce((sum, c) => sum + Number(c.importo || 0), 0);
+      const low = clients.filter(c => Number(c.sessions_total || 0) > 0 && Number(c.sessions_remaining || 0) <= 2);
+      const openPayments = clients.filter(c => paymentStatus(c) !== 'Pagato');
+
+      document.getElementById('mClients').textContent = clients.length;
+      document.getElementById('mPaid').textContent = money(paid);
+      document.getElementById('mOpen').textContent = money(open);
+      document.getElementById('mAlerts').textContent = low.length + openPayments.length;
+
+      renderClients(clients);
+      renderAppointments(appts);
+      renderFinance(clients);
+      renderAlerts(clients, appts);
+      renderAnamnesis(clients);
+      renderMeetingStats(clients, filteredAllAppointments());
+    }
+    function renderClients(clients) {
+      const list = document.getElementById('clientsList');
+      if (!clients.length) {
+        list.innerHTML = '<div class="empty">Nessun cliente trovato con questi filtri.</div>';
+        return;
+      }
+      list.innerHTML = clients.map(client => {
+        const total = Number(client.sessions_total || 0);
+        const remaining = Number(client.sessions_remaining || 0);
+        const pct = remainingPct(client);
+        const alertClass = total && remaining <= 2 ? 'red' : 'green';
+        const pay = paymentStatus(client);
+        return `
+          <article class="client-card">
+            <div class="row">
+              <div>
+                <div class="name">${fullName(client)}</div>
+                <div class="muted">${operatorName(client.pt_assegnato)} · ${client.obiettivo || client.notes || 'Nessuna nota tecnica'}</div>
+              </div>
+              <span class="tag ${paymentClass(pay)}">${pay} · <span class="money">${money(client.importo)}</span></span>
+            </div>
+            <div class="tags">
+              <span class="tag ${alertClass}">${total ? `${remaining}/${total} sedute` : 'Sedute non impostate'}</span>
+              <span class="tag">${packageText(client)}</span>
+              ${client.tipo_abbonamento ? `<span class="tag">${client.tipo_abbonamento}</span>` : ''}
+              ${client.package_frequency ? `<span class="tag">${client.package_frequency}</span>` : ''}
+              ${Array.isArray(client.giorni_settimana) && client.giorni_settimana.length ? `<span class="tag">${client.giorni_settimana.join(', ')}</span>` : ''}
+            </div>
+            ${total ? `<div class="progress"><span style="width:${pct}%"></span></div>` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+    function renderAppointments(appts) {
+      const list = document.getElementById('appointmentsList');
+      if (!appts.length) {
+        list.innerHTML = '<div class="empty">Nessun appuntamento nei prossimi 7 giorni.</div>';
+        return;
+      }
+      list.innerHTML = appts.map(appt => {
+        const status = appt.status || 'prenotato';
+        const statusClass = status === 'fatto' ? 'green' : status === 'noshow' ? 'gold' : '';
+        const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
+        return `
+          <article class="appt-card">
+            <div class="row">
+              <div>
+                <div class="name">${fmtDate(appt.date)} · ${String(appt.start_time || '').slice(0, 5)}</div>
+                <div class="muted">${service} · ${appt.duration_min || 60} min · ${operatorName(appt.operator_id)}</div>
+              </div>
+              <span class="tag ${statusClass}">${STATUS_LABELS[status] || status}</span>
+            </div>
+            <div class="tags">
+              ${(appt.client_ids || []).map(id => `<span class="tag">${clientFullName(id)}</span>`).join('')}
+            </div>
+            ${appt.notes ? `<div class="muted">${appt.notes}</div>` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+    function renderFinance(clients) {
+      const list = document.getElementById('financeList');
+      const rows = [...clients].sort((a, b) => {
+        const order = { 'Da pagare': 0, Parziale: 1, Pagato: 2 };
+        return (order[paymentStatus(a)] ?? 9) - (order[paymentStatus(b)] ?? 9) || fullName(a).localeCompare(fullName(b));
+      });
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty">Nessun pagamento da mostrare.</div>';
+        return;
+      }
+      list.innerHTML = rows.map(client => {
+        const status = paymentStatus(client);
+        return `
+          <div class="finance-row">
+            <div>
+              <div class="name">${fullName(client)}</div>
+              <div class="muted">${operatorName(client.pt_assegnato)} · ${packageText(client)}</div>
+            </div>
+            <div class="tags" style="justify-content:flex-end">
+              <span class="tag ${paymentClass(status)}">${status}</span>
+              <span class="tag"><span class="money">${money(client.importo)}</span></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    function renderAlerts(clients, appts) {
+      const list = document.getElementById('alertsList');
+      const alerts = [];
+      clients.forEach(client => {
+        const total = Number(client.sessions_total || 0);
+        const remaining = Number(client.sessions_remaining || 0);
+        const pay = paymentStatus(client);
+        if (total && remaining <= 2) alerts.push({ type: 'Sedute basse', cls: 'gold', title: fullName(client), note: `${remaining}/${total} sedute residue · ${operatorName(client.pt_assegnato)}` });
+        if (pay !== 'Pagato') alerts.push({ type: pay, cls: paymentClass(pay), title: fullName(client), note: `${money(client.importo)} · pagamento aperto` });
+      });
+      const today = todayStr();
+      const todayAppts = appts.filter(a => a.date === today);
+      if (todayAppts.length) alerts.unshift({ type: 'Oggi', cls: 'green', title: `${todayAppts.length} appuntamenti`, note: 'Agenda studio da seguire' });
+      if (!alerts.length) {
+        list.innerHTML = '<div class="empty">Nessuna criticita con i filtri attuali.</div>';
+        return;
+      }
+      list.innerHTML = alerts.slice(0, 12).map(item => `
+        <div class="finance-row">
+          <div>
+            <div class="name">${item.title}</div>
+            <div class="muted">${item.note}</div>
+          </div>
+          <span class="tag ${item.cls}">${item.type}</span>
+        </div>
+      `).join('');
+    }
+    function renderAnamnesis(clients) {
+      const list = document.getElementById('anamnesisList');
+      const rows = clients
+        .map(client => ({ client, acq: acquisitionForClient(client) }))
+        .filter(row => row.acq || row.client.obiettivo || row.client.professione || row.client.come || row.client.motivazione || row.client.notes);
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty">Nessuna anamnesi collegata ai clienti filtrati. Le nuove conferme verranno archiviate automaticamente.</div>';
+        return;
+      }
+      list.innerHTML = rows.map(({ client, acq }) => `
+        <article class="anamnesis-card">
+          <div class="row">
+            <div>
+              <div class="name">${fullName(client)}</div>
+              <div class="muted">${operatorName(client.pt_assegnato)} · ${acq ? (acq.stato === 'Convertito' ? 'Cliente convertito' : (acq.stato || 'Anamnesi')) : 'Dati base cliente'}</div>
+            </div>
+            <span class="tag ${acq ? 'green' : 'gold'}">${acq ? 'Anamnesi' : 'Base'}</span>
+          </div>
+          <div class="anamnesis-grid">
+            ${field('Obiettivo', acq ? (acq.obiettivo_libero || acq.obiettivo) : client.obiettivo, 'wide')}
+            ${field('Professione', acq ? acq.professione : client.professione)}
+            ${field('Motivazione', acq?.motivazione ? `${acq.motivazione}/10` : (client.motivazione ? `${client.motivazione}/10` : ''))}
+            ${field('Esperienza', acq?.esperienza)}
+            ${field('Inattivita', acq?.inattivo)}
+            ${field('Sport', acq?.sport)}
+            ${field('Disponibilita', acq?.orari, 'wide')}
+            ${field('Sessioni preferite', acq ? acq.sessioni_pref : client.package_frequency)}
+            ${field('Come ci ha trovato', acq ? acq.come : client.come)}
+            ${field('Cosa non ha funzionato', acq?.non_funzionato, 'full')}
+            ${field('Impressioni PT', acq ? acq.impressioni : client.notes, 'full')}
+            ${field('Proposta', acq?.proposta, 'wide')}
+            ${field('Follow-up', acq?.followup)}
+            ${!acq ? field('Nota archivio', 'Anamnesi completa non disponibile per i clienti gia confermati prima di questa modifica. Da ora in avanti verra conservata.', 'full') : ''}
+          </div>
+        </article>
+      `).join('');
+    }
+    function renderMeetingStats(clients, appointments) {
+      renderPtStats(clients, appointments);
+      renderServiceStats(clients);
+      renderAttendanceStats(appointments);
+      renderDiscussionPoints(clients, appointments);
+    }
+    function renderPtStats(clients, appointments) {
+      const list = document.getElementById('ptStatsList');
+      const byPt = new Map();
+      state.operators.forEach(op => byPt.set(op.id, {
+        name: fullName(op),
+        clients: 0,
+        appts: 0,
+        done: 0,
+        noshow: 0,
+        revenue: 0,
+      }));
+      clients.forEach(client => {
+        const id = client.pt_assegnato || 'none';
+        if (!byPt.has(id)) byPt.set(id, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
+        const row = byPt.get(id);
+        row.clients += 1;
+        if (paymentStatus(client) === 'Pagato') row.revenue += Number(client.importo || 0);
+      });
+      appointments.forEach(appt => {
+        const id = appt.operator_id || 'none';
+        if (!byPt.has(id)) byPt.set(id, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
+        const row = byPt.get(id);
+        row.appts += 1;
+        if (appt.status === 'fatto') row.done += 1;
+        if (appt.status === 'noshow') row.noshow += 1;
+      });
+      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.revenue).sort((a, b) => b.clients - a.clients || b.appts - a.appts);
+      const maxClients = Math.max(1, ...rows.map(r => r.clients));
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty">Nessun dato PT disponibile.</div>';
+        return;
+      }
+      list.innerHTML = rows.map(row => `
+        <div class="stat-row">
+          <div class="stat-row-head">
+            <div class="stat-row-title">${row.name}</div>
+            <div class="stat-row-value">${row.clients} clienti</div>
+          </div>
+          <div class="bar"><span style="width:${percent(row.clients, maxClients)}%"></span></div>
+          <div class="muted">${row.appts} appuntamenti · ${row.done} fatti · ${row.noshow} no-show · ${money(row.revenue)}</div>
+        </div>
+      `).join('');
+    }
+    function renderServiceStats(clients) {
+      const list = document.getElementById('serviceStatsList');
+      const counts = new Map();
+      clients.forEach(client => serviceFromClient(client).forEach(service => counts.set(service, (counts.get(service) || 0) + 1)));
+      const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+      const max = Math.max(1, ...rows.map(row => row[1]));
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty">Nessun servizio registrato.</div>';
+        return;
+      }
+      list.innerHTML = rows.map(([service, count]) => `
+        <div class="stat-row">
+          <div class="stat-row-head">
+            <div class="stat-row-title">${service}</div>
+            <div class="stat-row-value">${count}</div>
+          </div>
+          <div class="bar gold"><span style="width:${percent(count, max)}%"></span></div>
+          <div class="muted">${percent(count, clients.length)}% dei clienti filtrati</div>
+        </div>
+      `).join('');
+    }
+    function renderAttendanceStats(appointments) {
+      const list = document.getElementById('attendanceStatsList');
+      const total = appointments.length;
+      const done = appointments.filter(a => a.status === 'fatto').length;
+      const noshow = appointments.filter(a => a.status === 'noshow').length;
+      const booked = appointments.filter(a => a.status === 'prenotato').length;
+      const rows = [
+        { label: 'Sedute fatte', value: done, cls: 'green' },
+        { label: 'Prenotate future/aperte', value: booked, cls: '' },
+        { label: 'No-show', value: noshow, cls: 'red' },
+      ];
+      if (!total) {
+        list.innerHTML = '<div class="empty">Nessun appuntamento da analizzare.</div>';
+        return;
+      }
+      list.innerHTML = rows.map(row => `
+        <div class="stat-row">
+          <div class="stat-row-head">
+            <div class="stat-row-title">${row.label}</div>
+            <div class="stat-row-value">${row.value}</div>
+          </div>
+          <div class="bar ${row.cls}"><span style="width:${percent(row.value, total)}%"></span></div>
+          <div class="muted">${percent(row.value, total)}% su ${total} appuntamenti</div>
+        </div>
+      `).join('');
+    }
+    function renderDiscussionPoints(clients, appointments) {
+      const list = document.getElementById('discussionList');
+      const items = [];
+      const unassigned = clients.filter(c => !c.pt_assegnato);
+      const lowSessions = clients.filter(c => Number(c.sessions_total || 0) > 0 && Number(c.sessions_remaining || 0) <= 2);
+      const unpaid = clients.filter(c => paymentStatus(c) !== 'Pagato');
+      const noshow = appointments.filter(a => a.status === 'noshow');
+      const noPackage = clients.filter(c => !Number(c.sessions_total || 0));
+      if (unassigned.length) items.push({ cls: 'red', title: 'Clienti senza PT assegnato', note: `${unassigned.length} clienti da distribuire o verificare.` });
+      if (lowSessions.length) items.push({ cls: 'gold', title: 'Rinnovi e sedute in esaurimento', note: `${lowSessions.length} clienti hanno 2 o meno sedute residue.` });
+      if (unpaid.length) items.push({ cls: 'red', title: 'Pagamenti aperti', note: `${unpaid.length} posizioni da verificare prima del prossimo ciclo.` });
+      if (noshow.length) items.push({ cls: 'gold', title: 'No-show da discutere', note: `${noshow.length} assenze rilevate nel periodo caricato.` });
+      if (noPackage.length) items.push({ cls: 'gold', title: 'Pacchetti incompleti', note: `${noPackage.length} clienti senza sessioni totali impostate.` });
+      if (!items.length) items.push({ cls: 'green', title: 'Quadro ordinato', note: 'Nessuna criticita evidente con i filtri attuali.' });
+      list.innerHTML = items.map(item => `
+        <div class="discussion-item ${item.cls}">
+          <div class="name">${item.title}</div>
+          <div class="muted">${item.note}</div>
+        </div>
+      `).join('');
+    }
+    async function loadData() {
+      const status = document.getElementById('syncStatus');
+      status.innerHTML = '<span class="loader"></span> Sincronizzazione';
+      try {
+        const [operators, clients, appointments, acquisitions] = await Promise.all([
+          supabase('operators', '?select=id,nome,cognome,email,roles,color,active&active=eq.true&order=cognome.asc,nome.asc'),
+          supabase('clients', '?select=id,nome,cognome,email,telefono,package_types,package_frequency,sessions_total,sessions_remaining,giorni_settimana,package_start,notes,active,pt_assegnato,obiettivo,professione,tipo_servizio,tipo_abbonamento,stato_pagamento,importo,data_inizio,stato_abbonamento&active=eq.true&order=cognome.asc,nome.asc'),
+          supabase('appointments', '?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc'),
+          supabase('acquisizioni', '?select=*&order=data_acquisizione.desc')
+        ]);
+        state.operators = operators || [];
+        state.clients = clients || [];
+        state.appointments = appointments || [];
+        state.acquisitions = acquisitions || [];
+        normalizeClientAssignments();
+        status.textContent = 'Aggiornato ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        render();
+      } catch (err) {
+        status.textContent = 'Errore sincronizzazione';
+        document.getElementById('clientsList').innerHTML = `<div class="error">Errore Supabase: ${err.message || err}</div>`;
+        document.getElementById('appointmentsList').innerHTML = '<div class="empty">Agenda non disponibile.</div>';
+      }
+    }
+    loadData();
+  </script>
+</body>
+</html>
