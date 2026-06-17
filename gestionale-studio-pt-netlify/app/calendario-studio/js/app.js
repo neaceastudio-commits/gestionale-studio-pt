@@ -840,21 +840,36 @@ const App = {
     const rows = appointments.length ? appointments.map(a => {
       const svc = Services.getService(a.serviceId);
       const op = Services.getOperator(a.operatorId);
+      const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
+        `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
+      ).join('');
       return `
         <tr>
-          <td>${App._fmtLongDate(a.date)}</td>
+          <td>
+            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}">
+          </td>
           <td>
             <div class="time-edit-cell">
               <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900">
-              <button class="btn-icon-sm" title="Salva ora" onclick="App._updatePackageAppointmentTime('${a.id}')">✓</button>
             </div>
           </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>${op ? `${op.nome} ${op.cognome}` : '—'}</td>
-          <td><span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span></td>
+          <td>
+            <select id="pkg-status-${a.id}" class="form-input package-status-input">
+              ${statusOptions}
+            </select>
+          </td>
+          <td>
+            <div class="package-row-actions">
+              <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
+              <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
+              <button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>
+            </div>
+          </td>
         </tr>`;
     }).join('') : `
-        <tr><td colspan="5" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
+        <tr><td colspan="6" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
 
     const html = `
       <div class="modal-header">
@@ -912,7 +927,7 @@ const App = {
         <section class="package-panel">
           <h4>Appuntamenti collegati</h4>
           <table class="package-timeline-table">
-            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th></tr></thead>
+            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Azioni</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </section>
@@ -925,28 +940,44 @@ const App = {
     UI.openModal(html);
   },
 
-  async _updatePackageAppointmentTime(apptId) {
+  async _updatePackageAppointmentRow(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
+    const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
     const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
-    if (!appt || !nextTime) return;
-    if (appt.startTime === nextTime) {
-      UI.showToast('Ora gia aggiornata', 'success');
+    const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
+    if (!appt || !nextDate || !nextTime || !nextStatus) return;
+    if (appt.date === nextDate && appt.startTime === nextTime && appt.status === nextStatus) {
+      UI.showToast('Riga gia aggiornata', 'success');
       return;
     }
 
-    const patch = { ...appt, startTime: nextTime };
+    const patch = { ...appt, date: nextDate, startTime: nextTime, status: nextStatus };
     const validation = Services.canBookAppointment(patch);
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       return;
     }
 
-    const saved = Services.updateAppointment(apptId, { startTime: nextTime });
+    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, status: nextStatus });
+    if (appt.status !== saved.status) App._consumeClientSessions(saved);
     await SupabaseSync.pushAppointment(saved);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
     Calendar.render();
-    UI.showToast('Ora appuntamento aggiornata', 'success');
+    UI.showToast('Appuntamento aggiornato', 'success');
     const clientId = saved?.clientIds?.[0];
+    if (clientId) App.openPackageOverview(clientId);
+  },
+
+  async _deletePackageAppointment(apptId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!appt) return;
+    if (!confirm('Eliminare questa seduta dal pacchetto?')) return;
+    Services.deleteAppointment(apptId);
+    await SupabaseSync.deleteAppointment(apptId);
+    if (appt.status === 'fatto') App._consumeClientSessions(appt);
+    Calendar.render();
+    UI.showToast('Seduta eliminata dal pacchetto', 'success');
+    const clientId = appt.clientIds?.[0];
     if (clientId) App.openPackageOverview(clientId);
   },
 
