@@ -218,6 +218,9 @@
       display: grid;
       gap: 10px;
     }
+    .appt-list.compact {
+      gap: 6px;
+    }
     .client-card, .appt-card {
       display: grid;
       gap: 10px;
@@ -229,6 +232,53 @@
     .client-card:hover, .appt-card:hover {
       border-color: var(--blue-light);
       background: #fbfdff;
+    }
+    .live-card {
+      cursor: pointer;
+      transition: border-color .16s ease, background .16s ease, transform .16s ease;
+    }
+    .live-card:hover {
+      transform: translateY(-1px);
+    }
+    .appt-row {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 9px 10px;
+      cursor: pointer;
+    }
+    .appt-row:hover {
+      border-color: var(--blue-light);
+      background: #fbfdff;
+    }
+    .appt-time {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .appt-main {
+      min-width: 0;
+    }
+    .appt-title {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .appt-meta {
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .anamnesis-list {
       display: grid;
@@ -342,6 +392,128 @@
       border-radius: var(--radius-sm);
       background: #fff;
       padding: 13px 14px;
+      cursor: pointer;
+    }
+    .finance-row:hover {
+      border-color: var(--blue-light);
+      background: #fbfdff;
+    }
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .small-btn {
+      min-height: 34px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .small-btn.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+    .small-btn.red {
+      border-color: #f0b8b0;
+      background: var(--red-pale);
+      color: var(--red);
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, .55);
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal {
+      width: min(720px, 100%);
+      max-height: min(760px, calc(100vh - 48px));
+      overflow: auto;
+      border-radius: var(--radius);
+      background: #fff;
+      box-shadow: 0 30px 70px rgba(15, 23, 42, .28);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      padding: 18px 20px;
+      background: var(--blue-xpale);
+    }
+    .modal-title {
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 900;
+    }
+    .modal-body {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+    }
+    .modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+    }
+    .close-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text2);
+      font-size: 22px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field label {
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .input {
+      width: 100%;
+      height: 42px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 800;
+      outline: none;
+    }
+    .input:focus {
+      border-color: var(--blue-light);
+      box-shadow: 0 0 0 3px rgba(58, 95, 128, .12);
     }
     .meeting-grid {
       display: grid;
@@ -601,6 +773,10 @@
     </section>
   </main>
 
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
   <script>
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
@@ -642,6 +818,32 @@
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
+    }
+    async function supabaseWrite(table, query, body, method = 'PATCH') {
+      const res = await fetch(endpoint(table, query), {
+        method,
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
+    }
+    function escapeAttr(value) {
+      return String(value ?? '').replace(/"/g, '&quot;');
+    }
+    function modal(html) {
+      document.getElementById('modalContent').innerHTML = html;
+      document.getElementById('modalOverlay').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+      document.getElementById('modalContent').innerHTML = '';
     }
     function todayStr() {
       const d = new Date();
@@ -817,7 +1019,7 @@
         const alertClass = total && remaining <= 2 ? 'red' : 'green';
         const pay = paymentStatus(client);
         return `
-          <article class="client-card">
+          <article class="client-card live-card" onclick="openClient('${client.id}')">
             <div class="row">
               <div>
                 <div class="name">${fullName(client)}</div>
@@ -839,6 +1041,7 @@
     }
     function renderAppointments(appts) {
       const list = document.getElementById('appointmentsList');
+      list.classList.add('compact');
       if (!appts.length) {
         list.innerHTML = '<div class="empty">Nessun appuntamento nei prossimi 7 giorni.</div>';
         return;
@@ -848,18 +1051,13 @@
         const statusClass = status === 'fatto' ? 'green' : status === 'noshow' ? 'gold' : '';
         const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
         return `
-          <article class="appt-card">
-            <div class="row">
-              <div>
-                <div class="name">${fmtDate(appt.date)} · ${String(appt.start_time || '').slice(0, 5)}</div>
-                <div class="muted">${service} · ${appt.duration_min || 60} min · ${operatorName(appt.operator_id)}</div>
-              </div>
-              <span class="tag ${statusClass}">${STATUS_LABELS[status] || status}</span>
+          <article class="appt-row" onclick="openAppointment('${appt.id}')">
+            <div class="appt-time">${String(appt.start_time || '').slice(0, 5)}</div>
+            <div class="appt-main">
+              <div class="appt-title">${fmtDate(appt.date)} · ${(appt.client_ids || []).map(clientFullName).join(', ') || 'Cliente non assegnato'}</div>
+              <div class="appt-meta">${service} · ${operatorName(appt.operator_id)} · ${appt.duration_min || 60} min</div>
             </div>
-            <div class="tags">
-              ${(appt.client_ids || []).map(id => `<span class="tag">${clientFullName(id)}</span>`).join('')}
-            </div>
-            ${appt.notes ? `<div class="muted">${appt.notes}</div>` : ''}
+            <span class="tag ${statusClass}">${STATUS_LABELS[status] || status}</span>
           </article>
         `;
       }).join('');
@@ -877,7 +1075,7 @@
       list.innerHTML = rows.map(client => {
         const status = paymentStatus(client);
         return `
-          <div class="finance-row">
+          <div class="finance-row" onclick="openPayment('${client.id}')">
             <div>
               <div class="name">${fullName(client)}</div>
               <div class="muted">${operatorName(client.pt_assegnato)} · ${packageText(client)}</div>
@@ -916,6 +1114,147 @@
           <span class="tag ${item.cls}">${item.type}</span>
         </div>
       `).join('');
+    }
+    function operatorOptions(selectedId = '') {
+      return `<option value="">PT non assegnato</option>` + state.operators
+        .filter(op => op.active !== false)
+        .map(op => `<option value="${op.id}" ${op.id === selectedId ? 'selected' : ''}>${fullName(op)}</option>`)
+        .join('');
+    }
+    function openClient(clientId) {
+      const client = state.clients.find(c => c.id === clientId);
+      if (!client) return;
+      const acq = acquisitionForClient(client);
+      modal(`
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">${fullName(client)}</div>
+            <div class="muted">${packageText(client)} · ${operatorName(client.pt_assegnato)}</div>
+          </div>
+          <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Pagamento</label><select id="edit-pay-status" class="input"><option ${paymentStatus(client)==='Da pagare'?'selected':''}>Da pagare</option><option ${paymentStatus(client)==='Parziale'?'selected':''}>Parziale</option><option ${paymentStatus(client)==='Pagato'?'selected':''}>Pagato</option></select></div>
+            <div class="field"><label>Importo</label><input id="edit-pay-amount" class="input" type="number" step="0.01" value="${Number(client.importo || 0)}"></div>
+            <div class="field"><label>PT assegnato</label><select id="edit-client-pt" class="input">${operatorOptions(client.pt_assegnato || '')}</select></div>
+            <div class="field"><label>Stato abbonamento</label><input id="edit-sub-status" class="input" value="${escapeAttr(client.stato_abbonamento || 'Attivo')}"></div>
+          </div>
+          <div class="quick-actions">
+            <button class="small-btn primary" onclick="saveClientAdmin('${client.id}')">Salva dati cliente</button>
+            <button class="small-btn" onclick="openPayment('${client.id}')">Modifica solo pagamento</button>
+          </div>
+          <div class="anamnesis-grid">
+            ${field('Sedute', `${client.sessions_remaining || 0}/${client.sessions_total || 0} residue`)}
+            ${field('Obiettivo', client.obiettivo || acq?.obiettivo_libero || acq?.obiettivo)}
+            ${field('Professione', client.professione || acq?.professione)}
+            ${field('Come ci ha trovato', client.come || acq?.come)}
+            ${field('Note/anamnesi', client.notes || acq?.impressioni, 'full')}
+          </div>
+        </div>
+        <div class="modal-foot"><button class="small-btn" onclick="closeModal()">Chiudi</button></div>
+      `);
+    }
+    function openPayment(clientId) {
+      const client = state.clients.find(c => c.id === clientId);
+      if (!client) return;
+      modal(`
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">Pagamento · ${fullName(client)}</div>
+            <div class="muted">${operatorName(client.pt_assegnato)} · ${packageText(client)}</div>
+          </div>
+          <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Stato pagamento</label><select id="pay-status" class="input"><option ${paymentStatus(client)==='Da pagare'?'selected':''}>Da pagare</option><option ${paymentStatus(client)==='Parziale'?'selected':''}>Parziale</option><option ${paymentStatus(client)==='Pagato'?'selected':''}>Pagato</option></select></div>
+            <div class="field"><label>Importo</label><input id="pay-amount" class="input" type="number" step="0.01" value="${Number(client.importo || 0)}"></div>
+          </div>
+          <div class="quick-actions">
+            <button class="small-btn" onclick="quickPay('${client.id}','Da pagare')">Da pagare</button>
+            <button class="small-btn" onclick="quickPay('${client.id}','Parziale')">Parziale</button>
+            <button class="small-btn primary" onclick="quickPay('${client.id}','Pagato')">Pagato</button>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="small-btn" onclick="closeModal()">Annulla</button>
+          <button class="small-btn primary" onclick="savePayment('${client.id}')">Salva pagamento</button>
+        </div>
+      `);
+    }
+    function openAppointment(apptId) {
+      const appt = state.appointments.find(a => a.id === apptId);
+      if (!appt) return;
+      const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
+      const statusOptions = Object.entries(STATUS_LABELS).map(([key, label]) => `<option value="${key}" ${appt.status === key ? 'selected' : ''}>${label}</option>`).join('');
+      modal(`
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">${service}</div>
+            <div class="muted">${(appt.client_ids || []).map(clientFullName).join(', ') || 'Cliente non assegnato'} · ${operatorName(appt.operator_id)}</div>
+          </div>
+          <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Data</label><input id="appt-date-edit" class="input" type="date" value="${appt.date || ''}"></div>
+            <div class="field"><label>Ora</label><input id="appt-time-edit" class="input" type="time" value="${String(appt.start_time || '').slice(0, 5)}"></div>
+            <div class="field"><label>Stato</label><select id="appt-status-edit" class="input">${statusOptions}</select></div>
+            <div class="field"><label>PT</label><select id="appt-operator-edit" class="input">${operatorOptions(appt.operator_id || '')}</select></div>
+          </div>
+          <div class="field"><label>Note</label><input id="appt-notes-edit" class="input" value="${escapeAttr(appt.notes || '')}"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="small-btn" onclick="closeModal()">Annulla</button>
+          <button class="small-btn primary" onclick="saveAppointmentAdmin('${appt.id}')">Salva appuntamento</button>
+        </div>
+      `);
+    }
+    async function saveClientAdmin(clientId) {
+      const body = {
+        stato_pagamento: document.getElementById('edit-pay-status')?.value || 'Da pagare',
+        importo: Number(document.getElementById('edit-pay-amount')?.value || 0),
+        pt_assegnato: document.getElementById('edit-client-pt')?.value || null,
+        stato_abbonamento: document.getElementById('edit-sub-status')?.value || 'Attivo',
+        updated_at: new Date().toISOString()
+      };
+      await supabaseWrite('clients', '?id=eq.' + encodeURIComponent(clientId), body);
+      closeModal();
+      await loadData();
+    }
+    async function savePayment(clientId) {
+      const body = {
+        stato_pagamento: document.getElementById('pay-status')?.value || 'Da pagare',
+        importo: Number(document.getElementById('pay-amount')?.value || 0),
+        updated_at: new Date().toISOString()
+      };
+      await supabaseWrite('clients', '?id=eq.' + encodeURIComponent(clientId), body);
+      closeModal();
+      await loadData();
+    }
+    async function quickPay(clientId, status) {
+      const amount = Number(document.getElementById('pay-amount')?.value || 0);
+      await supabaseWrite('clients', '?id=eq.' + encodeURIComponent(clientId), {
+        stato_pagamento: status,
+        importo: amount,
+        updated_at: new Date().toISOString()
+      });
+      closeModal();
+      await loadData();
+    }
+    async function saveAppointmentAdmin(apptId) {
+      const body = {
+        date: document.getElementById('appt-date-edit')?.value,
+        start_time: document.getElementById('appt-time-edit')?.value,
+        status: document.getElementById('appt-status-edit')?.value || 'prenotato',
+        operator_id: document.getElementById('appt-operator-edit')?.value || null,
+        notes: document.getElementById('appt-notes-edit')?.value || '',
+        updated_at: new Date().toISOString()
+      };
+      await supabaseWrite('appointments', '?id=eq.' + encodeURIComponent(apptId), body);
+      closeModal();
+      await loadData();
     }
     function renderAnamnesis(clients) {
       const list = document.getElementById('anamnesisList');
@@ -986,20 +1325,20 @@
         if (appt.status === 'fatto') row.done += 1;
         if (appt.status === 'noshow') row.noshow += 1;
       });
-      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.revenue).sort((a, b) => b.clients - a.clients || b.appts - a.appts);
-      const maxClients = Math.max(1, ...rows.map(r => r.clients));
+      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.revenue).sort((a, b) => b.done - a.done || b.revenue - a.revenue || b.clients - a.clients);
+      const maxDone = Math.max(1, ...rows.map(r => r.done));
       if (!rows.length) {
         list.innerHTML = '<div class="empty">Nessun dato PT disponibile.</div>';
         return;
       }
       list.innerHTML = rows.map(row => `
-        <div class="stat-row">
+        <div class="stat-row live-card" onclick="document.getElementById('operatorSelect').value='${[...byPt.entries()].find(([, value]) => value === row)?.[0] || ''}';render()">
           <div class="stat-row-head">
             <div class="stat-row-title">${row.name}</div>
-            <div class="stat-row-value">${row.clients} clienti</div>
+            <div class="stat-row-value">${row.done} fatte · ${money(row.revenue)}</div>
           </div>
-          <div class="bar"><span style="width:${percent(row.clients, maxClients)}%"></span></div>
-          <div class="muted">${row.appts} appuntamenti · ${row.done} fatti · ${row.noshow} no-show · ${money(row.revenue)}</div>
+          <div class="bar green"><span style="width:${percent(row.done, maxDone)}%"></span></div>
+          <div class="muted">${row.clients} clienti · ${row.appts} appuntamenti · ${row.noshow} no-show · introito studio da clienti pagati</div>
         </div>
       `).join('');
     }
