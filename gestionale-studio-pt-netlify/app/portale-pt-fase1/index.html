@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portale PT Fase 1 - NEACEA</title>
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <strong>Neacea</strong>
+      <span>Portale PT</span>
+    </div>
+    <nav class="nav-tabs" aria-label="Sezioni portale">
+      <button class="nav-tab active" data-view="dashboard">Dashboard</button>
+      <button class="nav-tab" data-view="clients">Clienti</button>
+      <button class="nav-tab" data-view="calendar">Calendario</button>
+      <button class="nav-tab" data-view="assignments">Assegnazioni</button>
+    </nav>
+  </header>
+
+  <main class="shell">
+    <section class="session-bar">
+      <div>
+        <p class="eyebrow">Fase 1</p>
+        <h1>Portale Personal Trainer</h1>
+      </div>
+      <label class="operator-picker">
+        <span>Operatore</span>
+        <select id="operatorSelect">
+          <option value="">Caricamento operatori...</option>
+        </select>
+      </label>
+    </section>
+
+    <section id="migrationNotice" class="notice hidden">
+      <strong>Database Fase 1 non ancora applicato.</strong>
+      <span>Sto usando i dati storici disponibili. Dopo la migrazione Supabase, il portale usera' le viste PT dedicate.</span>
+    </section>
+
+    <section id="errorBox" class="notice error hidden"></section>
+
+    <section id="dashboard" class="view active">
+      <div class="kpi-grid">
+        <article class="kpi">
+          <span>Clienti assegnati</span>
+          <strong id="kpiClients">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Sedute oggi</span>
+          <strong id="kpiToday">-</strong>
+        </article>
+        <article class="kpi">
+          <span>Sedute settimana</span>
+          <strong id="kpiWeek">-</strong>
+        </article>
+        <article class="kpi muted">
+          <span>Da rivalutare</span>
+          <strong id="kpiReview">0</strong>
+        </article>
+      </div>
+
+      <div class="layout-two">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Alert clienti</h2>
+          </div>
+          <div id="alertList" class="stack"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Prossime sedute</h2>
+          </div>
+          <div id="nextSessions" class="stack"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="clients" class="view">
+      <div class="toolbar">
+        <input id="clientSearch" class="search" type="search" placeholder="Cerca cliente, telefono, email">
+        <select id="alertFilter" class="select">
+          <option value="">Tutti</option>
+          <option value="critical">Alert critici</option>
+          <option value="warning">Alert attenzione</option>
+          <option value="none">Senza alert</option>
+        </select>
+      </div>
+      <div class="client-layout">
+        <section class="panel client-list-panel">
+          <div class="panel-head">
+            <h2>Clienti assegnati</h2>
+            <span id="clientCount" class="pill">0</span>
+          </div>
+          <div id="clientList" class="client-list"></div>
+        </section>
+
+        <section class="panel detail-panel">
+          <div id="clientDetail" class="detail-empty">Seleziona un cliente</div>
+        </section>
+      </div>
+    </section>
+
+    <section id="calendar" class="view">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Calendario sedute</h2>
+          <span id="calendarCount" class="pill">0</span>
+        </div>
+        <div id="calendarList" class="calendar-list"></div>
+      </section>
+    </section>
+
+    <section id="assignments" class="view">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Assegnazioni PT-cliente</h2>
+        </div>
+        <div class="form-grid">
+          <label>
+            <span>Personal trainer</span>
+            <select id="assignTrainer"></select>
+          </label>
+          <label>
+            <span>Cliente</span>
+            <select id="assignClient"></select>
+          </label>
+          <button id="assignButton" class="primary-btn" type="button">Assegna</button>
+        </div>
+        <p class="helper">
+          La scrittura usa `trainer_client_assignments`. Se la migrazione non e' ancora applicata,
+          il pulsante resta bloccato.
+        </p>
+      </section>
+    </section>
+  </main>
+
+  <script src="js/portal.js"></script>
+</body>
+</html>
