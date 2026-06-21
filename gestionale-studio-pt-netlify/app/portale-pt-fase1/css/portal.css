@@ -535,7 +535,7 @@ h2 {
 
 .exercise-builder {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -551,9 +551,13 @@ h2 {
 
 .builder-fast-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, .9fr) 96px minmax(160px, .8fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   align-items: center;
+}
+
+.builder-fast-row .primary-btn {
+  grid-column: span 2;
 }
 
 .pick-list {
@@ -786,7 +790,7 @@ h2 {
 }
 
 .block-card > .program-form-grid {
-  grid-template-columns: 160px minmax(160px, 1fr) 180px auto;
+  grid-template-columns: 170px 180px auto;
 }
 
 .block-list,
@@ -942,7 +946,7 @@ h2 {
 
 .load-row {
   display: grid;
-  grid-template-columns: 42px repeat(3, minmax(70px, 1fr)) minmax(140px, 1.4fr);
+  grid-template-columns: 42px minmax(80px, 1fr) minmax(80px, 1fr) minmax(180px, 1.6fr);
   gap: 8px;
   align-items: center;
 }

@@ -216,7 +216,6 @@ function normalizeLegacyExercises(data) {
         rest: exercise.recupero || '',
         tut: exercise.progressione?.tut || '',
         load: '',
-        rir: '',
         notes: exercise.note || exercise.categoria || '',
       })),
     }],
@@ -255,7 +254,6 @@ function emptyExercise(order = 1) {
     rest: '',
     tut: '',
     load: '',
-    rir: '',
     notes: '',
   };
 }
@@ -954,7 +952,6 @@ function renderBlockEditor(block, sessionIndex, blockIndex) {
     <div class="block-card" data-block-index="${blockIndex}">
       <div class="program-form-grid compact">
         <label><span>Codice NEACEA</span><select data-block-field="code">${codeOptions}</select></label>
-        <label><span>Linea movimento</span><input data-block-field="line" value="${esc(block.line)}" placeholder="Spinta orizzontale"></label>
         <label><span>Modalita</span><select data-block-field="mode">${modeOptions}</select></label>
         <label><span>Azioni</span><button class="danger-btn slim" type="button" data-remove-block="${sessionIndex}:${blockIndex}">Rimuovi blocco</button></label>
       </div>
@@ -998,7 +995,6 @@ function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)
             <span>S${setNumber}</span>
             <input data-load-field="kg" placeholder="kg">
             <input data-load-field="reps" placeholder="rip">
-            <input data-load-field="rir" placeholder="RIR">
             <input data-load-field="note" placeholder="note">
           </div>
         `).join('')}
@@ -1041,6 +1037,12 @@ function updateNeaceaPreview() {
   els.neaceaString.textContent = buildNeaceaString(program);
 }
 
+function renderSessionEditorAtSamePoint() {
+  const scrollY = window.scrollY;
+  renderSessionEditor();
+  window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
+}
+
 function addPickedExercise() {
   syncProgramEditor();
   const manualName = els.manualExerciseName.value.trim();
@@ -1068,7 +1070,6 @@ function addPickedExercise() {
     rest: els.builderRest.value || "2'",
     tut: progression?.tut || '',
     load: '',
-    rir: '',
     notes: els.builderNotes.value.trim(),
   });
   block.exercises = exercises;
@@ -1077,7 +1078,7 @@ function addPickedExercise() {
   els.builderNotes.value = '';
   state.builderExercise = null;
   state.builderProgression = null;
-  renderSessionEditor();
+  renderSessionEditorAtSamePoint();
   updateNeaceaPreview();
 }
 
@@ -1100,10 +1101,9 @@ async function saveExerciseLoad(sessionIndex, blockIndex, exerciseIndex) {
       serie: index + 1,
       kg: read('kg'),
       ripetizioni: read('reps'),
-      rir: read('rir'),
       note: read('note'),
     };
-  }).filter((row) => row.kg || row.ripetizioni || row.rir || row.note);
+  }).filter((row) => row.kg || row.ripetizioni || row.note);
 
   if (!rows.length) throw new Error('Inserisci almeno una serie');
 
@@ -1192,13 +1192,12 @@ async function duplicateProgram(mode) {
       session.blocks.forEach((block) => {
         block.exercises.forEach((exercise) => {
           exercise.load = '';
-          exercise.rir = '';
         });
       });
     });
   }
   if (mode === 'progression') {
-    clone.notes = `${clone.notes ? `${clone.notes}\n` : ''}Progressione proposta: aumentare i carichi del 2-5% dove tecnica e RIR lo consentono.`;
+    clone.notes = `${clone.notes ? `${clone.notes}\n` : ''}Progressione proposta: aumentare i carichi del 2-5% dove tecnica e recupero lo consentono.`;
   }
   clone.neacea_string = buildNeaceaString(clone);
   await sb('schede_allenamento', '?on_conflict=id', {
@@ -1485,7 +1484,7 @@ function bindEvents() {
     }
 
     if (addBlock || addExercise || removeSession || removeBlock || removeExercise) {
-      renderSessionEditor();
+      renderSessionEditorAtSamePoint();
       updateNeaceaPreview();
     }
   });
