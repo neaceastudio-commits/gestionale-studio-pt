@@ -941,6 +941,7 @@ function renderBlockEditor(block, sessionIndex, blockIndex) {
 function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex) {
   const progression = normalizeProgression(exercise.progression);
   const sedute = progression?.sessions || [];
+  const loadKey = `${sessionIndex}:${blockIndex}:${exerciseIndex}`;
   return `
     <div class="exercise-card-compact" data-exercise-index="${exerciseIndex}">
       <div class="exercise-display-head">
@@ -959,6 +960,22 @@ function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)
           : '<span class="seduta-empty">Progressione manuale</span>'}
       </div>
       ${exercise.notes ? `<div class="exercise-note-display">${esc(exercise.notes)}</div>` : ''}
+      <div class="load-box" data-load-exercise="${esc(loadKey)}">
+        <div class="load-head">
+          <span>Carichi seduta</span>
+          <input class="load-date" type="date" data-load-date value="${esc(todayIso())}">
+        </div>
+        ${[1, 2, 3, 4].map((setNumber) => `
+          <div class="load-row" data-load-row="${setNumber}">
+            <span>S${setNumber}</span>
+            <input data-load-field="kg" placeholder="kg">
+            <input data-load-field="reps" placeholder="rip">
+            <input data-load-field="rir" placeholder="RIR">
+            <input data-load-field="note" placeholder="note">
+          </div>
+        `).join('')}
+        <button class="secondary-btn slim load-save" type="button" data-save-load="${esc(loadKey)}">Salva carichi</button>
+      </div>
     </div>
   `;
 }
@@ -999,8 +1016,9 @@ function updateNeaceaPreview() {
 function addPickedExercise() {
   syncProgramEditor();
   const manualName = els.manualExerciseName.value.trim();
+  const typedName = els.exerciseSearch.value.trim();
   const picked = state.builderExercise;
-  const name = picked?.name || manualName;
+  const name = picked?.name || manualName || typedName;
   if (!name) throw new Error('Seleziona o scrivi un esercizio');
   const sessionIndex = Number(els.builderSession.value || 0);
   const session = state.programSessions[sessionIndex];
@@ -1027,11 +1045,85 @@ function addPickedExercise() {
   });
   block.exercises = exercises;
   els.manualExerciseName.value = '';
+  els.exerciseSearch.value = '';
   els.builderNotes.value = '';
   state.builderExercise = null;
   state.builderProgression = null;
   renderSessionEditor();
   updateNeaceaPreview();
+}
+
+async function saveExerciseLoad(sessionIndex, blockIndex, exerciseIndex) {
+  syncProgramEditor();
+  const session = state.programSessions[sessionIndex];
+  const block = session?.blocks?.[blockIndex];
+  const exercise = block?.exercises?.[exerciseIndex];
+  if (!exercise) throw new Error('Esercizio non trovato');
+  if (!els.programClient.value) throw new Error('Seleziona un cliente');
+
+  const loadKey = `${sessionIndex}:${blockIndex}:${exerciseIndex}`;
+  const box = els.sessionEditor.querySelector(`[data-load-exercise="${loadKey}"]`);
+  if (!box) throw new Error('Box carichi non trovato');
+
+  const date = box.querySelector('[data-load-date]')?.value || todayIso();
+  const rows = Array.from(box.querySelectorAll('[data-load-row]')).map((row, index) => {
+    const read = (field) => row.querySelector(`[data-load-field="${field}"]`)?.value.trim() || '';
+    return {
+      serie: index + 1,
+      kg: read('kg'),
+      ripetizioni: read('reps'),
+      rir: read('rir'),
+      note: read('note'),
+    };
+  }).filter((row) => row.kg || row.ripetizioni || row.rir || row.note);
+
+  if (!rows.length) throw new Error('Inserisci almeno una serie');
+
+  const isNewProgram = !els.programId.value && !state.selectedProgramId;
+  let programId = els.programId.value || state.selectedProgramId;
+  if (!programId) {
+    programId = isoNowId('pt_program');
+    els.programId.value = programId;
+  }
+  if (isNewProgram) {
+    const program = readProgramForm();
+    await sb('schede_allenamento', '?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: {
+        id: program.id,
+        cliente_id: program.client_id,
+        data: programPayload(program),
+        updated_at: new Date().toISOString(),
+      },
+    });
+    state.selectedProgramId = program.id;
+  }
+  const id = `load_${els.programClient.value}_${programId}_${exercise.id}_${date}`.replace(/[^a-zA-Z0-9_]/g, '_');
+  await sb('carichi_allenamento', '?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: {
+      id,
+      cliente_id: els.programClient.value,
+      data: {
+        client_id: els.programClient.value,
+        program_id: programId,
+        program_name: els.programName.value,
+        session_id: session.id,
+        session_name: session.name,
+        block_id: block.id,
+        block_code: block.code,
+        exercise_id: exercise.id,
+        esercizio: exercise.name,
+        progressione: normalizeProgression(exercise.progression)?.name || 'Manuale',
+        data: date,
+        serie: rows,
+        created_by: state.selectedOperatorId,
+      },
+      updated_at: new Date().toISOString(),
+    },
+  });
 }
 
 async function saveProgram() {
@@ -1313,7 +1405,23 @@ function bindEvents() {
     }
   });
 
-  els.sessionEditor.addEventListener('click', (event) => {
+  els.sessionEditor.addEventListener('click', async (event) => {
+    const saveLoad = event.target.closest('[data-save-load]');
+    if (saveLoad) {
+      const [sessionIndex, blockIndex, exerciseIndex] = saveLoad.dataset.saveLoad.split(':').map(Number);
+      try {
+        clearError();
+        await saveExerciseLoad(sessionIndex, blockIndex, exerciseIndex);
+        saveLoad.textContent = 'Salvato';
+        setTimeout(() => {
+          saveLoad.textContent = 'Salva carichi';
+        }, 1200);
+      } catch (error) {
+        showError(`Carichi non salvati: ${error.message}`);
+      }
+      return;
+    }
+
     const addBlock = event.target.closest('[data-add-block]');
     const addExercise = event.target.closest('[data-add-exercise]');
     const removeSession = event.target.closest('[data-remove-session]');

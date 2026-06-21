@@ -209,41 +209,32 @@
 
             <div class="exercise-builder">
               <div class="builder-column">
-                <div class="section-title">Scegli esercizio</div>
-                <input id="exerciseSearch" class="search" type="search" placeholder="Cerca esercizio">
+                <div class="section-title">Aggiungi esercizio</div>
+                <div class="builder-fast-row">
+                  <input id="exerciseSearch" class="search" type="search" placeholder="Cerca esercizio">
+                  <input id="manualExerciseName" type="text" placeholder="Oppure scrivi manuale">
+                  <select id="builderRest">
+                    <option>60"</option>
+                    <option>90"</option>
+                    <option value="2'" selected>2'</option>
+                    <option>3'</option>
+                    <option>4'</option>
+                    <option>Libero</option>
+                  </select>
+                  <select id="builderSession"></select>
+                  <button id="addPickedExerciseButton" class="primary-btn" type="button">Aggiungi</button>
+                </div>
                 <div id="exercisePickList" class="pick-list"></div>
-                <label class="wide-label manual-exercise">
-                  <span>Esercizio manuale</span>
-                  <input id="manualExerciseName" type="text" placeholder="Scrivi un esercizio non presente">
-                </label>
               </div>
               <div class="builder-column">
                 <div class="section-title">Progressione</div>
                 <div id="progressionTabs" class="progression-tabs"></div>
                 <div id="progressionPickList" class="pick-list progression-picks"></div>
                 <div id="progressionPreview" class="progression-preview"></div>
-                <div class="builder-mini-grid">
-                  <label>
-                    <span>Recupero</span>
-                    <select id="builderRest">
-                      <option>60"</option>
-                      <option>90"</option>
-                      <option value="2'" selected>2'</option>
-                      <option>3'</option>
-                      <option>4'</option>
-                      <option>Libero</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Seduta</span>
-                    <select id="builderSession"></select>
-                  </label>
-                </div>
                 <label class="wide-label">
                   <span>Note tecniche</span>
                   <textarea id="builderNotes" rows="2" placeholder="Setup, cue, limiti"></textarea>
                 </label>
-                <button id="addPickedExerciseButton" class="primary-btn" type="button">Aggiungi esercizio</button>
               </div>
             </div>
 

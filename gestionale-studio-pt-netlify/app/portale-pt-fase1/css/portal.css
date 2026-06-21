@@ -424,17 +424,22 @@ h2 {
 
 .program-layout {
   display: grid;
-  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 18px;
   align-items: start;
 }
 
 .program-list {
-  display: grid;
+  display: flex;
   gap: 10px;
-  max-height: calc(100vh - 240px);
-  overflow: auto;
+  max-height: none;
+  overflow-x: auto;
   padding: 14px;
+}
+
+.program-list .row-card {
+  flex: 0 0 280px;
+  max-width: 360px;
 }
 
 .program-editor-panel {
@@ -449,7 +454,7 @@ h2 {
 
 .program-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -499,7 +504,7 @@ h2 {
 
 .exercise-builder {
   display: grid;
-  grid-template-columns: minmax(300px, .9fr) minmax(360px, 1.1fr);
+  grid-template-columns: 1fr;
   gap: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -513,8 +518,15 @@ h2 {
   align-content: start;
 }
 
+.builder-fast-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, .9fr) 96px minmax(160px, .8fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .pick-list {
-  max-height: 360px;
+  max-height: 260px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -675,7 +687,7 @@ h2 {
 
 .progression-preview-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .progression-preview-grid div {
@@ -685,6 +697,10 @@ h2 {
 }
 
 .progression-preview-grid div:nth-child(2n) {
+  border-right: 1px solid var(--line);
+}
+
+.progression-preview-grid div:nth-child(6n) {
   border-right: 0;
 }
 
@@ -736,6 +752,10 @@ h2 {
 
 .block-card {
   background: #fff;
+}
+
+.block-card > .program-form-grid {
+  grid-template-columns: 160px minmax(160px, 1fr) 180px auto;
 }
 
 .block-list,
@@ -860,6 +880,58 @@ h2 {
   font-weight: 800;
 }
 
+.load-box {
+  display: grid;
+  gap: 8px;
+  margin-left: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+.load-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.load-date {
+  width: auto !important;
+  min-height: 34px;
+  padding: 6px 9px !important;
+  font-size: 12px;
+}
+
+.load-row {
+  display: grid;
+  grid-template-columns: 42px repeat(3, minmax(70px, 1fr)) minmax(140px, 1.4fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.load-row span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.load-save {
+  justify-self: start;
+}
+
 .program-actions {
   display: flex;
   flex-wrap: wrap;
@@ -943,10 +1015,12 @@ h2 {
   .client-layout,
   .program-layout,
   .exercise-builder,
+  .builder-fast-row,
   .detail-grid,
   .form-grid,
   .program-form-grid,
   .program-form-grid.compact,
+  .block-card > .program-form-grid,
   .toolbar {
     grid-template-columns: 1fr;
   }
@@ -958,9 +1032,22 @@ h2 {
 
   .exercise-progression-strip,
   .exercise-notes-line,
-  .exercise-note-display {
+  .exercise-note-display,
+  .load-box {
     padding-left: 0;
     margin-left: 0;
+  }
+
+  .load-row {
+    grid-template-columns: 1fr;
+  }
+
+  .progression-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .progression-preview-grid div:nth-child(2n) {
+    border-right: 0;
   }
 
   .span-2 {
