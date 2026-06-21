@@ -1,14 +1,34 @@
 const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 
+const NEACEA_BLOCKS = [
+  ['N0', 'Tecnico'],
+  ['N1', 'Forza'],
+  ['N2', 'Ipertrofia'],
+  ['N3', 'Carenze'],
+  ['N4', 'Neurale'],
+  ['N5', 'Overload'],
+  ['N6', 'Reset'],
+  ['N7', 'Definizione'],
+  ['N8', 'Neurale/peak'],
+  ['N9', 'Neurale/peak avanzato'],
+  ['N10', 'Metabolico/specifico'],
+  ['N11', 'Core/controllo'],
+];
+
+const MODES = ['Singolo', 'Combo', 'Superset', 'Giant set', 'Multiset', 'Stripping', 'Ladder'];
+
 const state = {
   mode: 'phase1',
   operators: [],
   clients: [],
   metrics: [],
   sessions: [],
+  programs: [],
   selectedOperatorId: '',
   selectedClientId: '',
+  selectedProgramId: '',
+  programSessions: [],
 };
 
 const els = {};
@@ -73,6 +93,150 @@ function formatDate(value) {
     day: '2-digit',
     month: 'short',
   });
+}
+
+function isoNowId(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function blockLabel(code) {
+  const found = NEACEA_BLOCKS.find(([itemCode]) => itemCode === code);
+  return found ? `${found[0]} ${found[1]}` : code || 'N0 Tecnico';
+}
+
+function getClient(clientId) {
+  return state.clients.find((item) => item.client_id === clientId) || null;
+}
+
+function normalizeLegacyExercises(data) {
+  const esercizi = data?.esercizi || {};
+  const days = Object.keys(esercizi);
+  if (!days.length) return defaultSessions();
+  return days.map((day, index) => ({
+    id: isoNowId('session'),
+    name: day,
+    weekDay: String(index + 1),
+    focus: data?.split || '',
+    duration: '',
+    warmup: '',
+    cooldown: '',
+    notes: '',
+    blocks: [{
+      id: isoNowId('block'),
+      code: 'N0',
+      line: '',
+      mode: 'Singolo',
+      exercises: (esercizi[day] || []).map((exercise, exerciseIndex) => ({
+        id: exercise.id || isoNowId('exercise'),
+        order: exerciseIndex + 1,
+        name: exercise.nome || '',
+        sets: '',
+        reps: Array.isArray(exercise.progressione?.sedute) ? exercise.progressione.sedute.join(' / ') : '',
+        rest: exercise.recupero || '',
+        tut: exercise.progressione?.tut || '',
+        load: '',
+        rir: '',
+        notes: exercise.note || exercise.categoria || '',
+      })),
+    }],
+  }));
+}
+
+function defaultSessions() {
+  return [{
+    id: isoNowId('session'),
+    name: 'Seduta A',
+    weekDay: '1',
+    focus: '',
+    duration: '60',
+    warmup: '',
+    cooldown: '',
+    notes: '',
+    blocks: [{
+      id: isoNowId('block'),
+      code: 'N0',
+      line: '',
+      mode: 'Singolo',
+      exercises: [emptyExercise(1)],
+    }],
+  }];
+}
+
+function emptyExercise(order = 1) {
+  return {
+    id: isoNowId('exercise'),
+    order,
+    name: '',
+    sets: '',
+    reps: '',
+    rest: '',
+    tut: '',
+    load: '',
+    rir: '',
+    notes: '',
+  };
+}
+
+function normalizeProgram(row) {
+  const data = row.data || {};
+  const clientId = row.cliente_id || data.client_id || data.clienteId || data.cliente_id || '';
+  const sessions = Array.isArray(data.sessions) && data.sessions.length
+    ? data.sessions
+    : normalizeLegacyExercises(data);
+  return {
+    rowId: row.id,
+    id: data.id || row.id,
+    client_id: clientId,
+    trainer_id: data.trainer_id || data.trainerId || '',
+    created_by: data.created_by || data.createdBy || data.trainer_id || '',
+    name: data.name || data.nome || 'Scheda senza nome',
+    goal: data.goal || data.obiettivo || data.note || '',
+    level: data.level || data.livello || 'base',
+    weeks: Number(data.weeks || data.settimane || 4),
+    frequency: Number(data.frequency || data.frequenza_settimanale || (Array.isArray(data.giorni) ? data.giorni.length : 2)),
+    split: data.split || '',
+    start_date: data.start_date || data.inizio || '',
+    end_date: data.end_date || '',
+    status: data.status || data.stato || 'attiva',
+    notes: data.notes || data.note_generali || '',
+    neacea_string: data.neacea_string || '',
+    sessions,
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || '',
+  };
+}
+
+function programPayload(program) {
+  return {
+    id: program.id,
+    client_id: program.client_id,
+    trainer_id: program.trainer_id,
+    created_by: program.created_by || program.trainer_id,
+    name: program.name,
+    goal: program.goal,
+    level: program.level,
+    weeks: Number(program.weeks || 4),
+    frequency: Number(program.frequency || 1),
+    split: program.split,
+    start_date: program.start_date,
+    end_date: program.end_date,
+    status: program.status,
+    notes: program.notes,
+    neacea_string: program.neacea_string,
+    sessions: program.sessions,
+    schema_version: 2,
+  };
+}
+
+function buildNeaceaString(program) {
+  const codes = [];
+  (program.sessions || []).forEach((session) => {
+    (session.blocks || []).forEach((block) => {
+      if (block.code && !codes.includes(block.code)) codes.push(block.code);
+    });
+  });
+  const split = program.split ? ` · ${program.split}` : '';
+  return `${program.name || 'Scheda'} · ${codes.map(blockLabel).join(' / ') || 'N0 Tecnico'}${split}`;
 }
 
 function alertClass(severity) {
@@ -210,6 +374,15 @@ function buildFallbackMetrics() {
   });
 }
 
+async function loadPrograms() {
+  try {
+    const rows = await sb('schede_allenamento', '?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc');
+    state.programs = (rows || []).map(normalizeProgram);
+  } catch (error) {
+    state.programs = [];
+  }
+}
+
 async function loadData() {
   clearError();
   try {
@@ -219,6 +392,8 @@ async function loadData() {
     await loadFallback();
     els.migrationNotice.classList.remove('hidden');
   }
+
+  await loadPrograms();
 
   if (!state.selectedOperatorId && state.operators.length) {
     state.selectedOperatorId = state.operators[0].id;
@@ -256,6 +431,21 @@ function operatorSessions(days = 14) {
     .sort((a, b) => `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`));
 }
 
+function operatorPrograms() {
+  const allowedClientIds = new Set(operatorClients().map((client) => client.client_id));
+  const clientFilter = els.programClientFilter.value;
+  const statusFilter = els.programStatusFilter.value;
+  return state.programs
+    .filter((program) => !state.selectedOperatorId || program.trainer_id === state.selectedOperatorId || allowedClientIds.has(program.client_id))
+    .filter((program) => !clientFilter || program.client_id === clientFilter)
+    .filter((program) => !statusFilter || program.status === statusFilter)
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+}
+
+function clientPrograms(clientId) {
+  return state.programs.filter((program) => program.client_id === clientId);
+}
+
 function renderOperators() {
   const options = state.operators
     .map((op) => `<option value="${esc(op.id)}">${esc(fullName(op))}</option>`)
@@ -272,6 +462,8 @@ function renderOperators() {
     .map((client) => `<option value="${esc(client.client_id)}">${esc(fullName(client))}</option>`)
     .join('');
   els.assignClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
+  els.programClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
+  els.programClientFilter.innerHTML = `<option value="">Tutti i clienti assegnati</option>${clientOptions}`;
 }
 
 function renderDashboard() {
@@ -370,6 +562,7 @@ function renderClientDetail() {
   }
 
   const alerts = client.alerts || [];
+  const programs = clientPrograms(client.client_id);
   els.clientDetail.innerHTML = `
     <div class="detail">
       <div class="detail-header">
@@ -406,9 +599,26 @@ function renderClientDetail() {
         ${alerts.length ? alerts.map(renderAlertItem).join('') : '<div class="empty">Nessun alert attivo</div>'}
       </div>
 
+      <div class="section-title">Programmi PT</div>
+      <div class="stack">
+        ${programs.length ? programs.slice(0, 5).map(renderClientProgramItem).join('') : '<div class="empty">Nessuna scheda PT</div>'}
+      </div>
+
       <div class="section-title">Note operative</div>
       <div class="row-card">${esc(client.note_operative || client.note_cliente || 'Nessuna nota')}</div>
     </div>
+  `;
+}
+
+function renderClientProgramItem(program) {
+  return `
+    <article class="row-card clickable" data-open-program="${esc(program.id)}">
+      <div class="row-title">
+        <span>${esc(program.name)}</span>
+        <span class="pill">${esc(program.status)}</span>
+      </div>
+      <div class="row-sub">${esc(program.goal || 'Obiettivo non indicato')} · ${esc(program.weeks)} settimane</div>
+    </article>
   `;
 }
 
@@ -422,6 +632,259 @@ function renderAlertItem(alert) {
       <div class="row-sub">${esc(alert.description || alert.source || '')}</div>
     </article>
   `;
+}
+
+function renderPrograms() {
+  const programs = operatorPrograms();
+  els.programCount.textContent = programs.length;
+  els.programList.innerHTML = programs.length
+    ? programs.map(renderProgramCard).join('')
+    : '<div class="empty">Nessuna scheda PT</div>';
+
+  if (!state.selectedProgramId && programs.length) {
+    state.selectedProgramId = programs[0].id;
+  }
+
+  const current = state.programs.find((program) => program.id === state.selectedProgramId);
+  if (current) {
+    fillProgramForm(current);
+  } else {
+    newProgramDraft();
+  }
+}
+
+function renderProgramCard(program) {
+  const client = getClient(program.client_id);
+  const selected = program.id === state.selectedProgramId ? ' selected' : '';
+  const activeClass = program.status === 'attiva' ? ' info' : program.status === 'archiviata' ? ' warning' : '';
+  return `
+    <article class="row-card clickable${selected}" data-program-id="${esc(program.id)}">
+      <div class="row-title">
+        <span>${esc(program.name)}</span>
+        <span class="alert-pill${activeClass}">${esc(program.status)}</span>
+      </div>
+      <div class="row-sub">${esc(client ? fullName(client) : 'Cliente')} · ${esc(program.goal || 'Obiettivo non indicato')}</div>
+      <div class="row-sub">${esc(program.weeks)} settimane · ${esc(program.frequency)} sedute/settimana · ${esc(program.neacea_string || buildNeaceaString(program))}</div>
+    </article>
+  `;
+}
+
+function newProgramDraft(clientId = '') {
+  const client = clientId ? getClient(clientId) : operatorClients()[0];
+  const draft = {
+    id: '',
+    client_id: client?.client_id || '',
+    trainer_id: state.selectedOperatorId,
+    created_by: state.selectedOperatorId,
+    name: '',
+    goal: client?.obiettivo || client?.anamnesi_obiettivo || '',
+    level: 'base',
+    weeks: 4,
+    frequency: 2,
+    split: '',
+    start_date: todayIso(),
+    end_date: '',
+    status: 'bozza',
+    notes: '',
+    neacea_string: '',
+    sessions: defaultSessions(),
+  };
+  fillProgramForm(draft);
+}
+
+function fillProgramForm(program) {
+  state.programSessions = JSON.parse(JSON.stringify(program.sessions || defaultSessions()));
+  els.programId.value = program.id || '';
+  els.programClient.value = program.client_id || operatorClients()[0]?.client_id || '';
+  els.programStatus.value = program.status || 'bozza';
+  els.programName.value = program.name || '';
+  els.programGoal.value = program.goal || '';
+  els.programLevel.value = program.level || 'base';
+  els.programWeeks.value = program.weeks || 4;
+  els.programFrequency.value = program.frequency || 2;
+  els.programSplit.value = program.split || '';
+  els.programStart.value = program.start_date || '';
+  els.programEnd.value = program.end_date || '';
+  els.programNotes.value = program.notes || '';
+  els.programEditorTitle.textContent = program.id ? 'Modifica scheda' : 'Nuova scheda';
+  els.programEditorStatus.textContent = program.status || 'bozza';
+  renderSessionEditor();
+  updateNeaceaPreview();
+}
+
+function readProgramForm() {
+  const program = {
+    id: els.programId.value || isoNowId('pt_program'),
+    client_id: els.programClient.value,
+    trainer_id: state.selectedOperatorId,
+    created_by: state.selectedOperatorId,
+    name: els.programName.value.trim() || 'Scheda PT',
+    goal: els.programGoal.value.trim(),
+    level: els.programLevel.value,
+    weeks: Number(els.programWeeks.value || 4),
+    frequency: Number(els.programFrequency.value || 1),
+    split: els.programSplit.value.trim(),
+    start_date: els.programStart.value,
+    end_date: els.programEnd.value,
+    status: els.programStatus.value,
+    notes: els.programNotes.value.trim(),
+    sessions: state.programSessions,
+  };
+  program.neacea_string = buildNeaceaString(program);
+  return program;
+}
+
+function renderSessionEditor() {
+  els.sessionEditor.innerHTML = state.programSessions.map((session, sessionIndex) => `
+    <article class="session-card" data-session-index="${sessionIndex}">
+      <div class="session-head">
+        <strong>${esc(session.name || `Seduta ${sessionIndex + 1}`)}</strong>
+        <button class="icon-btn" type="button" data-remove-session="${sessionIndex}">Rimuovi</button>
+      </div>
+      <div class="program-form-grid compact">
+        <label><span>Nome seduta</span><input data-session-field="name" value="${esc(session.name)}"></label>
+        <label><span>Giorno/settimana</span><input data-session-field="weekDay" value="${esc(session.weekDay)}"></label>
+        <label><span>Focus</span><input data-session-field="focus" value="${esc(session.focus)}"></label>
+        <label><span>Durata min</span><input data-session-field="duration" value="${esc(session.duration)}"></label>
+      </div>
+      <div class="program-form-grid compact">
+        <label><span>Riscaldamento</span><input data-session-field="warmup" value="${esc(session.warmup)}"></label>
+        <label><span>Defaticamento</span><input data-session-field="cooldown" value="${esc(session.cooldown)}"></label>
+        <label class="span-2"><span>Note trainer</span><input data-session-field="notes" value="${esc(session.notes)}"></label>
+      </div>
+      <div class="block-list">
+        ${(session.blocks || []).map((block, blockIndex) => renderBlockEditor(block, sessionIndex, blockIndex)).join('')}
+      </div>
+      <button class="secondary-btn" type="button" data-add-block="${sessionIndex}">Aggiungi blocco</button>
+    </article>
+  `).join('');
+}
+
+function renderBlockEditor(block, sessionIndex, blockIndex) {
+  const codeOptions = NEACEA_BLOCKS.map(([code, label]) =>
+    `<option value="${esc(code)}"${block.code === code ? ' selected' : ''}>${esc(code)} - ${esc(label)}</option>`
+  ).join('');
+  const modeOptions = MODES.map((mode) =>
+    `<option value="${esc(mode)}"${block.mode === mode ? ' selected' : ''}>${esc(mode)}</option>`
+  ).join('');
+  return `
+    <div class="block-card" data-block-index="${blockIndex}">
+      <div class="program-form-grid compact">
+        <label><span>Codice NEACEA</span><select data-block-field="code">${codeOptions}</select></label>
+        <label><span>Linea movimento</span><input data-block-field="line" value="${esc(block.line)}" placeholder="Spinta orizzontale"></label>
+        <label><span>Modalita</span><select data-block-field="mode">${modeOptions}</select></label>
+        <label><span>Azioni</span><button class="danger-btn slim" type="button" data-remove-block="${sessionIndex}:${blockIndex}">Rimuovi blocco</button></label>
+      </div>
+      <div class="exercise-list">
+        ${(block.exercises || []).map((exercise, exerciseIndex) => renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)).join('')}
+      </div>
+      <button class="secondary-btn" type="button" data-add-exercise="${sessionIndex}:${blockIndex}">Aggiungi esercizio</button>
+    </div>
+  `;
+}
+
+function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex) {
+  return `
+    <div class="exercise-row" data-exercise-index="${exerciseIndex}">
+      <input data-exercise-field="order" value="${esc(exercise.order || exerciseIndex + 1)}" aria-label="Ordine">
+      <input data-exercise-field="name" value="${esc(exercise.name)}" placeholder="Esercizio">
+      <input data-exercise-field="sets" value="${esc(exercise.sets)}" placeholder="Serie">
+      <input data-exercise-field="reps" value="${esc(exercise.reps)}" placeholder="Ripetizioni">
+      <input data-exercise-field="rest" value="${esc(exercise.rest)}" placeholder="Recupero">
+      <input data-exercise-field="tut" value="${esc(exercise.tut)}" placeholder="TUT">
+      <input data-exercise-field="load" value="${esc(exercise.load)}" placeholder="Carico">
+      <input data-exercise-field="rir" value="${esc(exercise.rir)}" placeholder="RIR">
+      <input data-exercise-field="notes" value="${esc(exercise.notes)}" placeholder="Note tecniche">
+      <button class="danger-btn slim" type="button" data-remove-exercise="${sessionIndex}:${blockIndex}:${exerciseIndex}">X</button>
+    </div>
+  `;
+}
+
+function syncProgramEditor() {
+  els.sessionEditor.querySelectorAll('[data-session-index]').forEach((sessionEl) => {
+    const session = state.programSessions[Number(sessionEl.dataset.sessionIndex)];
+    sessionEl.querySelectorAll('[data-session-field]').forEach((input) => {
+      session[input.dataset.sessionField] = input.value;
+    });
+    sessionEl.querySelectorAll('[data-block-index]').forEach((blockEl) => {
+      const block = session.blocks[Number(blockEl.dataset.blockIndex)];
+      blockEl.querySelectorAll('[data-block-field]').forEach((input) => {
+        block[input.dataset.blockField] = input.value;
+      });
+      blockEl.querySelectorAll('[data-exercise-index]').forEach((exerciseEl) => {
+        const exercise = block.exercises[Number(exerciseEl.dataset.exerciseIndex)];
+        exerciseEl.querySelectorAll('[data-exercise-field]').forEach((input) => {
+          exercise[input.dataset.exerciseField] = input.value;
+        });
+      });
+    });
+  });
+}
+
+function updateNeaceaPreview() {
+  const program = readProgramForm();
+  els.neaceaString.textContent = buildNeaceaString(program);
+}
+
+async function saveProgram() {
+  syncProgramEditor();
+  const program = readProgramForm();
+  if (!program.client_id) throw new Error('Seleziona un cliente');
+  await sb('schede_allenamento', '?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: {
+      id: program.id,
+      cliente_id: program.client_id,
+      data: programPayload(program),
+      updated_at: new Date().toISOString(),
+    },
+  });
+  state.selectedProgramId = program.id;
+  await refresh();
+}
+
+async function archiveProgram() {
+  if (!els.programId.value) return;
+  els.programStatus.value = 'archiviata';
+  await saveProgram();
+}
+
+async function duplicateProgram(mode) {
+  syncProgramEditor();
+  const source = readProgramForm();
+  const clone = JSON.parse(JSON.stringify(source));
+  clone.id = isoNowId('pt_program');
+  clone.name = `${source.name || 'Scheda PT'} - copia`;
+  clone.status = 'bozza';
+  clone.start_date = todayIso();
+  clone.end_date = '';
+  if (mode === 'empty') {
+    clone.sessions.forEach((session) => {
+      session.blocks.forEach((block) => {
+        block.exercises.forEach((exercise) => {
+          exercise.load = '';
+          exercise.rir = '';
+        });
+      });
+    });
+  }
+  if (mode === 'progression') {
+    clone.notes = `${clone.notes ? `${clone.notes}\n` : ''}Progressione proposta: aumentare i carichi del 2-5% dove tecnica e RIR lo consentono.`;
+  }
+  clone.neacea_string = buildNeaceaString(clone);
+  await sb('schede_allenamento', '?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: {
+      id: clone.id,
+      cliente_id: clone.client_id,
+      data: programPayload(clone),
+      updated_at: new Date().toISOString(),
+    },
+  });
+  state.selectedProgramId = clone.id;
+  await refresh();
 }
 
 function renderCalendar() {
@@ -469,6 +932,7 @@ function render() {
   renderOperators();
   renderDashboard();
   renderClients();
+  renderPrograms();
   renderCalendar();
   renderAssignments();
 }
@@ -504,8 +968,17 @@ function bindEvents() {
     renderClients();
   });
 
+  els.clientDetail.addEventListener('click', (event) => {
+    const row = event.target.closest('[data-open-program]');
+    if (!row) return;
+    state.selectedProgramId = row.dataset.openProgram;
+    document.querySelector('[data-view="programs"]').click();
+    renderPrograms();
+  });
+
   els.assignTrainer.addEventListener('change', () => {
     state.selectedOperatorId = els.assignTrainer.value;
+    state.selectedProgramId = '';
     render();
   });
 
@@ -515,6 +988,148 @@ function bindEvents() {
       await assignClient();
     } catch (error) {
       showError(`Assegnazione non riuscita: ${error.message}`);
+    }
+  });
+
+  els.programClientFilter.addEventListener('change', () => {
+    state.selectedProgramId = '';
+    renderPrograms();
+  });
+
+  els.programStatusFilter.addEventListener('change', () => {
+    state.selectedProgramId = '';
+    renderPrograms();
+  });
+
+  els.newProgramButton.addEventListener('click', () => {
+    state.selectedProgramId = '';
+    newProgramDraft(els.programClientFilter.value || state.selectedClientId);
+  });
+
+  els.programList.addEventListener('click', (event) => {
+    const row = event.target.closest('[data-program-id]');
+    if (!row) return;
+    state.selectedProgramId = row.dataset.programId;
+    renderPrograms();
+  });
+
+  els.programForm.addEventListener('input', () => {
+    syncProgramEditor();
+    updateNeaceaPreview();
+  });
+
+  els.programForm.addEventListener('change', () => {
+    syncProgramEditor();
+    updateNeaceaPreview();
+  });
+
+  els.programForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      clearError();
+      await saveProgram();
+    } catch (error) {
+      showError(`Salvataggio scheda non riuscito: ${error.message}`);
+    }
+  });
+
+  els.addSessionButton.addEventListener('click', () => {
+    syncProgramEditor();
+    state.programSessions.push({
+      id: isoNowId('session'),
+      name: `Seduta ${state.programSessions.length + 1}`,
+      weekDay: String(state.programSessions.length + 1),
+      focus: '',
+      duration: '60',
+      warmup: '',
+      cooldown: '',
+      notes: '',
+      blocks: [{
+        id: isoNowId('block'),
+        code: 'N0',
+        line: '',
+        mode: 'Singolo',
+        exercises: [emptyExercise(1)],
+      }],
+    });
+    renderSessionEditor();
+    updateNeaceaPreview();
+  });
+
+  els.sessionEditor.addEventListener('click', (event) => {
+    const addBlock = event.target.closest('[data-add-block]');
+    const addExercise = event.target.closest('[data-add-exercise]');
+    const removeSession = event.target.closest('[data-remove-session]');
+    const removeBlock = event.target.closest('[data-remove-block]');
+    const removeExercise = event.target.closest('[data-remove-exercise]');
+    syncProgramEditor();
+
+    if (addBlock) {
+      const session = state.programSessions[Number(addBlock.dataset.addBlock)];
+      session.blocks.push({ id: isoNowId('block'), code: 'N0', line: '', mode: 'Singolo', exercises: [emptyExercise(1)] });
+    }
+
+    if (addExercise) {
+      const [sessionIndex, blockIndex] = addExercise.dataset.addExercise.split(':').map(Number);
+      const exercises = state.programSessions[sessionIndex].blocks[blockIndex].exercises;
+      exercises.push(emptyExercise(exercises.length + 1));
+    }
+
+    if (removeSession && state.programSessions.length > 1) {
+      state.programSessions.splice(Number(removeSession.dataset.removeSession), 1);
+    }
+
+    if (removeBlock) {
+      const [sessionIndex, blockIndex] = removeBlock.dataset.removeBlock.split(':').map(Number);
+      const blocks = state.programSessions[sessionIndex].blocks;
+      if (blocks.length > 1) blocks.splice(blockIndex, 1);
+    }
+
+    if (removeExercise) {
+      const [sessionIndex, blockIndex, exerciseIndex] = removeExercise.dataset.removeExercise.split(':').map(Number);
+      const exercises = state.programSessions[sessionIndex].blocks[blockIndex].exercises;
+      if (exercises.length > 1) exercises.splice(exerciseIndex, 1);
+    }
+
+    if (addBlock || addExercise || removeSession || removeBlock || removeExercise) {
+      renderSessionEditor();
+      updateNeaceaPreview();
+    }
+  });
+
+  els.archiveProgramButton.addEventListener('click', async () => {
+    try {
+      clearError();
+      await archiveProgram();
+    } catch (error) {
+      showError(`Archiviazione non riuscita: ${error.message}`);
+    }
+  });
+
+  els.duplicateEmptyButton.addEventListener('click', async () => {
+    try {
+      clearError();
+      await duplicateProgram('empty');
+    } catch (error) {
+      showError(`Duplicazione non riuscita: ${error.message}`);
+    }
+  });
+
+  els.duplicateHistoryButton.addEventListener('click', async () => {
+    try {
+      clearError();
+      await duplicateProgram('history');
+    } catch (error) {
+      showError(`Duplicazione non riuscita: ${error.message}`);
+    }
+  });
+
+  els.duplicateProgressionButton.addEventListener('click', async () => {
+    try {
+      clearError();
+      await duplicateProgram('progression');
+    } catch (error) {
+      showError(`Duplicazione non riuscita: ${error.message}`);
     }
   });
 }
@@ -535,6 +1150,33 @@ function cacheElements() {
     'clientCount',
     'clientList',
     'clientDetail',
+    'programClientFilter',
+    'programStatusFilter',
+    'newProgramButton',
+    'programCount',
+    'programList',
+    'programEditorTitle',
+    'programEditorStatus',
+    'programForm',
+    'programId',
+    'programClient',
+    'programStatus',
+    'programName',
+    'programGoal',
+    'programLevel',
+    'programWeeks',
+    'programFrequency',
+    'programSplit',
+    'programStart',
+    'programEnd',
+    'programNotes',
+    'neaceaString',
+    'addSessionButton',
+    'sessionEditor',
+    'duplicateEmptyButton',
+    'duplicateHistoryButton',
+    'duplicateProgressionButton',
+    'archiveProgramButton',
     'calendarCount',
     'calendarList',
     'assignTrainer',
