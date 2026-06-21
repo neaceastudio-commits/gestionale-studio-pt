@@ -322,6 +322,30 @@ function buildNeaceaString(program) {
   return `${program.name || 'Scheda'} · ${codes.map(blockLabel).join(' / ') || 'N0 Tecnico'}${split}`;
 }
 
+function cleanProgramName(value) {
+  return String(value || 'Scheda PT')
+    .replace(/(\s*-\s*copia)+$/gi, '')
+    .trim() || 'Scheda PT';
+}
+
+function compactProgramList(programs) {
+  const grouped = new Map();
+  programs.forEach((program) => {
+    const key = [
+      program.client_id,
+      cleanProgramName(program.name).toLowerCase(),
+      String(program.goal || '').toLowerCase(),
+      program.status,
+    ].join('|');
+    const current = grouped.get(key);
+    if (!current || String(program.updated_at || '').localeCompare(String(current.updated_at || '')) > 0) {
+      grouped.set(key, program);
+    }
+  });
+  return Array.from(grouped.values())
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+}
+
 function alertClass(severity) {
   if (severity === 'critical') return 'critical';
   if (severity === 'warning') return 'warning';
@@ -721,12 +745,16 @@ function renderAlertItem(alert) {
 }
 
 function renderPrograms() {
-  const programs = operatorPrograms();
+  const allPrograms = operatorPrograms();
+  const programs = compactProgramList(allPrograms);
   els.programCount.textContent = programs.length;
   els.programList.innerHTML = programs.length
-    ? programs.map(renderProgramCard).join('')
+    ? programs.map(renderProgramRow).join('')
     : '<div class="empty">Nessuna scheda PT</div>';
 
+  if (state.selectedProgramId && !programs.some((program) => program.id === state.selectedProgramId)) {
+    state.selectedProgramId = '';
+  }
   if (!state.selectedProgramId && programs.length) {
     state.selectedProgramId = programs[0].id;
   }
@@ -739,18 +767,18 @@ function renderPrograms() {
   }
 }
 
-function renderProgramCard(program) {
+function renderProgramRow(program) {
   const client = getClient(program.client_id);
   const selected = program.id === state.selectedProgramId ? ' selected' : '';
   const activeClass = program.status === 'attiva' ? ' info' : program.status === 'archiviata' ? ' warning' : '';
+  const name = cleanProgramName(program.name);
   return `
-    <article class="row-card clickable${selected}" data-program-id="${esc(program.id)}">
-      <div class="row-title">
-        <span>${esc(program.name)}</span>
-        <span class="alert-pill${activeClass}">${esc(program.status)}</span>
-      </div>
-      <div class="row-sub">${esc(client ? fullName(client) : 'Cliente')} · ${esc(program.goal || 'Obiettivo non indicato')}</div>
-      <div class="row-sub">${esc(program.weeks)} settimane · ${esc(program.frequency)} sedute/settimana · ${esc(program.neacea_string || buildNeaceaString(program))}</div>
+    <article class="program-row clickable${selected}" data-program-id="${esc(program.id)}">
+      <strong>${esc(name)}</strong>
+      <span>${esc(client ? fullName(client) : 'Cliente')}</span>
+      <span>${esc(program.goal || 'Obiettivo non indicato')}</span>
+      <span>${esc(program.weeks)} sett. · ${esc(program.frequency)} sed./sett.</span>
+      <span class="alert-pill${activeClass}">${esc(program.status)}</span>
     </article>
   `;
 }
@@ -783,7 +811,7 @@ function fillProgramForm(program) {
   els.programId.value = program.id || '';
   els.programClient.value = program.client_id || operatorClients()[0]?.client_id || '';
   els.programStatus.value = program.status || 'bozza';
-  els.programName.value = program.name || '';
+  els.programName.value = cleanProgramName(program.name);
   els.programGoal.value = program.goal || '';
   els.programLevel.value = program.level || 'base';
   els.programWeeks.value = program.weeks || 4;
@@ -1471,32 +1499,6 @@ function bindEvents() {
     }
   });
 
-  els.duplicateEmptyButton.addEventListener('click', async () => {
-    try {
-      clearError();
-      await duplicateProgram('empty');
-    } catch (error) {
-      showError(`Duplicazione non riuscita: ${error.message}`);
-    }
-  });
-
-  els.duplicateHistoryButton.addEventListener('click', async () => {
-    try {
-      clearError();
-      await duplicateProgram('history');
-    } catch (error) {
-      showError(`Duplicazione non riuscita: ${error.message}`);
-    }
-  });
-
-  els.duplicateProgressionButton.addEventListener('click', async () => {
-    try {
-      clearError();
-      await duplicateProgram('progression');
-    } catch (error) {
-      showError(`Duplicazione non riuscita: ${error.message}`);
-    }
-  });
 }
 
 function cacheElements() {
@@ -1549,9 +1551,6 @@ function cacheElements() {
     'addPickedExerciseButton',
     'addSessionButton',
     'sessionEditor',
-    'duplicateEmptyButton',
-    'duplicateHistoryButton',
-    'duplicateProgressionButton',
     'archiveProgramButton',
     'calendarCount',
     'calendarList',

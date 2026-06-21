@@ -430,16 +430,47 @@ h2 {
 }
 
 .program-list {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  gap: 8px;
   max-height: none;
-  overflow-x: auto;
+  overflow: visible;
   padding: 14px;
 }
 
-.program-list .row-card {
-  flex: 0 0 280px;
-  max-width: 360px;
+.program-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, .9fr) minmax(180px, 1fr) 150px auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.program-row.clickable {
+  cursor: pointer;
+}
+
+.program-row.clickable:hover,
+.program-row.selected {
+  border-color: var(--blue-2);
+  background: #f8fbfd;
+}
+
+.program-row strong {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.program-row span:not(.alert-pill) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .program-editor-panel {
@@ -1014,6 +1045,7 @@ h2 {
   .layout-two,
   .client-layout,
   .program-layout,
+  .program-row,
   .exercise-builder,
   .builder-fast-row,
   .detail-grid,
