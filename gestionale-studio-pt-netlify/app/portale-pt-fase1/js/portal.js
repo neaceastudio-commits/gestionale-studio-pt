@@ -72,6 +72,7 @@ const state = {
   metrics: [],
   sessions: [],
   programs: [],
+  calendarView: 'week',
   selectedOperatorId: '',
   selectedClientId: '',
   selectedProgramId: '',
@@ -143,6 +144,31 @@ function formatDate(value) {
     day: '2-digit',
     month: 'short',
   });
+}
+
+function parseIsoDate(value) {
+  const [y, m, d] = String(value || '').split('-').map(Number);
+  return new Date(y || new Date().getFullYear(), (m || 1) - 1, d || 1);
+}
+
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function sameMonth(value, reference = new Date()) {
+  const date = parseIsoDate(value);
+  return date.getFullYear() === reference.getFullYear() && date.getMonth() === reference.getMonth();
+}
+
+function sameWeek(value, reference = new Date()) {
+  const date = parseIsoDate(value);
+  const start = new Date(reference);
+  const day = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - day);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return date >= start && date < end;
 }
 
 function isoNowId(prefix) {
@@ -237,7 +263,7 @@ function defaultSessions() {
       code: 'N0',
       line: '',
       mode: 'Singolo',
-      exercises: [emptyExercise(1)],
+      exercises: [],
     }],
   }];
 }
@@ -261,9 +287,18 @@ function emptyExercise(order = 1) {
 function normalizeProgram(row) {
   const data = row.data || {};
   const clientId = row.cliente_id || data.client_id || data.clienteId || data.cliente_id || '';
-  const sessions = Array.isArray(data.sessions) && data.sessions.length
+  const rawSessions = Array.isArray(data.sessions) && data.sessions.length
     ? data.sessions
     : normalizeLegacyExercises(data);
+  const sessions = rawSessions.map((session) => ({
+    ...session,
+    blocks: (session.blocks || []).map((block) => ({
+      ...block,
+      exercises: (block.exercises || []).filter((exercise) =>
+        exercise?.name || exercise?.progression || exercise?.notes || exercise?.load
+      ),
+    })),
+  }));
   return {
     rowId: row.id,
     id: data.id || row.id,
@@ -666,10 +701,12 @@ function field(label, value) {
 function renderClientDetail() {
   const client = state.clients.find((item) => item.client_id === state.selectedClientId);
   if (!client) {
+    els.clientDetail.className = 'detail-empty';
     els.clientDetail.innerHTML = '<div class="detail-empty">Seleziona un cliente</div>';
     return;
   }
 
+  els.clientDetail.className = '';
   const alerts = client.alerts || [];
   const programs = clientPrograms(client.client_id);
   els.clientDetail.innerHTML = `
@@ -944,10 +981,13 @@ function renderBuilderProgressionPreview() {
 }
 
 function renderBlockEditor(block, sessionIndex, blockIndex) {
+  const exercises = block.exercises || [];
   return `
     <div class="block-card" data-block-index="${blockIndex}">
       <div class="exercise-list">
-        ${(block.exercises || []).map((exercise, exerciseIndex) => renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)).join('')}
+        ${exercises.length
+          ? exercises.map((exercise, exerciseIndex) => renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)).join('')
+          : '<div class="empty compact-empty">Nessun esercizio inserito</div>'}
       </div>
       <button class="secondary-btn" type="button" data-add-exercise="${sessionIndex}:${blockIndex}">Aggiungi esercizio</button>
     </div>
@@ -1206,10 +1246,25 @@ async function duplicateProgram(mode) {
 }
 
 function renderCalendar() {
-  const sessions = operatorSessions(30);
+  const today = new Date();
+  const allSessions = operatorSessions(90);
+  const sessions = allSessions.filter((session) => {
+    if (state.calendarView === 'day') return session.date === todayIso();
+    if (state.calendarView === 'month') return sameMonth(session.date, today);
+    return sameWeek(session.date, today);
+  });
   els.calendarCount.textContent = sessions.length;
+  document.querySelectorAll('[data-calendar-view]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.calendarView === state.calendarView);
+  });
   if (!sessions.length) {
-    els.calendarList.innerHTML = '<div class="empty">Nessuna seduta futura</div>';
+    const label = state.calendarView === 'day' ? 'oggi' : state.calendarView === 'month' ? 'questo mese' : 'questa settimana';
+    els.calendarList.innerHTML = `<div class="empty">Nessuna seduta ${label}</div>`;
+    return;
+  }
+
+  if (state.calendarView === 'month') {
+    renderCalendarMonth(sessions, today);
     return;
   }
 
@@ -1219,6 +1274,36 @@ function renderCalendar() {
     lastDate = session.date;
     return `${header}${renderSessionCard(session)}`;
   }).join('');
+}
+
+function renderCalendarMonth(sessions, reference) {
+  const sessionsByDate = sessions.reduce((acc, session) => {
+    acc[session.date] = acc[session.date] || [];
+    acc[session.date].push(session);
+    return acc;
+  }, {});
+  const first = new Date(reference.getFullYear(), reference.getMonth(), 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const start = new Date(first);
+  start.setDate(first.getDate() - startOffset);
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = dateKey(date);
+    const daySessions = sessionsByDate[key] || [];
+    const outside = date.getMonth() !== reference.getMonth() ? ' muted-day' : '';
+    return `
+      <div class="month-cell${outside}">
+        <strong>${date.getDate()}</strong>
+        ${daySessions.slice(0, 3).map((session) => `<span>${esc(String(session.start_time || '').slice(0, 5))} ${esc(fullName(session))}</span>`).join('')}
+        ${daySessions.length > 3 ? `<em>+${daySessions.length - 3}</em>` : ''}
+      </div>`;
+  }).join('');
+  els.calendarList.innerHTML = `
+    <div class="month-grid">
+      ${['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day) => `<div class="month-head">${day}</div>`).join('')}
+      ${cells}
+    </div>`;
 }
 
 async function assignClient() {
@@ -1292,6 +1377,13 @@ function bindEvents() {
     state.selectedProgramId = row.dataset.openProgram;
     document.querySelector('[data-view="programs"]').click();
     renderPrograms();
+  });
+
+  document.querySelectorAll('[data-calendar-view]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.calendarView = button.dataset.calendarView;
+      renderCalendar();
+    });
   });
 
   els.assignTrainer.addEventListener('change', () => {
@@ -1371,7 +1463,7 @@ function bindEvents() {
         code: 'N0',
         line: '',
         mode: 'Singolo',
-        exercises: [emptyExercise(1)],
+        exercises: [],
       }],
     });
     renderSessionEditorAtSamePoint();
@@ -1450,7 +1542,7 @@ function bindEvents() {
 
     if (addBlock) {
       const session = state.programSessions[Number(addBlock.dataset.addBlock)];
-      session.blocks.push({ id: isoNowId('block'), code: 'N0', line: '', mode: 'Singolo', exercises: [emptyExercise(1)] });
+      session.blocks.push({ id: isoNowId('block'), code: 'N0', line: '', mode: 'Singolo', exercises: [] });
     }
 
     if (addExercise) {
@@ -1472,7 +1564,7 @@ function bindEvents() {
     if (removeExercise) {
       const [sessionIndex, blockIndex, exerciseIndex] = removeExercise.dataset.removeExercise.split(':').map(Number);
       const exercises = state.programSessions[sessionIndex].blocks[blockIndex].exercises;
-      if (exercises.length > 1) exercises.splice(exerciseIndex, 1);
+      if (exercises.length) exercises.splice(exerciseIndex, 1);
     }
 
     if (addBlock || addExercise || removeSession || removeBlock || removeExercise) {

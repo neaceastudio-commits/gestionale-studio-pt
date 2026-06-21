@@ -239,6 +239,12 @@ h2 {
   background: #fbfcfd;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .stack,
 .client-list,
 .calendar-list {
@@ -339,7 +345,9 @@ h2 {
 }
 
 .detail-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
@@ -352,7 +360,7 @@ h2 {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 14px;
 }
@@ -392,6 +400,86 @@ h2 {
 .calendar-day {
   display: grid;
   gap: 10px;
+}
+
+.segmented-control {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.segment {
+  min-height: 34px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  padding: 0 12px;
+  background: #fff;
+  color: var(--muted);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.segment:last-child {
+  border-right: 0;
+}
+
+.segment.active {
+  background: var(--blue);
+  color: #fff;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.month-head,
+.month-cell {
+  min-height: 86px;
+  padding: 9px;
+  background: #fff;
+}
+
+.month-head {
+  min-height: auto;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.month-cell {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.month-cell strong {
+  font-size: 12px;
+}
+
+.month-cell span,
+.month-cell em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-cell.muted-day {
+  background: #f7f9fa;
+  color: var(--faint);
 }
 
 .day-title {
@@ -1061,6 +1149,7 @@ h2 {
   .program-row,
   .exercise-builder,
   .builder-fast-row,
+  .detail-header,
   .detail-grid,
   .form-grid,
   .program-form-grid,
@@ -1085,6 +1174,19 @@ h2 {
 
   .load-row {
     grid-template-columns: 1fr;
+  }
+
+  .panel-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .month-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .month-head {
+    display: none;
   }
 
   .progression-preview-grid {
