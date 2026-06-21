@@ -18,6 +18,50 @@ const NEACEA_BLOCKS = [
 
 const MODES = ['Singolo', 'Combo', 'Superset', 'Giant set', 'Multiset', 'Stripping', 'Ladder'];
 
+const EXERCISE_LIBRARY = {
+  'Mobilita Anca': ['Hip 90/90', 'Hip CARs', 'Frog Stretch', 'Couch Stretch', 'Deep Squat Hold'],
+  'Attivazione Core': ['Dead Bug', 'Bird Dog', 'Hollow Body Hold', 'Pallof Press Isometrico', 'Side Plank Breve'],
+  Petto: ['Bench Press', 'Incline Bench Press', 'Dumbbell Press', 'Cable Fly Medio', 'Push Up', 'Dip'],
+  'Schiena - Dorsali': ['Lat Pulldown Presa Larga', 'Pull Up', 'Chin Up', 'Pulley Basso Presa Larga', 'Dumbbell Row'],
+  Spalle: ['Overhead Press', 'Dumbbell Shoulder Press', 'Lateral Raise DB', 'Cable Y-Raise', 'Landmine Press'],
+  Bicipiti: ['Curl Bilanciere', 'Curl Manubri', 'Hammer Curl', 'Curl Cavo Basso'],
+  Tricipiti: ['Close Grip Bench Press', 'Tricep Pushdown Corda', 'Overhead Tricep Extension DB', 'Skullcrusher'],
+  Quadricipiti: ['Squat', 'Front Squat', 'Smith Squat', 'Bulgarian Split Squat', 'Walking Lunge', 'Step Up'],
+  'Posteriori Coscia / Glutei': ['Romanian Deadlift', 'Deadlift', 'Hip Thrust Bilanciere', 'Cable Pull Through', 'Single Leg RDL'],
+  Core: ['Plank', 'Side Plank', 'Pallof Press', 'Cable Crunch', 'Ab Wheel', 'Landmine Rotation'],
+  'Compound / Full Body': ['Deadlift', 'Farmer Walk', 'Landmine Thruster', 'KB Swing'],
+};
+
+const PROGRESSION_LIBRARY = {
+  Tecnica: [
+    { name: 'Circuito Tecnico Base', tut: '2/1/1/1', sessions: ['2x10', '2x10', '3x10', '3x10', '3x12', '3x12'] },
+    { name: 'Ladder Tecnico', tut: '2/1/1/1', sessions: ['2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)'] },
+    { name: 'Progressione Lineare Tecnica', tut: '1/1/1/1', sessions: ['3x8', '3x9', '3x10', '4x8', '4x9', '4x10'] },
+  ],
+  Forza: [
+    { name: 'Forza 5x5 Progressiva', tut: '2/1/1/1', sessions: ['5x5 @70%', '5x5 @72%', '5x5 @74%', '5x5 @76%', '5x5 @80%', '5x5 @82%'] },
+    { name: 'Cluster Tecnico Forza', tut: '1/1/1/1', sessions: ['4x(2+2+2) @72%', '4x(2+2+2) @75%', '4x(2+2+2) @75%', '4x(2+2+2) @77%', '4x(2+2+2) @77%', '4x(2+2+2) @78%'] },
+    { name: 'Top Set + Back Off', tut: '2/1/1/1', sessions: ['1x5@75%+2x6@65%', '1x5@77%+2x6@65%', '1x4@80%+3x6@68%', '1x4@82%+3x6@68%', '1x3@85%+3x5@70%', '1x3@85%+3x5@70%'] },
+  ],
+  Ipertrofia: [
+    { name: 'Ipertrofia Lineare', tut: '2/1/1/1', sessions: ['4x8 @65%', '4x9 @67%', '4x10 @70%', '5x8 @72%', '5x9 @72%', '5x10 @74%'] },
+    { name: 'Complementare Progressiva', tut: '1/1/1/1', sessions: ['3x10', '3x11', '3x12', '4x10', '4x11', '4x12'] },
+    { name: 'Rest Pause Ipertrofia', tut: '1/1/1/1', sessions: ['3x10 (4-3)', '3x11 (4-3)', '3x12 (4-3)', '4x10 (4-3)', '4x11 (4-3)', '4x12 (4-3)'] },
+  ],
+  Densita: [
+    { name: 'Densita Progressiva', tut: '2/1/1/1', sessions: ['5x8 (120")', '5x8 (105")', '6x8 (90")', '6x8 (75")', '7x8 (75")', '8x8 (60")'] },
+    { name: 'Myo Reps', tut: '2/1/1/1', sessions: ['1x15+3x5', '1x16+3x5', '1x17+4x5', '1x18+4x5', '1x19+5x5', '1x20+5x5'] },
+  ],
+  Core: [
+    { name: 'Core Stabilita', tut: '2/1/2/1', sessions: ['3x25"', '3x30"', '2x25"/lat', '2x30"/lat', '3x20"', '3x25"'] },
+    { name: 'Core Circuito', tut: '2/1/2/1', sessions: ['2 giri x 3 ex', '2 giri (rip+)', '3 giri', '3 giri (rip+)', '3 giri', '3-4 giri'] },
+  ],
+  Scarico: [
+    { name: 'Volume Minimo', tut: '2/1/1/1', sessions: ['3x8', '3x8', '3x8', '3x8', '3x8', '3x8'] },
+    { name: 'Buffer Alto Costante', tut: '3/1/1/1', sessions: ['3x8@65%', '3x8', '3x8', '3x8', '3x8', '3x8'] },
+  ],
+};
+
 const state = {
   mode: 'phase1',
   operators: [],
@@ -108,6 +152,35 @@ function getClient(clientId) {
   return state.clients.find((item) => item.client_id === clientId) || null;
 }
 
+function flattenExercises() {
+  return Object.entries(EXERCISE_LIBRARY).flatMap(([category, names]) => names.map((name) => ({ category, name })));
+}
+
+function exerciseCategory(name) {
+  const found = flattenExercises().find((item) => item.name.toLowerCase() === String(name || '').toLowerCase());
+  return found?.category || '';
+}
+
+function flattenProgressions() {
+  return Object.entries(PROGRESSION_LIBRARY).flatMap(([group, progressions]) =>
+    progressions.map((progression) => ({ group, ...progression }))
+  );
+}
+
+function progressionByName(name) {
+  return flattenProgressions().find((item) => item.name === name) || null;
+}
+
+function normalizeProgression(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return progressionByName(value);
+  return {
+    name: value.name || value.nome || '',
+    tut: value.tut || '',
+    sessions: value.sessions || value.sedute || [],
+  };
+}
+
 function normalizeLegacyExercises(data) {
   const esercizi = data?.esercizi || {};
   const days = Object.keys(esercizi);
@@ -130,6 +203,8 @@ function normalizeLegacyExercises(data) {
         id: exercise.id || isoNowId('exercise'),
         order: exerciseIndex + 1,
         name: exercise.nome || '',
+        category: exercise.categoria || exerciseCategory(exercise.nome),
+        progression: normalizeProgression(exercise.progressione),
         sets: '',
         reps: Array.isArray(exercise.progressione?.sedute) ? exercise.progressione.sedute.join(' / ') : '',
         rest: exercise.recupero || '',
@@ -167,6 +242,8 @@ function emptyExercise(order = 1) {
     id: isoNowId('exercise'),
     order,
     name: '',
+    category: '',
+    progression: null,
     sets: '',
     reps: '',
     rest: '',
@@ -464,6 +541,9 @@ function renderOperators() {
   els.assignClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
   els.programClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
   els.programClientFilter.innerHTML = `<option value="">Tutti i clienti assegnati</option>${clientOptions}`;
+  els.exerciseLibrary.innerHTML = flattenExercises()
+    .map((item) => `<option value="${esc(item.name)}" label="${esc(item.category)}"></option>`)
+    .join('');
 }
 
 function renderDashboard() {
@@ -784,18 +864,39 @@ function renderBlockEditor(block, sessionIndex, blockIndex) {
 }
 
 function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex) {
+  const progression = normalizeProgression(exercise.progression);
+  const progressionOptions = [
+    '<option value="">Senza progressione</option>',
+    ...Object.entries(PROGRESSION_LIBRARY).map(([group, progressions]) => `
+      <optgroup label="${esc(group)}">
+        ${progressions.map((item) => `<option value="${esc(item.name)}"${progression?.name === item.name ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}
+      </optgroup>
+    `),
+  ].join('');
+  const sedute = progression?.sessions || [];
   return `
-    <div class="exercise-row" data-exercise-index="${exerciseIndex}">
-      <input data-exercise-field="order" value="${esc(exercise.order || exerciseIndex + 1)}" aria-label="Ordine">
-      <input data-exercise-field="name" value="${esc(exercise.name)}" placeholder="Esercizio">
-      <input data-exercise-field="sets" value="${esc(exercise.sets)}" placeholder="Serie">
-      <input data-exercise-field="reps" value="${esc(exercise.reps)}" placeholder="Ripetizioni">
-      <input data-exercise-field="rest" value="${esc(exercise.rest)}" placeholder="Recupero">
-      <input data-exercise-field="tut" value="${esc(exercise.tut)}" placeholder="TUT">
-      <input data-exercise-field="load" value="${esc(exercise.load)}" placeholder="Carico">
-      <input data-exercise-field="rir" value="${esc(exercise.rir)}" placeholder="RIR">
-      <input data-exercise-field="notes" value="${esc(exercise.notes)}" placeholder="Note tecniche">
-      <button class="danger-btn slim" type="button" data-remove-exercise="${sessionIndex}:${blockIndex}:${exerciseIndex}">X</button>
+    <div class="exercise-card-compact" data-exercise-index="${exerciseIndex}">
+      <div class="exercise-compact-head">
+        <div class="exercise-order">${esc(exercise.order || exerciseIndex + 1)}</div>
+        <div class="exercise-main-fields">
+          <input class="exercise-name-input" data-exercise-field="name" list="exerciseLibrary" value="${esc(exercise.name)}" placeholder="Esercizio">
+          <input data-exercise-field="category" value="${esc(exercise.category || exerciseCategory(exercise.name))}" placeholder="Categoria">
+        </div>
+        <select data-exercise-field="progressionName">${progressionOptions}</select>
+        <input data-exercise-field="rest" value="${esc(exercise.rest)}" placeholder="Rec.">
+        <input data-exercise-field="load" value="${esc(exercise.load)}" placeholder="Carico">
+        <input data-exercise-field="rir" value="${esc(exercise.rir)}" placeholder="RIR">
+        <button class="danger-btn slim" type="button" data-remove-exercise="${sessionIndex}:${blockIndex}:${exerciseIndex}">X</button>
+      </div>
+      <div class="exercise-progression-strip">
+        <span class="tut-badge">TUT ${esc(progression?.tut || exercise.tut || '-')}</span>
+        ${sedute.length
+          ? sedute.map((item, index) => `<span class="seduta-pill"><b>Sed.${index + 1}</b>${esc(item)}</span>`).join('')
+          : '<span class="seduta-empty">Progressione manuale</span>'}
+      </div>
+      <div class="exercise-notes-line">
+        <input data-exercise-field="notes" value="${esc(exercise.notes)}" placeholder="Note tecniche">
+      </div>
     </div>
   `;
 }
@@ -814,8 +915,15 @@ function syncProgramEditor() {
       blockEl.querySelectorAll('[data-exercise-index]').forEach((exerciseEl) => {
         const exercise = block.exercises[Number(exerciseEl.dataset.exerciseIndex)];
         exerciseEl.querySelectorAll('[data-exercise-field]').forEach((input) => {
-          exercise[input.dataset.exerciseField] = input.value;
+          if (input.dataset.exerciseField === 'progressionName') {
+            exercise.progression = normalizeProgression(input.value);
+            exercise.tut = exercise.progression?.tut || exercise.tut || '';
+            exercise.reps = exercise.progression?.sessions?.join(' / ') || exercise.reps || '';
+          } else {
+            exercise[input.dataset.exerciseField] = input.value;
+          }
         });
+        if (!exercise.category) exercise.category = exerciseCategory(exercise.name);
       });
     });
   });
@@ -1018,8 +1126,11 @@ function bindEvents() {
     updateNeaceaPreview();
   });
 
-  els.programForm.addEventListener('change', () => {
+  els.programForm.addEventListener('change', (event) => {
     syncProgramEditor();
+    if (event.target?.dataset?.exerciseField === 'progressionName' || event.target?.dataset?.exerciseField === 'name') {
+      renderSessionEditor();
+    }
     updateNeaceaPreview();
   });
 
@@ -1139,6 +1250,7 @@ function cacheElements() {
     'operatorSelect',
     'migrationNotice',
     'errorBox',
+    'exerciseLibrary',
     'kpiClients',
     'kpiToday',
     'kpiWeek',
