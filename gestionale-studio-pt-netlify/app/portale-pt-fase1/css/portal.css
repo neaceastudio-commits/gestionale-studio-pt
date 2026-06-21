@@ -316,8 +316,8 @@ h2 {
 
 .client-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 430px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -335,14 +335,14 @@ h2 {
 }
 
 .detail {
-  padding: 18px;
+  padding: 14px;
 }
 
 .detail-header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .detail-header h3 {
@@ -353,14 +353,14 @@ h2 {
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .field {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 11px 12px;
+  padding: 9px 10px;
   background: #fbfcfd;
 }
 
@@ -381,7 +381,7 @@ h2 {
 }
 
 .section-title {
-  margin: 18px 0 9px;
+  margin: 14px 0 8px;
   color: var(--blue);
   font-size: 11px;
   font-weight: 900;
@@ -783,6 +783,15 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.session-name-field {
+  display: grid;
+  gap: 5px;
+  min-width: min(360px, 100%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .block-card {

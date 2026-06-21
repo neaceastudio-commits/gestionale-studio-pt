@@ -19,20 +19,20 @@ const NEACEA_BLOCKS = [
 const MODES = ['Singolo', 'Combo', 'Superset', 'Giant set', 'Multiset', 'Stripping', 'Ladder'];
 
 const EXERCISE_LIBRARY = {
-  'Mobilita Anca': ['Hip 90/90', 'Hip CARs', 'Frog Stretch', 'Couch Stretch', 'Deep Squat Hold'],
-  'Attivazione Core': ['Dead Bug', 'Bird Dog', 'Hollow Body Hold', 'Pallof Press Isometrico', 'Side Plank Breve'],
-  Petto: ['Bench Press', 'Incline Bench Press', 'Close Grip Bench Press', 'Smith Bench Press', 'Dumbbell Press', 'Dumbbell Incline Press', 'Dumbbell Fly', 'Cable Fly Alto', 'Cable Fly Basso', 'Cable Fly Medio', 'Push Up', 'Dip'],
-  'Schiena - Dorsali': ['Lat Pulldown Presa Larga', 'Lat Pulldown Presa Stretta', 'Lat Pulldown Presa Neutra', 'Pull Up', 'Chin Up', 'Pulley Basso Presa Larga', 'Pulley Basso Presa Stretta', 'Pulley Basso Presa Neutra', 'Single Arm Cable Row', 'Bent Over Row', 'Smith Row', 'Dumbbell Row', 'Cable Straight Arm Pulldown'],
-  'Schiena - Romboidi / Trapezio': ['Face Pull', 'Cable Row Alta', 'Rear Delt Cable Fly', 'Dumbbell Rear Delt Fly', 'Bent Over Lateral Raise', 'Seated Cable Row Presa Larga'],
-  Spalle: ['Overhead Press', 'Smith Overhead Press', 'Dumbbell Shoulder Press', 'Arnold Press', 'Lateral Raise DB', 'Lateral Raise Cavo', 'Front Raise DB', 'Front Raise Cavo', 'Upright Row', 'Cable Y-Raise', 'Landmine Press'],
-  Bicipiti: ['Curl Bilanciere', 'Curl Manubri', 'Hammer Curl', 'Curl Cavo Basso', 'Curl Cavo Alto', 'Curl Barra EZ', 'Concentration Curl', 'Preacher Curl Cavo'],
-  Tricipiti: ['Close Grip Bench Press', 'Dip', 'Tricep Pushdown Corda', 'Tricep Pushdown Barra', 'Overhead Tricep Extension Cavo', 'Overhead Tricep Extension DB', 'Skullcrusher', 'Single Arm Pushdown'],
-  Quadricipiti: ['Squat', 'Front Squat', 'Squat Pausa', 'Pin Squat', 'Smith Squat', 'Hack Squat Bilanciere', 'Bulgarian Split Squat', 'Split Squat Smith', 'Goblet Squat', 'Landmine Squat', 'Dumbbell Lunge', 'Walking Lunge', 'Step Up'],
-  'Posteriori Coscia / Glutei': ['Romanian Deadlift', 'Deadlift', 'Good Morning', 'Hip Thrust Bilanciere', 'Hip Thrust Smith', 'Hip Thrust DB', 'Cable Pull Through', 'KB Swing', 'Nordic Curl', 'Romanian Deadlift DB', 'Single Leg RDL'],
-  Polpacci: ['Calf Raise Bilanciere', 'Calf Raise DB', 'Calf Raise Cavo', 'Seated Calf Raise'],
-  Core: ['Plank', 'Side Plank', 'Dead Bug', 'Bird Dog', 'Pallof Press', 'Cable Crunch', 'Hanging Leg Raise', 'Ab Wheel', 'Landmine Rotation', 'Hollow Body', 'Russian Twist KB'],
-  'Kettlebell - Balistici': ['KB Swing', 'KB Clean', 'KB Snatch', 'KB Press', 'Turkish Get Up', 'Windmill', 'Halo', 'Goblet Squat KB'],
-  'Compound / Full Body': ['Deadlift', 'Landmine Clean', 'Landmine Thruster', 'Farmer Walk', 'KB Complex'],
+  'Mobilita Anca': ['90/90 anche', 'CARs anca', 'Frog stretch', 'Allungamento flessori anca', 'Tenuta squat profondo'],
+  'Attivazione Core': ['Dead bug', 'Bird dog', 'Tenuta hollow', 'Pallof press isometrico', 'Side plank breve'],
+  Petto: ['Panca piana bilanciere', 'Panca inclinata bilanciere', 'Panca presa stretta', 'Panca Smith machine', 'Spinte manubri panca piana', 'Spinte manubri panca inclinata', 'Croci manubri', 'Croci cavi alti', 'Croci cavi bassi', 'Croci cavi medi', 'Piegamenti', 'Dip alle parallele'],
+  'Schiena - Dorsali': ['Lat machine presa larga', 'Lat machine presa stretta', 'Lat machine presa neutra', 'Trazioni prone', 'Trazioni supine', 'Pulley basso presa larga', 'Pulley basso presa stretta', 'Pulley basso presa neutra', 'Rematore cavo monolaterale', 'Rematore bilanciere', 'Rematore Smith machine', 'Rematore manubrio', 'Pulldown braccia tese al cavo'],
+  'Schiena - Romboidi / Trapezio': ['Face pull', 'Rematore alto al cavo', 'Croci inverse al cavo', 'Croci inverse manubri', 'Alzate posteriori busto flesso', 'Pulley presa larga'],
+  Spalle: ['Military press', 'Military press Smith machine', 'Spinte manubri spalle', 'Arnold press', 'Alzate laterali manubri', 'Alzate laterali al cavo', 'Alzate frontali manubri', 'Alzate frontali al cavo', 'Tirate al mento', 'Y raise al cavo', 'Landmine press'],
+  Bicipiti: ['Curl bilanciere', 'Curl manubri', 'Curl martello', 'Curl cavo basso', 'Curl cavo alto', 'Curl barra EZ', 'Curl concentrato', 'Curl panca Scott al cavo'],
+  Tricipiti: ['Panca presa stretta', 'Dip alle parallele', 'Pushdown corda', 'Pushdown barra', 'Estensioni tricipiti sopra testa al cavo', 'Estensioni tricipiti sopra testa manubrio', 'French press', 'Pushdown monolaterale'],
+  Quadricipiti: ['Squat', 'Front squat', 'Squat con pausa', 'Pin squat', 'Squat Smith machine', 'Hack squat bilanciere', 'Bulgarian split squat', 'Split squat Smith machine', 'Goblet squat', 'Landmine squat', 'Affondi manubri', 'Affondi camminati', 'Step up'],
+  'Posteriori Coscia / Glutei': ['Stacco rumeno', 'Stacco da terra', 'Good morning', 'Hip thrust bilanciere', 'Hip thrust Smith machine', 'Hip thrust manubrio', 'Pull through al cavo', 'Swing kettlebell', 'Nordic curl', 'Stacco rumeno manubri', 'Stacco rumeno monopodalico'],
+  Polpacci: ['Calf raise bilanciere', 'Calf raise manubri', 'Calf raise al cavo', 'Calf raise seduto'],
+  Core: ['Plank', 'Side plank', 'Dead bug', 'Bird dog', 'Pallof press', 'Crunch al cavo', 'Sollevamento gambe alla sbarra', 'Ab wheel', 'Rotazioni landmine', 'Hollow body', 'Russian twist kettlebell'],
+  'Kettlebell - Balistici': ['Swing kettlebell', 'Clean kettlebell', 'Snatch kettlebell', 'Press kettlebell', 'Turkish get up', 'Windmill', 'Halo', 'Goblet squat kettlebell'],
+  'Multiarticolari / Full Body': ['Stacco da terra', 'Clean landmine', 'Thruster landmine', 'Camminata del contadino', 'Complex kettlebell'],
 };
 
 const PROGRESSION_LIBRARY = {
@@ -309,21 +309,22 @@ function programPayload(program) {
   };
 }
 
-function buildNeaceaString(program) {
-  const codes = [];
-  (program.sessions || []).forEach((session) => {
-    (session.blocks || []).forEach((block) => {
-      if (block.code && !codes.includes(block.code)) codes.push(block.code);
-    });
-  });
-  const split = program.split ? ` · ${program.split}` : '';
-  return `${program.name || 'Scheda'} · ${codes.map(blockLabel).join(' / ') || 'N0 Tecnico'}${split}`;
-}
-
 function cleanProgramName(value) {
   return String(value || 'Scheda PT')
     .replace(/(\s*-\s*copia)+$/gi, '')
+    .replace(/\s*[·-]\s*(N\d{1,2}\s+[A-Za-zÀ-ÿ/ ]+|N\d{1,2}|CC)\b/gi, '')
+    .replace(/\b(N\d{1,2}|CC)\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
     .trim() || 'Scheda PT';
+}
+
+function buildNeaceaString(program) {
+  const split = program.split ? ` · ${program.split}` : '';
+  return `${cleanProgramName(program.name || 'Scheda PT')}${split}`;
+}
+
+function sessionName(index) {
+  return `Seduta ${String.fromCharCode(65 + index)}`;
 }
 
 function compactProgramList(programs) {
@@ -851,11 +852,13 @@ function renderSessionEditor() {
   els.sessionEditor.innerHTML = state.programSessions.map((session, sessionIndex) => `
     <article class="session-card" data-session-index="${sessionIndex}">
       <div class="session-head">
-        <strong>${esc(session.name || `Seduta ${sessionIndex + 1}`)}</strong>
+        <label class="session-name-field">
+          <span>Nome seduta</span>
+          <input data-session-field="name" value="${esc(session.name || sessionName(sessionIndex))}">
+        </label>
         <button class="icon-btn" type="button" data-remove-session="${sessionIndex}">Rimuovi</button>
       </div>
       <div class="program-form-grid compact">
-        <label><span>Nome seduta</span><input data-session-field="name" value="${esc(session.name)}"></label>
         <label><span>Giorno/settimana</span><input data-session-field="weekDay" value="${esc(session.weekDay)}"></label>
         <label><span>Focus</span><input data-session-field="focus" value="${esc(session.focus)}"></label>
         <label><span>Durata min</span><input data-session-field="duration" value="${esc(session.duration)}"></label>
@@ -868,7 +871,6 @@ function renderSessionEditor() {
       <div class="block-list">
         ${(session.blocks || []).map((block, blockIndex) => renderBlockEditor(block, sessionIndex, blockIndex)).join('')}
       </div>
-      <button class="secondary-btn" type="button" data-add-block="${sessionIndex}">Aggiungi blocco</button>
     </article>
   `).join('');
 }
@@ -942,19 +944,8 @@ function renderBuilderProgressionPreview() {
 }
 
 function renderBlockEditor(block, sessionIndex, blockIndex) {
-  const codeOptions = NEACEA_BLOCKS.map(([code, label]) =>
-    `<option value="${esc(code)}"${block.code === code ? ' selected' : ''}>${esc(code)} - ${esc(label)}</option>`
-  ).join('');
-  const modeOptions = MODES.map((mode) =>
-    `<option value="${esc(mode)}"${block.mode === mode ? ' selected' : ''}>${esc(mode)}</option>`
-  ).join('');
   return `
     <div class="block-card" data-block-index="${blockIndex}">
-      <div class="program-form-grid compact">
-        <label><span>Codice NEACEA</span><select data-block-field="code">${codeOptions}</select></label>
-        <label><span>Modalita</span><select data-block-field="mode">${modeOptions}</select></label>
-        <label><span>Azioni</span><button class="danger-btn slim" type="button" data-remove-block="${sessionIndex}:${blockIndex}">Rimuovi blocco</button></label>
-      </div>
       <div class="exercise-list">
         ${(block.exercises || []).map((exercise, exerciseIndex) => renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)).join('')}
       </div>
@@ -1365,10 +1356,11 @@ function bindEvents() {
 
   els.addSessionButton.addEventListener('click', () => {
     syncProgramEditor();
+    const index = state.programSessions.length;
     state.programSessions.push({
       id: isoNowId('session'),
-      name: `Seduta ${state.programSessions.length + 1}`,
-      weekDay: String(state.programSessions.length + 1),
+      name: sessionName(index),
+      weekDay: String(index + 1),
       focus: '',
       duration: '60',
       warmup: '',
@@ -1382,7 +1374,7 @@ function bindEvents() {
         exercises: [emptyExercise(1)],
       }],
     });
-    renderSessionEditor();
+    renderSessionEditorAtSamePoint();
     updateNeaceaPreview();
   });
 
