@@ -21,15 +21,18 @@ const MODES = ['Singolo', 'Combo', 'Superset', 'Giant set', 'Multiset', 'Strippi
 const EXERCISE_LIBRARY = {
   'Mobilita Anca': ['Hip 90/90', 'Hip CARs', 'Frog Stretch', 'Couch Stretch', 'Deep Squat Hold'],
   'Attivazione Core': ['Dead Bug', 'Bird Dog', 'Hollow Body Hold', 'Pallof Press Isometrico', 'Side Plank Breve'],
-  Petto: ['Bench Press', 'Incline Bench Press', 'Dumbbell Press', 'Cable Fly Medio', 'Push Up', 'Dip'],
-  'Schiena - Dorsali': ['Lat Pulldown Presa Larga', 'Pull Up', 'Chin Up', 'Pulley Basso Presa Larga', 'Dumbbell Row'],
-  Spalle: ['Overhead Press', 'Dumbbell Shoulder Press', 'Lateral Raise DB', 'Cable Y-Raise', 'Landmine Press'],
-  Bicipiti: ['Curl Bilanciere', 'Curl Manubri', 'Hammer Curl', 'Curl Cavo Basso'],
-  Tricipiti: ['Close Grip Bench Press', 'Tricep Pushdown Corda', 'Overhead Tricep Extension DB', 'Skullcrusher'],
-  Quadricipiti: ['Squat', 'Front Squat', 'Smith Squat', 'Bulgarian Split Squat', 'Walking Lunge', 'Step Up'],
-  'Posteriori Coscia / Glutei': ['Romanian Deadlift', 'Deadlift', 'Hip Thrust Bilanciere', 'Cable Pull Through', 'Single Leg RDL'],
-  Core: ['Plank', 'Side Plank', 'Pallof Press', 'Cable Crunch', 'Ab Wheel', 'Landmine Rotation'],
-  'Compound / Full Body': ['Deadlift', 'Farmer Walk', 'Landmine Thruster', 'KB Swing'],
+  Petto: ['Bench Press', 'Incline Bench Press', 'Close Grip Bench Press', 'Smith Bench Press', 'Dumbbell Press', 'Dumbbell Incline Press', 'Dumbbell Fly', 'Cable Fly Alto', 'Cable Fly Basso', 'Cable Fly Medio', 'Push Up', 'Dip'],
+  'Schiena - Dorsali': ['Lat Pulldown Presa Larga', 'Lat Pulldown Presa Stretta', 'Lat Pulldown Presa Neutra', 'Pull Up', 'Chin Up', 'Pulley Basso Presa Larga', 'Pulley Basso Presa Stretta', 'Pulley Basso Presa Neutra', 'Single Arm Cable Row', 'Bent Over Row', 'Smith Row', 'Dumbbell Row', 'Cable Straight Arm Pulldown'],
+  'Schiena - Romboidi / Trapezio': ['Face Pull', 'Cable Row Alta', 'Rear Delt Cable Fly', 'Dumbbell Rear Delt Fly', 'Bent Over Lateral Raise', 'Seated Cable Row Presa Larga'],
+  Spalle: ['Overhead Press', 'Smith Overhead Press', 'Dumbbell Shoulder Press', 'Arnold Press', 'Lateral Raise DB', 'Lateral Raise Cavo', 'Front Raise DB', 'Front Raise Cavo', 'Upright Row', 'Cable Y-Raise', 'Landmine Press'],
+  Bicipiti: ['Curl Bilanciere', 'Curl Manubri', 'Hammer Curl', 'Curl Cavo Basso', 'Curl Cavo Alto', 'Curl Barra EZ', 'Concentration Curl', 'Preacher Curl Cavo'],
+  Tricipiti: ['Close Grip Bench Press', 'Dip', 'Tricep Pushdown Corda', 'Tricep Pushdown Barra', 'Overhead Tricep Extension Cavo', 'Overhead Tricep Extension DB', 'Skullcrusher', 'Single Arm Pushdown'],
+  Quadricipiti: ['Squat', 'Front Squat', 'Squat Pausa', 'Pin Squat', 'Smith Squat', 'Hack Squat Bilanciere', 'Bulgarian Split Squat', 'Split Squat Smith', 'Goblet Squat', 'Landmine Squat', 'Dumbbell Lunge', 'Walking Lunge', 'Step Up'],
+  'Posteriori Coscia / Glutei': ['Romanian Deadlift', 'Deadlift', 'Good Morning', 'Hip Thrust Bilanciere', 'Hip Thrust Smith', 'Hip Thrust DB', 'Cable Pull Through', 'KB Swing', 'Nordic Curl', 'Romanian Deadlift DB', 'Single Leg RDL'],
+  Polpacci: ['Calf Raise Bilanciere', 'Calf Raise DB', 'Calf Raise Cavo', 'Seated Calf Raise'],
+  Core: ['Plank', 'Side Plank', 'Dead Bug', 'Bird Dog', 'Pallof Press', 'Cable Crunch', 'Hanging Leg Raise', 'Ab Wheel', 'Landmine Rotation', 'Hollow Body', 'Russian Twist KB'],
+  'Kettlebell - Balistici': ['KB Swing', 'KB Clean', 'KB Snatch', 'KB Press', 'Turkish Get Up', 'Windmill', 'Halo', 'Goblet Squat KB'],
+  'Compound / Full Body': ['Deadlift', 'Landmine Clean', 'Landmine Thruster', 'Farmer Walk', 'KB Complex'],
 };
 
 const PROGRESSION_LIBRARY = {
@@ -73,6 +76,9 @@ const state = {
   selectedClientId: '',
   selectedProgramId: '',
   programSessions: [],
+  builderExercise: null,
+  builderProgressionGroup: 'Tecnica',
+  builderProgression: null,
 };
 
 const els = {};
@@ -815,6 +821,7 @@ function readProgramForm() {
 }
 
 function renderSessionEditor() {
+  renderExerciseBuilder();
   els.sessionEditor.innerHTML = state.programSessions.map((session, sessionIndex) => `
     <article class="session-card" data-session-index="${sessionIndex}">
       <div class="session-head">
@@ -838,6 +845,74 @@ function renderSessionEditor() {
       <button class="secondary-btn" type="button" data-add-block="${sessionIndex}">Aggiungi blocco</button>
     </article>
   `).join('');
+}
+
+function renderExerciseBuilder() {
+  if (!els.exercisePickList) return;
+  const q = (els.exerciseSearch?.value || '').trim().toLowerCase();
+  const exercises = flattenExercises()
+    .filter((item) => !q || `${item.name} ${item.category}`.toLowerCase().includes(q))
+    .slice(0, 80);
+  let currentCategory = '';
+  els.exercisePickList.innerHTML = exercises.length
+    ? exercises.map((item) => {
+        const category = item.category !== currentCategory ? `<div class="pick-category">${esc(item.category)}</div>` : '';
+        currentCategory = item.category;
+        const selected = state.builderExercise?.name === item.name ? ' selected' : '';
+        return `${category}
+          <button class="pick-item${selected}" type="button" data-pick-exercise="${esc(item.name)}" data-pick-category="${esc(item.category)}">
+            <span>${esc(item.name)}</span>
+            <em>${esc(item.category)}</em>
+          </button>`;
+      }).join('')
+    : '<div class="empty small">Nessun esercizio trovato</div>';
+
+  const groups = Object.keys(PROGRESSION_LIBRARY);
+  if (!groups.includes(state.builderProgressionGroup)) state.builderProgressionGroup = groups[0];
+  els.progressionTabs.innerHTML = groups.map((group, index) => {
+    const active = group === state.builderProgressionGroup ? ' active' : '';
+    return `<button class="progression-tab dot-${index % 6}${active}" type="button" data-progression-group="${esc(group)}"><span></span>${esc(group)}</button>`;
+  }).join('');
+
+  const progressions = PROGRESSION_LIBRARY[state.builderProgressionGroup] || [];
+  els.progressionPickList.innerHTML = `
+    <button class="progression-item manual${state.builderProgression === 'manual' ? ' selected' : ''}" type="button" data-pick-progression="manual">
+      <strong>Manuale</strong>
+      <span>Compili liberamente, senza progressione predefinita</span>
+    </button>
+    ${progressions.map((item, index) => {
+      const selected = state.builderProgression?.name === item.name ? ' selected' : '';
+      return `
+        <button class="progression-item${selected}" type="button" data-pick-progression="${esc(item.name)}">
+          <strong>${esc(item.name)}</strong>
+          <span>${esc(item.sessions.length)} sedute · TUT ${esc(item.tut)}</span>
+          <i class="progression-dot dot-${index % 6}"></i>
+        </button>`;
+    }).join('')}`;
+  renderBuilderProgressionPreview();
+
+  els.builderSession.innerHTML = state.programSessions.map((session, index) =>
+    `<option value="${index}">${esc(session.name || `Seduta ${index + 1}`)}</option>`
+  ).join('');
+}
+
+function renderBuilderProgressionPreview() {
+  if (!els.progressionPreview) return;
+  const progression = state.builderProgression;
+  if (!progression || progression === 'manual') {
+    els.progressionPreview.innerHTML = '<div class="progression-preview-empty">Progressione manuale: aggiungi l esercizio e compila liberamente.</div>';
+    return;
+  }
+  els.progressionPreview.innerHTML = `
+    <div class="progression-preview-head">
+      <strong>${esc(progression.name)}</strong>
+      <span>TUT ${esc(progression.tut)}</span>
+    </div>
+    <div class="progression-preview-grid">
+      ${progression.sessions.map((item, index) => `
+        <div><span>Sed.${index + 1}</span><strong>${esc(item)}</strong></div>
+      `).join('')}
+    </div>`;
 }
 
 function renderBlockEditor(block, sessionIndex, blockIndex) {
@@ -865,27 +940,16 @@ function renderBlockEditor(block, sessionIndex, blockIndex) {
 
 function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex) {
   const progression = normalizeProgression(exercise.progression);
-  const progressionOptions = [
-    '<option value="">Senza progressione</option>',
-    ...Object.entries(PROGRESSION_LIBRARY).map(([group, progressions]) => `
-      <optgroup label="${esc(group)}">
-        ${progressions.map((item) => `<option value="${esc(item.name)}"${progression?.name === item.name ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}
-      </optgroup>
-    `),
-  ].join('');
   const sedute = progression?.sessions || [];
   return `
     <div class="exercise-card-compact" data-exercise-index="${exerciseIndex}">
-      <div class="exercise-compact-head">
+      <div class="exercise-display-head">
         <div class="exercise-order">${esc(exercise.order || exerciseIndex + 1)}</div>
-        <div class="exercise-main-fields">
-          <input class="exercise-name-input" data-exercise-field="name" list="exerciseLibrary" value="${esc(exercise.name)}" placeholder="Esercizio">
-          <input data-exercise-field="category" value="${esc(exercise.category || exerciseCategory(exercise.name))}" placeholder="Categoria">
+        <div class="exercise-display-main">
+          <strong>${esc(exercise.name || 'Esercizio')}</strong>
+          <span>${esc(exercise.category || exerciseCategory(exercise.name) || 'Manuale')} · Recupero ${esc(exercise.rest || '-')}</span>
         </div>
-        <select data-exercise-field="progressionName">${progressionOptions}</select>
-        <input data-exercise-field="rest" value="${esc(exercise.rest)}" placeholder="Rec.">
-        <input data-exercise-field="load" value="${esc(exercise.load)}" placeholder="Carico">
-        <input data-exercise-field="rir" value="${esc(exercise.rir)}" placeholder="RIR">
+        <span class="exercise-prog-badge ${progression ? '' : 'muted'}">${esc(progression?.name || 'Manuale')}</span>
         <button class="danger-btn slim" type="button" data-remove-exercise="${sessionIndex}:${blockIndex}:${exerciseIndex}">X</button>
       </div>
       <div class="exercise-progression-strip">
@@ -894,9 +958,7 @@ function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)
           ? sedute.map((item, index) => `<span class="seduta-pill"><b>Sed.${index + 1}</b>${esc(item)}</span>`).join('')
           : '<span class="seduta-empty">Progressione manuale</span>'}
       </div>
-      <div class="exercise-notes-line">
-        <input data-exercise-field="notes" value="${esc(exercise.notes)}" placeholder="Note tecniche">
-      </div>
+      ${exercise.notes ? `<div class="exercise-note-display">${esc(exercise.notes)}</div>` : ''}
     </div>
   `;
 }
@@ -932,6 +994,44 @@ function syncProgramEditor() {
 function updateNeaceaPreview() {
   const program = readProgramForm();
   els.neaceaString.textContent = buildNeaceaString(program);
+}
+
+function addPickedExercise() {
+  syncProgramEditor();
+  const manualName = els.manualExerciseName.value.trim();
+  const picked = state.builderExercise;
+  const name = picked?.name || manualName;
+  if (!name) throw new Error('Seleziona o scrivi un esercizio');
+  const sessionIndex = Number(els.builderSession.value || 0);
+  const session = state.programSessions[sessionIndex];
+  if (!session) throw new Error('Seleziona una seduta');
+  if (!Array.isArray(session.blocks) || !session.blocks.length) {
+    session.blocks = [{ id: isoNowId('block'), code: 'N0', line: '', mode: 'Singolo', exercises: [] }];
+  }
+  const block = session.blocks[0];
+  const progression = state.builderProgression === 'manual' ? null : normalizeProgression(state.builderProgression);
+  const exercises = block.exercises || [];
+  exercises.push({
+    id: isoNowId('exercise'),
+    order: exercises.length + 1,
+    name,
+    category: picked?.category || exerciseCategory(name) || 'Manuale',
+    progression,
+    sets: '',
+    reps: progression?.sessions?.join(' / ') || '',
+    rest: els.builderRest.value || "2'",
+    tut: progression?.tut || '',
+    load: '',
+    rir: '',
+    notes: els.builderNotes.value.trim(),
+  });
+  block.exercises = exercises;
+  els.manualExerciseName.value = '';
+  els.builderNotes.value = '';
+  state.builderExercise = null;
+  state.builderProgression = null;
+  renderSessionEditor();
+  updateNeaceaPreview();
 }
 
 async function saveProgram() {
@@ -1167,6 +1267,52 @@ function bindEvents() {
     updateNeaceaPreview();
   });
 
+  els.exerciseSearch.addEventListener('input', renderExerciseBuilder);
+
+  els.exercisePickList.addEventListener('click', (event) => {
+    const item = event.target.closest('[data-pick-exercise]');
+    if (!item) return;
+    state.builderExercise = {
+      name: item.dataset.pickExercise,
+      category: item.dataset.pickCategory,
+    };
+    els.manualExerciseName.value = '';
+    renderExerciseBuilder();
+  });
+
+  els.manualExerciseName.addEventListener('input', () => {
+    if (els.manualExerciseName.value.trim()) {
+      state.builderExercise = null;
+      renderExerciseBuilder();
+    }
+  });
+
+  els.progressionTabs.addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-progression-group]');
+    if (!tab) return;
+    state.builderProgressionGroup = tab.dataset.progressionGroup;
+    state.builderProgression = null;
+    renderExerciseBuilder();
+  });
+
+  els.progressionPickList.addEventListener('click', (event) => {
+    const item = event.target.closest('[data-pick-progression]');
+    if (!item) return;
+    state.builderProgression = item.dataset.pickProgression === 'manual'
+      ? 'manual'
+      : progressionByName(item.dataset.pickProgression);
+    renderExerciseBuilder();
+  });
+
+  els.addPickedExerciseButton.addEventListener('click', () => {
+    try {
+      clearError();
+      addPickedExercise();
+    } catch (error) {
+      showError(`Esercizio non aggiunto: ${error.message}`);
+    }
+  });
+
   els.sessionEditor.addEventListener('click', (event) => {
     const addBlock = event.target.closest('[data-add-block]');
     const addExercise = event.target.closest('[data-add-exercise]');
@@ -1283,6 +1429,16 @@ function cacheElements() {
     'programEnd',
     'programNotes',
     'neaceaString',
+    'exerciseSearch',
+    'exercisePickList',
+    'manualExerciseName',
+    'progressionTabs',
+    'progressionPickList',
+    'progressionPreview',
+    'builderRest',
+    'builderSession',
+    'builderNotes',
+    'addPickedExerciseButton',
     'addSessionButton',
     'sessionEditor',
     'duplicateEmptyButton',
