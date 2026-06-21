@@ -243,6 +243,8 @@ h2 {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .stack,
@@ -400,6 +402,33 @@ h2 {
 .calendar-day {
   display: grid;
   gap: 10px;
+}
+
+.calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-nav strong {
+  min-width: 190px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--blue);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .segmented-control {
@@ -1179,6 +1208,16 @@ h2 {
   .panel-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .calendar-nav {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .calendar-nav strong {
+    min-width: 0;
+    width: 100%;
   }
 
   .month-grid {

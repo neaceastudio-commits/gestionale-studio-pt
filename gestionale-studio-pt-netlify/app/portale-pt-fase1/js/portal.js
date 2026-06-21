@@ -73,6 +73,7 @@ const state = {
   sessions: [],
   programs: [],
   calendarView: 'week',
+  calendarReference: todayIso(),
   selectedOperatorId: '',
   selectedClientId: '',
   selectedProgramId: '',
@@ -155,6 +156,26 @@ function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function addDays(value, days) {
+  const date = parseIsoDate(value);
+  date.setDate(date.getDate() + days);
+  return dateKey(date);
+}
+
+function addMonths(value, months) {
+  const date = parseIsoDate(value);
+  date.setMonth(date.getMonth() + months);
+  return dateKey(date);
+}
+
+function weekStart(reference) {
+  const start = new Date(reference);
+  const day = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - day);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
 function sameMonth(value, reference = new Date()) {
   const date = parseIsoDate(value);
   return date.getFullYear() === reference.getFullYear() && date.getMonth() === reference.getMonth();
@@ -162,13 +183,21 @@ function sameMonth(value, reference = new Date()) {
 
 function sameWeek(value, reference = new Date()) {
   const date = parseIsoDate(value);
-  const start = new Date(reference);
-  const day = (start.getDay() + 6) % 7;
-  start.setDate(start.getDate() - day);
-  start.setHours(0, 0, 0, 0);
+  const start = weekStart(reference);
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
   return date >= start && date < end;
+}
+
+function calendarRangeLabel(reference) {
+  if (state.calendarView === 'day') return formatDate(dateKey(reference));
+  if (state.calendarView === 'month') {
+    return reference.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  }
+  const start = weekStart(reference);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return `${formatDate(dateKey(start))} - ${formatDate(dateKey(end))}`;
 }
 
 function isoNowId(prefix) {
@@ -1246,25 +1275,26 @@ async function duplicateProgram(mode) {
 }
 
 function renderCalendar() {
-  const today = new Date();
+  const reference = parseIsoDate(state.calendarReference);
   const allSessions = operatorSessions(90);
   const sessions = allSessions.filter((session) => {
-    if (state.calendarView === 'day') return session.date === todayIso();
-    if (state.calendarView === 'month') return sameMonth(session.date, today);
-    return sameWeek(session.date, today);
+    if (state.calendarView === 'day') return session.date === dateKey(reference);
+    if (state.calendarView === 'month') return sameMonth(session.date, reference);
+    return sameWeek(session.date, reference);
   });
   els.calendarCount.textContent = sessions.length;
+  if (els.calendarRange) els.calendarRange.textContent = calendarRangeLabel(reference);
   document.querySelectorAll('[data-calendar-view]').forEach((button) => {
     button.classList.toggle('active', button.dataset.calendarView === state.calendarView);
   });
   if (!sessions.length) {
-    const label = state.calendarView === 'day' ? 'oggi' : state.calendarView === 'month' ? 'questo mese' : 'questa settimana';
+    const label = state.calendarView === 'day' ? 'in questo giorno' : state.calendarView === 'month' ? 'in questo mese' : 'in questa settimana';
     els.calendarList.innerHTML = `<div class="empty">Nessuna seduta ${label}</div>`;
     return;
   }
 
   if (state.calendarView === 'month') {
-    renderCalendarMonth(sessions, today);
+    renderCalendarMonth(sessions, reference);
     return;
   }
 
@@ -1384,6 +1414,23 @@ function bindEvents() {
       state.calendarView = button.dataset.calendarView;
       renderCalendar();
     });
+  });
+
+  document.querySelectorAll('[data-calendar-move]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const direction = Number(button.dataset.calendarMove || 0);
+      if (state.calendarView === 'month') {
+        state.calendarReference = addMonths(state.calendarReference, direction);
+      } else {
+        state.calendarReference = addDays(state.calendarReference, direction * (state.calendarView === 'week' ? 7 : 1));
+      }
+      renderCalendar();
+    });
+  });
+
+  document.querySelector('[data-calendar-today]')?.addEventListener('click', () => {
+    state.calendarReference = todayIso();
+    renderCalendar();
   });
 
   els.assignTrainer.addEventListener('change', () => {
@@ -1635,6 +1682,7 @@ function cacheElements() {
     'addSessionButton',
     'sessionEditor',
     'archiveProgramButton',
+    'calendarRange',
     'calendarCount',
     'calendarList',
     'assignTrainer',

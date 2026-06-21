@@ -110,6 +110,12 @@
         <div class="panel-head">
           <h2>Calendario sedute</h2>
           <div class="panel-actions">
+            <div class="calendar-nav" aria-label="Navigazione calendario">
+              <button class="icon-btn" type="button" data-calendar-move="-1" aria-label="Periodo precedente">‹</button>
+              <button class="ghost-btn" type="button" data-calendar-today>Oggi</button>
+              <button class="icon-btn" type="button" data-calendar-move="1" aria-label="Periodo successivo">›</button>
+              <strong id="calendarRange">Questa settimana</strong>
+            </div>
             <div class="segmented-control" aria-label="Vista calendario">
               <button class="segment active" type="button" data-calendar-view="day">Giorno</button>
               <button class="segment" type="button" data-calendar-view="week">Settimana</button>
