@@ -1268,13 +1268,24 @@ async function uploadClientFiles(files, tipo) {
       const dataUrl = isImage ? await fileToBase64Resized(file, 1200, 0.8) : await fileToBase64(file);
       const mimeType = isImage && tipo === 'foto' ? 'image/jpeg' : (file.type || 'application/octet-stream');
       const filename = `${client.client_id}_${tipo}_${Date.now()}_${safeStorageSegment(file.name || tipo)}`;
-      const uploaded = await uploadMediaStorage({
-        clientId: client.client_id,
-        base64: String(dataUrl).split(',')[1],
-        filename,
-        mimeType,
-        data: todayIso(),
-      });
+      let uploaded;
+      try {
+        uploaded = await uploadMediaStorage({
+          clientId: client.client_id,
+          base64: String(dataUrl).split(',')[1],
+          filename,
+          mimeType,
+          data: todayIso(),
+        });
+      } catch (uploadError) {
+        if (tipo === 'foto') throw uploadError;
+        uploaded = {
+          url: dataUrl,
+          bucket: '',
+          path: '',
+          localFallback: true,
+        };
+      }
       const rowData = {
         url: uploaded.url,
         filename,
@@ -1284,7 +1295,7 @@ async function uploadClientFiles(files, tipo) {
         bucket: uploaded.bucket,
         storagePath: uploaded.path,
         storage_path: uploaded.path,
-        source: 'storage',
+        source: uploaded.localFallback ? 'database' : 'storage',
         tipo: tipo === 'foto' ? 'foto' : tipo,
       };
       await sb('foto_allenamento', '', {
