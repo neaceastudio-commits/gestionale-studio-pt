@@ -225,10 +225,15 @@
       border-radius: var(--radius-sm);
       background: #fff;
       padding: 14px;
+      cursor: pointer;
     }
     .client-card:hover, .appt-card:hover {
       border-color: var(--blue-light);
       background: #fbfdff;
+    }
+    .client-card.active {
+      border-color: var(--blue);
+      box-shadow: inset 4px 0 0 var(--blue);
     }
     .anamnesis-list {
       display: grid;
@@ -269,6 +274,192 @@
       font-weight: 800;
       line-height: 1.25;
       overflow-wrap: anywhere;
+    }
+    .client-workspace {
+      margin-top: 18px;
+      display: none;
+    }
+    .client-workspace.show { display: block; }
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(0, 1.2fr);
+      gap: 14px;
+    }
+    .workspace-stack {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    .data-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .data-tab {
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text2);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .data-tab.active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .data-pane { display: none; }
+    .data-pane.active {
+      display: grid;
+      gap: 14px;
+    }
+    .measure-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .measure-box {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 14px;
+      min-height: 88px;
+    }
+    .measure-value {
+      color: var(--text);
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .measure-unit {
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 900;
+      margin-top: 5px;
+    }
+    .composition-list,
+    .file-list {
+      display: grid;
+      gap: 8px;
+    }
+    .composition-row,
+    .file-row {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .mini-bar {
+      height: 9px;
+      border-radius: 999px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .mini-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue-light);
+    }
+    .upload-area {
+      display: grid;
+      place-items: center;
+      min-height: 116px;
+      border: 2px dashed var(--border2);
+      border-radius: var(--radius);
+      background: var(--blue-xpale);
+      color: var(--text2);
+      padding: 16px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .upload-area:hover {
+      border-color: var(--blue-light);
+      background: #fbfdff;
+    }
+    .upload-progress {
+      display: none;
+      margin-top: 10px;
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .photo-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      min-height: 170px;
+    }
+    .photo-card img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      object-fit: cover;
+      cursor: zoom-in;
+    }
+    .photo-meta {
+      padding: 8px 10px;
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .photo-del {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(28,49,68,.9);
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .primary-btn {
+      height: 38px;
+      border: 1px solid var(--blue);
+      border-radius: var(--radius-sm);
+      background: var(--blue);
+      color: #fff;
+      padding: 0 13px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, .82);
+      padding: 22px;
+    }
+    .lightbox.show { display: flex; }
+    .lightbox img {
+      max-width: min(96vw, 1100px);
+      max-height: 92vh;
+      border-radius: var(--radius-sm);
+      background: #fff;
     }
     .row {
       display: flex;
@@ -443,7 +634,8 @@
       .top-actions { width: 100%; }
       .select-pt { flex: 1; min-width: 0; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .layout, .admin-grid, .meeting-grid { grid-template-columns: 1fr; }
+      .layout, .admin-grid, .meeting-grid, .workspace-grid { grid-template-columns: 1fr; }
+      .measure-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .anamnesis-grid { grid-template-columns: 1fr; }
       .anamnesis-field.wide { grid-column: auto; }
       .main { width: min(100vw - 24px, 760px); margin-top: 24px; }
@@ -451,6 +643,8 @@
     @media (max-width: 560px) {
       h1 { font-size: 28px; }
       .metrics { grid-template-columns: 1fr; }
+      .measure-grid { grid-template-columns: 1fr; }
+      .composition-row, .file-row { grid-template-columns: 1fr; }
       .panel-head { align-items: stretch; flex-direction: column; }
       .search { width: 100%; }
       .row { flex-direction: column; }
@@ -529,6 +723,23 @@
       </div>
     </section>
 
+    <section id="clientWorkspace" class="client-workspace panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Scheda cliente PT</div>
+          <div class="muted" id="workspaceSubtitle">Seleziona un cliente per vedere dati, anamnesi, Visbody e foto.</div>
+        </div>
+        <button class="ghost-btn" style="background:#fff;color:var(--text);border-color:var(--border2)" onclick="closeClientWorkspace()">Chiudi</button>
+      </div>
+      <div class="panel-body">
+        <div id="clientWorkspaceBody" class="workspace-grid"></div>
+      </div>
+    </section>
+
+    <div id="photoLightbox" class="lightbox" onclick="closeLightbox()">
+      <img id="photoLightboxImg" alt="">
+    </div>
+
     <section class="admin-grid">
       <div class="panel">
         <div class="panel-head">
@@ -604,6 +815,7 @@
   <script>
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+    const FOTO_STORAGE_BUCKET = 'client-photos';
     const SERVICE_LABELS = {
       pt11: 'PT 1:1',
       pt12: 'PT 1:2',
@@ -625,6 +837,9 @@
       clients: [],
       appointments: [],
       acquisitions: [],
+      datiFisici: [],
+      foto: [],
+      selectedClientId: '',
       operatorId: '',
       payment: ''
     };
@@ -643,6 +858,32 @@
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     }
+    async function supabaseInsert(table, rows) {
+      const res = await fetch(endpoint(table), {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(rows)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+    async function supabaseDelete(table, query = '') {
+      const res = await fetch(endpoint(table, query), {
+        method: 'DELETE',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return true;
+    }
     function todayStr() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -660,6 +901,20 @@
     }
     function fullName(item) {
       return [item?.nome, item?.cognome].filter(Boolean).join(' ') || '-';
+    }
+    function esc(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+    function escAttr(value) {
+      return esc(value).replaceAll('`', '&#096;');
+    }
+    function escJs(value) {
+      return String(value ?? '').replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n').replaceAll('\r', '');
     }
     function clientFullName(id) {
       const client = state.clients.find(c => c.id === id);
@@ -746,7 +1001,7 @@
     function field(label, value, cls = '') {
       const display = Array.isArray(value) ? value.join(', ') : value;
       if (!display) return '';
-      return `<div class="anamnesis-field ${cls}"><div class="field-label">${label}</div><div class="field-value">${display}</div></div>`;
+      return `<div class="anamnesis-field ${cls}"><div class="field-label">${esc(label)}</div><div class="field-value">${esc(display)}</div></div>`;
     }
     function normalizeClientAssignments() {
       const byClient = new Map();
@@ -817,20 +1072,20 @@
         const alertClass = total && remaining <= 2 ? 'red' : 'green';
         const pay = paymentStatus(client);
         return `
-          <article class="client-card">
+          <article class="client-card ${state.selectedClientId === client.id ? 'active' : ''}" onclick="selectClient('${escJs(client.id)}')">
             <div class="row">
               <div>
-                <div class="name">${fullName(client)}</div>
-                <div class="muted">${operatorName(client.pt_assegnato)} · ${client.obiettivo || client.notes || 'Nessuna nota tecnica'}</div>
+                <div class="name">${esc(fullName(client))}</div>
+                <div class="muted">${esc(operatorName(client.pt_assegnato))} · ${esc(client.obiettivo || client.notes || 'Nessuna nota tecnica')}</div>
               </div>
               <span class="tag ${paymentClass(pay)}">${pay} · <span class="money">${money(client.importo)}</span></span>
             </div>
             <div class="tags">
               <span class="tag ${alertClass}">${total ? `${remaining}/${total} sedute` : 'Sedute non impostate'}</span>
-              <span class="tag">${packageText(client)}</span>
-              ${client.tipo_abbonamento ? `<span class="tag">${client.tipo_abbonamento}</span>` : ''}
-              ${client.package_frequency ? `<span class="tag">${client.package_frequency}</span>` : ''}
-              ${Array.isArray(client.giorni_settimana) && client.giorni_settimana.length ? `<span class="tag">${client.giorni_settimana.join(', ')}</span>` : ''}
+              <span class="tag">${esc(packageText(client))}</span>
+              ${client.tipo_abbonamento ? `<span class="tag">${esc(client.tipo_abbonamento)}</span>` : ''}
+              ${client.package_frequency ? `<span class="tag">${esc(client.package_frequency)}</span>` : ''}
+              ${Array.isArray(client.giorni_settimana) && client.giorni_settimana.length ? `<span class="tag">${esc(client.giorni_settimana.join(', '))}</span>` : ''}
             </div>
             ${total ? `<div class="progress"><span style="width:${pct}%"></span></div>` : ''}
           </article>
@@ -953,6 +1208,262 @@
           </div>
         </article>
       `).join('');
+    }
+    async function selectClient(id) {
+      state.selectedClientId = id;
+      renderClients(filteredClients());
+      const client = state.clients.find(c => c.id === id);
+      const panel = document.getElementById('clientWorkspace');
+      const body = document.getElementById('clientWorkspaceBody');
+      panel.classList.add('show');
+      document.getElementById('workspaceSubtitle').textContent = client ? `${fullName(client)} · dati completi nello stesso punto` : 'Cliente selezionato';
+      body.innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="loader"></span> Caricamento dati cliente</div>';
+      try {
+        const [datiFisici, foto] = await Promise.all([
+          supabase('dati_fisici', `?select=*&cliente_id=eq.${encodeURIComponent(id)}&order=data_rilevazione.desc,created_at.desc`),
+          supabase('foto_allenamento', `?select=*&cliente_id=eq.${encodeURIComponent(id)}&order=data_scatto.desc,created_at.desc`)
+        ]);
+        state.datiFisici = datiFisici || [];
+        state.foto = foto || [];
+        renderClientWorkspace();
+      } catch (err) {
+        body.innerHTML = `<div class="error" style="grid-column:1/-1">Errore caricamento scheda cliente: ${esc(err.message || err)}</div>`;
+      }
+    }
+    function closeClientWorkspace() {
+      state.selectedClientId = '';
+      state.datiFisici = [];
+      state.foto = [];
+      document.getElementById('clientWorkspace').classList.remove('show');
+      renderClients(filteredClients());
+    }
+    function renderClientWorkspace() {
+      const client = state.clients.find(c => c.id === state.selectedClientId);
+      const body = document.getElementById('clientWorkspaceBody');
+      if (!client) {
+        body.innerHTML = '<div class="empty" style="grid-column:1/-1">Cliente non trovato.</div>';
+        return;
+      }
+      const acq = acquisitionForClient(client);
+      const latest = state.datiFisici[0] || {};
+      body.innerHTML = `
+        <div class="workspace-stack">
+          <div class="anamnesis-card">
+            <div class="row">
+              <div>
+                <div class="name">${esc(fullName(client))}</div>
+                <div class="muted">${esc(operatorName(client.pt_assegnato))} · ${esc(client.obiettivo || acq?.obiettivo || 'Obiettivo non indicato')}</div>
+              </div>
+              <span class="tag ${acq ? 'green' : 'gold'}">${acq ? 'Anamnesi collegata' : 'Dati cliente'}</span>
+            </div>
+            <div class="anamnesis-grid">
+              ${field('Telefono', client.telefono)}
+              ${field('Email', client.email)}
+              ${field('Professione', acq?.professione || client.professione)}
+              ${field('Obiettivo', acq?.obiettivo_libero || acq?.obiettivo || client.obiettivo, 'wide')}
+              ${field('Pacchetto', packageText(client))}
+              ${field('Sedute', Number(client.sessions_total || 0) ? `${client.sessions_remaining || 0}/${client.sessions_total}` : '')}
+              ${field('Pagamento', paymentStatus(client))}
+              ${field('Importo', client.importo ? money(client.importo) : '')}
+            </div>
+          </div>
+
+          <div class="anamnesis-card">
+            <div class="panel-title">Anamnesi e alert</div>
+            <div class="anamnesis-grid">
+              ${field('Esperienza', acq?.esperienza)}
+              ${field('Attivita fisica', acq?.attivita_fisica || acq?.sport)}
+              ${field('Stress', acq?.stress)}
+              ${field('Sonno', acq?.sonno)}
+              ${field('Patologie', acq?.patologie, 'wide')}
+              ${field('Farmaci', acq?.farmaci, 'wide')}
+              ${field('Infortuni', acq?.infortuni, 'wide')}
+              ${field('Limitazioni', acq?.limitazioni, 'wide')}
+              ${field('Note', acq?.note || acq?.impressioni || client.notes, 'full')}
+              ${!acq ? field('Nota', 'Anamnesi completa non trovata per questo cliente.', 'full') : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="workspace-stack">
+          <div class="anamnesis-card">
+            <div class="row">
+              <div>
+                <div class="panel-title">Visbody - dati fisici</div>
+                <div class="muted">${latest.data_rilevazione ? `Ultimo rilevamento ${fmtDate(latest.data_rilevazione)}` : 'Nessun rilevamento registrato'}</div>
+              </div>
+            </div>
+            <div class="measure-grid" style="margin-top:12px">
+              ${measureBox('Peso', latest.peso, 'kg')}
+              ${measureBox('Altezza', latest.altezza, 'cm')}
+              ${measureBox('BMI', latest.bmi, '')}
+              ${measureBox('% grasso', latest.percentuale_grasso || latest.grasso_percentuale, '%')}
+            </div>
+            <div style="margin-top:12px">${renderComposition(latest)}</div>
+          </div>
+
+          <div class="anamnesis-card">
+            <div class="row">
+              <div>
+                <div class="panel-title">File dispositivi</div>
+                <div class="muted">Visbody e file tecnici collegati al cliente</div>
+              </div>
+              <button class="primary-btn" onclick="document.getElementById('ptFileUpload').click()">Carica file</button>
+            </div>
+            <input id="ptFileUpload" type="file" multiple style="display:none" onchange="uploadClientFiles(this.files, 'visbody'); this.value=''">
+            <div id="fileUploadProgress" class="upload-progress">Caricamento...</div>
+            <div class="file-list" style="margin-top:12px">${renderFileList()}</div>
+          </div>
+
+          <div class="anamnesis-card">
+            <div class="row">
+              <div>
+                <div class="panel-title">Foto cliente</div>
+                <div class="muted">Foto progressi e valutazioni visive nello stesso punto</div>
+              </div>
+              <button class="primary-btn" onclick="document.getElementById('ptPhotoUpload').click()">Carica foto</button>
+            </div>
+            <input id="ptPhotoUpload" type="file" accept="image/*" multiple style="display:none" onchange="uploadClientFiles(this.files, 'foto'); this.value=''">
+            <div class="upload-area" style="margin-top:12px" onclick="document.getElementById('ptPhotoUpload').click()" ondragover="event.preventDefault()" ondrop="handlePhotoDrop(event)">
+              Trascina qui le foto oppure clicca per selezionarle
+            </div>
+            <div id="photoUploadProgress" class="upload-progress">Caricamento...</div>
+            <div class="photo-grid" style="margin-top:12px">${renderPhotoGrid()}</div>
+          </div>
+        </div>
+      `;
+    }
+    function measureBox(label, value, unit) {
+      return `
+        <div class="measure-box">
+          <div class="field-label">${esc(label)}</div>
+          <div class="measure-value">${value || value === 0 ? esc(value) : '-'}</div>
+          <div class="measure-unit">${esc(unit)}</div>
+        </div>
+      `;
+    }
+    function renderComposition(d) {
+      if (!d || !Object.keys(d).length) return '<div class="empty">Nessun dato Visbody disponibile.</div>';
+      const rows = [
+        ['Massa grassa', d.massa_grassa, 'kg'],
+        ['Massa muscolare', d.massa_muscolare, 'kg'],
+        ['Acqua totale', d.acqua_totale, 'l'],
+        ['Metabolismo basale', d.metabolismo_basale, 'kcal'],
+        ['Eta metabolica', d.eta_metabolica, 'anni'],
+        ['Score Visbody', d.score_visbody || d.indice_salute, '']
+      ].filter(row => row[1] || row[1] === 0);
+      if (!rows.length) return '<div class="empty">Rilevamento presente, ma senza valori di composizione.</div>';
+      const max = Math.max(1, ...rows.map(row => Number(row[1]) || 0));
+      return `<div class="composition-list">${rows.map(([label, value, unit]) => `
+        <div class="composition-row">
+          <div>${esc(label)}</div>
+          <div class="mini-bar"><span style="width:${percent(Number(value) || 0, max)}%"></span></div>
+          <div>${esc(value)} ${esc(unit)}</div>
+        </div>
+      `).join('')}</div>`;
+    }
+    function renderFileList() {
+      const files = state.foto.filter(item => item.tipo && item.tipo !== 'foto');
+      if (!files.length) return '<div class="empty">Nessun file dispositivo caricato.</div>';
+      return files.map(item => `
+        <div class="file-row">
+          <div>${esc(item.tipo || 'file')}</div>
+          <a href="${escAttr(item.url)}" target="_blank" rel="noopener">${esc(item.nome_file || 'Apri file')}</a>
+          <button class="primary-btn" onclick="deleteClientPhoto('${escJs(item.id)}')">Elimina</button>
+        </div>
+      `).join('');
+    }
+    function renderPhotoGrid() {
+      const photos = state.foto.filter(item => !item.tipo || item.tipo === 'foto');
+      if (!photos.length) return '<div class="empty">Nessuna foto caricata.</div>';
+      return photos.map(item => `
+        <div class="photo-card">
+          <button class="photo-del" onclick="deleteClientPhoto('${escJs(item.id)}')">x</button>
+          <img src="${escAttr(item.url)}" alt="" onclick="openLightbox('${escJs(item.url)}')">
+          <div class="photo-meta">${esc(item.nome_file || 'Foto cliente')} · ${item.data_scatto ? esc(fmtDate(item.data_scatto)) : '-'}</div>
+        </div>
+      `).join('');
+    }
+    function storagePath(clientId, file) {
+      const ext = (file.name || '').split('.').pop() || (file.type || '').split('/').pop() || 'bin';
+      const safeName = String(file.name || 'file').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(-80);
+      return `pt-clienti/${clientId}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safeName || `file.${ext}`}`;
+    }
+    async function uploadToStorage(path, file) {
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${path}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true'
+        },
+        body: file
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return `${SUPABASE_URL}/storage/v1/object/public/${FOTO_STORAGE_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;
+    }
+    async function uploadClientFiles(files, tipo) {
+      const client = state.clients.find(c => c.id === state.selectedClientId);
+      if (!client || !files || !files.length) return;
+      const progress = document.getElementById(tipo === 'foto' ? 'photoUploadProgress' : 'fileUploadProgress');
+      if (progress) {
+        progress.style.display = 'block';
+        progress.textContent = 'Caricamento...';
+      }
+      try {
+        const rows = [];
+        for (const file of Array.from(files)) {
+          const path = storagePath(client.id, file);
+          const url = await uploadToStorage(path, file);
+          rows.push({
+            cliente_id: client.id,
+            url,
+            storage_path: path,
+            nome_file: file.name || (tipo === 'foto' ? 'foto' : 'file'),
+            tipo: tipo === 'foto' ? 'foto' : tipo,
+            data_scatto: todayStr()
+          });
+        }
+        await supabaseInsert('foto_allenamento', rows);
+        await selectClient(client.id);
+      } catch (err) {
+        alert('Upload non riuscito: ' + (err.message || err));
+      } finally {
+        if (progress) progress.style.display = 'none';
+      }
+    }
+    function handlePhotoDrop(event) {
+      event.preventDefault();
+      uploadClientFiles(event.dataTransfer.files, 'foto');
+    }
+    async function deleteClientPhoto(id) {
+      const item = state.foto.find(row => row.id === id);
+      if (!item || !confirm('Eliminare questo elemento dalla scheda cliente?')) return;
+      try {
+        if (item.storage_path) {
+          await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${item.storage_path}`, {
+            method: 'DELETE',
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: 'Bearer ' + SUPABASE_KEY
+            }
+          });
+        }
+        await supabaseDelete('foto_allenamento', `?id=eq.${encodeURIComponent(id)}`);
+        state.foto = state.foto.filter(row => row.id !== id);
+        renderClientWorkspace();
+      } catch (err) {
+        alert('Eliminazione non riuscita: ' + (err.message || err));
+      }
+    }
+    function openLightbox(url) {
+      document.getElementById('photoLightboxImg').src = url;
+      document.getElementById('photoLightbox').classList.add('show');
+    }
+    function closeLightbox() {
+      document.getElementById('photoLightbox').classList.remove('show');
+      document.getElementById('photoLightboxImg').src = '';
     }
     function renderMeetingStats(clients, appointments) {
       renderPtStats(clients, appointments);
