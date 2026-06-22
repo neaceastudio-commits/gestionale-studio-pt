@@ -419,6 +419,242 @@ h2 {
   font-weight: 800;
 }
 
+.fisici-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.fisici-title {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 300;
+}
+
+.fisici-sub {
+  margin-top: 3px;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.misure-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mis-box {
+  min-height: 102px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  padding: 16px 10px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.mis-val {
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mis-unit {
+  min-height: 17px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mis-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.nutri-g2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.nutri-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.nutri-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 52px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #f8fafb;
+}
+
+.nutri-card-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.nutri-card-body {
+  padding: 16px;
+}
+
+.dati-grid,
+.test-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dati-item,
+.test-item {
+  min-height: 62px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 10px;
+}
+
+.dati-val {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.dati-val span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dati-label,
+.test-item strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.test-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.test-item strong {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+.test-item span {
+  color: var(--faint);
+  font-weight: 900;
+}
+
+.upload-label {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.device-file-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.device-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: #f3f6f8;
+  padding: 7px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.device-file-row span,
+.device-file-row strong,
+.device-file-row a {
+  color: var(--green);
+}
+
+.device-file-row em {
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-file-row a {
+  margin-left: auto;
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.foto-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.foto-actions select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.empty-title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.empty-sub {
+  margin-top: 3px;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .media-head {
   display: flex;
   align-items: flex-start;
@@ -537,28 +773,98 @@ h2 {
   display: grid;
   place-items: center;
   min-height: 96px;
-  border: 1px dashed var(--line);
+  border: 2px dashed var(--line);
   border-radius: 8px;
   background: #fbfcfd;
   color: var(--muted);
   font-size: 13px;
   font-weight: 900;
   cursor: pointer;
+  padding: 28px;
+  text-align: center;
+  transition: all .15s;
+}
+
+.upload-area:hover,
+.upload-area.drag {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.upload-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.upload-text {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.upload-sub {
+  margin-top: 4px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .upload-progress {
   display: none;
+  height: 4px;
   margin-top: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 900;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
 }
 
+.upload-progress.show {
+  display: block;
+}
+
+.upload-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--blue);
+  transition: width .3s;
+}
+
+.foto-grid,
 .photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.foto-item {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  aspect-ratio: 3 / 4;
+  cursor: pointer;
+}
+
+.foto-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.foto-meta {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, .6);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .photo-card {
@@ -584,6 +890,7 @@ h2 {
   font-weight: 800;
 }
 
+.foto-del,
 .photo-del {
   position: absolute;
   top: 6px;
@@ -599,6 +906,14 @@ h2 {
   font-weight: 900;
   line-height: 1;
   cursor: pointer;
+}
+
+.foto-del.inline {
+  position: static;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
 }
 
 .lightbox {
@@ -1469,9 +1784,19 @@ h2 {
   .toolbar,
   .media-layout,
   .measure-grid,
+  .misure-grid,
+  .nutri-g2,
+  .dati-grid,
+  .test-grid,
   .composition-row,
   .file-row {
     grid-template-columns: 1fr;
+  }
+
+  .fisici-head,
+  .foto-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .exercise-display-head,

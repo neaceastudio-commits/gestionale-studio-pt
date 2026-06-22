@@ -137,6 +137,41 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToBase64Resized(file, maxW = 1200, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxW) {
+          height = Math.round((height * maxW) / width);
+          width = maxW;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = event.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function addDaysIso(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -755,6 +790,50 @@ function mediaForSelectedClient() {
   return { datiFisici: state.datiFisici || [], foto: state.foto || [], mediaError: state.mediaError || '' };
 }
 
+function flattenMediaRow(row) {
+  const data = row?.data && typeof row.data === 'object' ? row.data : {};
+  return {
+    ...data,
+    id: row?.id || data.id || '',
+    clienteId: row?.cliente_id || data.clienteId || data.cliente_id || '',
+    url: data.url || row?.url || '',
+    filename: data.filename || data.nome_file || row?.filename || row?.nome_file || '',
+    nome_file: data.nome_file || data.filename || row?.nome_file || row?.filename || '',
+    data: data.data || row?.data_rilevazione || row?.created_at?.slice(0, 10) || '',
+    visitaId: data.visitaId || data.visita_id || '',
+    bucket: data.bucket || row?.bucket || '',
+    storagePath: data.storagePath || data.storage_path || row?.storage_path || '',
+    storage_path: data.storage_path || data.storagePath || row?.storage_path || '',
+    tipo: data.tipo || row?.tipo || '',
+  };
+}
+
+function flattenDatiFisiciRow(row) {
+  const data = row?.data && typeof row.data === 'object' ? row.data : {};
+  return {
+    ...data,
+    id: row?.id || data.id || '',
+    clienteId: row?.cliente_id || data.clienteId || data.cliente_id || '',
+    data: data.data || row?.data_rilevazione || row?.created_at?.slice(0, 10) || '',
+    data_rilevazione: row?.data_rilevazione || data.data || data.data_rilevazione || '',
+    peso: data.peso ?? row?.peso,
+    altezza: data.altezza ?? row?.altezza,
+    bmi: data.bmi ?? data.imc ?? row?.bmi,
+    pgc: data.pgc ?? data.percentuale_grasso ?? data.grasso_percentuale ?? row?.percentuale_grasso,
+    percentuale_grasso: data.percentuale_grasso ?? data.pgc ?? data.grasso_percentuale ?? row?.percentuale_grasso,
+    massa_grassa: data.massa_grassa ?? data.v_grassa ?? row?.massa_grassa,
+    massa_muscolare: data.massa_muscolare ?? data.v_muscolare ?? row?.massa_muscolare,
+    metabolismo_basale: data.metabolismo_basale ?? data.metabolismo ?? data.tasso_metabolico ?? row?.metabolismo_basale,
+    eta_metabolica: data.eta_metabolica ?? data.etaMet ?? row?.eta_metabolica,
+    massa_magra: data.massa_magra ?? data.ffm ?? row?.massa_magra,
+    acqua_totale: data.acqua_totale ?? data.tbw ?? data.acqua_corporea ?? row?.acqua_totale,
+    vita: data.vita ?? row?.vita,
+    fianchi: data.fianchi ?? row?.fianchi,
+    score_visbody: data.score_visbody ?? data.score ?? row?.score_visbody,
+    indice_salute: data.indice_salute ?? data.indice ?? row?.indice_salute,
+  };
+}
+
 async function loadClientMedia(clientId) {
   if (!clientId || state.mediaClientId === clientId || state.mediaLoading) return;
   state.mediaLoading = true;
@@ -766,11 +845,11 @@ async function loadClientMedia(clientId) {
   try {
     const [datiFisici, foto] = await Promise.all([
       sb('dati_fisici', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=data_rilevazione.desc,created_at.desc`),
-      sb('foto_allenamento', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=data_scatto.desc,created_at.desc`),
+      sb('foto_allenamento', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=created_at.desc`),
     ]);
     if (state.selectedClientId !== clientId) return;
-    state.datiFisici = datiFisici || [];
-    state.foto = foto || [];
+    state.datiFisici = (datiFisici || []).map(flattenDatiFisiciRow);
+    state.foto = (foto || []).map(flattenMediaRow);
     state.mediaError = '';
   } catch (error) {
     if (state.selectedClientId === clientId) {
@@ -795,24 +874,22 @@ function measureBox(label, value, unit) {
 }
 
 function renderComposition(d) {
-  if (!d || !Object.keys(d).length) return '<div class="empty compact">Nessun dato Visbody disponibile.</div>';
+  if (!d || !Object.keys(d).length) return '<div class="empty compact">Nessun dato</div>';
   const rows = [
     ['Massa grassa', d.massa_grassa, 'kg'],
     ['Massa muscolare', d.massa_muscolare, 'kg'],
-    ['Acqua totale', d.acqua_totale, 'l'],
+    ['Acqua totale', d.acqua_totale, 'lt'],
     ['Metabolismo basale', d.metabolismo_basale, 'kcal'],
     ['Eta metabolica', d.eta_metabolica, 'anni'],
     ['Score Visbody', d.score_visbody || d.indice_salute, ''],
   ].filter((row) => row[1] || row[1] === 0);
   if (!rows.length) return '<div class="empty compact">Rilevamento presente, ma senza valori di composizione.</div>';
-  const max = Math.max(1, ...rows.map((row) => Number(row[1]) || 0));
   return `
-    <div class="composition-list">
+    <div class="dati-grid">
       ${rows.map(([label, value, unit]) => `
-        <div class="composition-row">
-          <span>${esc(label)}</span>
-          <div class="mini-bar"><i style="width:${percent(Number(value) || 0, max)}%"></i></div>
-          <strong>${esc(value)} ${esc(unit)}</strong>
+        <div class="dati-item">
+          <div class="dati-val">${esc(value)}${unit ? ` <span>${esc(unit)}</span>` : ''}</div>
+          <div class="dati-label">${esc(label)}</div>
         </div>
       `).join('')}
     </div>
@@ -824,10 +901,12 @@ function renderFileList() {
   const files = foto.filter((item) => item.tipo && item.tipo !== 'foto');
   if (!files.length) return '<div class="empty compact">Nessun file dispositivo caricato.</div>';
   return files.map((item) => `
-    <div class="file-row">
-      <span>${esc(item.tipo || 'file')}</span>
-      <a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.nome_file || 'Apri file')}</a>
-      <button class="danger-btn slim" type="button" data-delete-photo="${esc(item.id)}">Elimina</button>
+    <div class="device-file-row">
+      <span>✓</span>
+      <strong>${esc(String(item.tipo || 'file').toUpperCase())}</strong>
+      <em>${esc(item.nome_file || item.filename || 'File caricato')}</em>
+      <a href="${esc(item.url)}" target="_blank" rel="noopener">Apri →</a>
+      <button class="foto-del inline" type="button" data-delete-photo="${esc(item.id)}">×</button>
     </div>
   `).join('');
 }
@@ -835,12 +914,12 @@ function renderFileList() {
 function renderPhotoGrid() {
   const { foto } = mediaForSelectedClient();
   const photos = foto.filter((item) => !item.tipo || item.tipo === 'foto');
-  if (!photos.length) return '<div class="empty compact">Nessuna foto caricata.</div>';
+  if (!photos.length) return '<div class="empty" style="grid-column:1/-1"><div class="empty-title">Nessuna foto</div><div class="empty-sub">Le foto caricate appariranno qui</div></div>';
   return photos.map((item) => `
-    <div class="photo-card">
-      <button class="photo-del" type="button" data-delete-photo="${esc(item.id)}">×</button>
-      <img src="${esc(item.url)}" alt="" data-open-photo="${esc(item.url)}">
-      <div class="photo-meta">${esc(item.nome_file || 'Foto cliente')} · ${item.data_scatto ? esc(formatDate(item.data_scatto)) : '-'}</div>
+    <div class="foto-item" data-open-photo="${esc(item.url)}">
+      <img src="${esc(item.url)}" alt="${esc(item.filename || item.nome_file || '')}" loading="lazy">
+      <div class="foto-meta">${esc(formatDate(item.data || item.data_scatto))}</div>
+      <button class="foto-del" type="button" data-delete-photo="${esc(item.id)}">×</button>
     </div>
   `).join('');
 }
@@ -850,55 +929,99 @@ function renderClientMediaSection(client) {
   const { datiFisici, mediaError } = mediaForSelectedClient();
   const latest = datiFisici[0] || {};
   const mediaNotice = mediaError ? `<div class="media-note">${esc(mediaError)}</div>` : '';
+  const dateLabel = loading
+    ? 'Caricamento...'
+    : (latest.data_rilevazione || latest.data ? `Ultimo rilevamento ${formatDate(latest.data_rilevazione || latest.data)}` : 'Nessun rilevamento');
   return `
-    <div class="section-title">Visbody e foto</div>
+    <div class="section-title">Dati Fisici & Composizione</div>
     ${mediaNotice}
-    <div class="media-layout">
-      <section class="media-panel">
-        <div class="media-head">
-          <div>
-            <h4>Visbody - dati fisici</h4>
-            <p>${loading ? 'Caricamento...' : (latest.data_rilevazione ? `Ultimo rilevamento ${formatDate(latest.data_rilevazione)}` : 'Nessun rilevamento registrato')}</p>
-          </div>
+    <div class="fisici-head">
+      <div>
+        <div class="fisici-title">Dati Fisici & Composizione</div>
+        <div class="fisici-sub">${esc(dateLabel)}</div>
+      </div>
+      <button class="primary-btn slim" type="button">+ Nuovo rilevamento</button>
+    </div>
+
+    <div class="misure-grid">
+      <div class="mis-box"><div class="mis-val">${latest.peso || latest.peso === 0 ? esc(latest.peso) : '—'}</div><div class="mis-unit">kg</div><div class="mis-label">Peso</div></div>
+      <div class="mis-box"><div class="mis-val">${latest.altezza || latest.altezza === 0 ? esc(latest.altezza) : '—'}</div><div class="mis-unit">cm</div><div class="mis-label">Altezza</div></div>
+      <div class="mis-box"><div class="mis-val">${latest.bmi || latest.bmi === 0 ? esc(latest.bmi) : '—'}</div><div class="mis-unit"></div><div class="mis-label">BMI</div></div>
+      <div class="mis-box"><div class="mis-val">${latest.percentuale_grasso || latest.pgc || latest.percentuale_grasso === 0 || latest.pgc === 0 ? esc(latest.percentuale_grasso ?? latest.pgc) : '—'}</div><div class="mis-unit">%</div><div class="mis-label">% Grasso</div></div>
+    </div>
+
+    <div class="nutri-g2">
+      <section class="nutri-card">
+        <div class="nutri-card-head">
+          <span class="nutri-card-title">Visbody — Composizione</span>
+          <button class="secondary-btn slim" type="button">Aggiorna</button>
         </div>
-        <div class="measure-grid">
-          ${measureBox('Peso', latest.peso, 'kg')}
-          ${measureBox('Altezza', latest.altezza, 'cm')}
-          ${measureBox('BMI', latest.bmi, '')}
-          ${measureBox('% grasso', latest.percentuale_grasso || latest.grasso_percentuale, '%')}
+        <div class="nutri-card-body">
+          ${renderComposition(latest)}
         </div>
-        ${renderComposition(latest)}
       </section>
 
-      <section class="media-panel">
-        <div class="media-head">
-          <div>
-            <h4>File dispositivi</h4>
-            <p>Visbody e file tecnici collegati al cliente</p>
+      <section class="nutri-card">
+        <div class="nutri-card-head">
+          <span class="nutri-card-title">Baiobit — Test Funzionali</span>
+          <button class="secondary-btn slim" type="button">Aggiorna</button>
+        </div>
+        <div class="nutri-card-body">
+          <div class="test-grid">
+            ${['Test Cammino', 'Test Spalla', 'Squat Jump', 'Rischio Caduta', 'Test Tronco', 'Test Cervicale', 'Drop Jump', 'Jump Monopodalico', 'Stiffness Test'].map((label) => `
+              <div class="test-item"><strong>${esc(label)}</strong><span>—</span></div>
+            `).join('')}
           </div>
-          <button class="secondary-btn slim" type="button" data-upload-trigger="visbody">Carica file</button>
         </div>
-        <input id="ptFileUpload" type="file" multiple hidden>
-        <div id="fileUploadProgress" class="upload-progress">Caricamento...</div>
-        <div class="file-list">${renderFileList()}</div>
-      </section>
-
-      <section class="media-panel media-panel-wide">
-        <div class="media-head">
-          <div>
-            <h4>Foto cliente</h4>
-            <p>Foto progressi e valutazioni visive nello stesso punto</p>
-          </div>
-          <button class="secondary-btn slim" type="button" data-upload-trigger="foto">Carica foto</button>
-        </div>
-        <input id="ptPhotoUpload" type="file" accept="image/*" multiple hidden>
-        <div class="upload-area" data-upload-trigger="foto" ondragover="event.preventDefault()" ondrop="handlePhotoDrop(event)">
-          Trascina qui le foto oppure clicca per selezionarle
-        </div>
-        <div id="photoUploadProgress" class="upload-progress">Caricamento...</div>
-        <div class="photo-grid">${renderPhotoGrid()}</div>
       </section>
     </div>
+
+    <section class="nutri-card">
+      <div class="nutri-card-head"><span class="nutri-card-title">Carica File Dispositivi</span></div>
+      <div class="nutri-card-body">
+        <div class="nutri-g2">
+          <div>
+            <div class="upload-label">File Visbody (PDF/Immagine)</div>
+            <div class="upload-area" data-upload-trigger="visbody" data-upload-kind="single">
+              <input id="ptFileUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" hidden>
+              <div class="upload-icon">File</div>
+              <div class="upload-text">Trascina o clicca per caricare</div>
+              <div class="upload-sub">PDF, JPG, PNG — max 10MB</div>
+            </div>
+            <div class="upload-progress" id="prog-visbody"><div class="upload-bar" id="bar-visbody"></div></div>
+          </div>
+          <div>
+            <div class="upload-label">File Baiobit (PDF/Immagine)</div>
+            <div class="upload-area" data-upload-trigger="baiobit" data-upload-kind="single">
+              <input id="ptBaiobitUpload" type="file" accept=".pdf,.jpg,.jpeg,.png" hidden>
+              <div class="upload-icon">Test</div>
+              <div class="upload-text">Trascina o clicca per caricare</div>
+              <div class="upload-sub">PDF, JPG, PNG — max 10MB</div>
+            </div>
+            <div class="upload-progress" id="prog-baiobit"><div class="upload-bar" id="bar-baiobit"></div></div>
+          </div>
+        </div>
+        <div class="device-file-list">${renderFileList()}</div>
+      </div>
+    </section>
+
+    <div class="section-title">Fotografie</div>
+    <section class="nutri-card">
+      <div class="nutri-card-body">
+        <div class="foto-actions">
+          <select id="foto-visita-filter" disabled><option value="">Tutte le visite</option></select>
+          <button class="primary-btn slim" type="button" data-upload-trigger="foto">+ Carica foto</button>
+          <input id="ptPhotoUpload" type="file" accept="image/*" multiple hidden>
+        </div>
+        <div class="upload-area" data-upload-trigger="foto" data-upload-kind="multi">
+          <div class="upload-icon">Foto</div>
+          <div class="upload-text">Trascina le foto o clicca per selezionare</div>
+          <div class="upload-sub">JPG, PNG — ridimensionamento automatico a 1200px</div>
+        </div>
+        <div class="upload-progress" id="prog-foto"><div class="upload-bar" id="bar-foto"></div></div>
+      </div>
+    </section>
+    <div class="foto-grid">${renderPhotoGrid()}</div>
   `;
 }
 
@@ -965,60 +1088,172 @@ function renderClientDetail() {
   `;
 }
 
-function storagePath(clientId, file) {
-  const ext = (file.name || '').split('.').pop() || (file.type || '').split('/').pop() || 'bin';
-  const safeName = String(file.name || `file.${ext}`).replace(/[^a-zA-Z0-9._-]+/g, '-').slice(-80);
-  return `pt-clienti/${clientId}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safeName}`;
+function safeStorageSegment(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 90) || 'file';
 }
 
-async function uploadToStorage(path, file) {
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${path}`, {
+function extFromMime(mimeType, filename) {
+  const mime = String(mimeType || '').toLowerCase();
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('webp')) return 'webp';
+  if (mime.includes('pdf')) return 'pdf';
+  const ext = String(filename || '').split('.').pop();
+  return ext && /^[a-z0-9]{2,5}$/i.test(ext) ? ext.toLowerCase() : 'jpg';
+}
+
+function encodeStoragePath(path) {
+  return String(path || '').split('/').map(encodeURIComponent).join('/');
+}
+
+function blobFromBase64(base64, mimeType) {
+  const bin = atob(String(base64 || ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType || 'image/jpeg' });
+}
+
+async function callFotoFunction(payload) {
+  try {
+    const response = await fetch('/.netlify/functions/foto-pt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (response.status === 404) return null;
+    const text = await response.text();
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch (_) { json = { success: false, error: text }; }
+    if (!response.ok) return { error: json?.error || text || 'Function foto non disponibile' };
+    return json;
+  } catch (_) {
+    return null;
+  }
+}
+
+function storageErrorMessage(text) {
+  const raw = String(text || '');
+  if (/Bucket not found|not found/i.test(raw)) return `Bucket foto Supabase non configurato: crea "${FOTO_STORAGE_BUCKET}".`;
+  if (/row-level security|permission|policy|unauthorized|forbidden/i.test(raw)) return `Permessi Storage mancanti per "${FOTO_STORAGE_BUCKET}".`;
+  return raw || 'Upload foto fallito';
+}
+
+async function uploadMediaStorage({ clientId, base64, filename, mimeType, data }) {
+  const viaFunction = await callFotoFunction({
+    action: 'uploadFoto',
+    clienteId: clientId,
+    base64,
+    filename,
+    mimeType,
+    data,
+  });
+  if (viaFunction && viaFunction.success) return viaFunction;
+  if (viaFunction && viaFunction.error) throw new Error(viaFunction.error);
+
+  const ext = extFromMime(mimeType, filename);
+  const path = [
+    safeStorageSegment(clientId),
+    data || todayIso(),
+    `${Date.now()}-${Math.random().toString(16).slice(2)}-${safeStorageSegment(filename || 'foto')}.${ext}`,
+  ].join('/');
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${encodeStoragePath(path)}`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': file.type || 'application/octet-stream',
-      'x-upsert': 'true',
+      'Content-Type': mimeType || 'image/jpeg',
+      upsert: 'false',
     },
-    body: file,
+    body: blobFromBase64(base64, mimeType || 'image/jpeg'),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return `${SUPABASE_URL}/storage/v1/object/public/${FOTO_STORAGE_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;
+  const text = await response.text();
+  if (!response.ok) throw new Error(storageErrorMessage(text || response.statusText));
+  return {
+    success: true,
+    bucket: FOTO_STORAGE_BUCKET,
+    path,
+    url: `${SUPABASE_URL}/storage/v1/object/public/${FOTO_STORAGE_BUCKET}/${encodeStoragePath(path)}`,
+  };
+}
+
+async function deleteStorageObject(bucket, path) {
+  if (!bucket || !path) return;
+  const viaFunction = await callFotoFunction({ action: 'deleteFoto', bucket, path });
+  if (viaFunction && viaFunction.success) return;
+  if (viaFunction && viaFunction.error) throw new Error(viaFunction.error);
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeStoragePath(path)}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+    },
+  });
+  if (!response.ok && response.status !== 404) throw new Error(storageErrorMessage(await response.text()));
 }
 
 async function uploadClientFiles(files, tipo) {
   const client = selectedClient();
   if (!client || !files || !files.length) return;
-  const progress = document.getElementById(tipo === 'foto' ? 'photoUploadProgress' : 'fileUploadProgress');
-  if (progress) {
-    progress.style.display = 'block';
-    progress.textContent = 'Caricamento...';
-  }
+  const progress = document.getElementById(`prog-${tipo}`);
+  const bar = document.getElementById(`bar-${tipo}`);
+  if (progress) progress.classList.add('show');
   try {
-    const rows = [];
-    for (const file of Array.from(files)) {
-      const path = storagePath(client.client_id, file);
-      const url = await uploadToStorage(path, file);
-      rows.push({
-        cliente_id: client.client_id,
-        url,
-        storage_path: path,
-        nome_file: file.name || (tipo === 'foto' ? 'foto' : 'file'),
-        tipo: tipo === 'foto' ? 'foto' : tipo,
-        data_scatto: todayIso(),
+    let uploadedCount = 0;
+    const fileList = tipo === 'foto' ? Array.from(files) : Array.from(files).slice(0, 1);
+    for (let i = 0; i < fileList.length; i++) {
+      if (bar) bar.style.width = `${Math.round((i / fileList.length) * 100)}%`;
+      const file = fileList[i];
+      const isImage = file.type.startsWith('image/');
+      const dataUrl = isImage ? await fileToBase64Resized(file, 1200, 0.8) : await fileToBase64(file);
+      const mimeType = isImage && tipo === 'foto' ? 'image/jpeg' : (file.type || 'application/octet-stream');
+      const filename = `${client.client_id}_${tipo}_${Date.now()}_${safeStorageSegment(file.name || tipo)}`;
+      const uploaded = await uploadMediaStorage({
+        clientId: client.client_id,
+        base64: String(dataUrl).split(',')[1],
+        filename,
+        mimeType,
+        data: todayIso(),
       });
+      const rowData = {
+        url: uploaded.url,
+        filename,
+        nome_file: file.name || filename,
+        data: todayIso(),
+        visitaId: '',
+        bucket: uploaded.bucket,
+        storagePath: uploaded.path,
+        storage_path: uploaded.path,
+        source: 'storage',
+        tipo: tipo === 'foto' ? 'foto' : tipo,
+      };
+      await sb('foto_allenamento', '', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: {
+          id: isoNowId('foto'),
+          cliente_id: client.client_id,
+          data: rowData,
+        },
+      });
+      uploadedCount++;
     }
-    await sb('foto_allenamento', '', {
-      method: 'POST',
-      headers: { Prefer: 'return=representation' },
-      body: rows,
-    });
     state.mediaClientId = '';
+    state.mediaError = '';
     await loadClientMedia(client.client_id);
+    if (uploadedCount) clearError();
   } catch (error) {
     showError(`Upload non riuscito: ${error.message || error}`);
   } finally {
-    if (progress) progress.style.display = 'none';
+    if (bar) bar.style.width = '100%';
+    setTimeout(() => {
+      if (progress) progress.classList.remove('show');
+      if (bar) bar.style.width = '0';
+    }, 600);
   }
 }
 
@@ -1031,15 +1266,7 @@ async function deleteClientPhoto(id) {
   const item = state.foto.find((row) => row.id === id);
   if (!item || !confirm('Eliminare questo elemento dalla scheda cliente?')) return;
   try {
-    if (item.storage_path) {
-      await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${item.storage_path}`, {
-        method: 'DELETE',
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-        },
-      });
-    }
+    await deleteStorageObject(item.bucket || FOTO_STORAGE_BUCKET, item.storagePath || item.storage_path);
     await sb('foto_allenamento', `?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
     state.foto = state.foto.filter((row) => row.id !== id);
     renderClientDetail();
@@ -1757,9 +1984,12 @@ function bindEvents() {
   els.clientDetail.addEventListener('click', (event) => {
     const upload = event.target.closest('[data-upload-trigger]');
     if (upload) {
-      const input = upload.dataset.uploadTrigger === 'foto'
-        ? document.getElementById('ptPhotoUpload')
-        : document.getElementById('ptFileUpload');
+      const inputMap = {
+        foto: 'ptPhotoUpload',
+        visbody: 'ptFileUpload',
+        baiobit: 'ptBaiobitUpload',
+      };
+      const input = document.getElementById(inputMap[upload.dataset.uploadTrigger] || 'ptFileUpload');
       input?.click();
       return;
     }
@@ -1789,6 +2019,31 @@ function bindEvents() {
       uploadClientFiles(event.target.files, 'visbody');
       event.target.value = '';
     }
+    if (event.target.id === 'ptBaiobitUpload') {
+      uploadClientFiles(event.target.files, 'baiobit');
+      event.target.value = '';
+    }
+  });
+
+  els.clientDetail.addEventListener('dragover', (event) => {
+    const area = event.target.closest('.upload-area');
+    if (!area) return;
+    event.preventDefault();
+    area.classList.add('drag');
+  });
+
+  els.clientDetail.addEventListener('dragleave', (event) => {
+    const area = event.target.closest('.upload-area');
+    if (!area) return;
+    area.classList.remove('drag');
+  });
+
+  els.clientDetail.addEventListener('drop', (event) => {
+    const area = event.target.closest('[data-upload-trigger]');
+    if (!area) return;
+    event.preventDefault();
+    area.classList.remove('drag');
+    uploadClientFiles(event.dataTransfer.files, area.dataset.uploadTrigger);
   });
 
   document.querySelectorAll('[data-calendar-view]').forEach((button) => {
