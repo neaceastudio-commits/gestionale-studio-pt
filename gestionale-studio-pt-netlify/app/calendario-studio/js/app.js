@@ -1002,11 +1002,12 @@ const App = {
     }
 
     const time = document.getElementById('pkg-gen-time')?.value || '09:00';
-    const dates = App._suggestPackageDates(client, missing);
+    const dates = App._suggestPackageDates(client, missing * 6);
     const created = [];
     const skipped = [];
 
-    dates.forEach(date => {
+    dates.some(date => {
+      if (created.length >= missing) return true;
       const draft = {
         serviceId,
         clientIds: [client.id],
@@ -1021,9 +1022,10 @@ const App = {
       const validation = Services.canBookAppointment(draft);
       if (!validation.ok) {
         skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
-        return;
+        return false;
       }
       created.push(Services.addAppointment(draft));
+      return false;
     });
 
     if (created.length) {
@@ -1033,7 +1035,8 @@ const App = {
     }
 
     if (skipped.length) {
-      UI.showToast(`${created.length} create, ${skipped.length} saltate per conflitti`, created.length ? 'info' : 'error');
+      UI.showToast(`${created.length} create, ${skipped.length} date saltate per conflitti`, created.length ? 'info' : 'error');
+      alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
       console.warn('[Pacchetto] Sedute saltate:', skipped);
     } else {
       UI.showToast(`${created.length} sedute programmate`, 'success');

@@ -319,7 +319,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
           <select id="conf-pagamento"><option>Da pagare</option><option>Pagato</option><option>Parziale</option></select>
         </div>
       </div>
-      <div class="conf-note">💡 Dopo la conferma il prospect sparirà dall'acquisizione e apparirà nello studio. Le lezioni si programmano da Calendario → Clienti → Quadro pacchetto, unico punto operativo del pacchetto.</div>
+      <div class="conf-note">Dopo la conferma l'acquisizione resta archiviata e modificabile. Il cliente apparira anche nello studio; le lezioni si programmano da Calendario → Clienti → Quadro pacchetto.</div>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost" onclick="closeMo('mo-conferma')">Annulla</button>
@@ -362,6 +362,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
     <button class="filter-btn" onclick="setFiltro('pronti',this)">Pronti</button>
     <button class="filter-btn" onclick="setFiltro('interessati',this)">Interessati</button>
     <button class="filter-btn" onclick="setFiltro('valutazione',this)">In valutazione</button>
+    <button class="filter-btn" onclick="setFiltro('convertiti',this)">Archivio convertiti</button>
   </div>
 
   <div class="cards-grid" id="grid"></div>
@@ -537,7 +538,8 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       <div class="sch-actions">
         <button class="btn-ghost" onclick="showView('lista')" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">← Lista</button>
         <button class="btn-ghost" onclick="apriModifica()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">✏ Modifica</button>
-        <button class="btn-confirm" onclick="apriConferma()">Conferma cliente →</button>
+        <button class="btn-ghost" onclick="stampaScheda()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">Stampa</button>
+        <button class="btn-confirm" id="btn-conferma-scheda" onclick="apriConferma()">Conferma cliente →</button>
         <button class="btn-danger" onclick="confElimina()">Elimina</button>
       </div>
     </div>
@@ -837,15 +839,16 @@ async function carica(){
     if(ops.error)throw new Error(ops.error);
     acquisizioni=d.acquisizioni||[];staffAll=ops.staff||[];initialized=true;
     renderStats();renderLista();
-    const t=acquisizioni.filter(c=>c.stato!=='Convertito').length;
-    document.getElementById('lista-sub').textContent=t===0?'Nessun prospect registrato — aggiungi la prima anamnesi':t+' prospect registrat'+(t===1?'o':'i');
+    const attive=acquisizioni.filter(c=>c.stato!=='Convertito').length;
+    const archiviate=acquisizioni.filter(c=>c.stato==='Convertito').length;
+    document.getElementById('lista-sub').textContent=acquisizioni.length===0?'Nessuna acquisizione registrata — aggiungi la prima anamnesi':attive+' attiv'+(attive===1?'a':'e')+' · '+archiviate+' archiviat'+(archiviate===1?'a':'e');
     showToast('Aggiornato ✓','success');
   }catch(e){document.getElementById('grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">Errore connessione Supabase</div><div class="empty-sub">'+String(e.message||e).slice(0,180)+'</div></div>';showToast('Errore Supabase','error')}
 }
 
 function renderStats(){
   const attive=acquisizioni.filter(c=>c.stato!=='Convertito');
-  const t=attive.length;const pronti=attive.filter(c=>c.stato==='Pronto a iniziare').length;const int=attive.filter(c=>c.stato==='Interessato').length;
+  const t=acquisizioni.length;const pronti=attive.filter(c=>c.stato==='Pronto a iniziare').length;const int=attive.filter(c=>c.stato==='Interessato').length;
   const oggi=new Date();oggi.setHours(23,59,59,999);
   const follow=attive.filter(c=>c.followup&&new Date(c.followup+'T00:00:00')<=oggi&&c.stato!=='Pronto a iniziare');
   document.getElementById('st-tot').textContent=t;document.getElementById('st-pronti').textContent=pronti;document.getElementById('st-int').textContent=int;document.getElementById('st-follow').textContent=follow.length;
@@ -855,7 +858,7 @@ function renderStats(){
 
 function renderDashPanels(follow){
   const byDate=(a,b)=>String(a.followup||'9999').localeCompare(String(b.followup||'9999'));
-  const recenti=[...acquisizioni.filter(c=>c.stato!=='Convertito')].sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
+  const recenti=[...acquisizioni].sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
   const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').slice(0,4);
   fillDash('dash-follow',[...follow].sort(byDate).slice(0,4),'Nessun follow-up urgente',c=>fmtData(c.followup));
   fillDash('dash-pronti',pronti,'Nessun cliente pronto',c=>c.sessioni_pref||'da definire');
@@ -874,13 +877,14 @@ function fillDash(id,items,empty,metaFn){
 function renderLista(){
   const q=document.getElementById('search').value.toLowerCase();
   const f=acquisizioni.filter(c=>{
-    if(c.stato==='Convertito')return false;
     const m=((c.nome||'')+(c.cognome||'')+(c.email||'')+(c.telefono||'')).toLowerCase().includes(q);if(!m)return false;
+    if(filtro==='convertiti')return c.stato==='Convertito';
+    if(c.stato==='Convertito')return filtro==='tutti';
     if(filtro==='pronti')return c.stato==='Pronto a iniziare';if(filtro==='interessati')return c.stato==='Interessato';if(filtro==='valutazione')return c.stato==='In valutazione';return true;
   });
   const grid=document.getElementById('grid');
   if(!f.length){grid.innerHTML=`<div class="empty-state"><div class="empty-icon">${acquisizioni.length===0?'📋':'🔍'}</div><div class="empty-text">${acquisizioni.length===0?'Nessun prospect ancora':'Nessun risultato'}</div><div class="empty-sub">${acquisizioni.length===0?'Usa il pulsante in alto per la prima anamnesi':'Prova a cambiare i filtri'}</div></div>`;return}
-  const sm={'Pronto a iniziare':'badge-pronto','Interessato':'badge-int','In valutazione':'badge-val','Non convinto':'badge-non'};
+  const sm={'Pronto a iniziare':'badge-pronto','Interessato':'badge-int','In valutazione':'badge-val','Non convinto':'badge-non','Convertito':'badge-pronto'};
   grid.innerHTML=f.map(c=>{
     const ini=((c.nome||'')[0]||'').toUpperCase()+((c.cognome||'')[0]||'').toUpperCase();
     const eta=c.nascita?calcEta(c.nascita)+' anni':'';const srv=normSrv(c.servizi);
@@ -960,7 +964,7 @@ function apriScheda(id){
   document.getElementById('sch-meta').innerHTML=meta.join(' · ');
   const srv=normSrv(c.servizi);
   let badges=srv.map(s=>s==='PT'?'<span class="sch-badge" style="background:var(--blue-pale);color:var(--blue)">🏋️ PT</span>':'<span class="sch-badge" style="background:var(--green-pale);color:var(--green)">🥗 Nutrizione</span>').join('');
-  const ss={'Pronto a iniziare':'background:var(--green-pale);color:var(--green)','Interessato':'background:var(--blue-pale);color:var(--blue)','Non convinto':'background:var(--red-pale);color:var(--red)','In valutazione':'background:#f0f0f0;color:#888'};
+  const ss={'Pronto a iniziare':'background:var(--green-pale);color:var(--green)','Interessato':'background:var(--blue-pale);color:var(--blue)','Non convinto':'background:var(--red-pale);color:var(--red)','In valutazione':'background:#f0f0f0;color:#888','Convertito':'background:var(--green-pale);color:var(--green)'};
   badges+=`<span class="sch-badge" style="${ss[c.stato]||ss['In valutazione']}">${c.stato||'—'}</span>`;
   document.getElementById('sch-badges').innerHTML=badges;
   let h='';
@@ -972,8 +976,17 @@ function apriScheda(id){
   if(c.nonFunzionato)h+=`<div class="sch-block full"><div class="sb-title">Cosa non ha funzionato</div><div class="sch-nota">${c.nonFunzionato}</div></div>`;
   if(c.impressioni)h+=`<div class="sch-block full"><div class="sb-title">Impressioni del PT</div><div class="sch-nota">${c.impressioni}</div></div>`;
   document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione);
+  const confirmBtn=document.getElementById('btn-conferma-scheda');if(confirmBtn)confirmBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
   showView('scheda');
   loadAcquisitionData(id);
+}
+
+function stampaScheda(){
+  if(!idCorrente)return;
+  const c=acquisizioni.find(x=>x.id===idCorrente);
+  if(!c)return;
+  document.title='Acquisizione - '+[c.nome,c.cognome].filter(Boolean).join(' ');
+  window.print();
 }
 
 function sr(l,v){if(!v)return'';return`<div class="sb-row"><span class="sb-label">${l}</span><span class="sb-val">${v}</span></div>`}
@@ -1143,7 +1156,7 @@ function apriConfermaById(id){
   document.getElementById('conf-sess-row').style.display='none';document.getElementById('conf-abb-row').style.display='none';document.getElementById('conf-days-row').style.display='none';document.querySelectorAll('#conf-days input').forEach(c=>{c.checked=false});
   openMo('mo-conferma');
 }
-function maxConfDays(){const t=document.getElementById('conf-tipo').value;const tot=parseInt(document.getElementById('conf-sess-tot').value)||0;if(t==='Pacchetto 2'||tot===2)return 1;const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
+function maxConfDays(){const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
 function limitConfDays(changed){const max=maxConfDays();if(!max)return true;const checked=[...document.querySelectorAll('#conf-days input:checked')];if(checked.length<=max)return true;if(changed)changed.checked=false;else checked.slice(max).forEach(c=>{c.checked=false});showToast('Il pacchetto prevede massimo '+max+' giorni a settimana','error');return false}
 function toggleConfSess(){const t=document.getElementById('conf-tipo').value;const p=document.getElementById('conf-package').value;const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(p);document.getElementById('conf-sess-row').style.display=t&&needsPlan?'grid':'none';document.getElementById('conf-abb-row').style.display=t?'grid':'none';document.getElementById('conf-days-row').style.display=t&&needsPlan?'block':'none';if(t==='Pacchetto 2')document.getElementById('conf-sess-tot').value=2;if(t==='Pacchetto 10')document.getElementById('conf-sess-tot').value=10;if(t==='Pacchetto 20')document.getElementById('conf-sess-tot').value=20;limitConfDays()}
 async function eseguiConferma(){
@@ -1158,7 +1171,7 @@ async function eseguiConferma(){
   if(needsPlan&&sessioniTotali<=0){showToast('Inserisci le sessioni totali acquistate','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   if(needsPlan&&!giorniSettimana.length){showToast('Seleziona almeno un giorno del pacchetto','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType,ptId:document.getElementById('conf-pt').value,tipoAbbonamento,dataInizio:document.getElementById('conf-data').value,sessioni_totali:sessioniTotali,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
-  if(res.success){showToast('Cliente trasferito. Programma le lezioni da Calendario → Clienti → Quadro pacchetto','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
+  if(res.success){showToast('Cliente trasferito e acquisizione archiviata','success');closeMo('mo-conferma');const idx=acquisizioni.findIndex(x=>x.id===idConferma);if(idx>=0)acquisizioni[idx]={...acquisizioni[idx],stato:'Convertito'};renderStats();apriScheda(idConferma)}
   else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
   btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
 }

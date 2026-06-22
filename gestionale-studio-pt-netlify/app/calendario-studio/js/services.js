@@ -186,15 +186,17 @@ const Services = (() => {
     if (appt.operatorId) {
       const op = getOperator(appt.operatorId);
       if (op && !opHasRole(op, svc)) errors.push('Operatore senza ruolo compatibile');
-      if (appts.some(a => a.operatorId === appt.operatorId && overlaps(appt, a, true))) {
-        errors.push('Operatore occupato nello slot');
+      const operatorConflict = appts.find(a => a.operatorId === appt.operatorId && overlaps(appt, a, true));
+      if (operatorConflict) {
+        const conflictClients = (operatorConflict.clientIds || []).map(clientFullName).join(', ') || 'nessun cliente';
+        errors.push(`${operatorFullName(appt.operatorId)} occupato alle ${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`);
       }
     }
 
-    const clientConflict = (appt.clientIds || []).some(cid =>
+    const clientConflictId = (appt.clientIds || []).find(cid =>
       appts.some(a => (a.clientIds || []).includes(cid) && overlaps(appt, a, false))
     );
-    if (clientConflict) errors.push('Cliente gia prenotato nello slot');
+    if (clientConflictId) errors.push(`${clientFullName(clientConflictId)} ha gia un appuntamento alle ${String(appt.startTime || '').slice(0, 5)}`);
 
     const incompatibleClient = (appt.clientIds || []).map(getClient).find(c =>
       c && svc && !svc.isBlock && !clientCanUseService(c, appt.serviceId)
