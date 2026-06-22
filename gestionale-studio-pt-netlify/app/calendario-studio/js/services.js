@@ -165,7 +165,7 @@ const Services = (() => {
       }, 0);
   }
 
-  function canBookAppointment(appt) {
+  function canBookAppointment(appt, options = {}) {
     const errors = [];
     const svc = getService(appt.serviceId);
     if (!svc) errors.push('Servizio non valido');
@@ -207,11 +207,13 @@ const Services = (() => {
 
     if (serviceUsesPackageSessions(svc)) {
       const apptDay = weekdayName(appt.date);
-      const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
-        const days = c?.giorniSettimana || c?.giorni_settimana || [];
-        return Array.isArray(days) && days.length && !days.includes(apptDay);
-      });
-      if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nel pacchetto`);
+      if (options.strictPackageDays) {
+        const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
+          const days = c?.giorniSettimana || c?.giorni_settimana || [];
+          return Array.isArray(days) && days.length && !days.includes(apptDay);
+        });
+        if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nella pianificazione reale del pacchetto`);
+      }
 
       const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
         const metrics = getClientSessionMetrics(c, appt.id || null);

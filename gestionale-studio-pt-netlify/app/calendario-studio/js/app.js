@@ -670,10 +670,13 @@ const App = {
     App._limitClientDays();
   },
 
-  _maxClientDays() {
-    const raw = document.getElementById('cl-frequency')?.value || '';
+  _frequencyMaxDaysValue(raw) {
     const n = parseInt((raw.match(/\d+/) || ['0'])[0], 10);
     return Number.isFinite(n) && n > 0 ? n : null;
+  },
+
+  _maxClientDays() {
+    return App._frequencyMaxDaysValue(document.getElementById('cl-frequency')?.value || '');
   },
 
   _limitClientDays(changed) {
@@ -796,8 +799,8 @@ const App = {
     return names[d.getDay()];
   },
 
-  _suggestPackageDates(client, count) {
-    const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
+  _suggestPackageDates(client, count, options = {}) {
+    const days = Array.isArray(options.days) ? options.days : (Array.isArray(client.giorniSettimana) ? client.giorniSettimana : []);
     if (!days.length || count <= 0) return [];
 
     const wanted = new Set(days);
@@ -806,9 +809,9 @@ const App = {
     const usedDates = new Set(existing.map(a => a.date));
     const lastPlanned = existing[existing.length - 1]?.date;
     const today = App._dateStr(new Date());
-    const startSeed = [today, client.packageStart, lastPlanned].filter(Boolean).sort().pop();
+    const startSeed = options.fromDate || [today, client.packageStart, lastPlanned].filter(Boolean).sort().pop();
     const cursor = App._parseDate(startSeed);
-    if (usedDates.has(App._dateStr(cursor))) cursor.setDate(cursor.getDate() + 1);
+    if (!options.includeStart && usedDates.has(App._dateStr(cursor))) cursor.setDate(cursor.getDate() + 1);
 
     const out = [];
     for (let guard = 0; out.length < count && guard < 420; guard += 1) {
@@ -834,6 +837,12 @@ const App = {
     const appointments = App._packageAppointments(client, true);
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
+    const today = App._dateStr(new Date());
+    const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
+      <label class="checkbox-label package-plan-day">
+        <input type="checkbox" name="pkg-plan-day" value="${g}" ${days.includes(g) ? 'checked' : ''} onchange="App._limitPackagePlanDays('${client.id}', this)">
+        <span>${g.slice(0, 3)}</span>
+      </label>`).join('');
 
     const rows = appointments.length ? appointments.map(a => {
       const svc = Services.getService(a.serviceId);
@@ -886,7 +895,7 @@ const App = {
               ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
             </div>
           </div>
-          <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto/giorni</button>
+          <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
         </div>
 
         <div class="package-overview-kpis">
@@ -904,7 +913,7 @@ const App = {
             <div class="day-chip-row">
               ${days.length ? days.map(day => `<span>${day}</span>`).join('') : '<em>Nessun giorno impostato</em>'}
             </div>
-            <p>Ogni seduta PT viene accettata solo in queste giornate. Se il pacchetto è da 2 sedute totali, resta selezionabile un solo giorno.</p>
+            <p>Queste sono le giornate reali usate per generare le prossime sedute. L'acquisizione resta nello storico iniziale.</p>
           </section>
 
           <section class="package-panel">
@@ -922,6 +931,31 @@ const App = {
           </section>
         </div>
 
+        <section class="package-panel package-reschedule-panel">
+          <h4>Cambio giorni/orari futuri</h4>
+          <div class="package-reschedule-grid">
+            <div>
+              <label>Nuovi giorni reali</label>
+              <div class="checkbox-grid package-plan-grid">
+                ${planningDays}
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Orario</label>
+              <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
+            </div>
+            <div class="form-group">
+              <label>Da data</label>
+              <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
+            </div>
+          </div>
+          <div class="package-reschedule-actions">
+            <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
+            <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
+          </div>
+          <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte.</p>
+        </section>
+
         <section class="package-panel">
           <h4>Appuntamenti collegati</h4>
           <table class="package-timeline-table">
@@ -936,6 +970,163 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+  },
+
+  _selectedPackagePlanDays() {
+    return [...document.querySelectorAll('input[name="pkg-plan-day"]:checked')].map(el => el.value);
+  },
+
+  _limitPackagePlanDays(clientId, changed) {
+    const client = State.getClients().find(c => c.id === clientId);
+    const max = App._frequencyMaxDaysValue(client?.packageFrequency || '');
+    if (!max) return true;
+    const checked = [...document.querySelectorAll('input[name="pkg-plan-day"]:checked')];
+    if (checked.length <= max) return true;
+    if (changed) changed.checked = false;
+    else checked.slice(max).forEach(input => { input.checked = false; });
+    UI.showToast(`La frequenza del pacchetto prevede massimo ${max} giorni a settimana`, 'error');
+    return false;
+  },
+
+  _updateClientPackageDays(clientId, days) {
+    const clients = State.getClients();
+    const idx = clients.findIndex(c => c.id === clientId);
+    if (idx < 0) return null;
+    clients[idx] = {
+      ...clients[idx],
+      giorniSettimana: days,
+      notes: [
+        clients[idx].notes || '',
+        `Cambio pianificazione reale ${new Date().toLocaleDateString('it-IT')}: ${days.join(', ') || 'nessun giorno'}`
+      ].filter(Boolean).join('\n')
+    };
+    State.saveClients(clients);
+    SupabaseSync.pushClient(clients[idx]);
+    if (CONFIG.SHEETS.enabled) Sheets.pushClient(clients[idx]);
+    return clients[idx];
+  },
+
+  _savePackageSchedule(clientId) {
+    if (!App._limitPackagePlanDays(clientId)) return;
+    const days = App._selectedPackagePlanDays();
+    if (!days.length) {
+      UI.showToast('Seleziona almeno un giorno reale', 'error');
+      return;
+    }
+    const saved = App._updateClientPackageDays(clientId, days);
+    if (!saved) return;
+    UI.showToast('Giorni reali del pacchetto salvati', 'success');
+    App.openPackageOverview(clientId);
+  },
+
+  async _regenerateFuturePackageAppointments(clientId) {
+    if (!App._limitPackagePlanDays(clientId)) return;
+    const currentClient = State.getClients().find(c => c.id === clientId);
+    if (!currentClient) return;
+
+    const days = App._selectedPackagePlanDays();
+    const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-plan-time')?.value || '09:00';
+    if (!days.length) {
+      UI.showToast('Seleziona almeno un giorno reale', 'error');
+      return;
+    }
+
+    const serviceId = App._packageServiceId(currentClient);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    if (!service) {
+      UI.showToast('Pacchetto PT non impostato per questo cliente', 'error');
+      return;
+    }
+
+    const allAppointments = State.getAppointments();
+    const futureToReplace = allAppointments.filter(a =>
+      a.status !== 'annullato' &&
+      a.status !== 'fatto' &&
+      a.date >= fromDate &&
+      a.serviceId === serviceId &&
+      Array.isArray(a.clientIds) &&
+      a.clientIds.includes(clientId)
+    );
+    const fallbackOperator = futureToReplace[0]?.operatorId ||
+      [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
+      currentClient.ptAssegnato ||
+      null;
+
+    const confirmed = confirm(
+      `Rigenero le sedute future di ${currentClient.nome} ${currentClient.cognome} da ${fromDate}.\n` +
+      `Le sedute future non svolte (${futureToReplace.length}) saranno sostituite con: ${days.join(', ')} alle ${time}.\n\n` +
+      'Le sedute gia fatte non vengono toccate.'
+    );
+    if (!confirmed) return;
+
+    const backupClients = State.getClients();
+    const updatedClient = App._updateClientPackageDays(clientId, days);
+    if (!updatedClient) return;
+    const backupAppointments = State.getAppointments();
+    const futureIds = new Set(futureToReplace.map(a => a.id));
+    State.saveAppointments(backupAppointments.filter(a => !futureIds.has(a.id)));
+
+    const metricsAfterRemoval = Services.getClientSessionMetrics(updatedClient);
+    const missing = metricsAfterRemoval.toSchedule;
+    if (missing <= 0) {
+      await Promise.all(futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)));
+      Calendar.render();
+      UI.showToast('Pianificazione aggiornata: nessuna seduta futura da creare', 'success');
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    const dates = App._suggestPackageDates(updatedClient, missing * 8, { days, fromDate, includeStart: true });
+    const created = [];
+    const skipped = [];
+
+    dates.some(date => {
+      if (created.length >= missing) return true;
+      const draft = {
+        serviceId,
+        clientIds: [clientId],
+        operatorId: fallbackOperator,
+        date,
+        startTime: time,
+        durationMin: service.durationMin || 60,
+        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        status: 'prenotato',
+        notes: `Rigenerata per cambio giorni da ${fromDate}`,
+      };
+      const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
+      if (!validation.ok) {
+        skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+        return false;
+      }
+      created.push(Services.addAppointment(draft));
+      return false;
+    });
+
+    if (!created.length && skipped.length) {
+      State.saveAppointments(backupAppointments);
+      State.saveClients(backupClients);
+      SupabaseSync.pushClient(currentClient);
+      UI.showToast('Cambio non applicato: tutte le date sono in conflitto', 'error');
+      alert('Cambio giorni non applicato per conflitti:\n' + skipped.slice(0, 12).join('\n'));
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    await Promise.all([
+      ...futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)),
+      ...created.map(a => SupabaseSync.pushAppointment(a)),
+    ]);
+    if (CONFIG.SHEETS.enabled) created.forEach(a => Sheets.pushAppointment(a));
+    Calendar.render();
+
+    if (skipped.length) {
+      UI.showToast(`${created.length} create, ${skipped.length} date saltate per conflitti`, 'info');
+      alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
+    } else {
+      UI.showToast(`${created.length} sedute future rigenerate`, 'success');
+    }
+    App.openPackageOverview(clientId);
   },
 
   async _updatePackageAppointmentRow(apptId) {
@@ -1019,7 +1210,7 @@ const App = {
         status: 'prenotato',
         notes: 'Programmazione generata dal quadro pacchetto',
       };
-      const validation = Services.canBookAppointment(draft);
+      const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
       if (!validation.ok) {
         skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
         return false;
