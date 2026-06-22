@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resoconto Studio PT - NEACEA</title>
+  <title>Portale PT - NEACEA</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
     :root {
@@ -712,7 +712,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Neacea <span>Resoconto Studio PT</span></div>
+    <div class="brand">Neacea <span>Portale PT</span></div>
     <div class="top-actions">
       <select id="operatorSelect" class="select-pt" onchange="render()">
         <option value="">Tutti i PT</option>
@@ -731,8 +731,8 @@
     <section class="hero">
       <div>
         <div class="eyebrow">Area riservata studio</div>
-        <h1 id="pageTitle">Resoconto Studio PT</h1>
-        <div class="hero-sub" id="pageSub">Quadro clienti, pacchetti, sedute, pagamenti e appuntamenti collegati a Supabase.</div>
+        <h1 id="pageTitle">Portale Personal Trainer</h1>
+        <div class="hero-sub" id="pageSub">Clienti assegnati, scheda cliente, anamnesi, Visbody, foto, pacchetti e appuntamenti.</div>
       </div>
       <div class="status" id="syncStatus">In attesa di sincronizzazione</div>
     </section>
@@ -1115,7 +1115,7 @@
       const opId = document.getElementById('operatorSelect')?.value || '';
       const op = state.operators.find(item => item.id === opId) || null;
       document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
-      document.getElementById('pageTitle').textContent = op ? `Resoconto ${op.nome || fullName(op)}` : 'Resoconto Studio PT';
+      document.getElementById('pageTitle').textContent = op ? `Portale ${op.nome || fullName(op)}` : 'Portale Personal Trainer';
       document.getElementById('pageSub').textContent = op
         ? 'Vista filtrata per singolo trainer: clienti, sedute, pagamenti e appuntamenti.'
         : 'Vista completa studio: clienti, pacchetti, sedute, pagamenti e agenda.';
