@@ -440,6 +440,8 @@ async function loadPhase1() {
     cognome: op.cognome,
     email: op.email,
     roles: op.system_roles || [],
+    active: op.active !== false,
+    portal_access_enabled: op.portal_access_enabled ?? op.pt_portal_enabled ?? false,
   }));
   state.metrics = metrics;
   state.clients = clients;
@@ -1359,6 +1361,72 @@ async function assignClient() {
 
 function renderAssignments() {
   els.assignButton.disabled = state.mode !== 'phase1';
+  renderPtAccess();
+}
+
+function renderPtAccess(message = '') {
+  const operator = selectedOperator();
+  if (!operator) {
+    els.ptAccessEmail.value = '';
+    els.ptAccessEnabled.checked = false;
+    els.ptAccessBadge.textContent = '-';
+    els.savePtAccessButton.disabled = true;
+    els.ptAccessStatus.textContent = 'Seleziona un personal trainer.';
+    return;
+  }
+
+  const hasPtRole = (operator.roles || []).includes('PT');
+  const hasEmail = Boolean(operator.email);
+  const enabled = Boolean(operator.portal_access_enabled || (hasEmail && hasPtRole && operator.active !== false));
+  els.ptAccessEmail.value = operator.email || '';
+  els.ptAccessEnabled.checked = enabled;
+  els.ptAccessBadge.textContent = enabled ? 'attivo' : 'non attivo';
+  els.ptAccessBadge.className = `pill${enabled ? ' info' : ''}`;
+  els.savePtAccessButton.disabled = false;
+  els.ptAccessStatus.textContent = message || 'L email verra usata dal portale personale per riconoscere il PT e mostrare solo i suoi clienti.';
+}
+
+async function savePtAccess() {
+  const operator = selectedOperator();
+  if (!operator) return;
+
+  const email = els.ptAccessEmail.value.trim().toLowerCase();
+  const enabled = els.ptAccessEnabled.checked;
+  if (enabled && !email) {
+    throw new Error('Inserisci una email prima di attivare il portale personale.');
+  }
+
+  const roles = Array.from(new Set([...(operator.roles || []), 'PT']));
+  const basePayload = {
+    email,
+    roles,
+    active: true,
+  };
+  const portalPayload = {
+    ...basePayload,
+    portal_access_enabled: enabled,
+  };
+
+  try {
+    await sb('operators', `?id=eq.${encodeURIComponent(operator.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: portalPayload,
+    });
+  } catch (error) {
+    await sb('operators', `?id=eq.${encodeURIComponent(operator.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: basePayload,
+    });
+  }
+
+  operator.email = email;
+  operator.roles = roles;
+  operator.active = true;
+  operator.portal_access_enabled = enabled;
+  await refresh();
+  renderPtAccess(enabled ? 'Accesso personale PT attivo.' : 'Email salvata. Accesso personale non attivo.');
 }
 
 function render() {
@@ -1437,6 +1505,19 @@ function bindEvents() {
     state.selectedOperatorId = els.assignTrainer.value;
     state.selectedProgramId = '';
     render();
+  });
+
+  els.ptAccessForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      clearError();
+      els.savePtAccessButton.disabled = true;
+      els.ptAccessStatus.textContent = 'Salvataggio accesso...';
+      await savePtAccess();
+    } catch (error) {
+      showError(`Accesso PT non salvato: ${error.message}`);
+      renderPtAccess(error.message);
+    }
   });
 
   els.assignButton.addEventListener('click', async () => {
@@ -1688,6 +1769,12 @@ function cacheElements() {
     'assignTrainer',
     'assignClient',
     'assignButton',
+    'ptAccessForm',
+    'ptAccessEmail',
+    'ptAccessEnabled',
+    'ptAccessBadge',
+    'ptAccessStatus',
+    'savePtAccessButton',
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });

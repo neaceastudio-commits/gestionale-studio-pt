@@ -267,26 +267,47 @@
     </section>
 
     <section id="assignments" class="view">
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Assegnazioni PT-cliente</h2>
-        </div>
-        <div class="form-grid">
-          <label>
-            <span>Personal trainer</span>
-            <select id="assignTrainer"></select>
-          </label>
-          <label>
-            <span>Cliente</span>
-            <select id="assignClient"></select>
-          </label>
-          <button id="assignButton" class="primary-btn" type="button">Assegna</button>
-        </div>
-        <p class="helper">
-          La scrittura usa `trainer_client_assignments`. Se la migrazione non e' ancora applicata,
-          il pulsante resta bloccato.
-        </p>
-      </section>
+      <div class="layout-two">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Assegnazioni PT-cliente</h2>
+          </div>
+          <div class="form-grid">
+            <label>
+              <span>Personal trainer</span>
+              <select id="assignTrainer"></select>
+            </label>
+            <label>
+              <span>Cliente</span>
+              <select id="assignClient"></select>
+            </label>
+            <button id="assignButton" class="primary-btn" type="button">Assegna</button>
+          </div>
+          <p class="helper">
+            La scrittura usa `trainer_client_assignments`. Se la migrazione non e' ancora applicata,
+            il pulsante resta bloccato.
+          </p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Accesso personale PT</h2>
+            <span id="ptAccessBadge" class="pill">-</span>
+          </div>
+          <form id="ptAccessForm" class="access-form">
+            <label>
+              <span>Email login PT</span>
+              <input id="ptAccessEmail" type="email" placeholder="nome@neacea.com">
+            </label>
+            <label class="toggle-row">
+              <input id="ptAccessEnabled" type="checkbox">
+              <span>Abilita portale personale</span>
+            </label>
+            <button id="savePtAccessButton" class="primary-btn" type="submit">Salva accesso</button>
+            <p id="ptAccessStatus" class="helper"></p>
+          </form>
+        </section>
+      </div>
     </section>
   </main>
 
