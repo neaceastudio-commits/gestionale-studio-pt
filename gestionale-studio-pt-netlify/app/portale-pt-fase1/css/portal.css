@@ -57,50 +57,14 @@ select {
   min-width: 240px;
 }
 
-.brand-mark {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border: 2px solid rgba(255, 255, 255, .9);
-  border-radius: 8px;
-}
-
-.brand-mark i,
-.brand-mark b,
-.brand-mark em,
-.brand-mark small {
-  position: absolute;
+.brand-logo {
   display: block;
-  background: #fff;
-  border-radius: 999px;
-  content: "";
-}
-
-.brand-mark i {
-  width: 14px;
-  height: 3px;
-}
-
-.brand-mark b {
-  width: 3px;
-  height: 14px;
-}
-
-.brand-mark em {
-  width: 5px;
-  height: 5px;
-  right: -4px;
-  top: 5px;
-}
-
-.brand-mark small {
-  width: 5px;
-  height: 5px;
-  left: -4px;
-  bottom: 5px;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .94);
+  padding: 4px;
 }
 
 .brand strong {
