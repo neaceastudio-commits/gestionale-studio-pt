@@ -9,6 +9,9 @@
 <body>
   <header class="topbar">
     <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <i></i><b></b><em></em><small></small>
+      </span>
       <strong>Neacea</strong>
       <span>Portale PT</span>
     </div>
@@ -90,15 +93,15 @@
           <option value="none">Senza alert</option>
         </select>
       </div>
-      <div class="client-layout">
-        <section class="panel client-list-panel">
-          <div class="panel-head">
-            <h2>Clienti assegnati</h2>
-            <span id="clientCount" class="pill">0</span>
-          </div>
-          <div id="clientList" class="client-list"></div>
-        </section>
+      <section class="client-picker-panel">
+        <div class="client-picker-head">
+          <h2>Clienti assegnati</h2>
+          <span id="clientCount" class="pill">0</span>
+        </div>
+        <div id="clientList" class="client-list client-picker-list"></div>
+      </section>
 
+      <div class="client-layout">
         <section class="panel detail-panel">
           <div id="clientDetail" class="detail-empty">Seleziona un cliente</div>
         </section>

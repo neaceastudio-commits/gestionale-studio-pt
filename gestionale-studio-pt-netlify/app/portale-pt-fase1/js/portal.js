@@ -613,8 +613,8 @@ async function loadData() {
 
   await loadPrograms();
 
-  if (!state.selectedOperatorId && state.operators.length) {
-    state.selectedOperatorId = state.operators[0].id;
+  if (state.selectedOperatorId && !state.operators.some((op) => op.id === state.selectedOperatorId)) {
+    state.selectedOperatorId = '';
   }
 }
 
@@ -669,10 +669,10 @@ function renderOperators() {
     .map((op) => `<option value="${esc(op.id)}">${esc(fullName(op))}</option>`)
     .join('');
 
-  els.operatorSelect.innerHTML = options || '<option value="">Nessun PT trovato</option>';
+  els.operatorSelect.innerHTML = `<option value="">Tutti gli operatori</option>${options}`;
   els.assignTrainer.innerHTML = options || '<option value="">Nessun PT trovato</option>';
   els.operatorSelect.value = state.selectedOperatorId;
-  els.assignTrainer.value = state.selectedOperatorId;
+  els.assignTrainer.value = state.selectedOperatorId || state.operators[0]?.id || '';
 
   const clientOptions = state.clients
     .slice()
@@ -688,7 +688,14 @@ function renderOperators() {
 }
 
 function renderDashboard() {
-  const metrics = state.metrics.find((item) => item.trainer_id === state.selectedOperatorId) || {};
+  const metrics = state.selectedOperatorId
+    ? (state.metrics.find((item) => item.trainer_id === state.selectedOperatorId) || {})
+    : {
+        clienti_assegnati: operatorClients().length,
+        sedute_oggi: state.sessions.filter((session) => session.status !== 'annullato' && session.date === todayIso()).length,
+        sedute_settimana: state.sessions.filter((session) => session.status !== 'annullato' && sameWeek(session.date)).length,
+        clienti_da_rivalutare: state.metrics.reduce((sum, item) => sum + Number(item.clienti_da_rivalutare || 0), 0),
+      };
   els.kpiClients.textContent = metrics.clienti_assegnati ?? operatorClients().length;
   els.kpiToday.textContent = metrics.sedute_oggi ?? 0;
   els.kpiWeek.textContent = metrics.sedute_settimana ?? 0;

@@ -52,9 +52,55 @@ select {
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  min-width: 190px;
+  align-items: center;
+  gap: 12px;
+  min-width: 240px;
+}
+
+.brand-mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(255, 255, 255, .9);
+  border-radius: 8px;
+}
+
+.brand-mark i,
+.brand-mark b,
+.brand-mark em,
+.brand-mark small {
+  position: absolute;
+  display: block;
+  background: #fff;
+  border-radius: 999px;
+  content: "";
+}
+
+.brand-mark i {
+  width: 14px;
+  height: 3px;
+}
+
+.brand-mark b {
+  width: 3px;
+  height: 14px;
+}
+
+.brand-mark em {
+  width: 5px;
+  height: 5px;
+  right: -4px;
+  top: 5px;
+}
+
+.brand-mark small {
+  width: 5px;
+  height: 5px;
+  left: -4px;
+  bottom: 5px;
 }
 
 .brand strong {
@@ -92,7 +138,7 @@ select {
 }
 
 .shell {
-  width: min(1280px, calc(100vw - 32px));
+  width: min(1500px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0 48px;
 }
@@ -320,17 +366,54 @@ h2 {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) 190px;
   gap: 12px;
+  margin-bottom: 10px;
+}
+
+.client-picker-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 12px;
   margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+.client-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.client-picker-head h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.client-picker-list {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+}
+
+.client-picker-list .row-card {
+  flex: 0 0 auto;
+  min-width: 220px;
+  max-width: 280px;
+  margin: 0;
+  padding: 10px 12px;
 }
 
 .client-layout {
-  display: grid;
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
+  display: block;
 }
 
-.client-list-panel,
 .detail-panel {
   min-height: 520px;
 }
