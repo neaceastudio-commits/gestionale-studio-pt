@@ -80,6 +80,7 @@ const state = {
   selectedProgramId: '',
   mediaClientId: '',
   mediaLoading: false,
+  mediaError: '',
   datiFisici: [],
   foto: [],
   programSessions: [],
@@ -705,6 +706,10 @@ function renderClients() {
 
   if (!clients.some((client) => client.client_id === state.selectedClientId)) {
     state.selectedClientId = clients[0]?.client_id || '';
+    state.mediaClientId = '';
+    state.mediaError = '';
+    state.datiFisici = [];
+    state.foto = [];
   }
 
   renderClientDetail();
@@ -745,15 +750,16 @@ function percent(value, total) {
 
 function mediaForSelectedClient() {
   if (state.mediaClientId !== state.selectedClientId) {
-    return { datiFisici: [], foto: [] };
+    return { datiFisici: [], foto: [], mediaError: '' };
   }
-  return { datiFisici: state.datiFisici || [], foto: state.foto || [] };
+  return { datiFisici: state.datiFisici || [], foto: state.foto || [], mediaError: state.mediaError || '' };
 }
 
 async function loadClientMedia(clientId) {
   if (!clientId || state.mediaClientId === clientId || state.mediaLoading) return;
   state.mediaLoading = true;
   state.mediaClientId = clientId;
+  state.mediaError = '';
   state.datiFisici = [];
   state.foto = [];
   renderClientDetail();
@@ -765,11 +771,12 @@ async function loadClientMedia(clientId) {
     if (state.selectedClientId !== clientId) return;
     state.datiFisici = datiFisici || [];
     state.foto = foto || [];
+    state.mediaError = '';
   } catch (error) {
     if (state.selectedClientId === clientId) {
       state.datiFisici = [];
       state.foto = [];
-      showError(`Visbody/foto non caricati: ${error.message || error}`);
+      state.mediaError = 'Visbody e foto non disponibili al momento.';
     }
   } finally {
     state.mediaLoading = false;
@@ -840,10 +847,12 @@ function renderPhotoGrid() {
 
 function renderClientMediaSection(client) {
   const loading = state.mediaLoading && state.mediaClientId === client.client_id;
-  const { datiFisici } = mediaForSelectedClient();
+  const { datiFisici, mediaError } = mediaForSelectedClient();
   const latest = datiFisici[0] || {};
+  const mediaNotice = mediaError ? `<div class="media-note">${esc(mediaError)}</div>` : '';
   return `
     <div class="section-title">Visbody e foto</div>
+    ${mediaNotice}
     <div class="media-layout">
       <section class="media-panel">
         <div class="media-head">
@@ -1725,6 +1734,7 @@ function bindEvents() {
     state.selectedOperatorId = els.operatorSelect.value;
     state.selectedClientId = '';
     state.mediaClientId = '';
+    state.mediaError = '';
     state.datiFisici = [];
     state.foto = [];
     render();
@@ -1738,6 +1748,7 @@ function bindEvents() {
     if (!row) return;
     state.selectedClientId = row.dataset.clientId;
     state.mediaClientId = '';
+    state.mediaError = '';
     state.datiFisici = [];
     state.foto = [];
     renderClients();
