@@ -1193,6 +1193,7 @@ async function callFotoFunction(payload) {
 
 function storageErrorMessage(text) {
   const raw = String(text || '');
+  if (/invalid_mime_type|mime type/i.test(raw)) return 'Tipo file non accettato dallo storage. I PDF devono usare il bucket client-files.';
   if (/Bucket not found|not found/i.test(raw)) return `Bucket foto Supabase non configurato: crea "${FOTO_STORAGE_BUCKET}".`;
   if (/row-level security|permission|policy|unauthorized|forbidden/i.test(raw)) return `Permessi Storage mancanti per "${FOTO_STORAGE_BUCKET}".`;
   return raw || 'Upload foto fallito';
