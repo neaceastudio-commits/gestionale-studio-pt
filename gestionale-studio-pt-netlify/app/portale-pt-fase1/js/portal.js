@@ -77,6 +77,7 @@ const state = {
   calendarReference: todayIso(),
   selectedOperatorId: '',
   selectedClientId: '',
+  clientSection: 'overview',
   selectedProgramId: '',
   mediaClientId: '',
   mediaLoading: false,
@@ -1025,30 +1026,30 @@ function renderClientMediaSection(client) {
   `;
 }
 
-function renderClientDetail() {
-  const client = state.clients.find((item) => item.client_id === state.selectedClientId);
-  if (!client) {
-    els.clientDetail.className = 'detail-empty';
-    els.clientDetail.innerHTML = '<div class="detail-empty">Seleziona un cliente</div>';
-    return;
-  }
+function renderClientSectionNav(client, programs, alerts) {
+  const items = [
+    ['overview', 'Riepilogo', 'Anagrafica · Anamnesi · Alert'],
+    ['media', 'Dati Fisici', 'Visbody · Baiobit · Foto'],
+    ['programs', 'Programmi', `${programs.length} sched${programs.length === 1 ? 'a' : 'e'} PT`],
+    ['notes', 'Note', 'Indicazioni operative'],
+  ];
+  return `
+    <aside class="client-section-nav">
+      ${items.map(([id, name, sub]) => `
+        <button class="client-section-btn${state.clientSection === id ? ' active' : ''}" type="button" data-client-section="${id}">
+          <span>${esc(name)}</span>
+          <em>${esc(sub)}</em>
+        </button>
+      `).join('')}
+      ${alerts.length ? `<div class="client-side-alert">${alerts.length} alert attiv${alerts.length === 1 ? 'o' : 'i'}</div>` : ''}
+    </aside>
+  `;
+}
 
-  els.clientDetail.className = '';
-  if (state.mediaClientId !== client.client_id && !state.mediaLoading) {
-    loadClientMedia(client.client_id);
-  }
-  const alerts = client.alerts || [];
-  const programs = clientPrograms(client.client_id);
-  els.clientDetail.innerHTML = `
-    <div class="detail">
-      <div class="detail-header">
-        <div>
-          <h3>${esc(fullName(client))}</h3>
-          <p class="row-sub">${esc(client.obiettivo || 'Obiettivo non indicato')}</p>
-        </div>
-        <span class="pill">${esc(selectedOperator() ? fullName(selectedOperator()) : 'PT')}</span>
-      </div>
-
+function renderClientOverviewSection(client, alerts) {
+  return `
+    <div class="client-section-body">
+      <div class="section-title">Anagrafica cliente</div>
       <div class="detail-grid">
         ${field('Telefono', client.telefono)}
         ${field('Email', client.email)}
@@ -1074,16 +1075,70 @@ function renderClientDetail() {
       <div class="stack">
         ${alerts.length ? alerts.map(renderAlertItem).join('') : '<div class="empty">Nessun alert attivo</div>'}
       </div>
+    </div>
+  `;
+}
 
-      ${renderClientMediaSection(client)}
-
+function renderClientProgramSection(programs) {
+  return `
+    <div class="client-section-body">
       <div class="section-title">Programmi PT</div>
       <div class="stack">
-        ${programs.length ? programs.slice(0, 5).map(renderClientProgramItem).join('') : '<div class="empty">Nessuna scheda PT</div>'}
+        ${programs.length ? programs.map(renderClientProgramItem).join('') : '<div class="empty">Nessuna scheda PT</div>'}
       </div>
+    </div>
+  `;
+}
 
+function renderClientNotesSection(client) {
+  return `
+    <div class="client-section-body">
       <div class="section-title">Note operative</div>
       <div class="row-card">${esc(client.note_operative || client.note_cliente || 'Nessuna nota')}</div>
+    </div>
+  `;
+}
+
+function renderSelectedClientSection(client, programs, alerts) {
+  if (state.clientSection === 'media') return renderClientMediaSection(client);
+  if (state.clientSection === 'programs') return renderClientProgramSection(programs);
+  if (state.clientSection === 'notes') return renderClientNotesSection(client);
+  return renderClientOverviewSection(client, alerts);
+}
+
+function renderClientDetail() {
+  const client = state.clients.find((item) => item.client_id === state.selectedClientId);
+  if (!client) {
+    els.clientDetail.className = 'detail-empty';
+    els.clientDetail.innerHTML = '<div class="detail-empty">Seleziona un cliente</div>';
+    return;
+  }
+
+  els.clientDetail.className = '';
+  if (state.mediaClientId !== client.client_id && !state.mediaLoading) {
+    loadClientMedia(client.client_id);
+  }
+  const alerts = client.alerts || [];
+  const programs = clientPrograms(client.client_id);
+  els.clientDetail.innerHTML = `
+    <div class="client-workspace">
+      <div class="client-hero">
+        <div>
+          <h3>${esc(fullName(client))}</h3>
+          <p>${esc(client.obiettivo || 'Obiettivo non indicato')}</p>
+        </div>
+        <div class="client-hero-meta">
+          <span>${esc(selectedOperator() ? fullName(selectedOperator()) : 'PT')}</span>
+          <span>${programs.length} sched${programs.length === 1 ? 'a' : 'e'}</span>
+        </div>
+      </div>
+
+      <div class="client-sheet-layout">
+        ${renderClientSectionNav(client, programs, alerts)}
+        <section class="client-sheet-main">
+          ${renderSelectedClientSection(client, programs, alerts)}
+        </section>
+      </div>
     </div>
   `;
 }
@@ -1960,6 +2015,7 @@ function bindEvents() {
   els.operatorSelect.addEventListener('change', () => {
     state.selectedOperatorId = els.operatorSelect.value;
     state.selectedClientId = '';
+    state.clientSection = 'overview';
     state.mediaClientId = '';
     state.mediaError = '';
     state.datiFisici = [];
@@ -1974,6 +2030,7 @@ function bindEvents() {
     const row = event.target.closest('[data-client-id]');
     if (!row) return;
     state.selectedClientId = row.dataset.clientId;
+    state.clientSection = 'overview';
     state.mediaClientId = '';
     state.mediaError = '';
     state.datiFisici = [];
@@ -1982,6 +2039,12 @@ function bindEvents() {
   });
 
   els.clientDetail.addEventListener('click', (event) => {
+    const section = event.target.closest('[data-client-section]');
+    if (section) {
+      state.clientSection = section.dataset.clientSection || 'overview';
+      renderClientDetail();
+      return;
+    }
     const upload = event.target.closest('[data-upload-trigger]');
     if (upload) {
       const inputMap = {
