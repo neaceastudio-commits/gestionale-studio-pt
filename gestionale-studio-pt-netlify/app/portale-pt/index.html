@@ -593,6 +593,63 @@
       display: grid;
       gap: 10px;
     }
+    .calendar-week {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .calendar-day {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      min-height: 150px;
+      overflow: hidden;
+    }
+    .calendar-day-head {
+      border-bottom: 1px solid var(--border);
+      background: var(--blue-xpale);
+      padding: 10px;
+    }
+    .calendar-day-name {
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .calendar-day-date {
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+      margin-top: 2px;
+    }
+    .calendar-day-body {
+      display: grid;
+      gap: 7px;
+      padding: 9px;
+    }
+    .calendar-event {
+      border-left: 3px solid var(--blue);
+      border-radius: 6px;
+      background: var(--blue-xpale);
+      padding: 7px 8px;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+    .calendar-event.green { border-left-color: var(--green); }
+    .calendar-event.gold { border-left-color: var(--gold); }
+    .calendar-event-time {
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .calendar-event-meta {
+      margin-top: 2px;
+      color: var(--text2);
+      font-size: 10px;
+      font-weight: 800;
+    }
     .discussion-item {
       border-left: 4px solid var(--blue);
       border-radius: var(--radius-sm);
@@ -635,6 +692,7 @@
       .select-pt { flex: 1; min-width: 0; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .layout, .admin-grid, .meeting-grid, .workspace-grid { grid-template-columns: 1fr; }
+      .calendar-week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .measure-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .anamnesis-grid { grid-template-columns: 1fr; }
       .anamnesis-field.wide { grid-column: auto; }
@@ -643,6 +701,7 @@
     @media (max-width: 560px) {
       h1 { font-size: 28px; }
       .metrics { grid-template-columns: 1fr; }
+      .calendar-week { grid-template-columns: 1fr; }
       .measure-grid { grid-template-columns: 1fr; }
       .composition-row, .file-row { grid-template-columns: 1fr; }
       .panel-head { align-items: stretch; flex-direction: column; }
@@ -740,6 +799,19 @@
       <img id="photoLightboxImg" alt="">
     </div>
 
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Calendario PT</div>
+          <div class="muted">Settimana operativa collegata agli appuntamenti reali.</div>
+        </div>
+        <a class="ghost-btn" style="display:inline-flex;align-items:center;text-decoration:none;background:#fff;color:var(--text);border-color:var(--border2)" href="https://new-calendar-neacea.netlify.app" target="_blank" rel="noopener">Apri calendario completo</a>
+      </div>
+      <div class="panel-body">
+        <div id="calendarWeek" class="calendar-week"><div class="empty" style="grid-column:1/-1"><span class="loader"></span></div></div>
+      </div>
+    </section>
+
     <section class="admin-grid">
       <div class="panel">
         <div class="panel-head">
@@ -758,16 +830,6 @@
         <div class="panel-body">
           <div id="alertsList" class="finance-list"><div class="empty"><span class="loader"></span></div></div>
         </div>
-      </div>
-    </section>
-
-    <section class="panel" style="margin-top:18px">
-      <div class="panel-head">
-        <div class="panel-title">Anamnesi clienti</div>
-        <div class="tag green">Archivio acquisizione</div>
-      </div>
-      <div class="panel-body">
-        <div id="anamnesisList" class="anamnesis-list"><div class="empty"><span class="loader"></span></div></div>
       </div>
     </section>
 
@@ -892,6 +954,24 @@
       const d = new Date();
       d.setDate(d.getDate() + days);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function dateStrFromDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function startOfWeek(date = new Date()) {
+      const d = new Date(date);
+      const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      d.setDate(d.getDate() - day);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    function weekDates() {
+      const monday = startOfWeek();
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d;
+      });
     }
     function fmtDate(value) {
       if (!value) return '-';
@@ -1054,9 +1134,9 @@
 
       renderClients(clients);
       renderAppointments(appts);
+      renderCalendarWeek();
       renderFinance(clients);
       renderAlerts(clients, appts);
-      renderAnamnesis(clients);
       renderMeetingStats(clients, filteredAllAppointments());
     }
     function renderClients(clients) {
@@ -1119,6 +1199,41 @@
         `;
       }).join('');
     }
+    function renderCalendarWeek() {
+      const list = document.getElementById('calendarWeek');
+      if (!list) return;
+      const opId = document.getElementById('operatorSelect')?.value || '';
+      const days = weekDates();
+      list.innerHTML = days.map(day => {
+        const date = dateStrFromDate(day);
+        const appts = state.appointments
+          .filter(a => a.date === date)
+          .filter(a => !opId || a.operator_id === opId)
+          .filter(a => a.status !== 'annullato')
+          .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+        return `
+          <div class="calendar-day">
+            <div class="calendar-day-head">
+              <div class="calendar-day-name">${esc(day.toLocaleDateString('it-IT', { weekday: 'long' }))}</div>
+              <div class="calendar-day-date">${esc(day.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }))}</div>
+            </div>
+            <div class="calendar-day-body">
+              ${appts.length ? appts.map(appt => {
+                const statusClass = appt.status === 'fatto' ? 'green' : appt.status === 'noshow' ? 'gold' : '';
+                const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
+                const names = (appt.client_ids || []).map(id => clientFullName(id)).join(', ');
+                return `
+                  <div class="calendar-event ${statusClass}">
+                    <div><span class="calendar-event-time">${esc(String(appt.start_time || '').slice(0, 5))}</span> · ${esc(service)}</div>
+                    <div class="calendar-event-meta">${esc(names || 'Nessun cliente')} · ${esc(operatorName(appt.operator_id))}</div>
+                  </div>
+                `;
+              }).join('') : '<div class="muted">Nessuna seduta</div>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
     function renderFinance(clients) {
       const list = document.getElementById('financeList');
       const rows = [...clients].sort((a, b) => {
@@ -1170,43 +1285,6 @@
           </div>
           <span class="tag ${item.cls}">${item.type}</span>
         </div>
-      `).join('');
-    }
-    function renderAnamnesis(clients) {
-      const list = document.getElementById('anamnesisList');
-      const rows = clients
-        .map(client => ({ client, acq: acquisitionForClient(client) }))
-        .filter(row => row.acq || row.client.obiettivo || row.client.professione || row.client.come || row.client.motivazione || row.client.notes);
-      if (!rows.length) {
-        list.innerHTML = '<div class="empty">Nessuna anamnesi collegata ai clienti filtrati. Le nuove conferme verranno archiviate automaticamente.</div>';
-        return;
-      }
-      list.innerHTML = rows.map(({ client, acq }) => `
-        <article class="anamnesis-card">
-          <div class="row">
-            <div>
-              <div class="name">${fullName(client)}</div>
-              <div class="muted">${operatorName(client.pt_assegnato)} · ${acq ? (acq.stato === 'Convertito' ? 'Cliente convertito' : (acq.stato || 'Anamnesi')) : 'Dati base cliente'}</div>
-            </div>
-            <span class="tag ${acq ? 'green' : 'gold'}">${acq ? 'Anamnesi' : 'Base'}</span>
-          </div>
-          <div class="anamnesis-grid">
-            ${field('Obiettivo', acq ? (acq.obiettivo_libero || acq.obiettivo) : client.obiettivo, 'wide')}
-            ${field('Professione', acq ? acq.professione : client.professione)}
-            ${field('Motivazione', acq?.motivazione ? `${acq.motivazione}/10` : (client.motivazione ? `${client.motivazione}/10` : ''))}
-            ${field('Esperienza', acq?.esperienza)}
-            ${field('Inattivita', acq?.inattivo)}
-            ${field('Sport', acq?.sport)}
-            ${field('Disponibilita', acq?.orari, 'wide')}
-            ${field('Sessioni preferite', acq ? acq.sessioni_pref : client.package_frequency)}
-            ${field('Come ci ha trovato', acq ? acq.come : client.come)}
-            ${field('Cosa non ha funzionato', acq?.non_funzionato, 'full')}
-            ${field('Impressioni PT', acq ? acq.impressioni : client.notes, 'full')}
-            ${field('Proposta', acq?.proposta, 'wide')}
-            ${field('Follow-up', acq?.followup)}
-            ${!acq ? field('Nota archivio', 'Anamnesi completa non disponibile per i clienti gia confermati prima di questa modifica. Da ora in avanti verra conservata.', 'full') : ''}
-          </div>
-        </article>
       `).join('');
     }
     async function selectClient(id) {
