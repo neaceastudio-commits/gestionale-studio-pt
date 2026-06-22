@@ -672,8 +672,6 @@ const App = {
 
   _maxClientDays() {
     const raw = document.getElementById('cl-frequency')?.value || '';
-    const total = parseInt(document.getElementById('cl-sessions-total')?.value || '0', 10);
-    if (total === 2) return 1;
     const n = parseInt((raw.match(/\d+/) || ['0'])[0], 10);
     return Number.isFinite(n) && n > 0 ? n : null;
   },
