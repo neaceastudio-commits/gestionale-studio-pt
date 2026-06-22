@@ -800,20 +800,34 @@ function mediaForSelectedClient() {
 
 function flattenMediaRow(row) {
   const data = row?.data && typeof row.data === 'object' ? row.data : {};
+  const url = data.url || row?.url || '';
+  const filename = data.filename || data.nome_file || row?.filename || row?.nome_file || '';
+  const inferredTipo = data.tipo || row?.tipo || inferMediaType({ url, filename, mimeType: data.mimeType || data.mime_type });
   return {
     ...data,
     id: row?.id || data.id || '',
     clienteId: row?.cliente_id || data.clienteId || data.cliente_id || '',
-    url: data.url || row?.url || '',
-    filename: data.filename || data.nome_file || row?.filename || row?.nome_file || '',
+    url,
+    filename,
     nome_file: data.nome_file || data.filename || row?.nome_file || row?.filename || '',
     data: data.data || row?.data_rilevazione || row?.created_at?.slice(0, 10) || '',
     visitaId: data.visitaId || data.visita_id || '',
     bucket: data.bucket || row?.bucket || '',
     storagePath: data.storagePath || data.storage_path || row?.storage_path || '',
     storage_path: data.storage_path || data.storagePath || row?.storage_path || '',
-    tipo: data.tipo || row?.tipo || '',
+    tipo: inferredTipo,
   };
+}
+
+function inferMediaType(item) {
+  const tipo = String(item?.tipo || '').toLowerCase();
+  if (tipo) return tipo;
+  const mime = String(item?.mimeType || item?.mime_type || '').toLowerCase();
+  if (mime.startsWith('image/')) return 'foto';
+  if (mime.includes('pdf')) return 'file';
+  const value = `${item?.url || ''} ${item?.filename || ''} ${item?.nome_file || ''}`.toLowerCase();
+  if (value.startsWith('data:image/') || /\.(png|jpe?g|webp|gif)(\?|#|$)/i.test(value)) return 'foto';
+  return 'file';
 }
 
 function flattenDatiFisiciRow(row) {
@@ -852,7 +866,7 @@ async function loadClientMedia(clientId) {
   renderClientDetail();
   try {
     const [datiFisici, foto] = await Promise.all([
-      sb('dati_fisici', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=data_rilevazione.desc,created_at.desc`),
+      sb('dati_fisici', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=created_at.desc`),
       sb('foto_allenamento', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=created_at.desc`),
     ]);
     if (state.selectedClientId !== clientId) return;
@@ -906,7 +920,7 @@ function renderComposition(d) {
 
 function renderFileList() {
   const { foto } = mediaForSelectedClient();
-  const files = foto.filter((item) => item.tipo && item.tipo !== 'foto');
+  const files = foto.filter((item) => inferMediaType(item) !== 'foto');
   if (!files.length) return '<div class="empty compact">Nessun file dispositivo caricato.</div>';
   return files.map((item) => `
     <div class="device-file-row">
@@ -921,7 +935,7 @@ function renderFileList() {
 
 function renderPhotoGrid() {
   const { foto } = mediaForSelectedClient();
-  const photos = foto.filter((item) => !item.tipo || item.tipo === 'foto');
+  const photos = foto.filter((item) => inferMediaType(item) === 'foto' && item.url);
   if (!photos.length) return '<div class="empty" style="grid-column:1/-1"><div class="empty-title">Nessuna foto</div><div class="empty-sub">Le foto caricate appariranno qui</div></div>';
   return photos.map((item) => `
     <div class="foto-item" data-open-photo="${esc(item.url)}">
@@ -1207,17 +1221,6 @@ function storageErrorMessage(text) {
 }
 
 async function uploadMediaStorage({ clientId, base64, filename, mimeType, data }) {
-  const viaFunction = await callFotoFunction({
-    action: 'uploadFoto',
-    clienteId: clientId,
-    base64,
-    filename,
-    mimeType,
-    data,
-  });
-  if (viaFunction && viaFunction.success) return viaFunction;
-  if (viaFunction && viaFunction.error) throw new Error(viaFunction.error);
-
   const ext = extFromMime(mimeType, filename);
   const path = [
     safeStorageSegment(clientId),
@@ -1276,7 +1279,14 @@ async function uploadClientFiles(files, tipo) {
       const mimeType = isImage && tipo === 'foto' ? 'image/jpeg' : (file.type || 'application/octet-stream');
       const filename = `${client.client_id}_${tipo}_${Date.now()}_${safeStorageSegment(file.name || tipo)}`;
       let uploaded;
-      try {
+      if (tipo !== 'foto') {
+        uploaded = {
+          url: dataUrl,
+          bucket: '',
+          path: '',
+          localFallback: true,
+        };
+      } else {
         uploaded = await uploadMediaStorage({
           clientId: client.client_id,
           base64: String(dataUrl).split(',')[1],
@@ -1284,19 +1294,12 @@ async function uploadClientFiles(files, tipo) {
           mimeType,
           data: todayIso(),
         });
-      } catch (uploadError) {
-        if (tipo === 'foto') throw uploadError;
-        uploaded = {
-          url: dataUrl,
-          bucket: '',
-          path: '',
-          localFallback: true,
-        };
       }
       const rowData = {
         url: uploaded.url,
         filename,
         nome_file: file.name || filename,
+        mimeType,
         data: todayIso(),
         visitaId: '',
         bucket: uploaded.bucket,
