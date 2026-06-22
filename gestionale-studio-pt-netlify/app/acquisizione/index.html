@@ -158,6 +158,66 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .sch-quote{font-size:15px;font-style:italic;color:var(--text2);line-height:1.6;padding:8px 0}
 .sch-nota{font-size:13px;color:var(--text2);line-height:1.7;padding:4px 0}
 .sch-footer{font-size:11px;color:var(--text3);font-weight:600;margin-top:8px;text-align:right}
+.sch-data{margin-top:20px;display:flex;flex-direction:column;gap:16px}
+.data-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.data-tab{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif}
+.data-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.data-pane{display:none}.data-pane.active{display:block}
+.data-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.data-title{font-size:22px;font-weight:800;color:var(--text)}
+.data-sub{font-size:12px;color:var(--text3);margin-top:3px}
+.misure-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.mis-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;text-align:center}
+.mis-val{font-size:28px;font-weight:800;color:var(--blue);line-height:1}
+.mis-unit{font-size:11px;font-weight:800;color:var(--text3);margin-top:8px;min-height:15px}
+.mis-label{font-size:11px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
+.data-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mini-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.mini-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;background:var(--blue-xpale);border-bottom:1px solid var(--border)}
+.mini-title{font-size:12px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.mini-body{padding:16px}
+.dati-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dati-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.dati-label{font-size:10px;font-weight:900;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.dati-val{font-size:15px;font-weight:900;color:var(--text)}
+.dati-val.empty{color:var(--text3);font-style:italic}
+.composition-bars{display:grid;gap:8px;margin-top:14px}
+.comp-row{display:grid;grid-template-columns:118px 1fr 52px;gap:8px;align-items:center;font-size:11px;font-weight:800;color:var(--text2)}
+.comp-track{height:9px;border-radius:999px;background:var(--blue-pale);overflow:hidden}
+.comp-fill{height:100%;border-radius:999px;background:var(--blue)}
+.upload-area{border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:28px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg)}
+.upload-area:hover,.upload-area.drag{border-color:var(--blue);background:var(--blue-xpale)}
+.upload-area input[type=file]{display:none}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-text{font-size:13px;font-weight:800;color:var(--text2)}
+.upload-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.upload-progress{height:4px;background:var(--border);border-radius:2px;margin-top:8px;display:none;overflow:hidden}
+.upload-progress.show{display:block}
+.upload-bar{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;width:0}
+.file-list{display:grid;gap:8px;margin-top:12px}
+.file-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:700;color:var(--text2)}
+.file-row strong{color:var(--green);font-size:11px;text-transform:uppercase}
+.file-row a{margin-left:auto;color:var(--blue);font-size:11px;font-weight:900;text-decoration:none}
+.foto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.foto-item{position:relative;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);cursor:pointer;aspect-ratio:3/4;background:var(--bg)}
+.foto-item img{width:100%;height:100%;object-fit:cover;display:block}
+.foto-meta{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:4px 8px;font-weight:700}
+.foto-del{position:absolute;top:6px;right:6px;background:rgba(192,57,43,.85);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;align-items:center;justify-content:center}
+.lightbox.open{display:flex}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:var(--radius-sm)}
+.lightbox-close{position:absolute;top:20px;right:24px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.mo{display:none;position:fixed;inset:0;z-index:240;padding:24px;background:rgba(12,24,36,.5);align-items:center;justify-content:center}
+.mo.open{display:flex}
+.mo .modal{width:min(560px,100%);max-height:92vh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg2);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.mo .modal.wide{width:min(980px,100%)}
+.mhead{padding:16px 20px;background:var(--blue);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mtitle{font-size:15px;font-weight:900}
+.mclose{border:0;background:transparent;color:#fff;font-size:20px;cursor:pointer}
+.mbody{padding:20px;overflow:auto}
+.mfoot{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.sec-title{margin:18px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--blue-pale);color:var(--blue);font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
 
 /* CONFERMA MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
@@ -189,7 +249,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .toast.success{background:var(--green)}
 
 @media(max-width:980px){.dash-grid{grid-template-columns:1fr}}
-@media(max-width:768px){.kpi-strip{grid-template-columns:repeat(2,1fr)};.sch-grid{grid-template-columns:1fr};.main{padding:16px};.grid-2{grid-template-columns:1fr}}
+@media(max-width:768px){.kpi-strip{grid-template-columns:repeat(2,1fr)};.sch-grid{grid-template-columns:1fr};.main{padding:16px};.grid-2,.data-two,.g3{grid-template-columns:1fr}.misure-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -482,14 +542,149 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       </div>
     </div>
     <div class="sch-grid" id="sch-content"></div>
+    <div class="sch-data">
+      <div class="data-tabs">
+        <button class="data-tab active" id="tab-visbody" onclick="setDataPane('visbody')">Visbody</button>
+        <button class="data-tab" id="tab-foto" onclick="setDataPane('foto')">Foto</button>
+      </div>
+
+      <div class="data-pane active" id="pane-visbody">
+        <div class="data-head">
+          <div>
+            <div class="data-title">Dati Fisici & Composizione</div>
+            <div class="data-sub" id="fisici-data-label">Nessun rilevamento</div>
+          </div>
+          <button class="btn-primary" onclick="openMo('mo-dati-fisici')">+ Nuovo rilevamento</button>
+        </div>
+
+        <div class="misure-grid">
+          <div class="mis-box"><div class="mis-val" id="mis-peso">—</div><div class="mis-unit">kg</div><div class="mis-label">Peso</div></div>
+          <div class="mis-box"><div class="mis-val" id="mis-altezza">—</div><div class="mis-unit">cm</div><div class="mis-label">Altezza</div></div>
+          <div class="mis-box"><div class="mis-val" id="mis-bmi">—</div><div class="mis-unit"></div><div class="mis-label">BMI</div></div>
+          <div class="mis-box"><div class="mis-val" id="mis-pgc">—</div><div class="mis-unit">%</div><div class="mis-label">% Grasso</div></div>
+        </div>
+
+        <div class="data-two">
+          <div class="mini-card">
+            <div class="mini-head"><span class="mini-title">Visbody — Composizione</span><button class="btn-ghost" onclick="openMo('mo-dati-fisici')">Aggiorna</button></div>
+            <div class="mini-body">
+              <div class="dati-grid" id="visbody-dati"></div>
+              <div class="composition-bars" id="visbody-composizione"></div>
+            </div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-head"><span class="mini-title">Carica File Dispositivi</span></div>
+            <div class="mini-body">
+              <div class="data-two">
+                <div>
+                  <div class="dati-label" style="margin-bottom:8px">File Visbody</div>
+                  <div class="upload-area" onclick="document.getElementById('file-visbody').click()" id="ua-visbody"
+                       ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
+                       ondrop="handleDrop(event,'visbody')">
+                    <input type="file" id="file-visbody" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'visbody')">
+                    <div class="upload-icon">File</div>
+                    <div class="upload-text">Trascina o clicca per caricare</div>
+                    <div class="upload-sub">PDF, JPG, PNG</div>
+                  </div>
+                  <div class="upload-progress" id="prog-visbody"><div class="upload-bar" id="bar-visbody"></div></div>
+                </div>
+                <div>
+                  <div class="dati-label" style="margin-bottom:8px">File Baiobit</div>
+                  <div class="upload-area" onclick="document.getElementById('file-baiobit').click()" id="ua-baiobit"
+                       ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
+                       ondrop="handleDrop(event,'baiobit')">
+                    <input type="file" id="file-baiobit" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'baiobit')">
+                    <div class="upload-icon">Test</div>
+                    <div class="upload-text">Trascina o clicca per caricare</div>
+                    <div class="upload-sub">PDF, JPG, PNG</div>
+                  </div>
+                  <div class="upload-progress" id="prog-baiobit"><div class="upload-bar" id="bar-baiobit"></div></div>
+                </div>
+              </div>
+              <div class="file-list" id="file-lista"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-pane" id="pane-foto">
+        <div class="data-head">
+          <div>
+            <div class="data-title">Fotografie</div>
+            <div class="data-sub">Foto tecniche del prospect</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-primary" onclick="document.getElementById('foto-upload-input').click()">+ Carica foto</button>
+            <input type="file" id="foto-upload-input" accept="image/*" multiple style="display:none" onchange="uploadFotoVisita(this.files)">
+          </div>
+        </div>
+
+        <div class="mini-card" style="margin-bottom:16px">
+          <div class="mini-body">
+            <div class="upload-area" id="foto-drop-area"
+                 onclick="document.getElementById('foto-upload-input').click()"
+                 ondragover="event.preventDefault();this.classList.add('drag')"
+                 ondragleave="this.classList.remove('drag')"
+                 ondrop="handleFotoDrop(event)">
+              <div class="upload-icon">Foto</div>
+              <div class="upload-text">Trascina le foto o clicca per selezionare</div>
+              <div class="upload-sub">JPG, PNG — ridimensionamento automatico a 1200px</div>
+            </div>
+            <div class="upload-progress" id="prog-foto"><div class="upload-bar" id="bar-foto"></div></div>
+          </div>
+        </div>
+
+        <div class="foto-grid" id="foto-grid">
+          <div class="empty-state" style="grid-column:1/-1"><div class="empty-text">Nessuna foto</div><div class="empty-sub">Le foto caricate appariranno qui</div></div>
+        </div>
+      </div>
+    </div>
     <div class="sch-footer" id="sch-footer"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
+  <button class="lightbox-close" onclick="document.getElementById('lightbox').classList.remove('open')">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<div class="mo" id="mo-dati-fisici">
+  <div class="modal wide">
+    <div class="mhead"><div class="mtitle">Nuovo Rilevamento</div><button class="mclose" onclick="closeMo('mo-dati-fisici')">✕</button></div>
+    <div class="mbody">
+      <div class="sec-title">Antropometria</div>
+      <div class="g3">
+        <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="df-data"></div>
+        <div class="field"><label>Peso (kg)</label><input type="number" id="df-peso" step="0.1" placeholder="75.5"></div>
+        <div class="field"><label>Altezza (cm)</label><input type="number" id="df-altezza" placeholder="178"></div>
+      </div>
+      <div class="sec-title">Visbody — Composizione Corporea</div>
+      <div class="g3">
+        <div class="field"><label>Massa Grassa (kg)</label><input type="number" id="df-v-grassa" step="0.1"></div>
+        <div class="field"><label>Massa Muscolare (kg)</label><input type="number" id="df-v-muscolare" step="0.1"></div>
+        <div class="field"><label>% Grasso (PGC)</label><input type="number" id="df-v-pgc" step="0.1"></div>
+        <div class="field"><label>BMI</label><input type="number" id="df-v-bmi" step="0.1"></div>
+        <div class="field"><label>Metabolismo (kcal)</label><input type="number" id="df-v-metabolismo"></div>
+        <div class="field"><label>Età Metabolica</label><input type="number" id="df-v-eta-met"></div>
+        <div class="field"><label>FFM (kg)</label><input type="number" id="df-v-ffm" step="0.1"></div>
+        <div class="field"><label>Acqua Totale (lt)</label><input type="number" id="df-v-tbw" step="0.1"></div>
+        <div class="field"><label>Vita (cm)</label><input type="number" id="df-v-vita" step="0.1"></div>
+        <div class="field"><label>Fianchi (cm)</label><input type="number" id="df-v-fianchi" step="0.1"></div>
+        <div class="field"><label>Score</label><input type="number" id="df-v-score" step="0.1"></div>
+        <div class="field"><label>Indice Salute</label><input type="number" id="df-v-indice" step="0.1"></div>
+      </div>
+      <div class="field"><label>Note</label><textarea id="df-note" placeholder="Osservazioni aggiuntive..."></textarea></div>
+    </div>
+    <div class="mfoot"><button class="btn-ghost" onclick="closeMo('mo-dati-fisici')">Annulla</button><button class="btn-primary" onclick="salvaDatiFisici()">Salva Rilevamento</button></div>
   </div>
 </div>
 
 <script>
 const SUPABASE_URL='https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY='sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+const FOTO_STORAGE_BUCKET='client-photos';
 let acquisizioni=[],staffAll=[],filtro='tutti',chips={stato:'Interessato'},servizi={pt:true,nut:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,toastTimer=null;
+let datiFisiciAtt=[],fotoAtt=[];
 
 function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
 async function sb(table,{method='GET',query='',body=null,headers={}}={}){
@@ -541,9 +736,11 @@ function servizioDaPacchetto(packageType){
   if(packageType==='Circuit')return'Circuit';
   return packageType||'PT 1:1';
 }
-async function apiGet(a){
+async function apiGet(a,params={}){
   if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
   if(a==='getStaff'){const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
+  if(a==='getDatiFisici'){const rows=await sb('dati_fisici',{query:'?select=*&cliente_id=eq.'+encodeURIComponent(params.clienteId||'')+'&order=created_at.desc'});if(rows.error)return rows;return{datiFisici:(rows||[]).map(r=>({id:r.id,clienteId:r.cliente_id,...(r.data||{})}))}}
+  if(a==='getFoto'){const rows=await sb('foto_allenamento',{query:'?select=*&cliente_id=eq.'+encodeURIComponent(params.clienteId||'')+'&order=created_at.desc'});if(rows.error)return rows;return{foto:(rows||[]).map(r=>({id:r.id,clienteId:r.cliente_id,...(r.data||{})}))}}
   return{error:'Azione non supportata'}
 }
 async function apiFetch(p){
@@ -576,10 +773,60 @@ async function apiFetch(p){
     }
     if(ins?.error)return ins;
     await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
+    await copiaDatiAcquisizioneACliente(p.id,clientId);
     return{success:true,clientId,appuntamentiCreati:0};
   }
+  if(p.action==='saveDatiFisici'){
+    const id=p.id||genId('df');
+    const clienteId=p.clienteId||idCorrente||'';
+    const data={...p,id,clienteId};delete data.action;
+    const res=await sb('dati_fisici',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:{id,cliente_id:clienteId,data,updated_at:new Date().toISOString()}});
+    return res?.error?res:{success:true,id}
+  }
+  if(p.action==='uploadFoto'){
+    const id=p.id||genId('foto');
+    const clienteId=p.clienteId||idCorrente||'';
+    const uploaded=await uploadFotoStorage({clienteId,base64:p.base64,filename:p.filename||id+'.jpg',mimeType:p.mimeType||'image/jpeg'});
+    if(uploaded.error)return uploaded;
+    const data={url:uploaded.url,filename:p.filename||'',data:p.data||oggi(),visitaId:p.visitaId||'',tipo:p.tipo||'',bucket:uploaded.bucket,storagePath:uploaded.path,storage_path:uploaded.path,source:'storage'};
+    const res=await sb('foto_allenamento',{method:'POST',headers:{Prefer:'return=minimal'},body:{id,cliente_id:clienteId,data}});
+    return res?.error?res:{success:true,id,url:uploaded.url,bucket:uploaded.bucket,path:uploaded.path}
+  }
+  if(p.action==='deleteFoto')return deleteFotoRecord(p);
   return{error:'Azione non supportata'}
 }
+
+async function copiaDatiAcquisizioneACliente(prospectId,clientId){
+  try{
+    const [dfRes,fotoRes]=await Promise.all([apiGet('getDatiFisici',{clienteId:prospectId}),apiGet('getFoto',{clienteId:prospectId})]);
+    const dfs=(dfRes.datiFisici||[]).map(d=>{const id=genId('df');return{id,cliente_id:clientId,data:{...d,id,clienteId:clientId},updated_at:new Date().toISOString()}});
+    const fotos=(fotoRes.foto||[]).map(f=>{const id=genId('foto');return{id,cliente_id:clientId,data:{...f,id,clienteId:clientId},updated_at:new Date().toISOString()}});
+    if(dfs.length)await sb('dati_fisici',{method:'POST',headers:{Prefer:'return=minimal'},body:dfs});
+    if(fotos.length)await sb('foto_allenamento',{method:'POST',headers:{Prefer:'return=minimal'},body:fotos});
+  }catch(e){console.warn('Copia dati acquisizione non riuscita',e)}
+}
+
+function storageBucket(){return FOTO_STORAGE_BUCKET||'client-photos'}
+function encodeStoragePath(path){return String(path||'').split('/').map(encodeURIComponent).join('/')}
+function safeStorageSegment(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').toLowerCase().slice(0,90)||'file'}
+function extFromMime(mimeType,filename){const mime=String(mimeType||'').toLowerCase();if(mime.includes('png'))return'png';if(mime.includes('pdf'))return'pdf';if(mime.includes('webp'))return'webp';if(mime.includes('jpeg')||mime.includes('jpg'))return'jpg';return safeStorageSegment(String(filename||'').split('.').pop()||'jpg')}
+async function uploadFotoStorage({clienteId,base64,filename,mimeType}){
+  const bucket=storageBucket();
+  const ext=extFromMime(mimeType,filename);
+  const path=[safeStorageSegment(clienteId||'prospect'),Date.now()+'-'+Math.random().toString(16).slice(2)+'-'+safeStorageSegment(filename||'file')+'.'+ext].join('/');
+  const binary=atob(base64);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  const res=await fetch(SUPABASE_URL.replace(/\/$/,'')+'/storage/v1/object/'+bucket+'/'+encodeStoragePath(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':mimeType||'application/octet-stream','x-upsert':'true'},body:bytes});
+  if(!res.ok){
+    const text=await res.text();
+    return{error:storageErrorMessage(text||res.statusText)}
+  }
+  return{bucket,path,url:SUPABASE_URL.replace(/\/$/,'')+'/storage/v1/object/public/'+bucket+'/'+encodeStoragePath(path)}
+}
+function storageErrorMessage(text){const raw=String(text||'');if(raw.includes('Bucket not found'))return'Bucket foto Supabase non configurato: crea il bucket "'+storageBucket()+'".';if(raw.includes('row-level security')||raw.includes('policy'))return'Policy Supabase Storage non abilitate per upload/eliminazione foto nel bucket "'+storageBucket()+'".';return raw||'Upload foto fallito'}
+async function deleteStorageObject(bucket,path){if(!bucket||!path)return{success:true};const res=await fetch(SUPABASE_URL.replace(/\/$/,'')+'/storage/v1/object/'+bucket+'/'+encodeStoragePath(path),{method:'DELETE',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});return res.ok?{success:true}:{error:storageErrorMessage(await res.text())}}
+async function deleteFotoRecord(p){const rows=await sb('foto_allenamento',{query:'?id=eq.'+encodeURIComponent(p.id)+'&select=*'});if(rows?.error)return rows;const data=rows?.[0]?.data||{};const bucket=p.bucket||data.bucket;const path=p.path||data.storagePath||data.storage_path;const storageRes=await deleteStorageObject(bucket,path);if(storageRes.error)return storageRes;const res=await sb('foto_allenamento',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});return res?.error?res:{success:true}}
 
 async function carica(){
   if(!initialized)document.getElementById('grid').innerHTML='<div class="empty-state"><div class="spin"></div></div>';
@@ -726,9 +973,150 @@ function apriScheda(id){
   if(c.impressioni)h+=`<div class="sch-block full"><div class="sb-title">Impressioni del PT</div><div class="sch-nota">${c.impressioni}</div></div>`;
   document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione);
   showView('scheda');
+  loadAcquisitionData(id);
 }
 
 function sr(l,v){if(!v)return'';return`<div class="sb-row"><span class="sb-label">${l}</span><span class="sb-val">${v}</span></div>`}
+
+function setDataPane(name){
+  document.querySelectorAll('.data-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.data-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  document.getElementById('pane-'+name)?.classList.add('active');
+  if(name==='foto')renderFoto();
+}
+
+async function loadAcquisitionData(id){
+  datiFisiciAtt=[];fotoAtt=[];renderDatiFisici();renderFoto();
+  try{
+    const [dfRes,fotoRes]=await Promise.all([apiGet('getDatiFisici',{clienteId:id}),apiGet('getFoto',{clienteId:id})]);
+    if(dfRes.datiFisici)datiFisiciAtt=dfRes.datiFisici;
+    if(fotoRes.foto)fotoAtt=fotoRes.foto;
+  }catch(e){console.warn('Dati acquisizione non caricati',e)}
+  renderDatiFisici();
+  renderFoto();
+}
+
+function renderDatiFisici(){
+  const ultimo=datiFisiciAtt[0];
+  if(!ultimo){
+    document.getElementById('fisici-data-label').textContent='Nessun rilevamento';
+    document.getElementById('mis-peso').textContent='—';
+    document.getElementById('mis-altezza').textContent='—';
+    document.getElementById('mis-bmi').textContent='—';
+    document.getElementById('mis-pgc').textContent='—';
+    document.getElementById('visbody-dati').innerHTML='<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
+    document.getElementById('visbody-composizione').innerHTML='';
+    renderFileLista();
+    return;
+  }
+  document.getElementById('fisici-data-label').textContent='Ultimo: '+fmtData(ultimo.data);
+  document.getElementById('mis-peso').textContent=ultimo.peso||'—';
+  document.getElementById('mis-altezza').textContent=ultimo.altezza||'—';
+  const bmi=ultimo.v_bmi||(ultimo.peso&&ultimo.altezza?(ultimo.peso/Math.pow(ultimo.altezza/100,2)).toFixed(1):null);
+  document.getElementById('mis-bmi').textContent=bmi||'—';
+  document.getElementById('mis-pgc').textContent=ultimo.v_pgc||'—';
+  const vCampi=[
+    ['Massa Grassa',ultimo.v_grassa,'kg'],['Massa Muscolare',ultimo.v_muscolare,'kg'],['% PGC',ultimo.v_pgc,'%'],
+    ['Metabolismo',ultimo.v_metabolismo,'kcal'],['FFM',ultimo.v_ffm,'kg'],['Acqua Totale',ultimo.v_tbw,'lt'],
+    ['Vita',ultimo.v_vita,'cm'],['Fianchi',ultimo.v_fianchi,'cm'],['Score',ultimo.v_score,''],['Età Metabolica',ultimo.v_eta_met,'anni'],['Indice Salute',ultimo.v_indice,'']
+  ].filter(([,v])=>v);
+  document.getElementById('visbody-dati').innerHTML=vCampi.length?vCampi.map(([l,v,u])=>`<div class="dati-item"><div class="dati-label">${l}</div><div class="dati-val">${v} <small style="color:var(--text3)">${u}</small></div></div>`).join(''):'<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
+  renderComposizione(ultimo);
+  renderFileLista();
+}
+
+function renderComposizione(d){
+  const peso=parseFloat(d.peso||0),grassa=parseFloat(d.v_grassa||0),muscolare=parseFloat(d.v_muscolare||0);
+  if(!peso||(!grassa&&!muscolare)){document.getElementById('visbody-composizione').innerHTML='';return}
+  const altro=Math.max(0,peso-grassa-muscolare);
+  const rows=[['Grassa',grassa,'#c0392b'],['Muscolare',muscolare,'#2d6a4f'],['Altro',altro,'#c4d0da']].filter(([,v])=>v>0);
+  document.getElementById('visbody-composizione').innerHTML=rows.map(([label,val,color])=>{
+    const pct=Math.min(100,Math.round((val/peso)*100));
+    return`<div class="comp-row"><span>${label}</span><div class="comp-track"><div class="comp-fill" style="width:${pct}%;background:${color}"></div></div><strong>${pct}%</strong></div>`;
+  }).join('');
+}
+
+function renderFileLista(){
+  const list=document.getElementById('file-lista');
+  const files=fotoAtt.filter(f=>f.tipo==='visbody'||f.tipo==='baiobit');
+  if(!files.length){list.innerHTML='';return}
+  list.innerHTML=files.map(f=>`<div class="file-row"><strong>${escapeHtml(f.tipo||'file')}</strong><span>${escapeHtml(f.filename||'Documento')}</span><a href="${escapeAttr(f.url)}" target="_blank">Apri →</a></div>`).join('');
+}
+
+function renderFoto(){
+  const foto=fotoAtt.filter(f=>f.tipo!=='visbody'&&f.tipo!=='baiobit');
+  const grid=document.getElementById('foto-grid');
+  if(!grid)return;
+  if(!foto.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-text">Nessuna foto</div><div class="empty-sub">Carica le foto della visita</div></div>';return}
+  grid.innerHTML=foto.map(f=>`<div class="foto-item" onclick="apriLightbox('${escapeJs(f.url||'')}')">
+    <img src="${escapeAttr(f.url)}" alt="${escapeAttr(f.filename||'')}" loading="lazy">
+    <div class="foto-meta">${fmtData(f.data)}</div>
+    <button class="foto-del" onclick="event.stopPropagation();eliminaFoto('${escapeAttr(f.id)}')">✕</button>
+  </div>`).join('');
+}
+
+async function salvaDatiFisici(){
+  const data=gv('df-data');
+  if(!data){showToast('Data obbligatoria','error');return}
+  const id='df_'+Date.now();
+  const df={id,clienteId:idCorrente,data,peso:gv('df-peso'),altezza:gv('df-altezza'),v_grassa:gv('df-v-grassa'),v_muscolare:gv('df-v-muscolare'),v_pgc:gv('df-v-pgc'),v_bmi:gv('df-v-bmi'),v_metabolismo:gv('df-v-metabolismo'),v_eta_met:gv('df-v-eta-met'),v_ffm:gv('df-v-ffm'),v_tbw:gv('df-v-tbw'),v_vita:gv('df-v-vita'),v_fianchi:gv('df-v-fianchi'),v_score:gv('df-v-score'),v_indice:gv('df-v-indice'),note:gv('df-note')};
+  const r=await apiFetch({action:'saveDatiFisici',...df});
+  if(r.error){showToast(r.error,'error');return}
+  datiFisiciAtt.unshift(df);
+  closeMo('mo-dati-fisici');
+  renderDatiFisici();
+  showToast('Dati fisici salvati','success');
+}
+
+async function uploadFotoVisita(files){
+  if(!files||!files.length||!idCorrente)return;
+  const prog=document.getElementById('prog-foto'),bar=document.getElementById('bar-foto');
+  prog.classList.add('show');let ok=0;
+  for(let i=0;i<files.length;i++){
+    bar.style.width=Math.round((i/files.length)*100)+'%';
+    const file=files[i];
+    try{
+      const b64=await fileToBase64Resized(file,1200,0.8);
+      const filename=idCorrente+'_'+Date.now()+'_'+file.name;
+      const r=await apiFetch({action:'uploadFoto',clienteId:idCorrente,base64:b64.split(',')[1],filename,mimeType:'image/jpeg',data:oggi()});
+      if(r.success){fotoAtt.unshift({id:r.id,clienteId:idCorrente,url:r.url,filename,data:oggi(),bucket:r.bucket,storagePath:r.path,storage_path:r.path,source:'storage'});ok++}
+      else showToast(r.error||'Errore caricamento foto','error');
+    }catch(e){showToast('Errore foto: '+(e.message||e),'error')}
+  }
+  bar.style.width='100%';setTimeout(()=>{prog.classList.remove('show');bar.style.width='0'},600);
+  renderFoto();if(ok)showToast(ok+' foto caricate','success');
+}
+
+async function handleFotoDrop(e){e.preventDefault();document.getElementById('foto-drop-area').classList.remove('drag');await uploadFotoVisita(e.dataTransfer.files)}
+async function eliminaFoto(id){
+  if(!confirm('Eliminare questa foto?'))return;
+  const foto=fotoAtt.find(f=>f.id===id)||{};
+  const res=await apiFetch({action:'deleteFoto',id,bucket:foto.bucket,path:foto.storagePath||foto.storage_path});
+  if(res?.error){showToast(res.error,'error');return}
+  fotoAtt=fotoAtt.filter(f=>f.id!==id);
+  renderFoto();renderFileLista();showToast('Foto eliminata');
+}
+function apriLightbox(url){document.getElementById('lightbox-img').src=url;document.getElementById('lightbox').classList.add('open')}
+
+async function handleFileChange(input,tipo){
+  const file=input.files[0];if(!file||!idCorrente)return;
+  const prog=document.getElementById('prog-'+tipo),bar=document.getElementById('bar-'+tipo);
+  prog.classList.add('show');bar.style.width='30%';
+  try{
+    let b64,mime,ext;
+    if(file.type.startsWith('image/')){b64=await fileToBase64Resized(file,1200,0.8);mime='image/jpeg';ext='.jpg'}
+    else{b64=await fileToBase64(file);mime=file.type||'application/octet-stream';ext='.'+(file.name.split('.').pop()||'pdf')}
+    bar.style.width='60%';
+    const filename=idCorrente+'_'+tipo+'_'+Date.now()+ext;
+    const r=await apiFetch({action:'uploadFoto',clienteId:idCorrente,base64:b64.split(',')[1],filename,mimeType:mime,data:oggi(),tipo});
+    bar.style.width='100%';
+    if(r.success){fotoAtt.unshift({id:r.id,clienteId:idCorrente,url:r.url,filename,data:oggi(),tipo,bucket:r.bucket,storagePath:r.path,storage_path:r.path,source:'storage'});renderFileLista();showToast('File caricato','success')}
+    else showToast(r.error||'Errore caricamento','error');
+  }catch(e){showToast('Errore: '+e.message,'error')}
+  setTimeout(()=>{prog.classList.remove('show');bar.style.width='0'},600);
+}
+async function handleDrop(e,tipo){e.preventDefault();document.getElementById('ua-'+tipo).classList.remove('drag');const file=e.dataTransfer.files[0];if(file){const dt=new DataTransfer();dt.items.add(file);document.getElementById('file-'+tipo).files=dt.files;await handleFileChange(document.getElementById('file-'+tipo),tipo)}}
 
 function apriModifica(){
   const c=acquisizioni.find(x=>x.id===idCorrente);if(!c)return;isEdit=true;
@@ -782,6 +1170,27 @@ function normSrv(s){if(!s)return[];if(Array.isArray(s))return s;return s.split('
 function calcEta(n){const o=new Date(),d=new Date(n);let e=o.getFullYear()-d.getFullYear();const m=o.getMonth()-d.getMonth();if(m<0||(m===0&&o.getDate()<d.getDate()))e--;return e}
 function fmtData(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}catch{return d}}
 function isNuovo(iso){return iso&&(Date.now()-new Date(iso).getTime())<7*24*60*60*1000}
+function oggi(){return new Date().toISOString().slice(0,10)}
+function gv(id){return document.getElementById(id)?.value?.trim()||''}
+function escapeHtml(value){return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function escapeAttr(value){return escapeHtml(value)}
+function escapeJs(value){return String(value??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ')}
+function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)})}
+function fileToBase64Resized(file,maxSize=1200,quality=.8){
+  if(!file.type.startsWith('image/'))return fileToBase64(file);
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    const reader=new FileReader();
+    reader.onload=()=>{img.onload=()=>{
+      const scale=Math.min(1,maxSize/Math.max(img.width,img.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+      const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      resolve(canvas.toDataURL('image/jpeg',quality));
+    };img.onerror=reject;img.src=reader.result};
+    reader.onerror=reject;reader.readAsDataURL(file);
+  })
+}
 function openMo(id){document.getElementById(id).classList.add('open')}
 function closeMo(id){document.getElementById(id).classList.remove('open')}
 function showToast(msg,type){const t=document.getElementById('toast');t.innerHTML=(type==='loading'?'<span class="spin"></span> ':type==='success'?'✓  ':type==='error'?'✕  ':'')+msg;t.className='toast show'+(type?' '+type:'');if(toastTimer)clearTimeout(toastTimer);if(type!=='loading')toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
