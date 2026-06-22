@@ -940,13 +940,15 @@ const App = {
                 ${planningDays}
               </div>
             </div>
-            <div class="form-group">
-              <label>Orario</label>
-              <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
-            </div>
-            <div class="form-group">
-              <label>Da data</label>
-              <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
+            <div class="package-reschedule-fields">
+              <div class="form-group">
+                <label>Orario</label>
+                <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
+              </div>
+              <div class="form-group">
+                <label>Da data</label>
+                <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
+              </div>
             </div>
           </div>
           <div class="package-reschedule-actions">

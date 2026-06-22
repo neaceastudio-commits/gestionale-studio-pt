@@ -528,9 +528,9 @@
 }
 .package-reschedule-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px 170px;
-  gap: 12px;
-  align-items: end;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
 }
 .package-reschedule-grid label {
   display: block;
@@ -542,13 +542,30 @@
   text-transform: uppercase;
 }
 .package-plan-grid {
-  grid-template-columns: repeat(7, minmax(66px, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 7px;
 }
 .package-plan-day {
   min-height: 42px;
   justify-content: center;
   padding: 8px 9px;
+}
+.package-plan-day span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.package-reschedule-fields {
+  display: grid;
+  grid-template-columns: 160px 190px minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+.package-reschedule-fields .form-group {
+  margin-bottom: 0;
+}
+.package-reschedule-fields .form-input {
+  width: 100%;
+  min-width: 0;
 }
 .package-reschedule-actions {
   display: flex;
@@ -576,6 +593,18 @@
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.package-timeline-table th:nth-child(1),
+.package-timeline-table td:nth-child(1) {
+  width: 150px;
+}
+.package-timeline-table th:nth-child(2),
+.package-timeline-table td:nth-child(2) {
+  width: 120px;
+}
+.package-timeline-table th:nth-child(6),
+.package-timeline-table td:nth-child(6) {
+  width: 130px;
+}
 .package-timeline-table tr:last-child td {
   border-bottom: none;
 }
@@ -589,7 +618,7 @@
   padding: 8px 9px;
 }
 .package-date-input {
-  width: 136px;
+  width: 146px;
   padding: 8px 9px;
 }
 .package-status-input {
@@ -623,6 +652,9 @@
   }
   .package-reschedule-grid,
   .package-plan-grid {
+    grid-template-columns: 1fr;
+  }
+  .package-reschedule-fields {
     grid-template-columns: 1fr;
   }
   .package-reschedule-actions {
@@ -678,7 +710,7 @@
   display: flex;
 }
 .modal-box {
-  width: min(720px, 96vw);
+  width: min(1040px, 96vw);
   max-height: 92vh;
 }
 .modal-header,
