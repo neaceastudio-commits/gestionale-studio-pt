@@ -391,6 +391,247 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.media-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.media-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.media-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.media-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.media-head h4 {
+  margin: 0;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.media-head p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.measure-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.measure-box {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 10px;
+  min-height: 74px;
+}
+
+.measure-box span,
+.measure-box em {
+  display: block;
+  color: var(--faint);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.measure-box strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.composition-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.composition-row {
+  display: grid;
+  grid-template-columns: 150px minmax(70px, 1fr) 92px;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mini-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--blue-soft);
+}
+
+.mini-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--blue);
+}
+
+.file-list {
+  display: grid;
+  gap: 8px;
+}
+
+.file-row {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px;
+  background: #fbfcfd;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.file-row a {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--blue);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-area {
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.upload-progress {
+  display: none;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.photo-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.photo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.photo-meta {
+  padding: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.photo-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 999px;
+  background: rgba(192, 57, 43, .92);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(8, 18, 28, .82);
+}
+
+.lightbox.show {
+  display: flex;
+}
+
+.lightbox img {
+  max-width: min(1100px, 94vw);
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 22px 80px rgba(0, 0, 0, .35);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.empty.compact {
+  padding: 14px;
+  font-size: 12px;
+}
+
 .section-title {
   margin: 14px 0 8px;
   color: var(--blue);
@@ -1214,7 +1455,11 @@ h2 {
   .program-form-grid,
   .program-form-grid.compact,
   .block-card > .program-form-grid,
-  .toolbar {
+  .toolbar,
+  .media-layout,
+  .measure-grid,
+  .composition-row,
+  .file-row {
     grid-template-columns: 1fr;
   }
 

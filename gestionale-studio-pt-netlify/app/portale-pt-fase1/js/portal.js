@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+const FOTO_STORAGE_BUCKET = 'client-photos';
 
 const NEACEA_BLOCKS = [
   ['N0', 'Tecnico'],
@@ -77,6 +78,10 @@ const state = {
   selectedOperatorId: '',
   selectedClientId: '',
   selectedProgramId: '',
+  mediaClientId: '',
+  mediaLoading: false,
+  datiFisici: [],
+  foto: [],
   programSessions: [],
   builderExercise: null,
   builderProgressionGroup: 'Tecnica',
@@ -211,6 +216,10 @@ function blockLabel(code) {
 
 function getClient(clientId) {
   return state.clients.find((item) => item.client_id === clientId) || null;
+}
+
+function selectedClient() {
+  return getClient(state.selectedClientId);
 }
 
 function flattenExercises() {
@@ -729,6 +738,161 @@ function field(label, value) {
   `;
 }
 
+function percent(value, total) {
+  if (!total) return 0;
+  return Math.max(0, Math.min(100, Math.round((value / total) * 100)));
+}
+
+function mediaForSelectedClient() {
+  if (state.mediaClientId !== state.selectedClientId) {
+    return { datiFisici: [], foto: [] };
+  }
+  return { datiFisici: state.datiFisici || [], foto: state.foto || [] };
+}
+
+async function loadClientMedia(clientId) {
+  if (!clientId || state.mediaClientId === clientId || state.mediaLoading) return;
+  state.mediaLoading = true;
+  state.mediaClientId = clientId;
+  state.datiFisici = [];
+  state.foto = [];
+  renderClientDetail();
+  try {
+    const [datiFisici, foto] = await Promise.all([
+      sb('dati_fisici', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=data_rilevazione.desc,created_at.desc`),
+      sb('foto_allenamento', `?select=*&cliente_id=eq.${encodeURIComponent(clientId)}&order=data_scatto.desc,created_at.desc`),
+    ]);
+    if (state.selectedClientId !== clientId) return;
+    state.datiFisici = datiFisici || [];
+    state.foto = foto || [];
+  } catch (error) {
+    if (state.selectedClientId === clientId) {
+      state.datiFisici = [];
+      state.foto = [];
+      showError(`Visbody/foto non caricati: ${error.message || error}`);
+    }
+  } finally {
+    state.mediaLoading = false;
+    if (state.selectedClientId === clientId) renderClientDetail();
+  }
+}
+
+function measureBox(label, value, unit) {
+  return `
+    <div class="measure-box">
+      <span>${esc(label)}</span>
+      <strong>${value || value === 0 ? esc(value) : '-'}</strong>
+      <em>${esc(unit)}</em>
+    </div>
+  `;
+}
+
+function renderComposition(d) {
+  if (!d || !Object.keys(d).length) return '<div class="empty compact">Nessun dato Visbody disponibile.</div>';
+  const rows = [
+    ['Massa grassa', d.massa_grassa, 'kg'],
+    ['Massa muscolare', d.massa_muscolare, 'kg'],
+    ['Acqua totale', d.acqua_totale, 'l'],
+    ['Metabolismo basale', d.metabolismo_basale, 'kcal'],
+    ['Eta metabolica', d.eta_metabolica, 'anni'],
+    ['Score Visbody', d.score_visbody || d.indice_salute, ''],
+  ].filter((row) => row[1] || row[1] === 0);
+  if (!rows.length) return '<div class="empty compact">Rilevamento presente, ma senza valori di composizione.</div>';
+  const max = Math.max(1, ...rows.map((row) => Number(row[1]) || 0));
+  return `
+    <div class="composition-list">
+      ${rows.map(([label, value, unit]) => `
+        <div class="composition-row">
+          <span>${esc(label)}</span>
+          <div class="mini-bar"><i style="width:${percent(Number(value) || 0, max)}%"></i></div>
+          <strong>${esc(value)} ${esc(unit)}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderFileList() {
+  const { foto } = mediaForSelectedClient();
+  const files = foto.filter((item) => item.tipo && item.tipo !== 'foto');
+  if (!files.length) return '<div class="empty compact">Nessun file dispositivo caricato.</div>';
+  return files.map((item) => `
+    <div class="file-row">
+      <span>${esc(item.tipo || 'file')}</span>
+      <a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.nome_file || 'Apri file')}</a>
+      <button class="danger-btn slim" type="button" data-delete-photo="${esc(item.id)}">Elimina</button>
+    </div>
+  `).join('');
+}
+
+function renderPhotoGrid() {
+  const { foto } = mediaForSelectedClient();
+  const photos = foto.filter((item) => !item.tipo || item.tipo === 'foto');
+  if (!photos.length) return '<div class="empty compact">Nessuna foto caricata.</div>';
+  return photos.map((item) => `
+    <div class="photo-card">
+      <button class="photo-del" type="button" data-delete-photo="${esc(item.id)}">×</button>
+      <img src="${esc(item.url)}" alt="" data-open-photo="${esc(item.url)}">
+      <div class="photo-meta">${esc(item.nome_file || 'Foto cliente')} · ${item.data_scatto ? esc(formatDate(item.data_scatto)) : '-'}</div>
+    </div>
+  `).join('');
+}
+
+function renderClientMediaSection(client) {
+  const loading = state.mediaLoading && state.mediaClientId === client.client_id;
+  const { datiFisici } = mediaForSelectedClient();
+  const latest = datiFisici[0] || {};
+  return `
+    <div class="section-title">Visbody e foto</div>
+    <div class="media-layout">
+      <section class="media-panel">
+        <div class="media-head">
+          <div>
+            <h4>Visbody - dati fisici</h4>
+            <p>${loading ? 'Caricamento...' : (latest.data_rilevazione ? `Ultimo rilevamento ${formatDate(latest.data_rilevazione)}` : 'Nessun rilevamento registrato')}</p>
+          </div>
+        </div>
+        <div class="measure-grid">
+          ${measureBox('Peso', latest.peso, 'kg')}
+          ${measureBox('Altezza', latest.altezza, 'cm')}
+          ${measureBox('BMI', latest.bmi, '')}
+          ${measureBox('% grasso', latest.percentuale_grasso || latest.grasso_percentuale, '%')}
+        </div>
+        ${renderComposition(latest)}
+      </section>
+
+      <section class="media-panel">
+        <div class="media-head">
+          <div>
+            <h4>File dispositivi</h4>
+            <p>Visbody e file tecnici collegati al cliente</p>
+          </div>
+          <button class="secondary-btn slim" type="button" data-upload-trigger="visbody">Carica file</button>
+        </div>
+        <input id="ptFileUpload" type="file" multiple hidden>
+        <div id="fileUploadProgress" class="upload-progress">Caricamento...</div>
+        <div class="file-list">${renderFileList()}</div>
+      </section>
+
+      <section class="media-panel media-panel-wide">
+        <div class="media-head">
+          <div>
+            <h4>Foto cliente</h4>
+            <p>Foto progressi e valutazioni visive nello stesso punto</p>
+          </div>
+          <button class="secondary-btn slim" type="button" data-upload-trigger="foto">Carica foto</button>
+        </div>
+        <input id="ptPhotoUpload" type="file" accept="image/*" multiple hidden>
+        <div class="upload-area" data-upload-trigger="foto" ondragover="event.preventDefault()" ondrop="handlePhotoDrop(event)">
+          Trascina qui le foto oppure clicca per selezionarle
+        </div>
+        <div id="photoUploadProgress" class="upload-progress">Caricamento...</div>
+        <div class="photo-grid">${renderPhotoGrid()}</div>
+      </section>
+    </div>
+  `;
+}
+
 function renderClientDetail() {
   const client = state.clients.find((item) => item.client_id === state.selectedClientId);
   if (!client) {
@@ -738,6 +902,9 @@ function renderClientDetail() {
   }
 
   els.clientDetail.className = '';
+  if (state.mediaClientId !== client.client_id && !state.mediaLoading) {
+    loadClientMedia(client.client_id);
+  }
   const alerts = client.alerts || [];
   const programs = clientPrograms(client.client_id);
   els.clientDetail.innerHTML = `
@@ -776,6 +943,8 @@ function renderClientDetail() {
         ${alerts.length ? alerts.map(renderAlertItem).join('') : '<div class="empty">Nessun alert attivo</div>'}
       </div>
 
+      ${renderClientMediaSection(client)}
+
       <div class="section-title">Programmi PT</div>
       <div class="stack">
         ${programs.length ? programs.slice(0, 5).map(renderClientProgramItem).join('') : '<div class="empty">Nessuna scheda PT</div>'}
@@ -785,6 +954,105 @@ function renderClientDetail() {
       <div class="row-card">${esc(client.note_operative || client.note_cliente || 'Nessuna nota')}</div>
     </div>
   `;
+}
+
+function storagePath(clientId, file) {
+  const ext = (file.name || '').split('.').pop() || (file.type || '').split('/').pop() || 'bin';
+  const safeName = String(file.name || `file.${ext}`).replace(/[^a-zA-Z0-9._-]+/g, '-').slice(-80);
+  return `pt-clienti/${clientId}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safeName}`;
+}
+
+async function uploadToStorage(path, file) {
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-upsert': 'true',
+    },
+    body: file,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return `${SUPABASE_URL}/storage/v1/object/public/${FOTO_STORAGE_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+async function uploadClientFiles(files, tipo) {
+  const client = selectedClient();
+  if (!client || !files || !files.length) return;
+  const progress = document.getElementById(tipo === 'foto' ? 'photoUploadProgress' : 'fileUploadProgress');
+  if (progress) {
+    progress.style.display = 'block';
+    progress.textContent = 'Caricamento...';
+  }
+  try {
+    const rows = [];
+    for (const file of Array.from(files)) {
+      const path = storagePath(client.client_id, file);
+      const url = await uploadToStorage(path, file);
+      rows.push({
+        cliente_id: client.client_id,
+        url,
+        storage_path: path,
+        nome_file: file.name || (tipo === 'foto' ? 'foto' : 'file'),
+        tipo: tipo === 'foto' ? 'foto' : tipo,
+        data_scatto: todayIso(),
+      });
+    }
+    await sb('foto_allenamento', '', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: rows,
+    });
+    state.mediaClientId = '';
+    await loadClientMedia(client.client_id);
+  } catch (error) {
+    showError(`Upload non riuscito: ${error.message || error}`);
+  } finally {
+    if (progress) progress.style.display = 'none';
+  }
+}
+
+function handlePhotoDrop(event) {
+  event.preventDefault();
+  uploadClientFiles(event.dataTransfer.files, 'foto');
+}
+
+async function deleteClientPhoto(id) {
+  const item = state.foto.find((row) => row.id === id);
+  if (!item || !confirm('Eliminare questo elemento dalla scheda cliente?')) return;
+  try {
+    if (item.storage_path) {
+      await fetch(`${SUPABASE_URL}/storage/v1/object/${FOTO_STORAGE_BUCKET}/${item.storage_path}`, {
+        method: 'DELETE',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+      });
+    }
+    await sb('foto_allenamento', `?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+    state.foto = state.foto.filter((row) => row.id !== id);
+    renderClientDetail();
+  } catch (error) {
+    showError(`Eliminazione non riuscita: ${error.message || error}`);
+  }
+}
+
+function openLightbox(url) {
+  const box = document.getElementById('photoLightbox');
+  const img = document.getElementById('photoLightboxImg');
+  if (!box || !img) return;
+  img.src = url;
+  box.classList.add('show');
+}
+
+function closeLightbox() {
+  const box = document.getElementById('photoLightbox');
+  const img = document.getElementById('photoLightboxImg');
+  if (!box || !img) return;
+  box.classList.remove('show');
+  img.src = '';
 }
 
 function renderClientProgramItem(program) {
@@ -1456,6 +1724,9 @@ function bindEvents() {
   els.operatorSelect.addEventListener('change', () => {
     state.selectedOperatorId = els.operatorSelect.value;
     state.selectedClientId = '';
+    state.mediaClientId = '';
+    state.datiFisici = [];
+    state.foto = [];
     render();
   });
 
@@ -1466,15 +1737,47 @@ function bindEvents() {
     const row = event.target.closest('[data-client-id]');
     if (!row) return;
     state.selectedClientId = row.dataset.clientId;
+    state.mediaClientId = '';
+    state.datiFisici = [];
+    state.foto = [];
     renderClients();
   });
 
   els.clientDetail.addEventListener('click', (event) => {
+    const upload = event.target.closest('[data-upload-trigger]');
+    if (upload) {
+      const input = upload.dataset.uploadTrigger === 'foto'
+        ? document.getElementById('ptPhotoUpload')
+        : document.getElementById('ptFileUpload');
+      input?.click();
+      return;
+    }
+    const del = event.target.closest('[data-delete-photo]');
+    if (del) {
+      deleteClientPhoto(del.dataset.deletePhoto);
+      return;
+    }
+    const photo = event.target.closest('[data-open-photo]');
+    if (photo) {
+      openLightbox(photo.dataset.openPhoto);
+      return;
+    }
     const row = event.target.closest('[data-open-program]');
     if (!row) return;
     state.selectedProgramId = row.dataset.openProgram;
     document.querySelector('[data-view="programs"]').click();
     renderPrograms();
+  });
+
+  els.clientDetail.addEventListener('change', (event) => {
+    if (event.target.id === 'ptPhotoUpload') {
+      uploadClientFiles(event.target.files, 'foto');
+      event.target.value = '';
+    }
+    if (event.target.id === 'ptFileUpload') {
+      uploadClientFiles(event.target.files, 'visbody');
+      event.target.value = '';
+    }
   });
 
   document.querySelectorAll('[data-calendar-view]').forEach((button) => {
