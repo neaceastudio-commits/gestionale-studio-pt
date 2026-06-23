@@ -1,4 +1,6 @@
 const DESK_EMAIL = 'neacea.desk@gmail.com';
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyoE--vThHs_3PrfERumOHr5Ietvd0JGyFn34ks3TBpyYseMltsT6ZTm4lynJ6-mxs/exec';
+const DEFAULT_TOKEN = 'neacea2026studio';
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -66,35 +68,22 @@ exports.handler = async (event) => {
     const input = JSON.parse(event.body || '{}');
     const payload = input.payload || {};
     const type = input.type || 'anamnesi_cliente';
-    const resendKey = process.env.RESEND_API_KEY;
-    const from = process.env.FORM_NOTIFY_FROM || 'NEACEA <onboarding@resend.dev>';
+    const scriptUrl = process.env.GAS_WEBAPP_URL || DEFAULT_SCRIPT_URL;
+    const token = process.env.GAS_SECRET_TOKEN || DEFAULT_TOKEN;
     const message = buildMessage(type, payload);
 
-    if (!resendKey) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          skipped: true,
-          to: DESK_EMAIL,
-          error: 'RESEND_API_KEY non configurata su Netlify',
-        }),
-      };
-    }
-
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch(scriptUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        from,
+        _token: token,
+        action: 'notifyModuloPT',
+        type,
         to: DESK_EMAIL,
         subject: message.subject,
-        html: message.html,
-        text: message.text,
+        htmlBody: message.html,
+        textBody: message.text,
+        payload,
       }),
     });
 
@@ -107,7 +96,9 @@ exports.handler = async (event) => {
       };
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, to: DESK_EMAIL }) };
+    let result = {};
+    try { result = JSON.parse(resultText); } catch (_) { result = { raw: resultText }; }
+    return { statusCode: 200, headers, body: JSON.stringify({ success: result.success !== false, to: DESK_EMAIL, result }) };
   } catch (error) {
     return {
       statusCode: 500,
