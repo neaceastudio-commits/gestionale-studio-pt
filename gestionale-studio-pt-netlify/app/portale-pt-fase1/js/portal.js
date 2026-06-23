@@ -1151,6 +1151,7 @@ function renderClientDetail() {
         <div class="client-hero-meta">
           <span>${esc(selectedOperator() ? fullName(selectedOperator()) : 'PT')}</span>
           <span>${programs.length} sched${programs.length === 1 ? 'a' : 'e'}</span>
+          <button class="archive-client-btn" type="button" data-archive-client="${esc(client.client_id)}">Archivia atleta</button>
         </div>
       </div>
 
@@ -1940,6 +1941,30 @@ async function assignClient() {
   await refresh();
 }
 
+async function archiveClient(clientId) {
+  const client = getClient(clientId);
+  if (!client) return;
+  const ok = confirm(`Archiviare ${fullName(client)}?\n\nI dati restano salvati: anamnesi, foto, Visbody, programmi, carichi e storico non vengono cancellati.`);
+  if (!ok) return;
+
+  await sb('clients', `?id=eq.${encodeURIComponent(clientId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      active: false,
+      updated_at: new Date().toISOString(),
+    },
+  });
+
+  state.selectedClientId = '';
+  state.clientSection = 'overview';
+  state.mediaClientId = '';
+  state.mediaError = '';
+  state.datiFisici = [];
+  state.foto = [];
+  await refresh();
+}
+
 function renderAssignments() {
   els.assignButton.disabled = state.mode !== 'phase1';
   renderPtAccess();
@@ -2061,6 +2086,13 @@ function bindEvents() {
   });
 
   els.clientDetail.addEventListener('click', (event) => {
+    const archive = event.target.closest('[data-archive-client]');
+    if (archive) {
+      archiveClient(archive.dataset.archiveClient).catch((error) => {
+        showError(`Archiviazione atleta non riuscita: ${error.message || error}`);
+      });
+      return;
+    }
     const section = event.target.closest('[data-client-section]');
     if (section) {
       state.clientSection = section.dataset.clientSection || 'overview';
