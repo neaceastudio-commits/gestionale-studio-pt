@@ -1,20 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --blue: #1c3144;
-  --blue-2: #2a465f;
-  --bg: #f3f6f8;
+  --blue: #17314a;
+  --blue-2: #244860;
+  --blue-3: #2f6f95;
+  --bg: #eef6fb;
   --panel: #fff;
-  --line: #dce5ec;
-  --text: #1c3144;
-  --muted: #6b8398;
-  --faint: #9aacba;
+  --line: #d8e7ef;
+  --text: #17314a;
+  --muted: #668195;
+  --faint: #94abba;
   --gold: #c9a84c;
-  --green: #2d6a4f;
+  --green: #2f7d6d;
   --red: #c0392b;
   --red-soft: #fdecea;
-  --soft: #eef3f7;
-  --shadow: 0 10px 28px rgba(28, 49, 68, .08);
+  --soft: #edf4f8;
+  --shadow: 0 10px 28px rgba(23, 49, 74, .08);
+  --shadow-soft: 0 2px 10px rgba(23, 49, 74, .06);
 }
 
 * { box-sizing: border-box; }
@@ -24,7 +26,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: Nunito, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 button, input, select, textarea { font: inherit; }
@@ -663,6 +665,250 @@ h3 { font-size: 15px; }
 }
 
 .toast.error { background: var(--red); }
+
+/* Clean PT skin inspired by the nutrition portal, with PT-specific colors. */
+.topbar {
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: 58px;
+  padding: 0 22px;
+  background: #102d45;
+  box-shadow: 0 10px 28px rgba(16, 45, 69, .18);
+}
+
+.brand {
+  min-width: 0;
+  height: 58px;
+}
+
+.brand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  background: transparent;
+  filter: brightness(0) invert(1);
+  padding: 0;
+}
+
+.brand strong {
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.brand span {
+  color: rgba(255, 255, 255, .68);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tabs {
+  order: 20;
+  flex-basis: calc(100% + 44px);
+  margin: 0 -22px;
+  padding: 0 24px;
+  min-height: 54px;
+  align-items: stretch;
+  gap: 18px;
+  background: rgba(255, 255, 255, .98);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 8px 18px rgba(23, 49, 74, .08);
+}
+
+.tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0 0;
+  background: transparent;
+  color: #8eaa99;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.tab.active {
+  background: transparent;
+  color: var(--blue);
+  border-bottom-color: var(--blue-3);
+}
+
+.tab:hover:not(.active) {
+  color: var(--blue-2);
+}
+
+.user-chip {
+  margin-left: auto;
+}
+
+.user-chip button {
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 0 14px;
+}
+
+.shell {
+  width: min(1120px, calc(100vw - 36px));
+  padding-top: 34px;
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  min-height: 210px;
+  margin: 0 auto 20px;
+  border-radius: 18px;
+  padding: 34px 38px;
+  overflow: hidden;
+  background: #102d45;
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 auto;
+  width: 42%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, .08));
+  pointer-events: none;
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero .eyebrow {
+  color: rgba(255, 255, 255, .54);
+}
+
+.hero h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(34px, 4vw, 48px);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, .66);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.hero .ghost-btn {
+  border-color: rgba(255, 255, 255, .22);
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.kpi,
+.panel,
+.rail,
+.client-page {
+  border-color: var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+.kpi {
+  min-height: 120px;
+  padding: 20px;
+  border-top-width: 3px;
+}
+
+.kpi span,
+.section-card span,
+.field span,
+.detail-block-title,
+.eyebrow {
+  letter-spacing: .1em;
+}
+
+.kpi strong {
+  margin-top: 10px;
+  font-size: 34px;
+  color: #0f273b;
+}
+
+.panel-head,
+.rail-head {
+  background: rgba(255, 255, 255, .68);
+  padding: 17px 18px;
+}
+
+.row-card,
+.client-card,
+.program-card,
+.session-card,
+.section-card,
+.field,
+.month-day {
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(23, 49, 74, .04);
+}
+
+.client-card.active,
+.program-card.active {
+  border-color: var(--blue-2);
+  box-shadow: inset 4px 0 0 var(--blue-2);
+}
+
+.client-hero {
+  border-radius: 16px;
+  background: #102d45;
+  padding: 30px 34px;
+}
+
+.client-hero h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(34px, 4vw, 46px);
+  font-weight: 400;
+}
+
+.primary-btn {
+  border-color: #102d45;
+  background: #102d45;
+}
+
+.ghost-btn {
+  background: #fff;
+}
+
+.search,
+.select,
+.login-card input,
+.form-grid input,
+.form-grid select,
+.wide-label textarea,
+.session-edit input,
+.session-edit select,
+.exercise-row input {
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.pill {
+  background: #edf4f8;
+  color: var(--blue);
+}
+
+.pill.mine {
+  background: #eaf7fb;
+  color: #1e7192;
+}
+
+.editor-shortcut {
+  padding: 26px;
+}
 
 .modal-overlay {
   position: fixed;
