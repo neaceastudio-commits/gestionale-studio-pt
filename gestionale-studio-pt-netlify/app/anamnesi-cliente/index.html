@@ -77,6 +77,7 @@
             <label>Sesso<select id="sesso"><option value="">Seleziona</option><option>Maschio</option><option>Femmina</option><option>Altro</option></select></label>
             <label>Telefono<input id="telefono" type="tel" autocomplete="tel"></label>
             <label>Email *<input id="email" type="email" required autocomplete="email"></label>
+            <label>Codice fiscale<input id="codiceFiscale" autocomplete="off" maxlength="16" placeholder="RSSMRA80A01H501U"></label>
             <label>Professione<input id="professione"></label>
             <label>Contatto emergenza<input id="contattoEmergenza" placeholder="Nome e telefono"></label>
           </div>
@@ -196,6 +197,7 @@
         sesso:$('sesso').value,
         telefono:$('telefono').value.trim(),
         email:$('email').value.trim(),
+        codice_fiscale:$('codiceFiscale').value.trim().toUpperCase(),
         professione:$('professione').value.trim(),
         contatto_emergenza:$('contattoEmergenza').value.trim(),
         servizi:'PT',
