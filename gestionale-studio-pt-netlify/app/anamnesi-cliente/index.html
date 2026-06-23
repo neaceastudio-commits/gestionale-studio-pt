@@ -177,9 +177,23 @@
         return {success:false,error:String(error)};
       }
     }
+    async function saveAcquisizione(payload){
+      try{
+        return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:payload});
+      }catch(error){
+        const message = String(error.message || error);
+        if (!message.includes('codice_fiscale')) throw error;
+        const fallback = {...payload};
+        delete fallback.codice_fiscale;
+        fallback.impressioni = [fallback.impressioni, payload.codice_fiscale && 'Codice fiscale: '+payload.codice_fiscale].filter(Boolean).join('\\n');
+        return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
+      }
+    }
     function body(){
       const id = new URLSearchParams(location.search).get('id') || genId('acq');
+      const codiceFiscale = $('codiceFiscale').value.trim().toUpperCase();
       const noteParts = [
+        codiceFiscale && 'Codice fiscale: '+codiceFiscale,
         $('note').value && 'Note cliente: '+$('note').value,
         $('patologie').value && 'Patologie: '+$('patologie').value,
         $('farmaci').value && 'Farmaci: '+$('farmaci').value,
@@ -196,7 +210,7 @@
         sesso:$('sesso').value,
         telefono:$('telefono').value.trim(),
         email:$('email').value.trim(),
-        codice_fiscale:$('codiceFiscale').value.trim().toUpperCase(),
+        codice_fiscale:codiceFiscale,
         professione:$('professione').value.trim(),
         contatto_emergenza:$('contattoEmergenza').value.trim(),
         servizi:'PT',
@@ -218,7 +232,7 @@
       btn.disabled=true;btn.textContent='Invio in corso...';
       try{
         const payload=body();
-        await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:payload});
+        await saveAcquisizione(payload);
         await notifyDesk('anamnesi_cliente', payload);
         $('anamnesiForm').style.display='none';
         $('doneBox').classList.add('show');
