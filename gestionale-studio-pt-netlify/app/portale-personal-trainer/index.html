@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portale Personal Trainer - NEACEA</title>
+  <link rel="stylesheet" href="css/pt.css">
+</head>
+<body>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <img src="../portale-pt-fase1/assets/neacea-logo.png" alt="NEACEA" class="login-logo">
+      <p class="eyebrow">Portale personale</p>
+      <h1>Accesso Personal Trainer</h1>
+      <p class="login-copy">Inserisci l'email configurata per vedere clienti, sedute e calendario studio.</p>
+      <label>
+        <span>Email PT</span>
+        <input id="loginEmail" type="email" autocomplete="email" placeholder="nome@neacea.it">
+      </label>
+      <button id="loginButton" class="primary-btn" type="button">Entra nel portale</button>
+      <div id="loginError" class="notice error hidden"></div>
+    </div>
+  </section>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img src="../portale-pt-fase1/assets/neacea-logo.png" alt="NEACEA">
+        <strong>Neacea</strong>
+        <span>Portale PT</span>
+      </div>
+      <nav class="tabs" aria-label="Sezioni">
+        <button class="tab active" data-view="dashboard" type="button">Dashboard</button>
+        <button class="tab" data-view="clienti" type="button">Clienti</button>
+        <button class="tab" data-view="schede" type="button">Schede</button>
+        <button class="tab" data-view="agenda" type="button">Agenda</button>
+        <button class="tab" data-view="calendario" type="button">Calendario studio</button>
+      </nav>
+      <div class="user-chip">
+        <span id="currentPtName">PT</span>
+        <button id="logoutButton" type="button" title="Esci">Esci</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section id="errorBox" class="notice error hidden"></section>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Area operativa</p>
+          <h1 id="heroTitle">Portale Personal Trainer</h1>
+          <p id="heroSub">Clienti, appuntamenti e dati cliente nello stesso punto.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="refreshButton" class="ghost-btn" type="button">Aggiorna</button>
+          <a class="ghost-btn" href="../calendario-studio/" target="_blank" rel="noopener">Apri calendario studio</a>
+        </div>
+      </section>
+
+      <section id="dashboard" class="view active">
+        <div class="kpi-grid">
+          <article class="kpi"><span>Clienti assegnati</span><strong id="kpiClienti">-</strong></article>
+          <article class="kpi"><span>Mie sedute oggi</span><strong id="kpiOggi">-</strong></article>
+          <article class="kpi"><span>Mie sedute settimana</span><strong id="kpiSettimana">-</strong></article>
+          <article class="kpi studio"><span>Lavoro studio oggi</span><strong id="kpiStudio">-</strong></article>
+        </div>
+
+        <div class="dash-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Prossime mie prenotazioni</h2>
+              <span id="mySessionCount" class="pill">0</span>
+            </div>
+            <div id="myNextSessions" class="stack"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Clienti da tenere sotto controllo</h2>
+              <span id="alertCount" class="pill">0</span>
+            </div>
+            <div id="alertClients" class="stack"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="clienti" class="view">
+        <div class="work-grid">
+          <aside class="rail">
+            <div class="rail-head">
+              <h2>Clienti</h2>
+              <span id="clientCount" class="pill">0</span>
+            </div>
+            <input id="clientSearch" class="search" type="search" placeholder="Cerca cliente">
+            <div id="clientList" class="client-list"></div>
+          </aside>
+
+          <section class="client-page">
+            <div id="clientDetail" class="empty-state">Seleziona un cliente</div>
+          </section>
+        </div>
+      </section>
+
+      <section id="schede" class="view">
+        <div class="program-shell">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Schede dei miei clienti</h2>
+              <button id="newProgramButton" class="primary-btn slim" type="button">Nuova scheda</button>
+            </div>
+            <div class="program-toolbar">
+              <select id="programClientFilter" class="select"></select>
+              <select id="programStatusFilter" class="select">
+                <option value="">Tutti gli stati</option>
+                <option value="bozza">Bozza</option>
+                <option value="attiva">Attiva</option>
+                <option value="completata">Completata</option>
+                <option value="archiviata">Archiviata</option>
+              </select>
+            </div>
+            <div id="programList" class="program-list"></div>
+          </section>
+
+          <section class="panel program-editor">
+            <div class="panel-head">
+              <h2 id="programTitle">Scheda</h2>
+              <span id="programState" class="pill">bozza</span>
+            </div>
+            <form id="programForm" class="program-form">
+              <input id="programId" type="hidden">
+              <div class="form-grid">
+                <label><span>Cliente</span><select id="programClient"></select></label>
+                <label><span>Stato</span><select id="programStatus"><option value="bozza">Bozza</option><option value="attiva">Attiva</option><option value="completata">Completata</option><option value="archiviata">Archiviata</option></select></label>
+                <label><span>Nome scheda</span><input id="programName" type="text" placeholder="Scheda forza generale"></label>
+                <label><span>Obiettivo</span><input id="programGoal" type="text" placeholder="Forza, ipertrofia, dimagrimento"></label>
+                <label><span>Settimane</span><input id="programWeeks" type="number" min="1" max="24" value="4"></label>
+                <label><span>Frequenza</span><input id="programFrequency" type="number" min="1" max="7" value="2"></label>
+              </div>
+              <label class="wide-label"><span>Note operative</span><textarea id="programNotes" rows="3"></textarea></label>
+
+              <div class="sessions-head">
+                <h3>Sedute</h3>
+                <button id="addSessionButton" class="ghost-btn" type="button">Aggiungi seduta</button>
+              </div>
+              <div id="sessionBuilder" class="session-builder"></div>
+
+              <div class="form-actions">
+                <button id="saveProgramButton" class="primary-btn" type="submit">Salva scheda</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <section id="agenda" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>La mia agenda</h2>
+            <div class="panel-actions">
+              <button class="icon-btn" data-my-move="-1" type="button">‹</button>
+              <button class="ghost-btn" id="myTodayButton" type="button">Oggi</button>
+              <button class="icon-btn" data-my-move="1" type="button">›</button>
+              <strong id="myRange">Questa settimana</strong>
+            </div>
+          </div>
+          <div id="myAgenda" class="calendar-list"></div>
+        </section>
+      </section>
+
+      <section id="calendario" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Calendario studio</h2>
+            <div class="panel-actions">
+              <button class="icon-btn" data-cal-move="-1" type="button">‹</button>
+              <button class="ghost-btn" id="calTodayButton" type="button">Oggi</button>
+              <button class="icon-btn" data-cal-move="1" type="button">›</button>
+              <strong id="calRange">Questa settimana</strong>
+              <div class="segments">
+                <button class="segment" data-cal-view="day" type="button">Giorno</button>
+                <button class="segment active" data-cal-view="week" type="button">Settimana</button>
+                <button class="segment" data-cal-view="month" type="button">Mese</button>
+              </div>
+            </div>
+          </div>
+          <p class="permission-note">Il PT vede tutto il lavoro dello studio, ma puo' modificare solo le proprie sedute.</p>
+          <div id="studioCalendar" class="calendar-list"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="js/pt.js"></script>
+</body>
+</html>
