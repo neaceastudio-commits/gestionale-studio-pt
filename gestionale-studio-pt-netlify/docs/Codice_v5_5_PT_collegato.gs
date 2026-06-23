@@ -2502,6 +2502,7 @@ function handleSendConsensoMail(data) {
 const EMAIL_DESK_PT = 'neacea.desk@gmail.com';
 
 function handleNotifyModuloPT(data) {
+  data = data || {};
   const to = EMAIL_DESK_PT;
   const subject = data.subject || '[Neacea PT] Nuovo modulo cliente';
   const htmlBody = data.htmlBody || buildModuloPTEmail_(data);
@@ -2520,6 +2521,7 @@ function handleNotifyModuloPT(data) {
 }
 
 function buildModuloPTEmail_(data) {
+  data = data || {};
   const payload = data.payload || {};
   const nome = escapeModuloPT_([payload.nome, payload.cognome].filter(Boolean).join(' ') || 'Cliente');
   const tipo = data.type === 'consenso_cliente' ? 'Consenso cliente PT' : 'Anamnesi cliente PT';
@@ -2557,4 +2559,18 @@ function escapeModuloPT_(value) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function testNotifyModuloPT() {
+  return handleNotifyModuloPT({
+    type: 'anamnesi_cliente',
+    subject: 'TEST NEACEA PT - controllo mail',
+    payload: {
+      nome: 'Test',
+      cognome: 'Codex',
+      email: 'test-codex@neacea.local',
+      telefono: '-',
+      obiettivo: 'Controllo invio mail'
+    }
+  });
 }

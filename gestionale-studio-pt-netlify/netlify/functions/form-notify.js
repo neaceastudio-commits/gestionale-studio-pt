@@ -1,5 +1,5 @@
 const DESK_EMAIL = 'neacea.desk@gmail.com';
-const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyoE--vThHs_3PrfERumOHr5Ietvd0JGyFn34ks3TBpyYseMltsT6ZTm4lynJ6-mxs/exec';
+const DEFAULT_SCRIPT_URL = 'https://portale-nutrizione.netlify.app/api/gas';
 const DEFAULT_TOKEN = 'neacea2026studio';
 
 const headers = {
@@ -74,7 +74,7 @@ exports.handler = async (event) => {
 
     const response = await fetch(scriptUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         _token: token,
         action: 'notifyModuloPT',
