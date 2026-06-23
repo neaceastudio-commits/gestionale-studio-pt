@@ -1,6 +1,44 @@
 const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 
+const SERVICES = {
+  pt11: { id: 'pt11', label: 'PT 1:1', durationMin: 60, maxClients: 1 },
+  pt12: { id: 'pt12', label: 'PT 1:2', durationMin: 60, maxClients: 2 },
+  nutrizione: { id: 'nutrizione', label: 'Nutrizione - 1a visita', durationMin: 60, maxClients: 1 },
+  check: { id: 'check', label: 'Check nutrizionale', durationMin: 30, maxClients: 1 },
+  visbody: { id: 'visbody', label: 'Visbody', durationMin: 30, maxClients: 1 },
+  baiobit: { id: 'baiobit', label: 'Baiobit', durationMin: 30, maxClients: 1 },
+  circuit: { id: 'circuit', label: 'Circuit Training', durationMin: 60, maxClients: 6 },
+  blocco: { id: 'blocco', label: 'Blocco agenda', durationMin: 60, maxClients: 0 },
+};
+
+const STATUS_LABELS = {
+  prenotato: 'Prenotato',
+  fatto: 'Fatto',
+  annullato: 'Annullato',
+  noshow: 'No-show',
+};
+
+const SERVICE_ALIASES = {
+  'pt 1:1': 'pt11',
+  'pt 1-1': 'pt11',
+  'pt_1_1': 'pt11',
+  'pt11': 'pt11',
+  'pt 1:2': 'pt12',
+  'pt 1-2': 'pt12',
+  'pt_1_2': 'pt12',
+  'pt12': 'pt12',
+  'nutrizione': 'nutrizione',
+  'check nutrizionale': 'check',
+  'check': 'check',
+  'visbody': 'visbody',
+  'baiobit': 'baiobit',
+  'circuit': 'circuit',
+  'circuit training': 'circuit',
+  'blocco': 'blocco',
+  'blocco agenda': 'blocco',
+};
+
 const state = {
   operators: [],
   clients: [],
@@ -13,6 +51,7 @@ const state = {
   calendarReference: todayIso(),
   myReference: todayIso(),
   programSessions: [],
+  editingSessionId: '',
 };
 
 const els = {};
@@ -108,6 +147,32 @@ function formatTime(value) {
 
 function fullName(item) {
   return [item?.nome, item?.cognome].filter(Boolean).join(' ') || item?.email || '-';
+}
+
+function normalizeServiceId(serviceId) {
+  const raw = String(serviceId || '').trim();
+  if (SERVICES[raw]) return raw;
+  return SERVICE_ALIASES[raw.toLowerCase()] || raw;
+}
+
+function serviceLabel(serviceId) {
+  const normalized = normalizeServiceId(serviceId);
+  return SERVICES[normalized]?.label || serviceId || 'Seduta';
+}
+
+function serviceDuration(serviceId, fallback = 60) {
+  const normalized = normalizeServiceId(serviceId);
+  return Number(fallback || SERVICES[normalized]?.durationMin || 60);
+}
+
+function statusLabel(status) {
+  return STATUS_LABELS[status] || status || 'Prenotato';
+}
+
+function sessionClientIds(session) {
+  if (Array.isArray(session?.client_ids)) return session.client_ids;
+  if (Array.isArray(session?.clientIds)) return session.clientIds;
+  return session?.client_id ? [session.client_id] : [];
 }
 
 function id(prefix) {
@@ -210,6 +275,7 @@ async function loadFallback() {
         trainer_nome: trainer.nome,
         trainer_cognome: trainer.cognome,
         client_id: clientId,
+        client_ids: ids,
         nome: client.nome,
         cognome: client.cognome,
         service_id: appt.service_id,
@@ -410,13 +476,19 @@ function renderClientDetail() {
 
 function renderSessionCard(session) {
   const mine = session.trainer_id === state.currentPt?.id;
+  const clientIds = sessionClientIds(session);
+  const normalizedServiceId = normalizeServiceId(session.service_id);
+  const service = SERVICES[normalizedServiceId] || {};
+  const serviceExtra = service.maxClients > 1 && clientIds.length
+    ? ` · ${clientIds.length}/${service.maxClients} clienti`
+    : '';
   return `
     <article class="session-card ${mine ? 'mine' : 'locked'}">
       <div class="session-title">
         <span>${esc(formatDate(session.date))} · ${esc(formatTime(session.start_time))}</span>
         <span class="pill ${mine ? 'mine' : 'locked'}">${mine ? 'Mia' : esc([session.trainer_nome, session.trainer_cognome].filter(Boolean).join(' ') || 'Studio')}</span>
       </div>
-      <div class="session-sub">${esc(fullName(session))} · ${esc(session.service_id || 'Seduta')} · ${esc(session.status || 'prenotato')}</div>
+      <div class="session-sub">${esc(fullName(session))} · ${esc(serviceLabel(normalizedServiceId))} · ${esc(serviceDuration(normalizedServiceId, session.duration_min))} min · ${esc(statusLabel(session.status))}${esc(serviceExtra)}</div>
       ${mine ? `
         <div class="session-actions">
           <button class="ghost-btn slim" type="button" data-edit-session="${esc(session.appointment_id || '')}">Modifica</button>
@@ -677,22 +749,151 @@ async function editOwnSession(appointmentId) {
     toast('Puoi modificare solo le tue sedute', true);
     return;
   }
-  const date = prompt('Data seduta (aaaa-mm-gg)', session.date || todayIso());
-  if (date === null) return;
-  const time = prompt('Ora seduta (hh:mm)', formatTime(session.start_time));
-  if (time === null) return;
-  const status = prompt('Stato seduta', session.status || 'prenotato');
-  if (status === null) return;
+  openSessionEditor(session);
+}
+
+function serviceOptions(selected = '') {
+  return Object.values(SERVICES).map((service) =>
+    `<option value="${esc(service.id)}" ${service.id === selected ? 'selected' : ''}>${esc(service.label)}</option>`
+  ).join('');
+}
+
+function statusOptions(selected = '') {
+  return Object.entries(STATUS_LABELS).map(([value, label]) =>
+    `<option value="${esc(value)}" ${value === selected ? 'selected' : ''}>${esc(label)}</option>`
+  ).join('');
+}
+
+function clientOptions(selectedIds = [], serviceId = 'pt11') {
+  const max = SERVICES[serviceId]?.maxClients || 1;
+  return myClients().map((client) => {
+    const selected = selectedIds.includes(client.client_id);
+    return `<option value="${esc(client.client_id)}" ${selected ? 'selected' : ''}>${esc(fullName(client))}</option>`;
+  }).join('') || '<option value="">Nessun cliente assegnato</option>';
+}
+
+function ensureSessionModal() {
+  let modal = document.getElementById('sessionModal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'sessionModal';
+  modal.className = 'modal-overlay hidden';
+  modal.innerHTML = '<div class="modal-card" id="sessionModalCard"></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeSessionEditor();
+  });
+  return modal;
+}
+
+function closeSessionEditor() {
+  state.editingSessionId = '';
+  document.getElementById('sessionModal')?.classList.add('hidden');
+}
+
+function openSessionEditor(session) {
+  state.editingSessionId = session.appointment_id;
+  const modal = ensureSessionModal();
+  const card = document.getElementById('sessionModalCard');
+  const selectedIds = sessionClientIds(session);
+  const serviceId = normalizeServiceId(session.service_id) || 'pt11';
+  const maxClients = SERVICES[serviceId]?.maxClients || 1;
+  card.innerHTML = `
+    <div class="modal-head">
+      <div>
+        <h2>Modifica seduta</h2>
+        <p>${esc(fullName(session))} · ${esc(serviceLabel(serviceId))}</p>
+      </div>
+      <button class="icon-btn" type="button" data-close-session-modal>×</button>
+    </div>
+    <div class="modal-body">
+      <input id="editSessionId" type="hidden" value="${esc(session.appointment_id || '')}">
+      <div class="form-grid modal-grid">
+        <label><span>Servizio</span><select id="editSessionService">${serviceOptions(serviceId)}</select></label>
+        <label><span>Stato</span><select id="editSessionStatus">${statusOptions(session.status || 'prenotato')}</select></label>
+        <label><span>Data</span><input id="editSessionDate" type="date" value="${esc(session.date || todayIso())}"></label>
+        <label><span>Ora</span><input id="editSessionTime" type="time" value="${esc(formatTime(session.start_time))}" step="900"></label>
+        <label><span>Durata minuti</span><input id="editSessionDuration" type="number" min="15" step="15" value="${esc(serviceDuration(serviceId, session.duration_min))}"></label>
+        <label><span>Operatore</span><input type="text" value="${esc(fullName(state.currentPt))}" disabled></label>
+      </div>
+      <label class="wide-label session-client-select">
+        <span>Cliente${maxClients > 1 ? '/i' : ''}</span>
+        <select id="editSessionClients" ${maxClients > 1 ? 'multiple size="5"' : ''}>
+          ${clientOptions(selectedIds, serviceId)}
+        </select>
+      </label>
+      <label class="wide-label">
+        <span>Note</span>
+        <textarea id="editSessionNotes" rows="3">${esc(session.notes || '')}</textarea>
+      </label>
+      <div id="editSessionHint" class="edit-hint"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost-btn" type="button" data-close-session-modal>Annulla</button>
+      <button class="primary-btn" type="button" data-save-session-modal>Salva modifiche</button>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+  refreshSessionEditorClientMode();
+}
+
+function refreshSessionEditorClientMode() {
+  const serviceId = document.getElementById('editSessionService')?.value || 'pt11';
+  const clients = document.getElementById('editSessionClients');
+  const duration = document.getElementById('editSessionDuration');
+  const hint = document.getElementById('editSessionHint');
+  const maxClients = SERVICES[serviceId]?.maxClients || 1;
+  const selected = Array.from(clients?.selectedOptions || []).map((item) => item.value);
+  if (duration && SERVICES[serviceId]) duration.value = SERVICES[serviceId].durationMin;
+  if (clients) {
+    clients.multiple = maxClients > 1;
+    clients.size = maxClients > 1 ? 5 : 1;
+    clients.innerHTML = clientOptions(selected, serviceId);
+  }
+  if (hint) {
+    hint.textContent = maxClients > 1
+      ? `Puoi selezionare fino a ${maxClients} clienti per ${serviceLabel(serviceId)}.`
+      : 'Seduta individuale: seleziona un solo cliente.';
+  }
+}
+
+async function saveSessionEditor() {
+  const appointmentId = document.getElementById('editSessionId')?.value || state.editingSessionId;
+  const original = state.sessions.find((item) => item.appointment_id === appointmentId);
+  if (!original || original.trainer_id !== state.currentPt?.id) {
+    toast('Puoi modificare solo le tue sedute', true);
+    return;
+  }
+  const serviceId = normalizeServiceId(document.getElementById('editSessionService')?.value || original.service_id || 'pt11');
+  const maxClients = SERVICES[serviceId]?.maxClients || 1;
+  const clientIds = Array.from(document.getElementById('editSessionClients')?.selectedOptions || [])
+    .map((item) => item.value)
+    .filter(Boolean)
+    .slice(0, maxClients);
+  if (!SERVICES[serviceId]?.maxClients && serviceId !== 'blocco') {
+    toast('Servizio non valido', true);
+    return;
+  }
+  if (serviceId !== 'blocco' && !clientIds.length) {
+    toast('Seleziona almeno un cliente', true);
+    return;
+  }
   await sb('appointments', `?id=eq.${encodeURIComponent(appointmentId)}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: {
-      date: date.trim() || session.date,
-      start_time: time.trim() || session.start_time,
-      status: status.trim() || session.status,
+      service_id: serviceId,
+      client_ids: serviceId === 'blocco' ? [] : clientIds,
+      operator_id: state.currentPt.id,
+      date: document.getElementById('editSessionDate')?.value || original.date,
+      start_time: document.getElementById('editSessionTime')?.value || original.start_time,
+      duration_min: Number(document.getElementById('editSessionDuration')?.value || serviceDuration(serviceId, original.duration_min)),
+      status: document.getElementById('editSessionStatus')?.value || original.status || 'prenotato',
+      notes: document.getElementById('editSessionNotes')?.value || '',
       updated_at: new Date().toISOString(),
     },
   });
+  closeSessionEditor();
   await loadData();
   renderAll();
   toast('Seduta modificata');
@@ -774,8 +975,15 @@ function bindEvents() {
   document.body.addEventListener('click', (event) => {
     const edit = event.target.closest('[data-edit-session]');
     const done = event.target.closest('[data-session-done]');
+    const closeModal = event.target.closest('[data-close-session-modal]');
+    const saveModal = event.target.closest('[data-save-session-modal]');
     if (edit) editOwnSession(edit.dataset.editSession).catch((error) => toast(error.message, true));
     if (done) markSessionDone(done.dataset.sessionDone).catch((error) => toast(error.message, true));
+    if (closeModal) closeSessionEditor();
+    if (saveModal) saveSessionEditor().catch((error) => toast(error.message, true));
+  });
+  document.body.addEventListener('change', (event) => {
+    if (event.target?.id === 'editSessionService') refreshSessionEditorClientMode();
   });
   document.querySelectorAll('[data-my-move]').forEach((button) => {
     button.addEventListener('click', () => {
