@@ -496,6 +496,31 @@ h3 { font-size: 15px; }
 
 .program-editor { min-height: 680px; }
 
+.editor-shortcut {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+}
+
+.editor-shortcut p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.editor-shortcut .primary-btn {
+  width: fit-content;
+}
+
+.editor-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfe;
+  padding: 12px 14px;
+}
+
 .program-form {
   padding: 18px;
 }

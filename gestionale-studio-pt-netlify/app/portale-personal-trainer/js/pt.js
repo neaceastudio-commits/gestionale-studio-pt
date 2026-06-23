@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+const FULL_PROGRAM_EDITOR_URL = 'https://neacea-portale-pt.netlify.app/';
 
 const SERVICES = {
   pt11: { id: 'pt11', label: 'PT 1:1', durationMin: 60, maxClients: 1 },
@@ -514,11 +515,6 @@ function renderPrograms() {
       <div class="row-sub">${esc(fullName(clientById(program.client_id)))} · ${esc(program.goal || '-')} · ${program.sessions.length} sedute</div>
     </article>
   `).join('') : '<div class="empty">Nessuna scheda per i tuoi clienti</div>';
-  if (!state.selectedProgramId && programs[0]) {
-    loadProgramToForm(programs[0]);
-  } else if (!programs.length) {
-    newProgram();
-  }
 }
 
 function renderProgramMini(program) {
@@ -539,6 +535,18 @@ function emptyExercise(order = 1) {
 }
 
 function newProgram(clientId = '') {
+  openFullProgramEditor(clientId);
+}
+
+function openFullProgramEditor(clientId = '', programId = '') {
+  const params = new URLSearchParams();
+  if (clientId) params.set('cliente', clientId);
+  if (programId) params.set('scheda', programId);
+  const url = params.toString() ? `${FULL_PROGRAM_EDITOR_URL}?${params}` : FULL_PROGRAM_EDITOR_URL;
+  window.open(url, '_blank', 'noopener');
+}
+
+function newProgramLegacy(clientId = '') {
   state.selectedProgramId = '';
   state.programSessions = [emptySession(0)];
   els.programId.value = '';
@@ -929,12 +937,11 @@ function bindEvents() {
     const newFor = event.target.closest('[data-new-program-for]');
     const open = event.target.closest('[data-open-program]');
     if (newFor) {
-      activateView('schede');
       newProgram(newFor.dataset.newProgramFor);
     }
     if (open) {
-      activateView('schede');
-      loadProgramToForm(state.programs.find((program) => program.id === open.dataset.openProgram));
+      const program = state.programs.find((item) => item.id === open.dataset.openProgram);
+      openFullProgramEditor(program?.client_id || '', open.dataset.openProgram);
     }
   });
   els.programClientFilter.addEventListener('change', renderPrograms);
@@ -942,7 +949,8 @@ function bindEvents() {
   els.programList.addEventListener('click', (event) => {
     const card = event.target.closest('[data-program-id]');
     if (!card) return;
-    loadProgramToForm(state.programs.find((program) => program.id === card.dataset.programId));
+    const program = state.programs.find((item) => item.id === card.dataset.programId);
+    openFullProgramEditor(program?.client_id || '', card.dataset.programId);
   });
   els.newProgramButton.addEventListener('click', () => newProgram());
   els.programForm.addEventListener('submit', saveProgram);
@@ -984,6 +992,9 @@ function bindEvents() {
   });
   document.body.addEventListener('change', (event) => {
     if (event.target?.id === 'editSessionService') refreshSessionEditorClientMode();
+  });
+  document.body.addEventListener('click', (event) => {
+    if (event.target.closest('[data-open-full-editor]')) openFullProgramEditor();
   });
   document.querySelectorAll('[data-my-move]').forEach((button) => {
     button.addEventListener('click', () => {

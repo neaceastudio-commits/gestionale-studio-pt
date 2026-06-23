@@ -106,7 +106,7 @@
           <section class="panel">
             <div class="panel-head">
               <h2>Schede dei miei clienti</h2>
-              <button id="newProgramButton" class="primary-btn slim" type="button">Nuova scheda</button>
+              <button id="newProgramButton" class="primary-btn slim" type="button">Apri editor completo</button>
             </div>
             <div class="program-toolbar">
               <select id="programClientFilter" class="select"></select>
@@ -123,30 +123,25 @@
 
           <section class="panel program-editor">
             <div class="panel-head">
-              <h2 id="programTitle">Scheda</h2>
-              <span id="programState" class="pill">bozza</span>
+              <h2 id="programTitle">Editor schede completo</h2>
+              <span id="programState" class="pill">NEACEA</span>
             </div>
-            <form id="programForm" class="program-form">
+            <div class="editor-shortcut">
+              <p>La creazione e modifica schede deve usare l'editor completo gia' costruito, non una seconda versione semplificata.</p>
+              <button class="primary-btn" type="button" data-open-full-editor>Apri editor schede NEACEA</button>
+              <p class="editor-note">Da qui il PT vede l'elenco delle schede e apre lo strumento completo per creare o modificare solo cio' che e' di sua pertinenza.</p>
+            </div>
+            <form id="programForm" class="program-form hidden" aria-hidden="true">
               <input id="programId" type="hidden">
-              <div class="form-grid">
-                <label><span>Cliente</span><select id="programClient"></select></label>
-                <label><span>Stato</span><select id="programStatus"><option value="bozza">Bozza</option><option value="attiva">Attiva</option><option value="completata">Completata</option><option value="archiviata">Archiviata</option></select></label>
-                <label><span>Nome scheda</span><input id="programName" type="text" placeholder="Scheda forza generale"></label>
-                <label><span>Obiettivo</span><input id="programGoal" type="text" placeholder="Forza, ipertrofia, dimagrimento"></label>
-                <label><span>Settimane</span><input id="programWeeks" type="number" min="1" max="24" value="4"></label>
-                <label><span>Frequenza</span><input id="programFrequency" type="number" min="1" max="7" value="2"></label>
-              </div>
-              <label class="wide-label"><span>Note operative</span><textarea id="programNotes" rows="3"></textarea></label>
-
-              <div class="sessions-head">
-                <h3>Sedute</h3>
-                <button id="addSessionButton" class="ghost-btn" type="button">Aggiungi seduta</button>
-              </div>
-              <div id="sessionBuilder" class="session-builder"></div>
-
-              <div class="form-actions">
-                <button id="saveProgramButton" class="primary-btn" type="submit">Salva scheda</button>
-              </div>
+              <select id="programClient"></select>
+              <select id="programStatus"><option value="bozza">Bozza</option><option value="attiva">Attiva</option><option value="completata">Completata</option><option value="archiviata">Archiviata</option></select>
+              <input id="programName" type="text">
+              <input id="programGoal" type="text">
+              <input id="programWeeks" type="number" value="4">
+              <input id="programFrequency" type="number" value="2">
+              <textarea id="programNotes"></textarea>
+              <button id="addSessionButton" type="button">Aggiungi seduta</button>
+              <div id="sessionBuilder"></div>
             </form>
           </section>
         </div>
