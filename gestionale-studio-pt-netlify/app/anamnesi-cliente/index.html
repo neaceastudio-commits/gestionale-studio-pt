@@ -177,23 +177,39 @@
         return {success:false,error:String(error)};
       }
     }
+    const ACQUISIZIONE_LABELS = {
+      codice_fiscale:'Codice fiscale',
+      contatto_emergenza:'Contatto emergenza'
+    };
+    function missingColumn(error){
+      const match = String(error.message || error).match(/Could not find the '([^']+)' column/);
+      return match ? match[1] : '';
+    }
     async function saveAcquisizione(payload){
-      try{
-        return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:payload});
-      }catch(error){
-        const message = String(error.message || error);
-        if (!message.includes('codice_fiscale')) throw error;
-        const fallback = {...payload};
-        delete fallback.codice_fiscale;
-        fallback.impressioni = [fallback.impressioni, payload.codice_fiscale && 'Codice fiscale: '+payload.codice_fiscale].filter(Boolean).join('\\n');
-        return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
+      const fallback = {...payload};
+      for(let attempt=0; attempt<6; attempt++){
+        try{
+          return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
+        }catch(error){
+          const column = missingColumn(error);
+          if(!column || !(column in fallback)) throw error;
+          const value = fallback[column];
+          delete fallback[column];
+          if(value){
+            const label = ACQUISIZIONE_LABELS[column] || column;
+            fallback.impressioni = [fallback.impressioni, label+': '+value].filter(Boolean).join('\\n');
+          }
+        }
       }
+      return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
     }
     function body(){
       const id = new URLSearchParams(location.search).get('id') || genId('acq');
       const codiceFiscale = $('codiceFiscale').value.trim().toUpperCase();
+      const contattoEmergenza = $('contattoEmergenza').value.trim();
       const noteParts = [
         codiceFiscale && 'Codice fiscale: '+codiceFiscale,
+        contattoEmergenza && 'Contatto emergenza: '+contattoEmergenza,
         $('note').value && 'Note cliente: '+$('note').value,
         $('patologie').value && 'Patologie: '+$('patologie').value,
         $('farmaci').value && 'Farmaci: '+$('farmaci').value,
@@ -212,7 +228,7 @@
         email:$('email').value.trim(),
         codice_fiscale:codiceFiscale,
         professione:$('professione').value.trim(),
-        contatto_emergenza:$('contattoEmergenza').value.trim(),
+        contatto_emergenza:contattoEmergenza,
         servizi:'PT',
         obiettivo:selected('obiettivo'),
         obiettivo_libero:$('obiettivoLibero').value.trim(),
