@@ -278,23 +278,7 @@ function sessionName(index) {
 }
 
 function defaultSessions() {
-  return [{
-    id: id('session'),
-    name: 'Seduta A',
-    weekDay: '1',
-    focus: '',
-    duration: '60',
-    warmup: '',
-    cooldown: '',
-    notes: '',
-    blocks: [{
-      id: id('block'),
-      code: 'N0',
-      line: '',
-      mode: 'Singolo',
-      exercises: [],
-    }],
-  }];
+  return [];
 }
 
 function normalizeLegacyExercises(data) {
@@ -825,6 +809,10 @@ function fillProgramForm(program) {
 
 function renderSessionEditor() {
   renderExerciseBuilder();
+  if (!state.programSessions.length) {
+    els.sessionEditor.innerHTML = '<div class="empty compact-empty">Nessuna seduta inserita. Premi "Aggiungi seduta" quando vuoi iniziare.</div>';
+    return;
+  }
   els.sessionEditor.innerHTML = state.programSessions.map((session, sessionIndex) => `
     <article class="session-card" data-session-index="${sessionIndex}">
       <div class="session-head">
@@ -1550,7 +1538,6 @@ function bindEvents() {
     }
     if (removeSession) {
       state.programSessions.splice(Number(removeSession.dataset.removeSession), 1);
-      if (!state.programSessions.length) state.programSessions = defaultSessions();
     }
     if (removeExercise) {
       const [sessionIndex, blockIndex, exerciseIndex] = removeExercise.dataset.removeExercise.split(':').map(Number);

@@ -324,23 +324,7 @@ function normalizeLegacyExercises(data) {
 }
 
 function defaultSessions() {
-  return [{
-    id: isoNowId('session'),
-    name: 'Seduta A',
-    weekDay: '1',
-    focus: '',
-    duration: '60',
-    warmup: '',
-    cooldown: '',
-    notes: '',
-    blocks: [{
-      id: isoNowId('block'),
-      code: 'N0',
-      line: '',
-      mode: 'Singolo',
-      exercises: [],
-    }],
-  }];
+  return [];
 }
 
 function emptyExercise(order = 1) {
@@ -1499,6 +1483,10 @@ function readProgramForm() {
 
 function renderSessionEditor() {
   renderExerciseBuilder();
+  if (!state.programSessions.length) {
+    els.sessionEditor.innerHTML = '<div class="empty compact-empty">Nessuna seduta inserita. Premi "Aggiungi seduta" quando vuoi iniziare.</div>';
+    return;
+  }
   els.sessionEditor.innerHTML = state.programSessions.map((session, sessionIndex) => `
     <article class="session-card" data-session-index="${sessionIndex}">
       <div class="session-head">
@@ -2365,7 +2353,7 @@ function bindEvents() {
       exercises.push(emptyExercise(exercises.length + 1));
     }
 
-    if (removeSession && state.programSessions.length > 1) {
+    if (removeSession) {
       state.programSessions.splice(Number(removeSession.dataset.removeSession), 1);
     }
 
