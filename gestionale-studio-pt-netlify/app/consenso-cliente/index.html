@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Consenso Cliente - NEACEA</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--blue:#17314a;--blue-2:#2f6f95;--bg:#eef6fb;--panel:#fff;--line:#d8e7ef;--text:#17314a;--muted:#668195;--gold:#c9a84c;--green:#2f7d6d;--red:#c0392b;--soft:#edf4f8;--shadow:0 12px 34px rgba(23,49,74,.09)}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif}button,input,textarea{font:inherit}
+    .topbar{min-height:72px;background:var(--blue);color:#fff;display:flex;align-items:center;gap:14px;padding:0 24px;box-shadow:0 10px 28px rgba(16,45,69,.18)}
+    .logo{width:38px;height:38px;object-fit:contain;filter:brightness(0) invert(1)}.brand strong{display:block;font-size:22px}.brand span{color:rgba(255,255,255,.68);font-weight:700}
+    main{width:min(980px,calc(100% - 28px));margin:0 auto;padding:34px 0 54px}.hero{border-radius:18px;background:var(--blue);color:#fff;padding:34px 38px;margin-bottom:18px;box-shadow:var(--shadow)}
+    .eyebrow{margin:0 0 8px;color:rgba(255,255,255,.55);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{margin:0;font-family:'DM Serif Display',serif;font-size:clamp(34px,5vw,54px);font-weight:400;line-height:1}.hero p{max-width:720px;margin:12px 0 0;color:rgba(255,255,255,.72);font-weight:700}
+    form{display:grid;gap:16px}.section{overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow)}.section-head{display:flex;align-items:center;gap:12px;padding:17px 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.72)}.num{display:grid;place-items:center;width:32px;height:32px;border-radius:999px;background:var(--soft);color:var(--blue);font-weight:900}h2{margin:0;font-size:18px}.section-body{display:grid;gap:14px;padding:20px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}label{display:grid;gap:7px;color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);outline:none;padding:12px 13px;font-weight:700}textarea{min-height:92px;resize:vertical}input:focus,textarea:focus{border-color:var(--blue-2);box-shadow:0 0 0 3px rgba(47,111,149,.1)}
+    .text{display:grid;gap:12px;color:#34536c;font-weight:700;line-height:1.55}.text p{margin:0}.text ul{margin:0;padding-left:20px}.box{border-left:4px solid var(--gold);border-radius:10px;background:#fff8e5;padding:12px 14px;color:#80600f;font-weight:800}
+    .check{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:12px;padding:13px;background:#fbfdfe;color:var(--text);font-weight:800;text-transform:none;letter-spacing:0;font-size:14px}.check input{width:auto;margin-top:3px}
+    .actions{display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;padding:14px 0;background:linear-gradient(transparent,var(--bg) 30%)}.primary{min-height:46px;border:0;border-radius:10px;background:var(--blue);color:#fff;padding:0 22px;font-weight:900;cursor:pointer}.primary:disabled{opacity:.55;cursor:wait}
+    .toast{position:fixed;left:50%;bottom:24px;z-index:20;transform:translateX(-50%) translateY(80px);opacity:0;border-radius:999px;padding:12px 20px;background:var(--blue);color:#fff;font-weight:900;box-shadow:var(--shadow);transition:.2s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.error{background:var(--red)}
+    .done{display:none;border:1px solid #b8dfcf;border-radius:14px;background:#e8f5ee;color:var(--green);padding:22px;font-weight:900}.done.show{display:block}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}.topbar{padding:0 16px}.hero{padding:28px 24px}.actions{justify-content:stretch}.primary{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="../portale-personal-trainer/assets/neacea-logo.png" alt="NEACEA">
+    <div class="brand"><strong>Neacea</strong><span>Consenso cliente</span></div>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Modulo cliente</p>
+      <h1>Consenso informato PT</h1>
+      <p>Leggi e conferma prima dell'inizio del percorso. Il consenso resta archiviato nel gestionale NEACEA.</p>
+    </section>
+
+    <div id="doneBox" class="done">Consenso inviato correttamente. Grazie, abbiamo registrato la conferma.</div>
+
+    <form id="consensoForm">
+      <section class="section">
+        <div class="section-head"><div class="num">1</div><h2>Dati cliente</h2></div>
+        <div class="section-body">
+          <div class="grid">
+            <label>Nome *<input id="nome" required autocomplete="given-name"></label>
+            <label>Cognome *<input id="cognome" required autocomplete="family-name"></label>
+            <label>Email *<input id="email" type="email" required autocomplete="email"></label>
+            <label>Telefono<input id="telefono" type="tel" autocomplete="tel"></label>
+            <label>Data di nascita<input id="nascita" type="date"></label>
+            <label>Codice fiscale<input id="codiceFiscale"></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div class="num">2</div><h2>Informazioni sul servizio</h2></div>
+        <div class="section-body text">
+          <p>Il servizio di Personal Training, valutazione funzionale, educazione motoria e programmazione dell'allenamento e' finalizzato al miglioramento della condizione fisica, della consapevolezza motoria e del benessere generale.</p>
+          <p>Le attivita' non sostituiscono visite mediche, diagnosi, terapie, fisioterapia o indicazioni sanitarie specialistiche.</p>
+          <ul>
+            <li>Il cliente deve comunicare patologie, infortuni, farmaci, limitazioni e variazioni dello stato di salute.</li>
+            <li>Il team puo' sospendere o modificare l'attivita' se emergono condizioni non compatibili con l'allenamento.</li>
+            <li>Per condizioni particolari puo' essere richiesto parere medico o documentazione integrativa.</li>
+          </ul>
+          <div class="box">In caso di dolore, malessere, capogiro, difficolta respiratoria o sintomi anomali durante l'attivita', il cliente deve avvisare subito il trainer.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div class="num">3</div><h2>Consensi e dichiarazioni</h2></div>
+        <div class="section-body">
+          <label class="check"><input id="c1" type="checkbox" required> <span>Dichiaro di aver fornito informazioni veritiere e complete sul mio stato di salute e sulle mie limitazioni.</span></label>
+          <label class="check"><input id="c2" type="checkbox" required> <span>Accetto lo svolgimento delle attivita' di Personal Training e valutazione funzionale secondo le indicazioni dello staff NEACEA.</span></label>
+          <label class="check"><input id="c3" type="checkbox" required> <span>Comprendo che l'attivita' fisica comporta normali rischi legati allo sforzo e all'esecuzione degli esercizi.</span></label>
+          <label class="check"><input id="c4" type="checkbox" required> <span>Autorizzo il trattamento dei dati necessari alla gestione del percorso, secondo normativa privacy applicabile.</span></label>
+          <label class="check"><input id="cFoto" type="checkbox"> <span>Autorizzo l'uso interno di foto/video tecnici per valutazione posturale, progressi e analisi dell'esecuzione. Non autorizza uso promozionale.</span></label>
+          <label class="check"><input id="cMarketing" type="checkbox"> <span>Autorizzo eventuali comunicazioni informative/promozionali da NEACEA. Facoltativo.</span></label>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div class="num">4</div><h2>Firma</h2></div>
+        <div class="section-body">
+          <div class="grid">
+            <label>Firma cliente *<input id="firma" required placeholder="Scrivi nome e cognome"></label>
+            <label>Data consenso<input id="dataConsenso" type="date"></label>
+          </div>
+          <label>Note o comunicazioni<textarea id="note"></textarea></label>
+        </div>
+      </section>
+
+      <div class="actions"><button id="submitBtn" class="primary" type="submit">Invia consenso</button></div>
+    </form>
+  </main>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+    const $ = (id) => document.getElementById(id);
+    $('dataConsenso').value = new Date().toISOString().slice(0,10);
+    function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
+    function toast(message,isError=false){const el=$('toast');el.textContent=message;el.className='toast show'+(isError?' error':'');setTimeout(()=>el.classList.remove('show'),3200)}
+    async function sb(table,{method='GET',query='',body=null,headers={}}={}){
+      const res = await fetch(SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query,{method,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',...headers},body:body?JSON.stringify(body):undefined});
+      if(!res.ok) throw new Error(await res.text());
+      if(res.status===204) return null;
+      const text=await res.text();
+      return text?JSON.parse(text):null;
+    }
+    function payload(){
+      const params = new URLSearchParams(location.search);
+      const id = params.get('id') || genId('cons');
+      const clienteId = params.get('cliente') || params.get('clienteId') || '';
+      const data = {
+        client_id: clienteId,
+        nome:$('nome').value.trim(),
+        cognome:$('cognome').value.trim(),
+        email:$('email').value.trim(),
+        telefono:$('telefono').value.trim(),
+        nascita:$('nascita').value || null,
+        codice_fiscale:$('codiceFiscale').value.trim(),
+        firma:$('firma').value.trim(),
+        data_consenso:$('dataConsenso').value || new Date().toISOString().slice(0,10),
+        consensi:{
+          salute:$('c1').checked,
+          attivita:$('c2').checked,
+          rischio:$('c3').checked,
+          privacy:$('c4').checked,
+          foto_tecniche:$('cFoto').checked,
+          marketing:$('cMarketing').checked,
+        },
+        note:$('note').value.trim(),
+        source:'consenso-cliente',
+        user_agent:navigator.userAgent,
+        submitted_at:new Date().toISOString(),
+      };
+      return { id, cliente_id: clienteId || null, email:data.email, data, updated_at:new Date().toISOString() };
+    }
+    $('consensoForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const btn=$('submitBtn');
+      btn.disabled=true;btn.textContent='Invio in corso...';
+      try{
+        await sb('consensi_cliente',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:payload()});
+        $('consensoForm').style.display='none';
+        $('doneBox').classList.add('show');
+        toast('Consenso inviato');
+      }catch(error){
+        toast('Invio non riuscito: '+String(error.message||error).slice(0,180),true);
+      }finally{
+        btn.disabled=false;btn.textContent='Invia consenso';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anamnesi Cliente - NEACEA</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--blue:#17314a;--blue-2:#2f6f95;--bg:#eef6fb;--panel:#fff;--line:#d8e7ef;--text:#17314a;--muted:#668195;--faint:#94abba;--gold:#c9a84c;--green:#2f7d6d;--red:#c0392b;--red-soft:#fdecea;--soft:#edf4f8;--shadow:0 12px 34px rgba(23,49,74,.09)}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif}
+    button,input,select,textarea{font:inherit}
+    .topbar{min-height:72px;background:var(--blue);color:#fff;display:flex;align-items:center;gap:14px;padding:0 24px;box-shadow:0 10px 28px rgba(16,45,69,.18)}
+    .logo{width:38px;height:38px;object-fit:contain;filter:brightness(0) invert(1)}
+    .brand strong{display:block;font-size:22px}.brand span{color:rgba(255,255,255,.68);font-weight:700}
+    main{width:min(980px,calc(100% - 28px));margin:0 auto;padding:34px 0 54px}
+    .hero{border-radius:18px;background:var(--blue);color:#fff;padding:34px 38px;margin-bottom:18px;box-shadow:var(--shadow)}
+    .eyebrow{margin:0 0 8px;color:rgba(255,255,255,.55);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    h1{margin:0;font-family:'DM Serif Display',serif;font-size:clamp(36px,5vw,56px);font-weight:400;line-height:1}
+    .hero p{max-width:680px;margin:12px 0 0;color:rgba(255,255,255,.72);font-weight:700}
+    form{display:grid;gap:16px}
+    .section{overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+    .section-head{display:flex;align-items:center;gap:12px;padding:17px 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.72)}
+    .num{display:grid;place-items:center;width:32px;height:32px;border-radius:999px;background:var(--soft);color:var(--blue);font-weight:900}
+    h2{margin:0;font-size:18px}
+    .section-body{display:grid;gap:14px;padding:20px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+    label{display:grid;gap:7px;color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+    .field-block{display:grid;gap:7px}.field-title{color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);outline:none;padding:12px 13px;font-weight:700}
+    textarea{min-height:92px;resize:vertical;text-transform:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--blue-2);box-shadow:0 0 0 3px rgba(47,111,149,.1)}
+    .choices{display:flex;flex-wrap:wrap;gap:8px}
+    .choice{position:relative}
+    .choice input{position:absolute;opacity:0;pointer-events:none}
+    .choice span{display:inline-flex;align-items:center;min-height:38px;border:1px solid var(--line);border-radius:999px;padding:8px 13px;background:#fff;color:var(--muted);font-weight:900;cursor:pointer}
+    .choice input:checked+span{border-color:var(--blue-2);background:#eaf7fb;color:var(--blue)}
+    .note{border-left:4px solid var(--gold);border-radius:10px;background:#fff8e5;padding:12px 14px;color:#80600f;font-weight:800}
+    .consent-line{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:12px;padding:13px;background:#fbfdfe;color:var(--text);font-weight:800}
+    .consent-line input{width:auto;margin-top:3px}
+    .actions{display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;padding:14px 0;background:linear-gradient(transparent,var(--bg) 30%)}
+    .primary{min-height:46px;border:0;border-radius:10px;background:var(--blue);color:#fff;padding:0 22px;font-weight:900;cursor:pointer}
+    .primary:disabled{opacity:.55;cursor:wait}
+    .toast{position:fixed;left:50%;bottom:24px;z-index:20;transform:translateX(-50%) translateY(80px);opacity:0;border-radius:999px;padding:12px 20px;background:var(--blue);color:#fff;font-weight:900;box-shadow:var(--shadow);transition:.2s}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.error{background:var(--red)}
+    .done{display:none;border:1px solid #b8dfcf;border-radius:14px;background:#e8f5ee;color:var(--green);padding:22px;font-weight:900}
+    .done.show{display:block}
+    @media(max-width:760px){.grid,.grid.three{grid-template-columns:1fr}.topbar{padding:0 16px}.hero{padding:28px 24px}.actions{justify-content:stretch}.primary{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="../portale-personal-trainer/assets/neacea-logo.png" alt="NEACEA">
+    <div class="brand"><strong>Neacea</strong><span>Anamnesi cliente</span></div>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Modulo cliente</p>
+      <h1>Anamnesi iniziale</h1>
+      <p>Compila con calma: queste informazioni servono al team NEACEA per organizzare il percorso in modo piu' preciso e sicuro.</p>
+    </section>
+
+    <div id="doneBox" class="done">Anamnesi inviata correttamente. Grazie, abbiamo ricevuto i dati.</div>
+
+    <form id="anamnesiForm">
+      <section class="section">
+        <div class="section-head"><div class="num">1</div><h2>Dati personali</h2></div>
+        <div class="section-body">
+          <div class="grid">
+            <label>Nome *<input id="nome" required autocomplete="given-name"></label>
+            <label>Cognome *<input id="cognome" required autocomplete="family-name"></label>
+            <label>Data di nascita<input id="nascita" type="date"></label>
+            <label>Sesso<select id="sesso"><option value="">Seleziona</option><option>Maschio</option><option>Femmina</option><option>Altro</option></select></label>
+            <label>Telefono<input id="telefono" type="tel" autocomplete="tel"></label>
+            <label>Email *<input id="email" type="email" required autocomplete="email"></label>
+            <label>Professione<input id="professione"></label>
+            <label>Contatto emergenza<input id="contattoEmergenza" placeholder="Nome e telefono"></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div class="num">2</div><h2>Obiettivo e disponibilita'</h2></div>
+        <div class="section-body">
+          <div class="field-block"><div class="field-title">Obiettivo principale *</div>
+            <div class="choices" data-radio="obiettivo">
+              <label class="choice"><input name="obiettivo" type="radio" value="Dimagrimento" required><span>Dimagrimento</span></label>
+              <label class="choice"><input name="obiettivo" type="radio" value="Massa muscolare"><span>Massa muscolare</span></label>
+              <label class="choice"><input name="obiettivo" type="radio" value="Tonificazione"><span>Tonificazione</span></label>
+              <label class="choice"><input name="obiettivo" type="radio" value="Benessere generale"><span>Benessere generale</span></label>
+              <label class="choice"><input name="obiettivo" type="radio" value="Performance sportiva"><span>Performance sportiva</span></label>
+              <label class="choice"><input name="obiettivo" type="radio" value="Riabilitazione"><span>Riabilitazione</span></label>
+              <label class="choice"><input name="obiettivo" type="radio" value="Postura"><span>Postura</span></label>
+            </div>
+          </div>
+          <label>Obiettivo con le tue parole<textarea id="obiettivoLibero"></textarea></label>
+          <div class="grid">
+            <label>Esperienza con allenamento<select id="esperienza"><option value="">Seleziona</option><option>Nessuna</option><option>Palestra in passato</option><option>Attivita sportiva</option><option>Gia con un PT</option><option>Allenamento autonomo</option></select></label>
+            <label>Sessioni desiderate<select id="sessioni"><option value="">Seleziona</option><option>1x settimana</option><option>2x settimana</option><option>3x settimana</option><option>4x+ settimana</option></select></label>
+          </div>
+          <div class="field-block"><div class="field-title">Orari preferiti</div>
+            <div class="choices">
+              <label class="choice"><input name="orari" type="checkbox" value="Mattina 6-9"><span>Mattina 6-9</span></label>
+              <label class="choice"><input name="orari" type="checkbox" value="Mattina 9-12"><span>Mattina 9-12</span></label>
+              <label class="choice"><input name="orari" type="checkbox" value="Pausa pranzo"><span>Pausa pranzo</span></label>
+              <label class="choice"><input name="orari" type="checkbox" value="Pomeriggio"><span>Pomeriggio</span></label>
+              <label class="choice"><input name="orari" type="checkbox" value="Sera 18-20"><span>Sera 18-20</span></label>
+              <label class="choice"><input name="orari" type="checkbox" value="Weekend"><span>Weekend</span></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div class="num">3</div><h2>Anamnesi motoria e salute</h2></div>
+        <div class="section-body">
+          <div class="note">Indica solo informazioni utili allo svolgimento dell'attivita' fisica. In caso di dubbi medici o condizioni importanti, sara' richiesto confronto con medico/specialista.</div>
+          <div class="grid">
+            <label>Livello attivita' fisica attuale<select id="attivita"><option value="">Seleziona</option><option>Sedentario/a</option><option>Leggera</option><option>Moderata</option><option>Alta</option></select></label>
+            <label>Sport praticati<input id="sport"></label>
+          </div>
+          <label>Patologie, diagnosi o condizioni rilevanti<textarea id="patologie" placeholder="Es. ipertensione, diabete, problemi cardiaci, altro..."></textarea></label>
+          <label>Farmaci o terapie in corso<textarea id="farmaci"></textarea></label>
+          <label>Infortuni, interventi o dolori attuali<textarea id="infortuni"></textarea></label>
+          <label>Limitazioni, movimenti da evitare, indicazioni ricevute<textarea id="limitazioni"></textarea></label>
+          <div class="grid">
+            <label>Stress percepito<select id="stress"><option value="">Seleziona</option><option>Basso</option><option>Medio</option><option>Alto</option><option>Molto alto</option></select></label>
+            <label>Sonno medio<select id="sonno"><option value="">Seleziona</option><option>Meno di 5 ore</option><option>5-6 ore</option><option>7-8 ore</option><option>Oltre 8 ore</option><option>Qualita scarsa</option></select></label>
+          </div>
+          <label>Note aggiuntive<textarea id="note"></textarea></label>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><div class="num">4</div><h2>Conferma invio</h2></div>
+        <div class="section-body">
+          <label class="consent-line"><input id="veridicita" type="checkbox" required> <span>Dichiaro che le informazioni inserite sono corrette e mi impegno a comunicare eventuali variazioni rilevanti.</span></label>
+          <label class="consent-line"><input id="privacy" type="checkbox" required> <span>Autorizzo NEACEA Studio a trattare questi dati per la gestione del percorso richiesto.</span></label>
+        </div>
+      </section>
+
+      <div class="actions"><button id="submitBtn" class="primary" type="submit">Invia anamnesi</button></div>
+    </form>
+  </main>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+    const $ = (id) => document.getElementById(id);
+    function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
+    function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value || ''}
+    function checked(name){return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value).join(', ')}
+    function toast(message,isError=false){const el=$('toast');el.textContent=message;el.className='toast show'+(isError?' error':'');setTimeout(()=>el.classList.remove('show'),3200)}
+    async function sb(table,{method='GET',query='',body=null,headers={}}={}){
+      const res = await fetch(SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query,{method,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',...headers},body:body?JSON.stringify(body):undefined});
+      if(!res.ok) throw new Error(await res.text());
+      if(res.status===204) return null;
+      const text=await res.text();
+      return text?JSON.parse(text):null;
+    }
+    function body(){
+      const id = new URLSearchParams(location.search).get('id') || genId('acq');
+      const noteParts = [
+        $('note').value && 'Note cliente: '+$('note').value,
+        $('patologie').value && 'Patologie: '+$('patologie').value,
+        $('farmaci').value && 'Farmaci: '+$('farmaci').value,
+        $('infortuni').value && 'Infortuni: '+$('infortuni').value,
+        $('limitazioni').value && 'Limitazioni: '+$('limitazioni').value,
+        $('stress').value && 'Stress: '+$('stress').value,
+        $('sonno').value && 'Sonno: '+$('sonno').value,
+      ].filter(Boolean).join('\\n');
+      return {
+        id,
+        nome:$('nome').value.trim(),
+        cognome:$('cognome').value.trim(),
+        nascita:$('nascita').value || null,
+        sesso:$('sesso').value,
+        telefono:$('telefono').value.trim(),
+        email:$('email').value.trim(),
+        professione:$('professione').value.trim(),
+        contatto_emergenza:$('contattoEmergenza').value.trim(),
+        servizi:'PT',
+        obiettivo:selected('obiettivo'),
+        obiettivo_libero:$('obiettivoLibero').value.trim(),
+        esperienza:$('esperienza').value,
+        inattivo:$('attivita').value,
+        sport:$('sport').value.trim(),
+        sessioni_pref:$('sessioni').value,
+        orari:checked('orari'),
+        impressioni:noteParts,
+        stato:'In valutazione',
+        updated_at:new Date().toISOString(),
+      };
+    }
+    $('anamnesiForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const btn=$('submitBtn');
+      btn.disabled=true;btn.textContent='Invio in corso...';
+      try{
+        const payload=body();
+        await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:payload});
+        $('anamnesiForm').style.display='none';
+        $('doneBox').classList.add('show');
+        toast('Anamnesi inviata');
+      }catch(error){
+        toast('Invio non riuscito: '+String(error.message||error).slice(0,180),true);
+      }finally{
+        btn.disabled=false;btn.textContent='Invia anamnesi';
+      }
+    });
+  </script>
+</body>
+</html>
