@@ -1,8 +1,8 @@
 // Incolla questo blocco nello stesso Google Apps Script usato dalla nutrizione.
 // Poi aggiungi il case indicato dentro lo switch di doPost.
 
-// Dentro doPost(e), nello switch(action), aggiungi:
-// case 'notifyModuloPT': return handleNotifyModuloPT(data);
+// Dentro doPost(e), nello switch(action), aggiungi questa riga vera:
+// case 'notifyModuloPT':         return handleNotifyModuloPT(data);
 
 const EMAIL_DESK_PT = 'neacea.desk@gmail.com';
 
