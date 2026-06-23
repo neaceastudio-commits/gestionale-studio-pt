@@ -102,46 +102,138 @@
       </section>
 
       <section id="schede" class="view">
-        <div class="program-shell">
+        <div class="toolbar programs-toolbar">
+          <select id="programClientFilter" class="select">
+            <option value="">Tutti i miei clienti</option>
+          </select>
+          <select id="programStatusFilter" class="select">
+            <option value="">Tutti gli stati</option>
+            <option value="bozza">Bozza</option>
+            <option value="attiva">Attiva</option>
+            <option value="completata">Completata</option>
+            <option value="archiviata">Archiviata</option>
+          </select>
+          <button id="newProgramButton" class="primary-btn" type="button">Nuova scheda</button>
+        </div>
+
+        <div class="program-layout">
           <section class="panel">
             <div class="panel-head">
-              <h2>Schede dei miei clienti</h2>
-              <button id="newProgramButton" class="primary-btn slim" type="button">Apri editor completo</button>
-            </div>
-            <div class="program-toolbar">
-              <select id="programClientFilter" class="select"></select>
-              <select id="programStatusFilter" class="select">
-                <option value="">Tutti gli stati</option>
-                <option value="bozza">Bozza</option>
-                <option value="attiva">Attiva</option>
-                <option value="completata">Completata</option>
-                <option value="archiviata">Archiviata</option>
-              </select>
+              <h2>Schede PT</h2>
+              <span id="programCount" class="pill">0</span>
             </div>
             <div id="programList" class="program-list"></div>
           </section>
 
-          <section class="panel program-editor">
+          <section class="panel program-editor-panel">
             <div class="panel-head">
-              <h2 id="programTitle">Editor schede completo</h2>
-              <span id="programState" class="pill">NEACEA</span>
+              <h2 id="programEditorTitle">Nuova scheda</h2>
+              <span id="programEditorStatus" class="pill">bozza</span>
             </div>
-            <div class="editor-shortcut">
-              <p>La creazione e modifica schede deve usare l'editor completo gia' costruito, non una seconda versione semplificata.</p>
-              <button class="primary-btn" type="button" data-open-full-editor>Apri editor schede NEACEA</button>
-              <p class="editor-note">Da qui il PT vede l'elenco delle schede e apre lo strumento completo per creare o modificare solo cio' che e' di sua pertinenza.</p>
-            </div>
-            <form id="programForm" class="program-form hidden" aria-hidden="true">
+
+            <form id="programForm" class="program-form">
               <input id="programId" type="hidden">
-              <select id="programClient"></select>
-              <select id="programStatus"><option value="bozza">Bozza</option><option value="attiva">Attiva</option><option value="completata">Completata</option><option value="archiviata">Archiviata</option></select>
-              <input id="programName" type="text">
-              <input id="programGoal" type="text">
-              <input id="programWeeks" type="number" value="4">
-              <input id="programFrequency" type="number" value="2">
-              <textarea id="programNotes"></textarea>
-              <button id="addSessionButton" type="button">Aggiungi seduta</button>
-              <div id="sessionBuilder"></div>
+              <div class="program-form-grid">
+                <label>
+                  <span>Cliente</span>
+                  <select id="programClient"></select>
+                </label>
+                <label>
+                  <span>Stato</span>
+                  <select id="programStatus">
+                    <option value="bozza">Bozza</option>
+                    <option value="attiva">Attiva</option>
+                    <option value="completata">Completata</option>
+                    <option value="archiviata">Archiviata</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Nome programma</span>
+                  <input id="programName" type="text" placeholder="Mesociclo forza generale">
+                </label>
+                <label>
+                  <span>Obiettivo</span>
+                  <input id="programGoal" type="text" placeholder="Ricomposizione, forza, ipertrofia">
+                </label>
+                <label>
+                  <span>Livello</span>
+                  <select id="programLevel">
+                    <option value="base">Base</option>
+                    <option value="intermedio">Intermedio</option>
+                    <option value="avanzato">Avanzato</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Settimane</span>
+                  <input id="programWeeks" type="number" min="1" max="24" value="4">
+                </label>
+                <label>
+                  <span>Frequenza settimanale</span>
+                  <input id="programFrequency" type="number" min="1" max="7" value="2">
+                </label>
+                <label>
+                  <span>Split</span>
+                  <input id="programSplit" type="text" placeholder="Full body / Upper-Lower">
+                </label>
+                <label>
+                  <span>Data inizio</span>
+                  <input id="programStart" type="date">
+                </label>
+                <label>
+                  <span>Data fine</span>
+                  <input id="programEnd" type="date">
+                </label>
+              </div>
+
+              <label class="wide-label">
+                <span>Note generali</span>
+                <textarea id="programNotes" rows="3"></textarea>
+              </label>
+
+              <div class="section-title">Stringa NEACEA finale</div>
+              <div id="neaceaString" class="neacea-string">-</div>
+
+              <div class="exercise-builder">
+                <div class="builder-column">
+                  <div class="section-title">Aggiungi esercizio</div>
+                  <div class="builder-fast-row">
+                    <input id="exerciseSearch" class="search" type="search" placeholder="Cerca esercizio">
+                    <input id="manualExerciseName" type="text" placeholder="Oppure scrivi manuale">
+                    <select id="builderRest">
+                      <option>60"</option>
+                      <option>90"</option>
+                      <option value="2'" selected>2'</option>
+                      <option>3'</option>
+                      <option>4'</option>
+                      <option>Libero</option>
+                    </select>
+                    <select id="builderSession"></select>
+                    <button id="addPickedExerciseButton" class="primary-btn" type="button">Aggiungi</button>
+                  </div>
+                  <div id="exercisePickList" class="pick-list"></div>
+                </div>
+                <div class="builder-column">
+                  <div class="section-title">Progressione</div>
+                  <div id="progressionTabs" class="progression-tabs"></div>
+                  <div id="progressionPickList" class="pick-list progression-picks"></div>
+                  <div id="progressionPreview" class="progression-preview"></div>
+                  <label class="wide-label">
+                    <span>Note tecniche</span>
+                    <textarea id="builderNotes" rows="2" placeholder="Setup, cue, limiti"></textarea>
+                  </label>
+                </div>
+              </div>
+
+              <div class="section-title with-action">
+                <span>Sedute</span>
+                <button id="addSessionButton" class="secondary-btn" type="button">Aggiungi seduta</button>
+              </div>
+              <div id="sessionEditor" class="session-editor"></div>
+
+              <div class="program-actions">
+                <button class="primary-btn" type="submit">Salva scheda</button>
+                <button id="archiveProgramButton" class="danger-btn" type="button">Archivia</button>
+              </div>
             </form>
           </section>
         </div>
