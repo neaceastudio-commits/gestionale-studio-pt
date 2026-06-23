@@ -1343,17 +1343,22 @@ const App = {
     UI.showToast('Reset completo eseguito', 'success');
   },
 
+  async refreshFromSupabase({ silent = true } = {}) {
+    try {
+      await SupabaseSync.pullAll();
+      Calendar.render();
+      if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
+      if (!silent) UI.showToast('Calendario aggiornato da Supabase', 'success');
+    } catch (err) {
+      console.warn('[Supabase] refresh non riuscito:', err);
+      if (!silent) UI.showToast('Aggiornamento Supabase non riuscito', 'error');
+    }
+  },
+
   // ── INIT ─────────────────────────────────────────────
   async init() {
     State.init();
-    try {
-      await SupabaseSync.pullAll();
-    } catch (err) {
-      console.warn('[Supabase] sync non riuscita:', err);
-      UI.showToast('Supabase non raggiungibile: uso dati locali', 'error');
-    }
-
-
+    await App.refreshFromSupabase({ silent: true });
 
     document.querySelectorAll('[data-view]').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
@@ -1364,6 +1369,14 @@ const App = {
     });
 
     Calendar.switchView('dashboard');
+
+    window.addEventListener('focus', () => App.refreshFromSupabase({ silent: true }));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) App.refreshFromSupabase({ silent: true });
+    });
+    setInterval(() => {
+      if (!document.hidden) App.refreshFromSupabase({ silent: true });
+    }, 30000);
 
     if (CONFIG.SHEETS.enabled) setTimeout(() => Sheets.fullSync(), 1500);
   },

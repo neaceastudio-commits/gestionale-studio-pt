@@ -617,6 +617,17 @@ function field(label, value) {
   return `<div class="field"><span>${esc(label)}</span><strong>${esc(value || '-')}</strong></div>`;
 }
 
+function hasValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value ?? '').trim() !== '';
+}
+
+function renderAvailableFields(items, emptyText) {
+  const fields = items.filter((item) => hasValue(item.value));
+  if (!fields.length) return `<div class="empty compact-empty">${esc(emptyText)}</div>`;
+  return `<div class="info-grid">${fields.map((item) => field(item.label, item.value)).join('')}</div>`;
+}
+
 function renderClientDetail() {
   const client = clientById(state.selectedClientId);
   if (!client) {
@@ -644,18 +655,16 @@ function renderClientDetail() {
     </div>
     <div class="detail-block">
       <h3 class="detail-block-title">Anamnesi e riferimenti</h3>
-      <div class="info-grid">
-        ${field('Esperienza', client.esperienza)}
-        ${field('Attivita fisica', client.livello_attivita_fisica)}
-        ${field('Sport', client.sport)}
-        ${field('Patologie', client.patologie)}
-        ${field('Farmaci', client.farmaci)}
-        ${field('Infortuni', client.infortuni)}
-        ${field('Limitazioni', client.limitazioni)}
-        ${field('Stress', client.stress)}
-        ${field('Sonno', client.sonno)}
-        ${field('Note operative', client.note_operative)}
-      </div>
+      ${renderAvailableFields([
+        { label: 'Attivita fisica', value: client.livello_attivita_fisica },
+        { label: 'Patologie', value: client.patologie },
+        { label: 'Farmaci', value: client.farmaci },
+        { label: 'Infortuni', value: client.infortuni },
+        { label: 'Limitazioni', value: client.limitazioni },
+        { label: 'Stress', value: client.stress },
+        { label: 'Sonno', value: client.sonno },
+        { label: 'Note operative', value: client.note_operative },
+      ], 'Nessuna anamnesi PT collegata o compilata per questo cliente.')}
     </div>
     <div class="detail-block">
       <h3 class="detail-block-title">Prossime prenotazioni</h3>
@@ -670,6 +679,7 @@ function renderClientDetail() {
 
 function renderSessionCard(session) {
   const mine = session.trainer_id === state.currentPt?.id;
+  const isDone = session.status === 'fatto';
   const clientIds = sessionClientIds(session);
   const normalizedServiceId = normalizeServiceId(session.service_id);
   const service = SERVICES[normalizedServiceId] || {};
@@ -686,7 +696,7 @@ function renderSessionCard(session) {
       ${mine ? `
         <div class="session-actions">
           <button class="ghost-btn slim" type="button" data-edit-session="${esc(session.appointment_id || '')}">Modifica</button>
-          <button class="ghost-btn slim" type="button" data-session-done="${esc(session.appointment_id || '')}">Segna fatta</button>
+          <button class="ghost-btn slim ${isDone ? 'done-btn' : ''}" type="button" data-session-done="${esc(session.appointment_id || '')}" ${isDone ? 'disabled aria-disabled="true"' : ''}>${isDone ? 'Fatta' : 'Segna fatta'}</button>
         </div>
       ` : ''}
     </article>
@@ -1205,6 +1215,11 @@ function renderMonth(sessions) {
 
 async function markSessionDone(appointmentId) {
   if (!appointmentId) return;
+  const session = state.sessions.find((item) => item.appointment_id === appointmentId);
+  if (session?.status === 'fatto') {
+    toast('Seduta gia segnata come fatta');
+    return;
+  }
   await sb('appointments', `?id=eq.${encodeURIComponent(appointmentId)}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
