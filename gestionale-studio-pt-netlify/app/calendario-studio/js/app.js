@@ -1018,6 +1018,80 @@ const App = {
     return clients[idx];
   },
 
+  _packageAvailabilitySuggestions(appt, limit = 8) {
+    const svc = Services.getService(appt.serviceId);
+    if (!svc || !appt.date) return [];
+
+    const start = Services.timeToMin(CONFIG.workHours.start);
+    const end = Services.timeToMin(CONFIG.workHours.end);
+    const duration = Number(appt.durationMin || svc.durationMin || 60);
+    const buffer = Number(appt.bufferMin ?? svc.bufferMin ?? CONFIG.defaultBufferMin ?? 0);
+    const operators = State.getOperators().filter(o => o.active !== false);
+    const suggestions = [];
+    const seen = new Set();
+
+    for (let t = start; t + duration <= end && suggestions.length < limit; t += 15) {
+      const time = Services.minToTime(t);
+      const candidates = appt.operatorId
+        ? [appt.operatorId, ...operators.map(o => o.id).filter(id => id !== appt.operatorId)]
+        : [null, ...operators.map(o => o.id)];
+
+      for (const operatorId of candidates) {
+        const draft = { ...appt, startTime: time, operatorId };
+        const validation = Services.canBookAppointment(draft, { strictPackageDays: false });
+        if (!validation.ok) continue;
+
+        const key = `${time}-${operatorId || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const opName = operatorId ? Services.operatorFullName(operatorId) : 'senza PT assegnato';
+        const roomInfo = svc.room
+          ? ` · ${CONFIG.ROOMS[svc.room]?.label || 'Sala'} ok`
+          : '';
+        suggestions.push(`${time} con ${opName}${roomInfo}`);
+        break;
+      }
+    }
+
+    return suggestions;
+  },
+
+  _showPackageAvailabilityError(title, appt, errors) {
+    const suggestions = App._packageAvailabilitySuggestions(appt);
+    const detail = [
+      title,
+      '',
+      ...errors.map(e => `- ${e}`),
+      '',
+      suggestions.length
+        ? 'Orari disponibili nella stessa data:\n' + suggestions.map(s => `- ${s}`).join('\n')
+        : 'Non ho trovato orari disponibili nella stessa data con sala/cliente/PT compatibili.'
+    ].join('\n');
+
+    UI.showToast(errors[0] || 'Slot non disponibile', 'error');
+    alert(detail);
+  },
+
+  _plannedPackageFutureChanges(clientId, fromDate, time, operatorId, serviceId) {
+    return State.getAppointments()
+      .filter(a =>
+        a.status !== 'annullato' &&
+        a.status !== 'fatto' &&
+        a.date >= fromDate &&
+        a.serviceId === serviceId &&
+        Array.isArray(a.clientIds) &&
+        a.clientIds.includes(clientId)
+      )
+      .map(appt => {
+        const patch = {};
+        if (time) patch.startTime = time;
+        if (operatorId) patch.operatorId = operatorId;
+        return { appt, patch, next: { ...appt, ...patch } };
+      })
+      .filter(change => Object.keys(change.patch).length);
+  },
+
   _savePackageSchedule(clientId) {
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
@@ -1030,29 +1104,28 @@ const App = {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
     }
+    const serviceId = App._packageServiceId(currentClient);
+    const changes = App._plannedPackageFutureChanges(clientId, fromDate, time, operatorId, serviceId);
+    const conflicts = changes
+      .map(change => ({ ...change, validation: Services.canBookAppointment(change.next, { strictPackageDays: false }) }))
+      .filter(change => !change.validation.ok);
+
+    if (conflicts.length) {
+      const first = conflicts[0];
+      App._showPackageAvailabilityError(
+        `Cambio non salvato: ${conflicts.length} sedute future hanno conflitti.`,
+        first.next,
+        first.validation.errors
+      );
+      App.openPackageOverview(clientId);
+      return;
+    }
+
     const saved = App._updateClientPackageDays(clientId, days);
     if (!saved) return;
-    const serviceId = App._packageServiceId(currentClient);
-    const future = State.getAppointments().filter(a =>
-      a.status !== 'annullato' &&
-      a.status !== 'fatto' &&
-      a.date >= fromDate &&
-      a.serviceId === serviceId &&
-      Array.isArray(a.clientIds) &&
-      a.clientIds.includes(clientId)
-    );
-    const touched = [];
-    future.forEach(appt => {
-      const patch = {};
-      if (time) patch.startTime = time;
-      if (operatorId) patch.operatorId = operatorId;
-      if (!Object.keys(patch).length) return;
-      const next = { ...appt, ...patch };
-      const validation = Services.canBookAppointment(next, { strictPackageDays: false });
-      if (!validation.ok) return;
-      const updated = Services.updateAppointment(appt.id, patch);
-      if (updated) touched.push(updated);
-    });
+    const touched = changes
+      .map(change => Services.updateAppointment(change.appt.id, change.patch))
+      .filter(Boolean);
     touched.forEach(appt => SupabaseSync.pushAppointment(appt));
     if (CONFIG.SHEETS.enabled) touched.forEach(appt => Sheets.pushAppointment(appt));
     Calendar.render();
@@ -1187,7 +1260,7 @@ const App = {
     const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperator, status: nextStatus };
     const validation = Services.canBookAppointment(patch);
     if (!validation.ok) {
-      UI.showToast(validation.errors[0], 'error');
+      App._showPackageAvailabilityError('Cambio singola seduta non salvato.', patch, validation.errors);
       return;
     }
 
