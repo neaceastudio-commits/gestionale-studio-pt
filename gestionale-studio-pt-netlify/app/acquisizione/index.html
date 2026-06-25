@@ -546,70 +546,10 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
     <div class="sch-grid" id="sch-content"></div>
     <div class="sch-data">
       <div class="data-tabs">
-        <button class="data-tab active" id="tab-visbody" onclick="setDataPane('visbody')">Visbody</button>
-        <button class="data-tab" id="tab-foto" onclick="setDataPane('foto')">Foto</button>
+        <button class="data-tab active" id="tab-foto" onclick="setDataPane('foto')">Foto</button>
       </div>
 
-      <div class="data-pane active" id="pane-visbody">
-        <div class="data-head">
-          <div>
-            <div class="data-title">Dati Fisici & Composizione</div>
-            <div class="data-sub" id="fisici-data-label">Nessun rilevamento</div>
-          </div>
-          <button class="btn-primary" onclick="openMo('mo-dati-fisici')">+ Nuovo rilevamento</button>
-        </div>
-
-        <div class="misure-grid">
-          <div class="mis-box"><div class="mis-val" id="mis-peso">—</div><div class="mis-unit">kg</div><div class="mis-label">Peso</div></div>
-          <div class="mis-box"><div class="mis-val" id="mis-altezza">—</div><div class="mis-unit">cm</div><div class="mis-label">Altezza</div></div>
-          <div class="mis-box"><div class="mis-val" id="mis-bmi">—</div><div class="mis-unit"></div><div class="mis-label">BMI</div></div>
-          <div class="mis-box"><div class="mis-val" id="mis-pgc">—</div><div class="mis-unit">%</div><div class="mis-label">% Grasso</div></div>
-        </div>
-
-        <div class="data-two">
-          <div class="mini-card">
-            <div class="mini-head"><span class="mini-title">Visbody — Composizione</span><button class="btn-ghost" onclick="openMo('mo-dati-fisici')">Aggiorna</button></div>
-            <div class="mini-body">
-              <div class="dati-grid" id="visbody-dati"></div>
-              <div class="composition-bars" id="visbody-composizione"></div>
-            </div>
-          </div>
-          <div class="mini-card">
-            <div class="mini-head"><span class="mini-title">Carica File Dispositivi</span></div>
-            <div class="mini-body">
-              <div class="data-two">
-                <div>
-                  <div class="dati-label" style="margin-bottom:8px">File Visbody</div>
-                  <div class="upload-area" onclick="document.getElementById('file-visbody').click()" id="ua-visbody"
-                       ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
-                       ondrop="handleDrop(event,'visbody')">
-                    <input type="file" id="file-visbody" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'visbody')">
-                    <div class="upload-icon">File</div>
-                    <div class="upload-text">Trascina o clicca per caricare</div>
-                    <div class="upload-sub">PDF, JPG, PNG</div>
-                  </div>
-                  <div class="upload-progress" id="prog-visbody"><div class="upload-bar" id="bar-visbody"></div></div>
-                </div>
-                <div>
-                  <div class="dati-label" style="margin-bottom:8px">File Baiobit</div>
-                  <div class="upload-area" onclick="document.getElementById('file-baiobit').click()" id="ua-baiobit"
-                       ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
-                       ondrop="handleDrop(event,'baiobit')">
-                    <input type="file" id="file-baiobit" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileChange(this,'baiobit')">
-                    <div class="upload-icon">Test</div>
-                    <div class="upload-text">Trascina o clicca per caricare</div>
-                    <div class="upload-sub">PDF, JPG, PNG</div>
-                  </div>
-                  <div class="upload-progress" id="prog-baiobit"><div class="upload-bar" id="bar-baiobit"></div></div>
-                </div>
-              </div>
-              <div class="file-list" id="file-lista"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="data-pane" id="pane-foto">
+      <div class="data-pane active" id="pane-foto">
         <div class="data-head">
           <div>
             <div class="data-title">Fotografie</div>
@@ -1012,39 +952,49 @@ async function loadAcquisitionData(id){
 
 function renderDatiFisici(){
   const ultimo=datiFisiciAtt[0];
+  const label=document.getElementById('fisici-data-label');
+  const pesoEl=document.getElementById('mis-peso');
+  const altezzaEl=document.getElementById('mis-altezza');
+  const bmiEl=document.getElementById('mis-bmi');
+  const pgcEl=document.getElementById('mis-pgc');
+  const datiEl=document.getElementById('visbody-dati');
+  const compEl=document.getElementById('visbody-composizione');
+  if(!label||!pesoEl||!altezzaEl||!bmiEl||!pgcEl||!datiEl||!compEl){renderFileLista();return}
   if(!ultimo){
-    document.getElementById('fisici-data-label').textContent='Nessun rilevamento';
-    document.getElementById('mis-peso').textContent='—';
-    document.getElementById('mis-altezza').textContent='—';
-    document.getElementById('mis-bmi').textContent='—';
-    document.getElementById('mis-pgc').textContent='—';
-    document.getElementById('visbody-dati').innerHTML='<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
-    document.getElementById('visbody-composizione').innerHTML='';
+    label.textContent='Nessun rilevamento';
+    pesoEl.textContent='—';
+    altezzaEl.textContent='—';
+    bmiEl.textContent='—';
+    pgcEl.textContent='—';
+    datiEl.innerHTML='<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
+    compEl.innerHTML='';
     renderFileLista();
     return;
   }
-  document.getElementById('fisici-data-label').textContent='Ultimo: '+fmtData(ultimo.data);
-  document.getElementById('mis-peso').textContent=ultimo.peso||'—';
-  document.getElementById('mis-altezza').textContent=ultimo.altezza||'—';
+  label.textContent='Ultimo: '+fmtData(ultimo.data);
+  pesoEl.textContent=ultimo.peso||'—';
+  altezzaEl.textContent=ultimo.altezza||'—';
   const bmi=ultimo.v_bmi||(ultimo.peso&&ultimo.altezza?(ultimo.peso/Math.pow(ultimo.altezza/100,2)).toFixed(1):null);
-  document.getElementById('mis-bmi').textContent=bmi||'—';
-  document.getElementById('mis-pgc').textContent=ultimo.v_pgc||'—';
+  bmiEl.textContent=bmi||'—';
+  pgcEl.textContent=ultimo.v_pgc||'—';
   const vCampi=[
     ['Massa Grassa',ultimo.v_grassa,'kg'],['Massa Muscolare',ultimo.v_muscolare,'kg'],['% PGC',ultimo.v_pgc,'%'],
     ['Metabolismo',ultimo.v_metabolismo,'kcal'],['FFM',ultimo.v_ffm,'kg'],['Acqua Totale',ultimo.v_tbw,'lt'],
     ['Vita',ultimo.v_vita,'cm'],['Fianchi',ultimo.v_fianchi,'cm'],['Score',ultimo.v_score,''],['Età Metabolica',ultimo.v_eta_met,'anni'],['Indice Salute',ultimo.v_indice,'']
   ].filter(([,v])=>v);
-  document.getElementById('visbody-dati').innerHTML=vCampi.length?vCampi.map(([l,v,u])=>`<div class="dati-item"><div class="dati-label">${l}</div><div class="dati-val">${v} <small style="color:var(--text3)">${u}</small></div></div>`).join(''):'<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
+  datiEl.innerHTML=vCampi.length?vCampi.map(([l,v,u])=>`<div class="dati-item"><div class="dati-label">${l}</div><div class="dati-val">${v} <small style="color:var(--text3)">${u}</small></div></div>`).join(''):'<div class="dati-item"><div class="dati-val empty">Nessun dato</div></div>';
   renderComposizione(ultimo);
   renderFileLista();
 }
 
 function renderComposizione(d){
+  const compEl=document.getElementById('visbody-composizione');
+  if(!compEl)return;
   const peso=parseFloat(d.peso||0),grassa=parseFloat(d.v_grassa||0),muscolare=parseFloat(d.v_muscolare||0);
-  if(!peso||(!grassa&&!muscolare)){document.getElementById('visbody-composizione').innerHTML='';return}
+  if(!peso||(!grassa&&!muscolare)){compEl.innerHTML='';return}
   const altro=Math.max(0,peso-grassa-muscolare);
   const rows=[['Grassa',grassa,'#c0392b'],['Muscolare',muscolare,'#2d6a4f'],['Altro',altro,'#c4d0da']].filter(([,v])=>v>0);
-  document.getElementById('visbody-composizione').innerHTML=rows.map(([label,val,color])=>{
+  compEl.innerHTML=rows.map(([label,val,color])=>{
     const pct=Math.min(100,Math.round((val/peso)*100));
     return`<div class="comp-row"><span>${label}</span><div class="comp-track"><div class="comp-fill" style="width:${pct}%;background:${color}"></div></div><strong>${pct}%</strong></div>`;
   }).join('');
@@ -1052,6 +1002,7 @@ function renderComposizione(d){
 
 function renderFileLista(){
   const list=document.getElementById('file-lista');
+  if(!list)return;
   const files=fotoAtt.filter(f=>f.tipo==='visbody'||f.tipo==='baiobit');
   if(!files.length){list.innerHTML='';return}
   list.innerHTML=files.map(f=>`<div class="file-row"><strong>${escapeHtml(f.tipo||'file')}</strong><span>${escapeHtml(f.filename||'Documento')}</span><a href="${escapeAttr(f.url)}" target="_blank">Apri →</a></div>`).join('');
