@@ -835,6 +835,7 @@ const App = {
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
     const appointments = App._packageAppointments(client, true);
+    const operators = State.getOperators().filter(o => o.active !== false);
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
     const today = App._dateStr(new Date());
@@ -846,7 +847,9 @@ const App = {
 
     const rows = appointments.length ? appointments.map(a => {
       const svc = Services.getService(a.serviceId);
-      const op = Services.getOperator(a.operatorId);
+      const operatorOptions = `<option value="">—</option>` + operators.map(op =>
+        `<option value="${op.id}" ${op.id === a.operatorId ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`
+      ).join('');
       const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
         `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
       ).join('');
@@ -861,7 +864,11 @@ const App = {
             </div>
           </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
-          <td>${op ? `${op.nome} ${op.cognome}` : '—'}</td>
+          <td>
+            <select id="pkg-op-${a.id}" class="form-input package-operator-input">
+              ${operatorOptions}
+            </select>
+          </td>
           <td>
             <select id="pkg-status-${a.id}" class="form-input package-status-input">
               ${statusOptions}
@@ -946,6 +953,13 @@ const App = {
                 <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
               </div>
               <div class="form-group">
+                <label>PT</label>
+                <select id="pkg-plan-operator" class="form-input">
+                  <option value="">Mantieni/nessuno</option>
+                  ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
                 <label>Da data</label>
                 <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
               </div>
@@ -997,10 +1011,6 @@ const App = {
     clients[idx] = {
       ...clients[idx],
       giorniSettimana: days,
-      notes: [
-        clients[idx].notes || '',
-        `Cambio pianificazione reale ${new Date().toLocaleDateString('it-IT')}: ${days.join(', ') || 'nessun giorno'}`
-      ].filter(Boolean).join('\n')
     };
     State.saveClients(clients);
     SupabaseSync.pushClient(clients[idx]);
@@ -1010,14 +1020,43 @@ const App = {
 
   _savePackageSchedule(clientId) {
     if (!App._limitPackagePlanDays(clientId)) return;
+    const currentClient = State.getClients().find(c => c.id === clientId);
+    if (!currentClient) return;
     const days = App._selectedPackagePlanDays();
+    const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-plan-time')?.value || '';
+    const operatorId = document.getElementById('pkg-plan-operator')?.value || '';
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
     }
     const saved = App._updateClientPackageDays(clientId, days);
     if (!saved) return;
-    UI.showToast('Giorni reali del pacchetto salvati', 'success');
+    const serviceId = App._packageServiceId(currentClient);
+    const future = State.getAppointments().filter(a =>
+      a.status !== 'annullato' &&
+      a.status !== 'fatto' &&
+      a.date >= fromDate &&
+      a.serviceId === serviceId &&
+      Array.isArray(a.clientIds) &&
+      a.clientIds.includes(clientId)
+    );
+    const touched = [];
+    future.forEach(appt => {
+      const patch = {};
+      if (time) patch.startTime = time;
+      if (operatorId) patch.operatorId = operatorId;
+      if (!Object.keys(patch).length) return;
+      const next = { ...appt, ...patch };
+      const validation = Services.canBookAppointment(next, { strictPackageDays: false });
+      if (!validation.ok) return;
+      const updated = Services.updateAppointment(appt.id, patch);
+      if (updated) touched.push(updated);
+    });
+    touched.forEach(appt => SupabaseSync.pushAppointment(appt));
+    if (CONFIG.SHEETS.enabled) touched.forEach(appt => Sheets.pushAppointment(appt));
+    Calendar.render();
+    UI.showToast(touched.length ? `Giorni, orario e PT salvati su ${touched.length} sedute future` : 'Giorni reali del pacchetto salvati', 'success');
     App.openPackageOverview(clientId);
   },
 
@@ -1029,6 +1068,7 @@ const App = {
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '09:00';
+    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || '';
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
@@ -1050,7 +1090,8 @@ const App = {
       Array.isArray(a.clientIds) &&
       a.clientIds.includes(clientId)
     );
-    const fallbackOperator = futureToReplace[0]?.operatorId ||
+    const fallbackOperator = selectedOperator ||
+      futureToReplace[0]?.operatorId ||
       [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
       currentClient.ptAssegnato ||
       null;
@@ -1135,21 +1176,22 @@ const App = {
     const appt = State.getAppointments().find(a => a.id === apptId);
     const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
     const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
+    const nextOperator = document.getElementById(`pkg-op-${apptId}`)?.value || null;
     const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
     if (!appt || !nextDate || !nextTime || !nextStatus) return;
-    if (appt.date === nextDate && appt.startTime === nextTime && appt.status === nextStatus) {
+    if (appt.date === nextDate && appt.startTime === nextTime && appt.operatorId === nextOperator && appt.status === nextStatus) {
       UI.showToast('Riga gia aggiornata', 'success');
       return;
     }
 
-    const patch = { ...appt, date: nextDate, startTime: nextTime, status: nextStatus };
+    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperator, status: nextStatus };
     const validation = Services.canBookAppointment(patch);
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       return;
     }
 
-    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, status: nextStatus });
+    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, operatorId: nextOperator, status: nextStatus });
     if (appt.status !== saved.status) App._consumeClientSessions(saved);
     await SupabaseSync.pushAppointment(saved);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
