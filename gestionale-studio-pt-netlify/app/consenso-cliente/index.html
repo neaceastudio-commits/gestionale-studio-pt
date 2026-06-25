@@ -117,10 +117,12 @@
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({type,to:DESK_EMAIL,payload})
         });
-        return await res.json().catch(()=>({success:res.ok}));
+        const data = await res.json().catch(()=>({success:res.ok}));
+        if(!res.ok || data.success === false) throw new Error(data.error || 'Notifica email non inviata');
+        return data;
       }catch(error){
         console.warn('Notifica desk non inviata', error);
-        return {success:false,error:String(error)};
+        throw error;
       }
     }
     function payload(){

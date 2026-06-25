@@ -1,5 +1,5 @@
 const DESK_EMAIL = 'neacea.desk@gmail.com';
-const DEFAULT_SCRIPT_URL = 'https://portale-nutrizione.netlify.app/api/gas';
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0rUGnUDD_Jb6shCE2LUfAXDYn8Vh85LLSXrtuxZvbyzkxXaAay9_lwn-s2NUlxC-Y/exec';
 const DEFAULT_TOKEN = 'neacea2026studio';
 
 const headers = {
@@ -71,13 +71,14 @@ exports.handler = async (event) => {
     const scriptUrl = process.env.GAS_WEBAPP_URL || DEFAULT_SCRIPT_URL;
     const token = process.env.GAS_SECRET_TOKEN || DEFAULT_TOKEN;
     const message = buildMessage(type, payload);
+    const action = type === 'consenso_cliente' ? 'notifyConsensoCliente' : 'notifyAnamnesiCliente';
 
     const response = await fetch(scriptUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         _token: token,
-        action: 'notifyModuloPT',
+        action,
         type,
         to: DESK_EMAIL,
         subject: message.subject,
