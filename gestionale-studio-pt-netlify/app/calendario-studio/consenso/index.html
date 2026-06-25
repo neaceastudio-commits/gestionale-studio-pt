@@ -381,6 +381,31 @@
       if (el) el.textContent = value || '';
     }
 
+    function fillFromConsent(consent) {
+      const data = consent && consent.data ? consent.data : {};
+      const fullName = [data.nome, data.cognome].filter(Boolean).join(' ');
+
+      setText('client-name', fullName);
+      setText('client-birth', fmtDate(data.nascita));
+      setText('client-tax', data.codice_fiscale || '');
+      setText('client-phone', data.telefono || '');
+      setText('client-email', data.email || consent.email || '');
+      setText('client-doc', data.documento || '');
+      setText('client-address', data.indirizzo || '');
+      setText('client-emergency', data.contatto_emergenza || '');
+      setText('readable-name', fullName);
+      setText('place-date', "Quartu Sant'Elena, " + fmtDate(data.data_consenso || new Date().toISOString().slice(0, 10)));
+
+      if (data.firma) {
+        const line = document.querySelector('.signature .line');
+        if (line) {
+          line.textContent = data.firma;
+          line.style.fontWeight = '800';
+          line.style.paddingTop = '8px';
+        }
+      }
+    }
+
     function removeBlock(btn) {
       const block = btn.closest('.editable-section, .consent-row');
       if (block) block.remove();
@@ -404,14 +429,27 @@
 
     async function load() {
       const status = document.getElementById('status');
-      const id = new URLSearchParams(location.search).get('cliente');
-      if (!id) {
+      const params = new URLSearchParams(location.search);
+      const consentId = params.get('consenso') || params.get('id');
+      const id = params.get('cliente');
+      if (!id && !consentId) {
         status.className = 'error';
-        status.textContent = "Cliente non indicato nell'URL.";
+        status.textContent = "Cliente o consenso non indicato nell'URL.";
         return;
       }
 
       try {
+        if (consentId) {
+          const consensi = await sb('consensi_cliente', '?select=*&id=eq.' + encodeURIComponent(consentId) + '&limit=1');
+          const consent = consensi[0];
+          if (!consent) throw new Error('Consenso non trovato');
+
+          fillFromConsent(consent);
+          status.style.display = 'none';
+          document.getElementById('doc').style.display = 'block';
+          return;
+        }
+
         const rows = await sb('clients', '?select=*&id=eq.' + encodeURIComponent(id) + '&limit=1');
         const client = rows[0];
         if (!client) throw new Error('Cliente non trovato');

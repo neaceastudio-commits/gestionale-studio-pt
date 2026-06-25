@@ -30,11 +30,12 @@ function buildMessage(type, payload) {
     ['Email', payload?.email],
     ['Telefono', payload?.telefono],
     ['Obiettivo', payload?.obiettivo || payload?.data?.obiettivo],
+    ['Stampa consenso', payload?.print_url],
     ['Data invio', new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })],
   ].filter(([, value]) => value);
 
   const htmlRows = rows.map(([key, value]) => (
-    `<tr><td style="padding:8px 12px;border-bottom:1px solid #d8e7ef;color:#668195;font-weight:700">${clean(key)}</td><td style="padding:8px 12px;border-bottom:1px solid #d8e7ef;color:#17314a;font-weight:700">${clean(value)}</td></tr>`
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #d8e7ef;color:#668195;font-weight:700">${clean(key)}</td><td style="padding:8px 12px;border-bottom:1px solid #d8e7ef;color:#17314a;font-weight:700">${key === 'Stampa consenso' ? `<a href="${clean(value)}" style="color:#17314a">Apri e stampa consenso</a>` : clean(value)}</td></tr>`
   )).join('');
 
   const html = `

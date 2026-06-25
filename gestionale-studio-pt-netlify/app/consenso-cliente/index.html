@@ -99,6 +99,7 @@
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
     const DESK_EMAIL = 'neacea.desk@gmail.com';
+    const PRINT_CONSENSO_URL = 'https://new-calendar-neacea.netlify.app/consenso/';
     const $ = (id) => document.getElementById(id);
     $('dataConsenso').value = new Date().toISOString().slice(0,10);
     function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
@@ -161,7 +162,11 @@
       try{
         const data = payload();
         await sb('consensi_cliente',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:data});
-        await notifyDesk('consenso_cliente', data.data);
+        await notifyDesk('consenso_cliente', {
+          ...data.data,
+          consenso_id: data.id,
+          print_url: PRINT_CONSENSO_URL + '?consenso=' + encodeURIComponent(data.id)
+        });
         $('consensoForm').style.display='none';
         $('doneBox').classList.add('show');
         toast('Consenso inviato');

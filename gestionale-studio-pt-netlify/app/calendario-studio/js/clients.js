@@ -252,6 +252,7 @@ const Clients = (() => {
                     <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">
                       ${c.active === false ? '🟢' : '🔴'}
                     </button>
+                    <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
                   </div>
                 </td>
               </tr>`;
@@ -268,8 +269,27 @@ const Clients = (() => {
     if (idx !== -1) {
       clients[idx].active = clients[idx].active === false ? true : false;
       State.saveClients(clients);
+      SupabaseSync.pushClient(clients[idx]);
       render();
     }
+  }
+
+  function confirmDelete(clientId) {
+    const clients = State.getClients();
+    const idx = clients.findIndex(c => c.id === clientId);
+    if (idx === -1) return;
+
+    const client = clients[idx];
+    const name = `${client.nome || ''} ${client.cognome || ''}`.trim() || 'questo cliente';
+    const ok = confirm(`Eliminare ${name} dal calendario?\n\nIl cliente verra' nascosto dagli attivi, ma storico, appuntamenti e consensi restano recuperabili in Supabase.`);
+    if (!ok) return;
+
+    const deletedClient = { ...client, active: false };
+    clients.splice(idx, 1);
+    State.saveClients(clients);
+    SupabaseSync.pushClient(deletedClient);
+    render();
+    UI.showToast('Cliente eliminato dagli attivi', 'success');
   }
 
   function alignResidual(clientId) {
@@ -290,5 +310,5 @@ const Clients = (() => {
     UI.showToast('Residuo allineato al calendario', 'success');
   }
 
-  return { render, toggleActive, alignResidual, getPackageMetrics, renderDashboardAlerts };
+  return { render, toggleActive, confirmDelete, alignResidual, getPackageMetrics, renderDashboardAlerts };
 })();
