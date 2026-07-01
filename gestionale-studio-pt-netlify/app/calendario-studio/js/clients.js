@@ -161,7 +161,7 @@ const Clients = (() => {
   function render() {
     const panel = document.getElementById('view-clients');
     if (!panel) return;
-    const clients = State.getClients();
+    const clients = State.getClients().filter(c => c.active !== false);
 
     panel.innerHTML = `
       <div class="view-header">
@@ -200,7 +200,6 @@ const Clients = (() => {
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
                     <div>
                       <div style="font-weight:600">${c.nome} ${c.cognome}</div>
-                      ${c.notes ? `<div class="text-muted" style="font-size:0.72rem">${c.notes}</div>` : ''}
                     </div>
                   </div>
                 </td>

@@ -223,6 +223,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:var(--bg2);border-radius:var(--radius);width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#mo-conferma .modal{width:min(780px,96vw)}
 .modal-head{background:var(--blue);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1}
 .modal-title{font-size:16px;font-weight:800;color:#fff}
 .modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer}
@@ -231,6 +232,24 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:var(--bg2);position:sticky;bottom:0}
 .confirm-banner{background:var(--green-pale);border:1px solid var(--green);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:700;color:var(--green);margin-bottom:16px}
 .conf-note{background:var(--gold-pale);border-left:3px solid var(--gold);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.5;margin-top:12px}
+.pt-mirror{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);box-shadow:var(--shadow);margin:14px 0 16px;overflow:hidden}
+.pt-mirror-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:13px 15px;background:var(--blue-xpale);border-bottom:1px solid var(--border)}
+.pt-mirror-title{font-size:12px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.pt-mirror-sub{font-size:11px;color:var(--text3);font-weight:800;margin-top:3px}
+.pt-mirror-refresh{border:1px solid var(--border2);background:var(--bg2);color:var(--blue);border-radius:var(--radius-sm);padding:6px 10px;font-size:11px;font-weight:900;cursor:pointer;font-family:'Nunito',sans-serif}
+.pt-mirror-body{padding:12px 14px;display:grid;gap:10px}
+.pt-mirror-empty{padding:16px;text-align:center;color:var(--text3);font-size:12px;font-weight:800}
+.pt-mirror-row{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);padding:10px;display:grid;gap:8px}
+.pt-mirror-row.best{border-color:rgba(45,106,79,.35);background:var(--green-pale)}
+.pt-mirror-op{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pt-mirror-op strong{font-size:13px;color:var(--text)}
+.pt-mirror-op span{font-size:11px;font-weight:900;color:var(--text3)}
+.pt-slots{display:flex;flex-wrap:wrap;gap:6px}
+.pt-slot{border:1px solid var(--border2);border-radius:999px;padding:5px 9px;background:var(--bg2);color:var(--text2);font-size:11px;font-weight:900;cursor:pointer;font-family:'Nunito',sans-serif}
+.pt-slot.free{border-color:rgba(45,106,79,.35);color:var(--green);background:#f7fffb}
+.pt-slot.busy{border-color:rgba(192,57,43,.22);color:var(--red);background:var(--red-pale);cursor:default}
+.pt-slot.selected{background:var(--green);border-color:var(--green);color:#fff}
+.pt-slot small{display:block;font-size:9px;font-weight:800;opacity:.72}
 
 /* BUTTONS */
 .btn-primary{background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s}
@@ -275,7 +294,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">Vuoi aggiungere subito l'abbonamento? Puoi farlo anche dopo dallo studio.</p>
       <div class="grid-2">
         <div class="field"><label>Pacchetto servizio</label>
-          <select id="conf-package" onchange="toggleConfSess()">
+          <select id="conf-package" onchange="toggleConfSess();refreshPtMirror()">
             <option>PT 1:1</option>
             <option>PT 1:2</option>
             <option>Circuit</option>
@@ -289,28 +308,40 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       </div>
       <div class="grid-2">
         <div class="field"><label>Tipo abbonamento</label>
-          <select id="conf-tipo" onchange="toggleConfSess()">
+          <select id="conf-tipo" onchange="toggleConfSess();refreshPtMirror()">
             <option value="">— aggiungi dopo —</option>
             <option>Mensile</option><option>Trimestrale</option><option>Semestrale</option>
             <option>Annuale</option><option>Pacchetto 2</option><option>Pacchetto 10</option><option>Pacchetto 20</option><option>A sessione</option>
           </select>
         </div>
-        <div class="field"><label>Data inizio</label><input type="date" id="conf-data"></div>
+        <div class="field"><label>Data inizio</label><input type="date" id="conf-data" onchange="refreshPtMirror()"></div>
       </div>
       <div class="grid-2" id="conf-sess-row" style="display:none">
-        <div class="field"><label>Sessioni totali</label><input type="number" id="conf-sess-tot" min="1" onchange="limitConfDays()"></div>
+        <div class="field"><label>Sessioni totali</label><input type="number" id="conf-sess-tot" min="1" onchange="limitConfDays();refreshPtMirror()"></div>
         <div class="field"><label>Sessioni usate</label><input type="number" id="conf-sess-used" value="0" min="0"></div>
       </div>
       <div class="field" id="conf-days-row" style="display:none">
         <label>Giorni del pacchetto</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="conf-days">
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Lunedì" onchange="limitConfDays(this)"> Lun</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Martedì" onchange="limitConfDays(this)"> Mar</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Mercoledì" onchange="limitConfDays(this)"> Mer</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Giovedì" onchange="limitConfDays(this)"> Gio</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Venerdì" onchange="limitConfDays(this)"> Ven</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Sabato" onchange="limitConfDays(this)"> Sab</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Domenica" onchange="limitConfDays(this)"> Dom</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Lunedì" onchange="limitConfDays(this);refreshPtMirror()"> Lun</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Martedì" onchange="limitConfDays(this);refreshPtMirror()"> Mar</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Mercoledì" onchange="limitConfDays(this);refreshPtMirror()"> Mer</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Giovedì" onchange="limitConfDays(this);refreshPtMirror()"> Gio</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Venerdì" onchange="limitConfDays(this);refreshPtMirror()"> Ven</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Sabato" onchange="limitConfDays(this);refreshPtMirror()"> Sab</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Domenica" onchange="limitConfDays(this);refreshPtMirror()"> Dom</label>
+        </div>
+      </div>
+      <div class="pt-mirror" id="pt-mirror" style="display:none">
+        <div class="pt-mirror-head">
+          <div>
+            <div class="pt-mirror-title">Specchio disponibilità PT</div>
+            <div class="pt-mirror-sub" id="pt-mirror-sub">Seleziona giorni e data inizio per vedere gli slot liberi</div>
+          </div>
+          <button class="pt-mirror-refresh" onclick="refreshPtMirror(true)">Aggiorna</button>
+        </div>
+        <div class="pt-mirror-body" id="pt-mirror-body">
+          <div class="pt-mirror-empty">Nessun dato ancora.</div>
         </div>
       </div>
       <div class="grid-2" id="conf-abb-row" style="display:none">
@@ -388,7 +419,10 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
           <div class="field"><label>Email</label><input type="email" id="f-email"></div>
           <div class="field"><label>Codice fiscale</label><input type="text" id="f-codice-fiscale" autocomplete="off"></div>
           <div class="field"><label>Documento</label><input type="text" id="f-documento" autocomplete="off" placeholder="Carta identita, patente, passaporto..."></div>
-          <div class="field"><label>Indirizzo</label><input type="text" id="f-indirizzo" autocomplete="off"></div>
+          <div class="field"><label>Indirizzo per fattura</label><input type="text" id="f-indirizzo" autocomplete="off" placeholder="Via / Piazza e numero civico"></div>
+          <div class="field"><label>CAP</label><input type="text" id="f-cap" inputmode="numeric" maxlength="5" autocomplete="off"></div>
+          <div class="field"><label>Comune</label><input type="text" id="f-comune" autocomplete="off"></div>
+          <div class="field"><label>Provincia</label><input type="text" id="f-provincia" maxlength="2" autocomplete="off" style="text-transform:uppercase;"></div>
           <div class="field"><label>Contatto emergenza</label><input type="text" id="f-contatto-emergenza" autocomplete="off" placeholder="Nome e telefono"></div>
           <div class="field"><label>Professione</label><input type="text" id="f-professione"></div>
           <div class="field"><label>Come ci ha trovato</label>
@@ -625,7 +659,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 const SUPABASE_URL='https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY='sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 const FOTO_STORAGE_BUCKET='client-photos';
-let acquisizioni=[],staffAll=[],filtro='tutti',chips={stato:'Interessato'},servizi={pt:true,nut:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,toastTimer=null;
+let acquisizioni=[],staffAll=[],confAppointments=[],filtro='tutti',chips={stato:'Interessato'},servizi={pt:true,nut:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,toastTimer=null;
 let datiFisiciAtt=[],fotoAtt=[];
 
 function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
@@ -634,21 +668,50 @@ async function sb(table,{method='GET',query='',body=null,headers={}}={}){
   if(!r.ok)return{error:await r.text()};if(r.status===204)return null;const text=await r.text();return text?JSON.parse(text):null;
 }
 function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
-function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,codiceFiscale:r.codice_fiscale,documento:r.documento,indirizzo:r.indirizzo,contattoEmergenza:r.contatto_emergenza,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
-function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',codice_fiscale:p.codiceFiscale||'',documento:p.documento||'',indirizzo:p.indirizzo||'',contatto_emergenza:p.contattoEmergenza||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
+function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,codiceFiscale:r.codice_fiscale,documento:r.documento,indirizzo:r.indirizzo,cap:r.cap,comune:r.comune,provincia:r.provincia,contattoEmergenza:r.contatto_emergenza,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
+function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',codice_fiscale:p.codiceFiscale||'',documento:p.documento||'',indirizzo:p.indirizzoFattura||p.indirizzo||'',cap:p.cap||'',comune:p.comune||'',provincia:p.provincia||'',contatto_emergenza:p.contattoEmergenza||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
 function stripMissingConsentColumns(body){
   const fallback={...body};
-  ['codice_fiscale','documento','indirizzo','contatto_emergenza'].forEach(k=>delete fallback[k]);
+  ['codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'].forEach(k=>delete fallback[k]);
   return fallback;
+}
+function normEmail(value){return String(value||'').trim().toLowerCase()}
+function buildFiscalAddress(indirizzo,cap,comune,provincia){
+  const city=[cap,comune].filter(Boolean).join(' ').trim();
+  const prov=provincia?`(${String(provincia).toUpperCase()})`:'';
+  return [indirizzo, [city,prov].filter(Boolean).join(' ').trim()].filter(Boolean).join(', ');
+}
+async function findClientForAcquisition(acq){
+  const email=normEmail(acq?.email);
+  if(email){
+    const rows=await sb('clients',{query:'?select=id,nome,cognome,email,active&email=ilike.'+encodeURIComponent(email)+'&order=active.desc,created_at.asc&limit=1'});
+    if(rows?.error)return null;
+    if(Array.isArray(rows)&&rows.length)return rows[0];
+  }
+  const nome=String(acq?.nome||'').trim();
+  const cognome=String(acq?.cognome||'').trim();
+  if(nome&&cognome){
+    const rows=await sb('clients',{query:'?select=id,nome,cognome,email,active&nome=ilike.'+encodeURIComponent(nome)+'&cognome=ilike.'+encodeURIComponent(cognome)+'&order=active.desc,created_at.asc&limit=1'});
+    if(rows?.error)return null;
+    if(Array.isArray(rows)&&rows.length)return rows[0];
+  }
+  return null;
 }
 const CONF_DAY_INDEX={'Domenica':0,'Lunedì':1,'Martedì':2,'Mercoledì':3,'Giovedì':4,'Venerdì':5,'Sabato':6};
 const CONF_SERVICE_META={
-  'PT 1:1':{id:'pt11',duration:60,buffer:10},
-  'PT 1:2':{id:'pt12',duration:60,buffer:10},
-  'Circuit':{id:'circuit',duration:60,buffer:10},
-  'Nutrizione':{id:'nutrizione',duration:60,buffer:10},
-  'Valutazioni':{id:'visbody',duration:30,buffer:10},
+  'PT 1:1':{id:'pt11',duration:60,buffer:10,roles:['PT']},
+  'PT 1:2':{id:'pt12',duration:60,buffer:10,roles:['PT']},
+  'Circuit':{id:'circuit',duration:60,buffer:10,roles:['Circuit','PT']},
+  'Nutrizione':{id:'nutrizione',duration:60,buffer:10,roles:['Nutrizionista']},
+  'Valutazioni':{id:'visbody',duration:30,buffer:10,roles:['Valutazioni']},
 };
+function confTimeToMin(time){const[h,m]=String(time||'00:00').split(':').map(Number);return(h||0)*60+(m||0)}
+function confMinToTime(total){return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0')}
+function confApptStart(appt){return String(appt.start_time||appt.startTime||'00:00').slice(0,5)}
+function confApptEnd(appt,includeBuffer=true){return confTimeToMin(confApptStart(appt))+Number(appt.duration_min||appt.durationMin||60)+(includeBuffer?Number(appt.buffer_min||appt.bufferMin||0):0)}
+function confOverlaps(a,b,includeBuffer=true){const aStart=confTimeToMin(a.startTime||a.start_time),aEnd=aStart+Number(a.durationMin||a.duration_min||60)+(includeBuffer?Number(a.bufferMin||a.buffer_min||0):0);const bStart=confTimeToMin(b.startTime||b.start_time),bEnd=confApptEnd(b,includeBuffer);return aStart<bEnd&&bStart<aEnd}
+function staffRoles(op){return Array.isArray(op.roles)?op.roles:String(op.roles||'').split(',').map(r=>r.trim()).filter(Boolean)}
+function staffCompatible(op,meta){const roles=staffRoles(op);return !meta?.roles?.length||meta.roles.some(r=>roles.includes(r))}
 function confStartTime(acq){
   const raw=String(acq?.orari||'');
   if(raw.includes('6–9'))return'07:00';
@@ -672,6 +735,99 @@ function confNextPackageDates(start,days,total){
   }
   return out;
 }
+function confAddDays(dateStr,days){
+  const parts=String(dateStr||oggi()).split('-').map(Number);
+  const d=new Date(parts[0],(parts[1]||1)-1,parts[2]||1);
+  d.setDate(d.getDate()+days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function confPreferredTimes(acq){
+  const raw=String(acq?.orari||'');
+  const times=[];
+  if(raw.includes('6–9'))times.push('07:00','08:00');
+  if(raw.includes('9–12'))times.push('09:00','10:00','11:00');
+  if(raw.includes('Pausa'))times.push('12:00','13:00');
+  if(raw.includes('Pomeriggio'))times.push('15:00','16:00','17:00');
+  if(raw.includes('18–20'))times.push('18:00','19:00');
+  if(raw.includes('20+'))times.push('20:00');
+  if(!times.length)times.push(confStartTime(acq));
+  return [...new Set(times)].sort();
+}
+function confSelectedDays(){return[...document.querySelectorAll('#conf-days input:checked')].map(c=>c.value)}
+function confMirrorDates(){
+  const packageType=document.getElementById('conf-package')?.value||'PT 1:1';
+  const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(packageType);
+  const start=document.getElementById('conf-data')?.value||oggi();
+  const days=confSelectedDays();
+  if(needsPlan&&days.length)return confNextPackageDates(start,days,6);
+  return Array.from({length:6},(_,i)=>confAddDays(start,i));
+}
+function confSlotLabel(date,time){
+  try{return new Date(date+'T00:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'})+' '+time}catch{return date+' '+time}
+}
+function confMirrorSlotsForOperator(op,dates,times,meta){
+  return dates.flatMap(date=>times.map(time=>{
+    const draft={date,startTime:time,durationMin:meta.duration,bufferMin:meta.buffer};
+    const conflicts=confAppointments.filter(a=>a.operator_id===op.id&&a.date===date&&a.status!=='annullato'&&confOverlaps(draft,a,true));
+    return{date,time,free:conflicts.length===0,conflicts};
+  }));
+}
+async function refreshPtMirror(force=false){
+  const box=document.getElementById('pt-mirror'),body=document.getElementById('pt-mirror-body'),sub=document.getElementById('pt-mirror-sub');
+  if(!box||!body||!sub||!idConferma)return;
+  const acq=acquisizioni.find(x=>x.id===idConferma);
+  const packageType=document.getElementById('conf-package')?.value||'PT 1:1';
+  const meta=CONF_SERVICE_META[packageType]||CONF_SERVICE_META['PT 1:1'];
+  const compatibleStaff=staffAll.filter(op=>staffCompatible(op,meta));
+  const dates=confMirrorDates();
+  const times=confPreferredTimes(acq);
+  const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(packageType);
+  const days=confSelectedDays();
+  box.style.display=compatibleStaff.length?'block':'none';
+  if(!compatibleStaff.length)return;
+  if(needsPlan&&!days.length){
+    sub.textContent='Seleziona i giorni del pacchetto per vedere le disponibilità reali';
+    body.innerHTML='<div class="pt-mirror-empty">Seleziona almeno un giorno del pacchetto.</div>';
+    return;
+  }
+  sub.textContent=`${dates.length} giornate · preferenza oraria: ${times.join(', ')}`;
+  body.innerHTML='<div class="pt-mirror-empty"><span class="spin"></span> Calcolo disponibilità…</div>';
+  try{
+    const from=dates[0],to=dates[dates.length-1]||from;
+    const res=await apiGet('getAppointments',{from,to});
+    if(res.error)throw new Error(res.error);
+    confAppointments=res.appointments||[];
+    const selected=document.getElementById('conf-pt')?.value||'';
+    const rows=compatibleStaff.map(op=>{
+      const slots=confMirrorSlotsForOperator(op,dates,times,meta);
+      const free=slots.filter(s=>s.free);
+      return{op,slots,freeCount:free.length,firstFree:free[0]||null};
+    }).sort((a,b)=>b.freeCount-a.freeCount||`${a.op.cognome||''} ${a.op.nome||''}`.localeCompare(`${b.op.cognome||''} ${b.op.nome||''}`));
+    body.innerHTML=rows.map((row,idx)=>`
+      <div class="pt-mirror-row ${idx===0&&row.freeCount?'best':''}">
+        <div class="pt-mirror-op">
+          <strong>${escapeHtml((row.op.nome||'')+' '+(row.op.cognome||''))}</strong>
+          <span>${row.freeCount}/${row.slots.length} liberi${idx===0&&row.freeCount?' · migliore':''}</span>
+        </div>
+        <div class="pt-slots">
+          ${row.slots.slice(0,12).map(slot=>{
+            const title=slot.free?'Libero':'Occupato: '+slot.conflicts.map(a=>confApptStart(a)).join(', ');
+            return `<button type="button" title="${escapeAttr(title)}" class="pt-slot ${slot.free?'free':'busy'} ${selected===row.op.id&&slot.free?'selected':''}" ${slot.free?`onclick="selectPtFromMirror('${escapeJs(row.op.id)}','${escapeJs(slot.date)}','${escapeJs(slot.time)}')"`:'disabled'}>${confSlotLabel(slot.date,slot.time)}${slot.free?'<small>libero</small>':'<small>occupato</small>'}</button>`;
+          }).join('')}
+        </div>
+      </div>`).join('');
+  }catch(e){
+    body.innerHTML='<div class="pt-mirror-empty">Non riesco a leggere il calendario: '+escapeHtml(String(e.message||e).slice(0,120))+'</div>';
+    if(force)showToast('Errore disponibilità PT','error');
+  }
+}
+function selectPtFromMirror(ptId,date,time){
+  const sel=document.getElementById('conf-pt');if(sel)sel.value=ptId;
+  document.querySelectorAll('.pt-slot.selected').forEach(el=>el.classList.remove('selected'));
+  const op=staffAll.find(s=>s.id===ptId);
+  showToast(`PT assegnato: ${op?`${op.nome||''} ${op.cognome||''}`.trim():'selezionato'} · slot libero ${date} ${time}`,'success');
+  refreshPtMirror();
+}
 function servizioDaPacchetto(packageType){
   if(packageType==='Nutrizione')return'Nutrizione';
   if(packageType==='Valutazioni')return'Valutazioni';
@@ -681,6 +837,7 @@ function servizioDaPacchetto(packageType){
 async function apiGet(a,params={}){
   if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
   if(a==='getStaff'){const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
+  if(a==='getAppointments'){const from=encodeURIComponent(params.from||oggi()),to=encodeURIComponent(params.to||params.from||oggi());const rows=await sb('appointments',{query:'?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status&date=gte.'+from+'&date=lte.'+to+'&status=neq.annullato&order=date.asc,start_time.asc'});if(rows.error)return rows;return{appointments:rows||[]}}
   if(a==='getDatiFisici'){const rows=await sb('dati_fisici',{query:'?select=*&cliente_id=eq.'+encodeURIComponent(params.clienteId||'')+'&order=created_at.desc'});if(rows.error)return rows;return{datiFisici:(rows||[]).map(r=>({id:r.id,clienteId:r.cliente_id,...(r.data||{})}))}}
   if(a==='getFoto'){const rows=await sb('foto_allenamento',{query:'?select=*&cliente_id=eq.'+encodeURIComponent(params.clienteId||'')+'&order=created_at.desc'});if(rows.error)return rows;return{foto:(rows||[]).map(r=>({id:r.id,clienteId:r.cliente_id,...(r.data||{})}))}}
   return{error:'Azione non supportata'}
@@ -697,12 +854,13 @@ async function apiFetch(p){
   if(p.action==='deleteAcquisizione'){const res=await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});return res?.error?res:{success:true}}
   if(p.action==='confermaCliente'){
     const acq=acquisizioni.find(x=>x.id===p.id);if(!acq)return{error:'Prospect non trovato'};
-    const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
     const sessionsTotal=parseInt(p.sessioni_totali)||0;
     const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
     const packageType=p.packageType||'PT 1:1';
-    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
-    let ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body});
+    const existingClient=await findClientForAcquisition(acq);
+    const clientId=existingClient?.id||('c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7));
+    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
+    let ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body});
     if(ins?.error&&String(ins.error).toLowerCase().includes('column')){
       const fallback={...body};
       delete fallback.nascita;
@@ -710,12 +868,15 @@ async function apiFetch(p){
       delete fallback.codice_fiscale;
       delete fallback.documento;
       delete fallback.indirizzo;
+      delete fallback.cap;
+      delete fallback.comune;
+      delete fallback.provincia;
       delete fallback.contatto_emergenza;
-      ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body:fallback});
+      ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
     }
     if(ins?.error)return ins;
     await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
-    await copiaDatiAcquisizioneACliente(p.id,clientId);
+    if(!existingClient)await copiaDatiAcquisizioneACliente(p.id,clientId);
     return{success:true,clientId,appuntamentiCreati:0};
   }
   if(p.action==='saveDatiFisici'){
@@ -856,7 +1017,7 @@ function showView(n){
 function apriForm(){isEdit=false;idCorrente=null;resetForm();document.getElementById('form-eyebrow').textContent='Nuovo prospect';document.getElementById('form-title').textContent='Anamnesi acquisizione';showView('form')}
 
 function resetForm(){
-  ['f-nome','f-cognome','f-nascita','f-sesso','f-telefono','f-email','f-codice-fiscale','f-documento','f-indirizzo','f-contatto-emergenza','f-professione','f-come','f-ob-libero','f-tempistica','f-inattivo','f-sport','f-non-funz','f-impressioni','f-proposta','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['f-nome','f-cognome','f-nascita','f-sesso','f-telefono','f-email','f-codice-fiscale','f-documento','f-indirizzo','f-cap','f-comune','f-provincia','f-contatto-emergenza','f-professione','f-come','f-ob-libero','f-tempistica','f-inattivo','f-sport','f-non-funz','f-impressioni','f-proposta','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-motiv').value=7;document.getElementById('motiv-val').textContent='7';
   servizi={pt:true,nut:false};document.getElementById('srv-pt').className='srv-card sel-pt';document.getElementById('srv-nut').className='srv-card';
   chips={stato:'Interessato'};document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
@@ -873,11 +1034,15 @@ async function salva(){
   if(!chips['ob']){showToast('Seleziona almeno un obiettivo','error');return}
   const btn=document.getElementById('btn-salva');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
   const srv=[];if(servizi.pt)srv.push('PT');if(servizi.nut)srv.push('Nutrizione');const orari=chips['orari']||[];
+  const indirizzo=document.getElementById('f-indirizzo').value.trim();
+  const cap=document.getElementById('f-cap').value.trim();
+  const comune=document.getElementById('f-comune').value.trim();
+  const provincia=document.getElementById('f-provincia').value.trim().toUpperCase();
   const payload={action:'saveAcquisizione',id:isEdit?idCorrente:undefined,nome,cognome,
     nascita:document.getElementById('f-nascita').value,sesso:document.getElementById('f-sesso').value,
     telefono:document.getElementById('f-telefono').value,email:document.getElementById('f-email').value,
     codiceFiscale:document.getElementById('f-codice-fiscale').value,documento:document.getElementById('f-documento').value,
-    indirizzo:document.getElementById('f-indirizzo').value,contattoEmergenza:document.getElementById('f-contatto-emergenza').value,
+    indirizzo,cap,comune,provincia,indirizzoFattura:buildFiscalAddress(indirizzo,cap,comune,provincia),contattoEmergenza:document.getElementById('f-contatto-emergenza').value,
     professione:document.getElementById('f-professione').value,come:document.getElementById('f-come').value,
     servizi:srv.join(','),obiettivo:chips['ob']||'',obiettivoLibero:document.getElementById('f-ob-libero').value,
     tempistica:document.getElementById('f-tempistica').value,motivazione:document.getElementById('f-motiv').value,
@@ -1084,7 +1249,7 @@ async function handleDrop(e,tipo){e.preventDefault();document.getElementById('ua
 
 function apriModifica(){
   const c=acquisizioni.find(x=>x.id===idCorrente);if(!c)return;isEdit=true;
-  const fields={'f-nome':c.nome,'f-cognome':c.cognome,'f-nascita':c.nascita,'f-sesso':c.sesso,'f-telefono':c.telefono,'f-email':c.email,'f-codice-fiscale':c.codiceFiscale,'f-documento':c.documento,'f-indirizzo':c.indirizzo,'f-contatto-emergenza':c.contattoEmergenza,'f-professione':c.professione,'f-come':c.come,'f-ob-libero':c.obiettivoLibero,'f-tempistica':c.tempistica,'f-inattivo':c.inattivo,'f-sport':c.sport,'f-non-funz':c.nonFunzionato,'f-impressioni':c.impressioni,'f-proposta':c.proposta,'f-followup':c.followup};
+  const fields={'f-nome':c.nome,'f-cognome':c.cognome,'f-nascita':c.nascita,'f-sesso':c.sesso,'f-telefono':c.telefono,'f-email':c.email,'f-codice-fiscale':c.codiceFiscale,'f-documento':c.documento,'f-indirizzo':c.indirizzo,'f-cap':c.cap,'f-comune':c.comune,'f-provincia':c.provincia,'f-contatto-emergenza':c.contattoEmergenza,'f-professione':c.professione,'f-come':c.come,'f-ob-libero':c.obiettivoLibero,'f-tempistica':c.tempistica,'f-inattivo':c.inattivo,'f-sport':c.sport,'f-non-funz':c.nonFunzionato,'f-impressioni':c.impressioni,'f-proposta':c.proposta,'f-followup':c.followup};
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el&&val)el.value=val});
   document.getElementById('f-motiv').value=c.motivazione||7;document.getElementById('motiv-val').textContent=c.motivazione||7;
   const srv=normSrv(c.servizi);servizi={pt:srv.includes('PT'),nut:srv.includes('Nutrizione')};
@@ -1106,6 +1271,7 @@ function apriConfermaById(id){
   document.getElementById('conf-importo').value='';document.getElementById('conf-pagamento').value='Da pagare';
   document.getElementById('conf-sess-row').style.display='none';document.getElementById('conf-abb-row').style.display='none';document.getElementById('conf-days-row').style.display='none';document.querySelectorAll('#conf-days input').forEach(c=>{c.checked=false});
   openMo('mo-conferma');
+  setTimeout(()=>refreshPtMirror(),0);
 }
 function maxConfDays(){const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
 function limitConfDays(changed){const max=maxConfDays();if(!max)return true;const checked=[...document.querySelectorAll('#conf-days input:checked')];if(checked.length<=max)return true;if(changed)changed.checked=false;else checked.slice(max).forEach(c=>{c.checked=false});showToast('Il pacchetto prevede massimo '+max+' giorni a settimana','error');return false}

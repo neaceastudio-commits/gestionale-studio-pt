@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="css/layout.css?v=29">
   <link rel="stylesheet" href="css/calendar.css?v=29">
   <link rel="stylesheet" href="css/clients-fix.css?v=29">
-  <link rel="stylesheet" href="css/ui-fixes.css?v=30">
+  <link rel="stylesheet" href="css/ui-fixes.css?v=33">
 </head>
 <body>
 
@@ -24,6 +24,7 @@
     <button class="topbar-tab" data-view="day">📋 Giorno</button>
     <button class="topbar-tab" data-view="week">🗓 Settimana</button>
     <button class="topbar-tab" data-view="room">📊 Sale</button>
+    <button class="topbar-tab" data-view="availability">⏱ Disponibilità</button>
     <button class="topbar-tab" data-view="clients">👤 Clienti</button>
     <button class="topbar-tab" data-view="operators">👥 Staff</button>
   </div>
@@ -49,6 +50,9 @@
   <!-- Sale / Saturazione -->
   <div id="view-room" class="view-panel"></div>
 
+  <!-- Disponibilità PT -->
+  <div id="view-availability" class="view-panel"></div>
+
   <!-- Clienti -->
   <div id="view-clients" class="view-panel"></div>
 
@@ -69,21 +73,18 @@
 
 <!-- ── SCRIPTS ──────────────────────────────────── -->
 <script>
-  // Pulizia anti-demo: il gestionale ora usa Supabase come sorgente dati.
-  // A ogni avvio rimuoviamo solo la cache locale di clienti/appuntamenti,
-  // poi app.js rilegge i dati reali dal database.
-  localStorage.removeItem('neacea_clients');
-  localStorage.removeItem('neacea_appointments');
+  // Il gestionale usa Supabase come sorgente dati, ma conserva eventuali
+  // dati locali abbastanza a lungo da migrarli prima del refresh dal database.
 </script>
 <script src="js/config.js?v=29"></script>
-<script src="js/state.js?v=29"></script>
-<script src="js/supabase.js?v=29"></script>
-<script src="js/services.js?v=30"></script>
-<script src="js/calendar.js?v=29"></script>
-<script src="js/clients.js?v=30"></script>
-<script src="js/operators.js?v=29"></script>
-<script src="js/sheets.js?v=29"></script>
-<script src="js/app.js?v=34"></script>
+<script src="js/state.js?v=30"></script>
+<script src="js/supabase.js?v=31"></script>
+<script src="js/services.js?v=33"></script>
+<script src="js/calendar.js?v=32"></script>
+<script src="js/clients.js?v=31"></script>
+<script src="js/operators.js?v=30"></script>
+<script src="js/sheets.js?v=30"></script>
+<script src="js/app.js?v=39"></script>
 <script src="js/nutrition-fixes.js?v=29"></script>
 <script src="js/session-fixes.js?v=29"></script>
 

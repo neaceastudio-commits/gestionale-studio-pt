@@ -31,8 +31,8 @@ const App = {
 
   // ── APERTURA MODALI ──────────────────────────────────
 
-  openNewAppointment(dateStr = null, clientId = null) {
-    App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : []);
+  openNewAppointment(dateStr = null, clientId = null, startTime = null, serviceId = null) {
+    App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : [], startTime || '09:00', serviceId || 'pt11');
   },
   openDetail(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
@@ -41,10 +41,10 @@ const App = {
 
   // ── MODAL APPUNTAMENTO ───────────────────────────────
 
-  _renderAppointmentModal(apptId, defaultDate, preselectedClientIds = []) {
+  _renderAppointmentModal(apptId, defaultDate, preselectedClientIds = [], defaultStartTime = '09:00', defaultServiceId = 'pt11') {
     const appt   = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     const isEdit = !!appt;
-    const curSvcId = appt?.serviceId || 'pt11';
+    const curSvcId = appt?.serviceId || defaultServiceId || 'pt11';
     const svc = Services.getService(curSvcId);
 
     // Servizi dropdown
@@ -98,7 +98,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Ora *</label>
-            <input type="time" id="appt-time" class="form-input" value="${appt?.startTime||'09:00'}" step="900" onchange="App._onSlotChange()">
+            <input type="time" id="appt-time" class="form-input" value="${appt?.startTime||defaultStartTime||'09:00'}" step="900" onchange="App._onSlotChange()">
           </div>
           <div class="form-group" id="duration-group">
             <label>Durata</label>
@@ -113,7 +113,7 @@ const App = {
 
         <!-- Operatore: ricostruito da _buildOperatorSection -->
         <div id="operator-section">
-          ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
+          ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||defaultStartTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
         </div>
 
         <div id="slot-validation" class="slot-validation" style="margin-bottom:8px"></div>
@@ -336,6 +336,197 @@ const App = {
     }
   },
 
+  _escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[ch]));
+  },
+
+  _apptTimeRange(appt, includeBuffer = false) {
+    const start = String(appt.startTime || '').slice(0, 5);
+    const end = Services.minToTime(Services.effectiveEnd(appt, includeBuffer));
+    return `${start}-${end}`;
+  },
+
+  _appointmentMiniCard(appt, { markConflict = false } = {}) {
+    const svc = Services.getService(appt.serviceId);
+    const op = Services.getOperator(appt.operatorId);
+    const room = svc?.room ? CONFIG.ROOMS[svc.room]?.label : 'nessuna sala';
+    const clients = (appt.clientIds || []).map(Services.clientConflictLabel).join(', ') || 'nessun cliente';
+    return `
+      <div class="conflict-appt ${markConflict ? 'is-conflict' : ''}">
+        <div class="conflict-appt-main">
+          <span class="conflict-time">${App._escapeHtml(App._apptTimeRange(appt, false))}</span>
+          <strong>${App._escapeHtml(svc?.label || appt.serviceId || 'Appuntamento')}</strong>
+          <span>${App._escapeHtml(clients)}</span>
+        </div>
+        <div class="conflict-appt-meta">
+          <span>${App._escapeHtml(op ? `${op.nome} ${op.cognome}` : 'PT non assegnato')}</span>
+          <span>${App._escapeHtml(room)}</span>
+          <button class="btn-icon-sm" title="Apri appuntamento" onclick="App.openDetail('${appt.id}')">✏️</button>
+        </div>
+      </div>`;
+  },
+
+  _openCurrentAppointmentConflict() {
+    const svcId   = document.getElementById('appt-service')?.value;
+    const date    = document.getElementById('appt-date')?.value;
+    const time    = document.getElementById('appt-time')?.value;
+    const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
+    const opId    = document.getElementById('appt-operator')?.value || null;
+    const status  = document.getElementById('appt-status')?.value || 'prenotato';
+    const notes   = document.getElementById('appt-notes')?.value || '';
+    const svc     = Services.getService(svcId);
+    const clientIds = [...(document.getElementById('appt-clients')?.selectedOptions || [])].map(el => el.value);
+    const apptId = document.getElementById('appt-id')?.value || null;
+    if (!svcId || !date || !time) return;
+
+    const draft = {
+      id: apptId,
+      serviceId: svcId,
+      clientIds,
+      operatorId: opId,
+      date,
+      startTime: time,
+      durationMin: dur,
+      bufferMin: svc?.bufferMin ?? 10,
+      status,
+      notes,
+    };
+    const validation = Services.canBookAppointment(draft);
+    App._openConflictOverview(draft, validation.errors);
+  },
+
+  _openConflictOverview(draft, errors = [], context = {}) {
+    const svc = Services.getService(draft.serviceId);
+    const op = Services.getOperator(draft.operatorId);
+    const dateAppts = Services.getAppointmentsForDate(draft.date)
+      .filter(a => a.id !== draft.id && a.status !== 'annullato')
+      .sort((a, b) => `${a.startTime}`.localeCompare(`${b.startTime}`));
+    const draftRoom = svc?.room || null;
+    const draftClientIds = new Set(draft.clientIds || []);
+
+    const conflictAppts = dateAppts.filter(a => {
+      const otherSvc = Services.getService(a.serviceId);
+      const sameOperator = draft.operatorId && a.operatorId === draft.operatorId && Services.overlaps(draft, a, false);
+      const sameClient = (a.clientIds || []).some(id => draftClientIds.has(id)) && Services.overlaps(draft, a, false);
+      const sameRoom = draftRoom && otherSvc?.room === draftRoom && Services.overlaps(draft, a, false);
+      return sameOperator || sameClient || sameRoom;
+    });
+
+    const operators = Services.getAvailableOperatorsForSlot(
+      draft.serviceId,
+      draft.date,
+      draft.startTime,
+      draft.durationMin,
+      draft.bufferMin,
+      draft.id || null
+    );
+    const operatorRows = operators.map(operator => {
+      const conflicts = operator.conflicts || [];
+      const status = operator.available && operator.hasRole ? 'Libero' : (!operator.hasRole ? 'Ruolo non compatibile' : 'Occupato');
+      return `
+        <div class="conflict-operator ${operator.available && operator.hasRole ? 'is-free' : 'is-busy'}">
+          <div>
+            <strong>${App._escapeHtml(`${operator.nome} ${operator.cognome}`)}</strong>
+            <span>${App._escapeHtml(status)}</span>
+          </div>
+          <div class="conflict-operator-conflicts">
+            ${conflicts.length
+              ? conflicts.map(a => `<button class="mini-link" onclick="App.openDetail('${a.id}')">${App._escapeHtml(App._apptTimeRange(a, false))} · ${App._escapeHtml((a.clientIds || []).map(Services.clientConflictLabel).join(', '))}</button>`).join('')
+              : '<span class="text-muted">nessun blocco nello slot</span>'}
+          </div>
+        </div>`;
+    }).join('');
+
+    const startMin = Services.timeToMin(draft.startTime);
+    const workStart = Services.timeToMin(CONFIG.workHours.start);
+    const workEnd = Services.timeToMin(CONFIG.workHours.end);
+    const windowStart = Math.max(workStart, Math.floor((startMin - 90) / 30) * 30);
+    const windowEnd = Math.min(workEnd, Math.ceil((Services.effectiveEnd(draft, false) + 120) / 30) * 30);
+    const rooms = Object.values(CONFIG.ROOMS);
+    const timelineRows = [];
+    for (let t = windowStart; t < windowEnd; t += 30) {
+      const slot = { date: draft.date, startTime: Services.minToTime(t), durationMin: 30, bufferMin: 0 };
+      const slotAppts = dateAppts.filter(a => Services.overlaps(slot, a, false));
+      const staffBusy = slotAppts
+        .filter(a => a.operatorId)
+        .map(a => `${Services.operatorFullName(a.operatorId)}: ${(a.clientIds || []).map(Services.clientConflictLabel).join(', ') || Services.getService(a.serviceId)?.label || 'blocco'}`);
+      const roomLoads = rooms.map(room => {
+        const load = Services.getRoomLoadAt(draft.date, slot.startTime, 30, room.id, draft.id || null);
+        const max = Services.getRoomMax(room.id);
+        return `<span class="${load >= max ? 'is-full' : ''}">${App._escapeHtml(room.label)} ${load}/${max}</span>`;
+      }).join('');
+      timelineRows.push(`
+        <tr class="${t <= startMin && startMin < t + 30 ? 'is-target' : ''}">
+          <td>${App._escapeHtml(slot.startTime)}</td>
+          <td>${staffBusy.length ? staffBusy.map(App._escapeHtml).join('<br>') : '<span class="text-muted">PT liberi</span>'}</td>
+          <td>${roomLoads}</td>
+        </tr>`);
+    }
+
+    const draftClients = (draft.clientIds || []).map(Services.clientConflictLabel).join(', ') || 'nessun cliente';
+    const draftRoomLabel = draftRoom ? CONFIG.ROOMS[draftRoom]?.label : 'nessuna sala';
+    const errorList = errors.length
+      ? errors.map(err => `<li>${App._escapeHtml(err)}</li>`).join('')
+      : '<li>Slot non disponibile.</li>';
+    const returnPackageButton = context.returnPackageClientId
+      ? `<button class="btn" onclick="App.openPackageOverview('${context.returnPackageClientId}')">Torna al quadro pacchetto</button>`
+      : '';
+
+    const html = `
+      <div class="modal-header conflict-header">
+        <div>
+          <h3>Panoramica conflitto</h3>
+          <p class="modal-subtitle">${App._escapeHtml(draft.date)} · ${App._escapeHtml(App._apptTimeRange(draft, false))}</p>
+        </div>
+        <button class="modal-close" onclick="UI.closeModal()">✕</button>
+      </div>
+      <div class="modal-body conflict-overview">
+        <section class="conflict-summary">
+          <div>
+            <div class="eyebrow">Stai provando a salvare</div>
+            <h4>${App._escapeHtml(svc?.label || draft.serviceId)} · ${App._escapeHtml(draftClients)}</h4>
+            <p>${App._escapeHtml(op ? `${op.nome} ${op.cognome}` : 'PT non assegnato')} · ${App._escapeHtml(draftRoomLabel)}</p>
+          </div>
+          <ul>${errorList}</ul>
+        </section>
+
+        <section class="conflict-section">
+          <h4>Appuntamenti che impattano lo slot</h4>
+          <div class="conflict-appt-list">
+            ${conflictAppts.length ? conflictAppts.map(a => App._appointmentMiniCard(a, { markConflict: true })).join('') : '<p class="empty-state">Nessun appuntamento diretto trovato: controlla capienza sala o vincoli pacchetto.</p>'}
+          </div>
+        </section>
+
+        <section class="conflict-section">
+          <h4>Disponibilità PT nello slot</h4>
+          <div class="conflict-operator-list">${operatorRows || '<p class="empty-state">Nessun PT configurato.</p>'}</div>
+        </section>
+
+        <section class="conflict-section">
+          <h4>Studio nella fascia vicina</h4>
+          <div class="conflict-table-wrap">
+            <table class="conflict-table">
+              <thead><tr><th>Ora</th><th>PT / clienti</th><th>Sale</th></tr></thead>
+              <tbody>${timelineRows.join('')}</tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        ${returnPackageButton}
+        <button class="btn" onclick="UI.closeModal();Calendar.switchView('room','${draft.date}')">Vista sale del giorno</button>
+        <button class="btn-primary" onclick="UI.closeModal()">Chiudi</button>
+      </div>`;
+
+    UI.openModal(html);
+  },
+
   // ── SALVA APPUNTAMENTO ───────────────────────────────
   _saveAppointment(apptId) {
     const svcId   = document.getElementById('appt-service')?.value;
@@ -376,7 +567,8 @@ const App = {
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       const ve = document.getElementById('slot-validation');
-      if (ve) ve.innerHTML = `<div class="val-error">⚠ ${validation.errors.join(' · ')}</div>`;
+      if (ve) ve.innerHTML = `<div class="val-error">⚠ ${validation.errors.join(' · ')} <button class="mini-link" onclick="App._openCurrentAppointmentConflict()">Panoramica</button></div>`;
+      App._openConflictOverview({ ...apptData, id: apptId || null }, validation.errors);
       return;
     }
 
@@ -428,7 +620,7 @@ const App = {
             <div class="add-participant">
               <select id="add-part-select" class="form-input form-input-sm">
                 <option value="">— aggiungi cliente —</option>
-                ${clients.filter(c => !appt.clientIds.includes(c.id))
+                ${clients.filter(c => c.active !== false && !appt.clientIds.includes(c.id))
                   .map(c=>`<option value="${c.id}">${c.nome} ${c.cognome}</option>`).join('')}
               </select>
               <button class="btn-primary btn-sm" onclick="App._addParticipant('${appt.id}')">+</button>
@@ -847,9 +1039,10 @@ const App = {
 
     const rows = appointments.length ? appointments.map(a => {
       const svc = Services.getService(a.serviceId);
-      const operatorOptions = `<option value="">—</option>` + operators.map(op =>
-        `<option value="${op.id}" ${op.id === a.operatorId ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`
-      ).join('');
+      const operatorOptions = State.getOperators()
+        .filter(op => op.active !== false)
+        .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
+        .join('');
       const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
         `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
       ).join('');
@@ -865,7 +1058,8 @@ const App = {
           </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>
-            <select id="pkg-op-${a.id}" class="form-input package-operator-input">
+            <select id="pkg-operator-${a.id}" class="form-input package-operator-input">
+              <option value="">—</option>
               ${operatorOptions}
             </select>
           </td>
@@ -955,7 +1149,7 @@ const App = {
               <div class="form-group">
                 <label>PT</label>
                 <select id="pkg-plan-operator" class="form-input">
-                  <option value="">Mantieni/nessuno</option>
+                  <option value="">Mantieni/auto</option>
                   ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
                 </select>
               </div>
@@ -1010,7 +1204,7 @@ const App = {
     if (idx < 0) return null;
     clients[idx] = {
       ...clients[idx],
-      giorniSettimana: days,
+      giorniSettimana: days
     };
     State.saveClients(clients);
     SupabaseSync.pushClient(clients[idx]);
@@ -1141,7 +1335,7 @@ const App = {
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '09:00';
-    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || '';
+    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || null;
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
@@ -1168,10 +1362,12 @@ const App = {
       [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
       currentClient.ptAssegnato ||
       null;
+    const fallbackOperatorData = fallbackOperator ? Services.getOperator(fallbackOperator) : null;
+    const fallbackOperatorLabel = fallbackOperatorData ? `${fallbackOperatorData.nome} ${fallbackOperatorData.cognome}` : 'senza PT assegnato';
 
     const confirmed = confirm(
       `Rigenero le sedute future di ${currentClient.nome} ${currentClient.cognome} da ${fromDate}.\n` +
-      `Le sedute future non svolte (${futureToReplace.length}) saranno sostituite con: ${days.join(', ')} alle ${time}.\n\n` +
+      `Le sedute future non svolte (${futureToReplace.length}) saranno sostituite con: ${days.join(', ')} alle ${time}, PT ${fallbackOperatorLabel}.\n\n` +
       'Le sedute gia fatte non vengono toccate.'
     );
     if (!confirmed) return;
@@ -1249,22 +1445,23 @@ const App = {
     const appt = State.getAppointments().find(a => a.id === apptId);
     const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
     const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
-    const nextOperator = document.getElementById(`pkg-op-${apptId}`)?.value || null;
+    const nextOperatorId = document.getElementById(`pkg-operator-${apptId}`)?.value || null;
     const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
     if (!appt || !nextDate || !nextTime || !nextStatus) return;
-    if (appt.date === nextDate && appt.startTime === nextTime && appt.operatorId === nextOperator && appt.status === nextStatus) {
+    if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && appt.status === nextStatus) {
       UI.showToast('Riga gia aggiornata', 'success');
       return;
     }
 
-    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperator, status: nextStatus };
+    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus };
     const validation = Services.canBookAppointment(patch);
     if (!validation.ok) {
-      App._showPackageAvailabilityError('Cambio singola seduta non salvato.', patch, validation.errors);
+      UI.showToast(validation.errors[0], 'error');
+      App._openConflictOverview(patch, validation.errors, { returnPackageClientId: appt.clientIds?.[0] || null });
       return;
     }
 
-    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, operatorId: nextOperator, status: nextStatus });
+    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus });
     if (appt.status !== saved.status) App._consumeClientSessions(saved);
     await SupabaseSync.pushAppointment(saved);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
@@ -1388,6 +1585,14 @@ const App = {
           </label>
         </div>
 
+        <div class="data-action-row" style="border-color:#2563EB;background:rgba(37,99,235,.06)">
+          <div class="data-action-info">
+            <div class="data-action-title">⇧ Porta il locale su Supabase</div>
+            <div class="data-action-sub">Invia a Supabase i dati presenti in questo browser prima di rileggerli dal database</div>
+          </div>
+          <button class="act-btn primary" onclick="App.syncLocalToSupabase({ silent:false, refresh:true })">Sincronizza ora</button>
+        </div>
+
         ${hasBackup ? `
         <div class="data-action-row" style="border-color:var(--green);background:var(--green-pale)">
           <div class="data-action-info">
@@ -1423,13 +1628,14 @@ const App = {
     UI.openModal(html);
   },
 
-  _importFile(input) {
+  async _importFile(input) {
     const file = input.files[0];
     if (!file) return;
-    State.importData(file).then(res => {
+    State.importData(file).then(async res => {
+      await App.syncLocalToSupabase({ silent: true, refresh: false });
       UI.closeModal();
       Calendar.render();
-      UI.showToast(`Importati: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
+      UI.showToast(`Importati e caricati su Supabase: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
     }).catch(err => UI.showToast('Errore importazione: ' + err.message, 'error'));
   },
 
@@ -1470,9 +1676,37 @@ const App = {
     }
   },
 
+  async syncLocalToSupabase({ silent = true, refresh = false } = {}) {
+    const snapshot = {
+      operators: State.getOperators(),
+      clients: State.getClients(),
+      appointments: State.getAppointments(),
+    };
+    const total = snapshot.operators.length + snapshot.clients.length + snapshot.appointments.length;
+    if (!total) return { operators: 0, clients: 0, appointments: 0, success: true, errors: [] };
+
+    try {
+      const res = await SupabaseSync.pushLocalSnapshot(snapshot);
+      localStorage.setItem('neacea_last_push_to_supabase', new Date().toISOString());
+      if (res.errors?.length) {
+        console.warn('[Supabase] alcune righe locali non sono state caricate:', res.errors);
+        if (!silent) UI.showToast(`${res.errors.length} elementi locali non caricati su Supabase`, 'error');
+      } else if (!silent) {
+        UI.showToast(`Locale caricato su Supabase: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
+      }
+      if (refresh) await App.refreshFromSupabase({ silent: true });
+      return res;
+    } catch (err) {
+      console.warn('[Supabase] push locale non riuscito:', err);
+      if (!silent) UI.showToast('Caricamento locale su Supabase non riuscito', 'error');
+      return { success: false, errors: [{ label: 'syncLocalToSupabase', error: String(err?.message || err) }] };
+    }
+  },
+
   // ── INIT ─────────────────────────────────────────────
   async init() {
     State.init();
+    await App.syncLocalToSupabase({ silent: true, refresh: false });
     await App.refreshFromSupabase({ silent: true });
 
     document.querySelectorAll('[data-view]').forEach(el => {

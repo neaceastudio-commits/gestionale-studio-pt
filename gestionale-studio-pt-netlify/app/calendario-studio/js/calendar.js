@@ -7,6 +7,7 @@ const Calendar = (() => {
 
   let currentDate = new Date();
   let currentView = 'dashboard';
+  let availabilityServiceId = 'pt11';
 
   function fmt(d) { return d.toISOString().slice(0, 10); }
   function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
@@ -48,6 +49,7 @@ const Calendar = (() => {
       case 'day': renderDay(); break;
       case 'week': renderWeek(); break;
       case 'room': renderRoom(); break;
+      case 'availability': renderAvailability(); break;
       case 'operators': Operators.render(); break;
       case 'clients': Clients.render(); break;
     }
@@ -399,9 +401,127 @@ const Calendar = (() => {
     `;
   }
 
+  function availabilityServiceOptions() {
+    return Object.values(CONFIG.SERVICES)
+      .filter(s => !s.isBlock)
+      .map(s => `<option value="${s.id}" ${availabilityServiceId === s.id ? 'selected' : ''}>${s.label}</option>`)
+      .join('');
+  }
+
+  function serviceCompatibleOperators(serviceId) {
+    const svc = Services.getService(serviceId);
+    return State.getOperators()
+      .filter(op => op.active !== false)
+      .filter(op => {
+        if (!svc?.requiredRoles?.length) return true;
+        const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
+        return svc.requiredRoles.some(role => roles.includes(role));
+      });
+  }
+
+  function renderAvailability() {
+    const dateStr = fmt(currentDate);
+    const svc = Services.getService(availabilityServiceId) || Services.getService('pt11');
+    const operators = serviceCompatibleOperators(svc.id);
+    const panel = document.getElementById('view-availability');
+    if (!panel) return;
+
+    const startMin = Services.timeToMin(CONFIG.workHours.start);
+    const endMin = Services.timeToMin(CONFIG.workHours.end);
+    const rows = [];
+    for (let min = startMin; min < endMin; min += 30) {
+      const time = Services.minToTime(min);
+      const availability = Services.getAvailableOperatorsForSlot(
+        svc.id,
+        dateStr,
+        time,
+        svc.durationMin || 60,
+        svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        null
+      );
+
+      const cells = operators.map(op => {
+        const status = availability.find(item => item.id === op.id);
+        const conflicts = status?.conflicts || [];
+        const free = !!status?.available && !!status?.hasRole;
+        const draft = {
+          date: dateStr,
+          startTime: time,
+          durationMin: svc.durationMin || 60,
+          bufferMin: svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        };
+        const directConflicts = conflicts.filter(a => Services.overlaps(draft, a, false));
+        const isBufferOnly = !free && conflicts.length && directConflicts.length === 0;
+        const conflictLabel = conflicts.map(a => {
+          const clients = (a.clientIds || []).map(Services.clientFullName).join(', ') || 'blocco';
+          const apptTime = String(a.startTime || '').slice(0, 5);
+          const shortClients = clients.length > 22 ? clients.slice(0, 21) + '…' : clients;
+          return `${isBufferOnly ? 'verso ' : ''}${apptTime} ${shortClients}`;
+        }).join(' · ');
+        const cellClass = free ? 'is-free' : (isBufferOnly ? 'is-buffer' : 'is-busy');
+        const statusLabel = free ? 'Libero' : (isBufferOnly ? 'Buffer' : 'Occupato');
+        return `<td class="availability-cell ${cellClass}">
+          <button class="availability-slot" ${free ? `onclick="App.openNewAppointment('${dateStr}', null, '${time}', '${svc.id}')"` : (conflicts[0] ? `onclick="App.openDetail('${conflicts[0].id}')"` : '')}>
+            <strong>${statusLabel}</strong>
+            <span>${free ? 'clicca per creare' : (conflictLabel || 'non disponibile')}</span>
+          </button>
+        </td>`;
+      }).join('');
+
+      rows.push(`<tr>
+        <td class="availability-time">${time}</td>
+        ${cells}
+      </tr>`);
+    }
+
+    const headers = operators.map(op =>
+      `<th><span>${op.nome} ${op.cognome}</span><small>${(Array.isArray(op.roles) ? op.roles : []).join(', ') || 'staff'}</small></th>`
+    ).join('');
+
+    panel.innerHTML = `
+      <div class="view-header">
+        <div class="nav-arrows">
+          <button class="btn btn-ghost btn-sm" onclick="Calendar.prevDay()">‹</button>
+          <h2 class="view-title">Disponibilità — ${italianDate(currentDate)}</h2>
+          <button class="btn btn-ghost btn-sm" onclick="Calendar.nextDay()">›</button>
+          <button class="btn btn-ghost btn-sm" onclick="Calendar.goToday()">Oggi</button>
+        </div>
+        <div class="availability-tools">
+          <select class="form-input" onchange="Calendar.setAvailabilityService(this.value)">
+            ${availabilityServiceOptions()}
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Specchio orari liberi</h3>
+          <span class="card-subtitle">${svc.label} · ${operators.length} professionisti compatibili</span>
+        </div>
+        <div class="availability-legend">
+          <span class="free">Libero</span>
+          <span class="buffer">Buffer</span>
+          <span class="busy">Occupato</span>
+        </div>
+        ${operators.length ? `
+          <div class="availability-table-wrap">
+            <table class="availability-table">
+              <thead><tr><th>Orario</th>${headers}</tr></thead>
+              <tbody>${rows.join('')}</tbody>
+            </table>
+          </div>
+        ` : '<p class="empty-state">Nessun professionista compatibile con questo servizio.</p>'}
+      </div>
+    `;
+  }
+
   // ─────────────────────────────────────────────────────
   // NAVIGAZIONE
   // ─────────────────────────────────────────────────────
+
+  function setAvailabilityService(serviceId) {
+    availabilityServiceId = serviceId || 'pt11';
+    renderAvailability();
+  }
 
   function prevDay() { currentDate.setDate(currentDate.getDate() - 1); render(); }
   function nextDay() { currentDate.setDate(currentDate.getDate() + 1); render(); }
@@ -411,5 +531,5 @@ const Calendar = (() => {
 
   function getCurrentDateStr() { return fmt(currentDate); }
 
-  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt };
+  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
 })();

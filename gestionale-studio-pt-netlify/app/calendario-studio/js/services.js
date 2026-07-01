@@ -44,6 +44,15 @@ const Services = (() => {
     return c ? `${c.nome} ${c.cognome}`.trim() : id || '-';
   }
 
+  function clientConflictLabel(id) {
+    const c = getClient(id);
+    if (c) {
+      const name = `${c.nome} ${c.cognome}`.trim() || id || '-';
+      return c.active === false ? `${name} (non attivo)` : name;
+    }
+    return `cliente non attivo/non caricato (${id || '-'})`;
+  }
+
   function operatorFullName(id) {
     const o = getOperator(id);
     return o ? `${o.nome} ${o.cognome}`.trim() : '-';
@@ -125,7 +134,7 @@ const Services = (() => {
         a.status !== 'annullato' &&
         a.operatorId === op.id &&
         a.date === date &&
-        overlaps(tmp, a, true)
+        overlaps(tmp, a, false)
       );
       return { ...op, hasRole, available: conflicts.length === 0, conflicts };
     });
@@ -186,9 +195,9 @@ const Services = (() => {
     if (appt.operatorId) {
       const op = getOperator(appt.operatorId);
       if (op && !opHasRole(op, svc)) errors.push('Operatore senza ruolo compatibile');
-      const operatorConflict = appts.find(a => a.operatorId === appt.operatorId && overlaps(appt, a, true));
+      const operatorConflict = appts.find(a => a.operatorId === appt.operatorId && overlaps(appt, a, false));
       if (operatorConflict) {
-        const conflictClients = (operatorConflict.clientIds || []).map(clientFullName).join(', ') || 'nessun cliente';
+        const conflictClients = (operatorConflict.clientIds || []).map(clientConflictLabel).join(', ') || 'nessun cliente';
         errors.push(`${operatorFullName(appt.operatorId)} occupato alle ${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`);
       }
     }
@@ -324,6 +333,7 @@ const Services = (() => {
     getClient,
     getOperator,
     clientFullName,
+    clientConflictLabel,
     operatorFullName,
     clientCanUseService,
     serviceUsesPackageSessions,

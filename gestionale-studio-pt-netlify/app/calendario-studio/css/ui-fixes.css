@@ -934,7 +934,294 @@
   box-shadow: var(--shadow);
 }
 
+.conflict-header {
+  border-left: 4px solid var(--red);
+}
+.conflict-overview {
+  display: grid;
+  gap: 16px;
+}
+.conflict-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, .75fr);
+  gap: 16px;
+  align-items: start;
+  border: 1px solid rgba(220, 38, 38, .28);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: rgba(220, 38, 38, .06);
+}
+.conflict-summary h4 {
+  margin: 4px 0 4px;
+  color: var(--text);
+  font-size: 17px;
+}
+.conflict-summary p {
+  margin: 0;
+  color: var(--text3);
+  font-weight: 800;
+}
+.conflict-summary ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 800;
+}
+.conflict-section {
+  display: grid;
+  gap: 10px;
+}
+.conflict-section h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+.conflict-appt-list,
+.conflict-operator-list {
+  display: grid;
+  gap: 8px;
+}
+.conflict-appt,
+.conflict-operator {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--bg2);
+}
+.conflict-appt.is-conflict {
+  border-color: rgba(220, 38, 38, .28);
+  background: rgba(220, 38, 38, .05);
+}
+.conflict-appt-main,
+.conflict-appt-meta,
+.conflict-operator > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.conflict-appt-main strong,
+.conflict-operator strong {
+  color: var(--text);
+}
+.conflict-appt-main span,
+.conflict-appt-meta span,
+.conflict-operator span {
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 800;
+}
+.conflict-time {
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: var(--blue-xpale);
+  color: var(--blue) !important;
+}
+.conflict-operator.is-free {
+  border-color: rgba(22, 163, 74, .26);
+  background: rgba(22, 163, 74, .05);
+}
+.conflict-operator.is-busy {
+  border-color: rgba(245, 158, 11, .3);
+  background: rgba(245, 158, 11, .06);
+}
+.conflict-operator-conflicts {
+  justify-content: flex-end;
+}
+.mini-link {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+.conflict-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.conflict-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+}
+.conflict-table th,
+.conflict-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 9px 10px;
+  vertical-align: top;
+  text-align: left;
+}
+.conflict-table th {
+  background: var(--blue-xpale);
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.conflict-table td {
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+}
+.conflict-table tr.is-target {
+  background: rgba(37, 99, 235, .08);
+}
+.conflict-table td:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.conflict-table td:last-child span {
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: var(--bg2);
+  color: var(--text3);
+}
+.conflict-table td:last-child span.is-full {
+  background: rgba(220, 38, 38, .08);
+  color: var(--red);
+}
+.availability-tools {
+  min-width: 220px;
+}
+.availability-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+.availability-legend span {
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 900;
+}
+.availability-legend .free {
+  background: rgba(22, 163, 74, .08);
+  color: var(--green);
+}
+.availability-legend .buffer {
+  background: rgba(245, 158, 11, .1);
+  color: #B45309;
+}
+.availability-legend .busy {
+  background: rgba(220, 38, 38, .08);
+  color: var(--red);
+}
+.availability-table-wrap {
+  overflow-x: auto;
+  padding-top: 8px;
+}
+.availability-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+.availability-table th,
+.availability-table td {
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.availability-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 10px;
+  background: var(--blue-xpale);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 900;
+}
+.availability-table th:first-child {
+  width: 74px;
+}
+.availability-table th small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 800;
+}
+.availability-time {
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.availability-cell {
+  padding: 5px 6px;
+}
+.availability-slot {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--bg2);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.availability-cell.is-free .availability-slot {
+  border-color: rgba(22, 163, 74, .28);
+  background: rgba(22, 163, 74, .06);
+}
+.availability-cell.is-busy .availability-slot {
+  border-color: rgba(220, 38, 38, .22);
+  background: rgba(220, 38, 38, .05);
+}
+.availability-cell.is-buffer .availability-slot {
+  border-color: rgba(245, 158, 11, .28);
+  background: rgba(245, 158, 11, .07);
+}
+.availability-slot strong {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 900;
+}
+.availability-cell.is-free .availability-slot strong {
+  color: var(--green);
+}
+.availability-cell.is-busy .availability-slot strong {
+  color: var(--red);
+}
+.availability-cell.is-buffer .availability-slot strong {
+  color: #B45309;
+}
+.availability-slot span {
+  display: inline;
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 @media (max-width: 720px) {
+  .conflict-summary,
+  .conflict-appt,
+  .conflict-operator {
+    grid-template-columns: 1fr;
+  }
+  .conflict-operator-conflicts {
+    justify-content: flex-start;
+  }
   .view-header > .btn-primary {
     width: 100%;
   }

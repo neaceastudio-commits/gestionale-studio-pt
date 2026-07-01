@@ -146,7 +146,7 @@ const Operators = (() => {
     UI.showToast(opId ? 'Professionista aggiornato' : 'Professionista aggiunto', 'success');
   }
 
-  function toggleActive(opId) {
+  async function toggleActive(opId) {
     const ops = State.getOperators();
     const idx = ops.findIndex(o => o.id === opId);
     if (idx !== -1) {
@@ -154,13 +154,25 @@ const Operators = (() => {
       State.saveOperators(ops);
       render();
       Calendar.render();
+      const res = await SupabaseSync.pushOperator(ops[idx]);
+      if (res?.error) {
+        UI.showToast('Errore salvataggio stato staff', 'error');
+        return;
+      }
+      UI.showToast(ops[idx].active ? 'Professionista attivato' : 'Professionista disattivato', 'success');
     }
   }
 
-  function confirmDelete(opId) {
+  async function confirmDelete(opId) {
     const op = State.getOperators().find(o => o.id === opId);
     if (!op) return;
     if (confirm('Eliminare ' + op.nome + ' ' + op.cognome + '?\nQuesta azione non può essere annullata.')) {
+      const deletedOp = { ...op, active: false };
+      const res = await SupabaseSync.pushOperator(deletedOp);
+      if (res?.error) {
+        UI.showToast('Errore eliminazione staff', 'error');
+        return;
+      }
       State.saveOperators(State.getOperators().filter(o => o.id !== opId));
       render();
       Calendar.render();
