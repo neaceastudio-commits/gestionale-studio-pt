@@ -1,16 +1,17 @@
-// Vista Disponibilita: quadro gestionale + disponibilita PT dichiarata con menu.
+// Disponibilita PT: configurazione staff + ricerca disponibilita reale.
 (function () {
   const NS = 'pt-availability-overview';
-  const AVAILABILITY_KEY = 'neacea_pt_declared_availability_v2';
+  const STAFF_NS = 'pt-staff-availability-setup';
+  const AVAILABILITY_KEY = 'neacea_pt_declared_availability_v3';
   const WEEK_DAYS = [
     ['mon', 'Lunedi'],
     ['tue', 'Martedi'],
     ['wed', 'Mercoledi'],
     ['thu', 'Giovedi'],
     ['fri', 'Venerdi'],
-    ['sat', 'Sabato'],
-    ['sun', 'Domenica']
+    ['sat', 'Sabato']
   ];
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const TIME_SLOTS = [
     ['', 'Non disponibile'],
     ['07:00-12:00', '07:00-12:00'],
@@ -22,6 +23,19 @@
     ['16:00-21:00', '16:00-21:00'],
     ['07:00-21:00', 'Full day']
   ];
+  const SEARCH_WINDOWS = [
+    ['07:00-21:00', 'Tutta la giornata'],
+    ['07:00-12:00', 'Mattina'],
+    ['12:00-16:00', 'Pranzo / primo pomeriggio'],
+    ['14:00-18:00', 'Pomeriggio'],
+    ['15:00-21:00', 'Pomeriggio / sera']
+  ];
+  const PERIODS = [
+    ['7', 'Prossimi 7 giorni'],
+    ['14', 'Prossimi 14 giorni'],
+    ['30', 'Prossimi 30 giorni']
+  ];
+  let lastSearchHtml = '';
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -39,11 +53,6 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
-  function fmtDate(value) {
-    const d = parseDate(value);
-    return d ? d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' }) : '-';
-  }
-
   function addDays(date, days) {
     const d = new Date(date);
     d.setDate(d.getDate() + days);
@@ -54,11 +63,35 @@
     return (typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || dateStr(new Date());
   }
 
-  function currentWeekDays() {
-    const base = parseDate(currentDateValue()) || new Date();
-    const offset = base.getDay() === 0 ? 6 : base.getDay() - 1;
-    const monday = addDays(base, -offset);
-    return Array.from({ length: 5 }, (_, i) => addDays(monday, i));
+  function fmtDate(value) {
+    const d = parseDate(value);
+    return d ? d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' }) : '-';
+  }
+
+  function timeToMin(value) {
+    if (typeof Services !== 'undefined' && Services.timeToMin) return Services.timeToMin(value);
+    const [h, m] = String(value || '00:00').split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  function minToTime(value) {
+    if (typeof Services !== 'undefined' && Services.minToTime) return Services.minToTime(value);
+    return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+  }
+
+  function splitRange(range) {
+    const parts = String(range || '').split('-');
+    if (parts.length !== 2) return null;
+    const start = timeToMin(parts[0]);
+    const end = timeToMin(parts[1]);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+    return { start, end };
+  }
+
+  function overlapRange(a, b) {
+    const start = Math.max(a.start, b.start);
+    const end = Math.min(a.end, b.end);
+    return end > start ? { start, end } : null;
   }
 
   function operatorLabel(operator) {
@@ -70,15 +103,191 @@
     return String(operator.id || operator.email || operatorLabel(operator));
   }
 
+  function loadAvailability() {
+    try { return JSON.parse(localStorage.getItem(AVAILABILITY_KEY) || '{}') || {}; }
+    catch { return {}; }
+  }
+
+  function saveAvailability(data) {
+    localStorage.setItem(AVAILABILITY_KEY, JSON.stringify(data));
+  }
+
+  function serviceOptions() {
+    return Object.values(CONFIG.SERVICES)
+      .filter(s => !s.isBlock)
+      .map(s => `<option value="${esc(s.id)}">${esc(s.label)}</option>`)
+      .join('');
+  }
+
+  function operatorOptions(includeAll) {
+    const prefix = includeAll ? '<option value="all">Tutti i PT</option>' : '';
+    return prefix + State.getOperators().filter(op => op.active !== false).map(op =>
+      `<option value="${esc(operatorKey(op))}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
+    ).join('');
+  }
+
+  function selectOptions(items, selected = '') {
+    return items.map(([value, label]) => `<option value="${esc(value)}" ${value === selected ? 'selected' : ''}>${esc(label)}</option>`).join('');
+  }
+
+  function getOperatorByKey(key) {
+    return State.getOperators().find(op => operatorKey(op) === key || String(op.id || '') === key || String(op.email || '') === key) || null;
+  }
+
+  function toggleStaffAvailability() {
+    const box = document.getElementById('pt-staff-availability-editor');
+    if (box) box.hidden = !box.hidden;
+  }
+
+  function saveStaffAvailability() {
+    const data = loadAvailability();
+    document.querySelectorAll('[data-pt-staff-slot]').forEach(select => {
+      const opKey = select.getAttribute('data-operator-key');
+      const day = select.getAttribute('data-day');
+      const slot = select.getAttribute('data-slot');
+      if (!opKey || !day || !slot) return;
+      data[opKey] = data[opKey] || {};
+      data[opKey][day] = data[opKey][day] || { a: '', b: '' };
+      data[opKey][day][slot] = select.value;
+    });
+    saveAvailability(data);
+    const msg = document.getElementById('pt-staff-save-result');
+    if (msg) msg.textContent = 'Disponibilita salvata.';
+    renderAvailabilityIfActive();
+  }
+
+  function renderStaffRows() {
+    const data = loadAvailability();
+    const operators = State.getOperators().filter(op => op.active !== false);
+    if (!operators.length) return '<tr><td colspan="7" class="pt-muted">Nessun PT/staff attivo trovato.</td></tr>';
+    return operators.map(op => {
+      const opKey = operatorKey(op);
+      const days = WEEK_DAYS.map(([day, label]) => {
+        const saved = data[opKey]?.[day] || { a: '', b: '' };
+        return `<td>
+          <label><span>${esc(label)} fascia 1</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="a">${selectOptions(TIME_SLOTS, saved.a || '')}</select></label>
+          <label><span>${esc(label)} fascia 2</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="b">${selectOptions(TIME_SLOTS, saved.b || '')}</select></label>
+        </td>`;
+      }).join('');
+      return `<tr><th><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></th>${days}</tr>`;
+    }).join('');
+  }
+
+  function enhanceStaff() {
+    const panel = document.getElementById('view-operators');
+    if (!panel || !panel.classList.contains('active')) return;
+    panel.querySelectorAll(`.${STAFF_NS}`).forEach(el => el.remove());
+    const wrap = document.createElement('div');
+    wrap.className = STAFF_NS;
+    wrap.innerHTML = `
+      <div class="pt-panel pt-staff-setup">
+        <div class="pt-panel-title">
+          <h3>Disponibilita PT</h3>
+          <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">Apri disponibilita</button>
+        </div>
+        <div id="pt-staff-availability-editor" hidden>
+          <p class="pt-help">Imposta i giorni e le fasce orarie che ogni PT ti comunica. La ricerca in Disponibilita usera questi dati insieme agli appuntamenti gia prenotati.</p>
+          <div class="pt-table-wrap">
+            <table class="pt-staff-table">
+              <thead><tr><th>PT</th>${WEEK_DAYS.map(([, label]) => `<th>${esc(label)}</th>`).join('')}</tr></thead>
+              <tbody>${renderStaffRows()}</tbody>
+            </table>
+          </div>
+          <div class="pt-staff-actions"><button class="pt-action" onclick="PTAvailabilityOverview.saveStaffAvailability()">Salva disponibilita</button><span id="pt-staff-save-result"></span></div>
+        </div>
+      </div>`;
+    panel.appendChild(wrap);
+  }
+
+  function declaredRangesFor(opKey, dayKey) {
+    const saved = loadAvailability()[opKey]?.[dayKey] || {};
+    return [saved.a, saved.b].map(splitRange).filter(Boolean);
+  }
+
+  function hasRoleForService(operator, serviceId) {
+    const svc = typeof Services !== 'undefined' && Services.getService ? Services.getService(serviceId) : null;
+    if (!svc || !svc.roles || !svc.roles.length) return true;
+    const roles = operator.roles || operator.role || [];
+    const list = Array.isArray(roles) ? roles : [roles];
+    return svc.roles.some(role => list.includes(role));
+  }
+
+  function isAvailableByCalendar(operator, serviceId, date, start, duration, buffer) {
+    if (typeof Services !== 'undefined' && Services.getAvailableOperatorsForSlot) {
+      const status = Services.getAvailableOperatorsForSlot(serviceId, date, minToTime(start), duration, buffer, null)
+        .find(item => String(item.id) === String(operator.id));
+      return !!status && status.hasRole !== false && status.available;
+    }
+    const end = start + duration + buffer;
+    return !State.getAppointments().some(a => {
+      if (a.status === 'annullato' || a.date !== date || String(a.operatorId) !== String(operator.id)) return false;
+      const svc = typeof Services !== 'undefined' && Services.getService ? Services.getService(a.serviceId) : null;
+      const aStart = timeToMin(a.startTime);
+      const aEnd = aStart + Number(a.durationMin || svc?.durationMin || 60);
+      return start < aEnd && end > aStart;
+    });
+  }
+
+  function runAvailabilitySearch() {
+    const serviceId = document.getElementById('pt-search-service')?.value || 'pt11';
+    const operatorChoice = document.getElementById('pt-search-operator')?.value || 'all';
+    const periodDays = Number(document.getElementById('pt-search-period')?.value || 7);
+    const windowRange = splitRange(document.getElementById('pt-search-window')?.value || '07:00-21:00');
+    const service = typeof Services !== 'undefined' && Services.getService ? Services.getService(serviceId) : null;
+    const duration = Number(service?.durationMin || 60);
+    const buffer = Number(service?.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
+    const startDate = parseDate(currentDateValue()) || new Date();
+    const operators = State.getOperators().filter(op => op.active !== false && (operatorChoice === 'all' || operatorKey(op) === operatorChoice));
+    const results = [];
+
+    operators.forEach(op => {
+      if (!hasRoleForService(op, serviceId)) return;
+      const opKey = operatorKey(op);
+      for (let i = 0; i < periodDays; i++) {
+        const day = addDays(startDate, i);
+        const dayKey = DAY_KEYS[day.getDay()];
+        if (dayKey === 'sun') continue;
+        declaredRangesFor(opKey, dayKey).forEach(range => {
+          const overlap = overlapRange(range, windowRange);
+          if (!overlap) return;
+          for (let start = overlap.start; start + duration <= overlap.end; start += 30) {
+            if (isAvailableByCalendar(op, serviceId, dateStr(day), start, duration, buffer)) {
+              results.push({ op, date: dateStr(day), start, end: start + duration });
+              break;
+            }
+          }
+        });
+      }
+    });
+
+    lastSearchHtml = renderSearchResults(results.slice(0, 40));
+    renderAvailabilityIfActive();
+  }
+
+  function renderSearchResults(results) {
+    if (!results.length) return '<div class="pt-search-empty">Nessuna disponibilita trovata con questi filtri.</div>';
+    return `<div class="pt-search-results">${results.map(item => `<div class="pt-search-result"><strong>${esc(operatorLabel(item.op))}</strong><span>${esc(fmtDate(item.date))} · ${esc(minToTime(item.start))}-${esc(minToTime(item.end))}</span></div>`).join('')}</div>`;
+  }
+
+  function renderSearchBox() {
+    return `<div class="pt-panel pt-search-panel">
+      <div class="pt-panel-title"><h3>Cerca disponibilita reale</h3><span>servizio, PT, periodo e fascia</span></div>
+      <div class="pt-search-controls">
+        <label>Servizio<select id="pt-search-service">${serviceOptions()}</select></label>
+        <label>PT<select id="pt-search-operator">${operatorOptions(true)}</select></label>
+        <label>Periodo<select id="pt-search-period">${selectOptions(PERIODS, '7')}</select></label>
+        <label>Fascia oraria<select id="pt-search-window">${selectOptions(SEARCH_WINDOWS, '07:00-21:00')}</select></label>
+        <button class="pt-action" onclick="PTAvailabilityOverview.runAvailabilitySearch()">Cerca</button>
+      </div>
+      <div class="pt-search-output">${lastSearchHtml || '<div class="pt-search-empty">Imposta i filtri e cerca per vedere chi e quando e disponibile.</div>'}</div>
+    </div>`;
+  }
+
   function operatorForClient(client, operators) {
     const raw = client.ptAssegnato || client.pt_assegnato || client.operatorId || client.operator_id || '';
     if (!raw) return null;
     const normalized = String(raw).toLowerCase();
-    return operators.find(op =>
-      String(op.id || '').toLowerCase() === normalized ||
-      String(op.email || '').toLowerCase() === normalized ||
-      `${op.nome || ''} ${op.cognome || ''}`.trim().toLowerCase() === normalized
-    ) || null;
+    return operators.find(op => String(op.id || '').toLowerCase() === normalized || String(op.email || '').toLowerCase() === normalized || operatorLabel(op).toLowerCase() === normalized) || null;
   }
 
   function packageTypes(client) {
@@ -128,69 +337,6 @@
     return { key: 'ok', label: 'In corso' };
   }
 
-  function loadAvailability() {
-    try { return JSON.parse(localStorage.getItem(AVAILABILITY_KEY) || '{}') || {}; }
-    catch { return {}; }
-  }
-
-  function saveAvailability(data) {
-    localStorage.setItem(AVAILABILITY_KEY, JSON.stringify(data));
-  }
-
-  function operatorOptions() {
-    return State.getOperators().filter(op => op.active !== false).map(op =>
-      `<option value="${esc(operatorKey(op))}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
-    ).join('');
-  }
-
-  function dayOptions() {
-    return WEEK_DAYS.map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join('');
-  }
-
-  function slotOptions(selected = '') {
-    return TIME_SLOTS.map(([value, label]) => `<option value="${esc(value)}" ${value === selected ? 'selected' : ''}>${esc(label)}</option>`).join('');
-  }
-
-  function addDeclaredAvailability() {
-    const opKey = document.getElementById('pt-av-op')?.value || '';
-    const day = document.getElementById('pt-av-day')?.value || '';
-    const slot = document.getElementById('pt-av-slot')?.value || '';
-    if (!opKey || !day) return;
-    const data = loadAvailability();
-    data[opKey] = data[opKey] || {};
-    data[opKey][day] = slot;
-    saveAvailability(data);
-    enhanceAvailability();
-  }
-
-  function renderDeclaredAvailability() {
-    const data = loadAvailability();
-    const operators = State.getOperators().filter(op => op.active !== false);
-    const rows = operators.map(op => {
-      const key = operatorKey(op);
-      const days = WEEK_DAYS.map(([day, label]) => {
-        const value = data[key]?.[day] || '';
-        const text = value || 'Non disponibile';
-        return `<span class="pt-av-chip ${value ? 'ok' : 'off'}"><strong>${esc(label.slice(0, 3))}</strong>${esc(text)}</span>`;
-      }).join('');
-      return `<div class="pt-av-row"><div><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></div><div>${days}</div></div>`;
-    }).join('');
-    return rows || '<div class="pt-muted">Nessun PT/staff attivo trovato.</div>';
-  }
-
-  function renderAvailabilityBox() {
-    return `<div class="pt-panel pt-av-panel">
-      <div class="pt-panel-title"><h3>Disponibilita PT dichiarata</h3><span>per assegnare clienti</span></div>
-      <div class="pt-av-controls">
-        <label>PT<select id="pt-av-op">${operatorOptions()}</select></label>
-        <label>Giorno<select id="pt-av-day">${dayOptions()}</select></label>
-        <label>Fascia oraria<select id="pt-av-slot">${slotOptions()}</select></label>
-        <button class="pt-action" onclick="PTAvailabilityOverview.addDeclaredAvailability()">Salva fascia</button>
-      </div>
-      <div class="pt-av-summary">${renderDeclaredAvailability()}</div>
-    </div>`;
-  }
-
   function renderPackageRows() {
     const operators = State.getOperators();
     const clients = State.getClients().filter(c => c.active !== false && packageTypes(c).length);
@@ -206,21 +352,15 @@
       const remaining = metrics.remaining ?? client.sessionsRemaining ?? '-';
       const toSchedule = Number(metrics.toSchedule ?? 0);
       const name = `${client.nome || ''} ${client.cognome || ''}`.trim() || client.id;
-      return `<tr>
-        <td><strong>${esc(name)}</strong><small>${esc(client.email || '')}</small></td>
-        <td>${esc(operatorLabel(op))}<small>${esc(op?.email || client.ptAssegnato || '-')}</small></td>
-        <td>${esc(fmtDate(start))}</td>
-        <td>${esc(fmtDate(end))}</td>
-        <td>${esc(packageTypes(client).join(', ') || '-')}</td>
-        <td>${esc(completed)}/${esc(total)} fatte<br><small>${esc(remaining)} residue · ${esc(toSchedule)} da pianificare</small></td>
-        <td><span class="pt-status ${status.key}">${status.label}</span></td>
-        <td>${status.key === 'danger' ? '<span class="pt-status danger">Cliente da contattare</span>' : '<span class="pt-status read">Monitorare</span>'}</td>
-      </tr>`;
+      return `<tr><td><strong>${esc(name)}</strong><small>${esc(client.email || '')}</small></td><td>${esc(operatorLabel(op))}<small>${esc(op?.email || client.ptAssegnato || '-')}</small></td><td>${esc(fmtDate(start))}</td><td>${esc(fmtDate(end))}</td><td>${esc(packageTypes(client).join(', ') || '-')}</td><td>${esc(completed)}/${esc(total)} fatte<br><small>${esc(remaining)} residue · ${esc(toSchedule)} da pianificare</small></td><td><span class="pt-status ${status.key}">${status.label}</span></td><td>${status.key === 'danger' ? '<span class="pt-status danger">Cliente da contattare</span>' : '<span class="pt-status read">Monitorare</span>'}</td></tr>`;
     }).join('');
   }
 
   function renderBusyColumns() {
-    const days = currentWeekDays();
+    const base = parseDate(currentDateValue()) || new Date();
+    const offset = base.getDay() === 0 ? 6 : base.getDay() - 1;
+    const monday = addDays(base, -offset);
+    const days = Array.from({ length: 6 }, (_, i) => addDays(monday, i));
     const appointments = State.getAppointments().filter(a => a.status !== 'annullato');
     return days.map(day => {
       const ds = dateStr(day);
@@ -228,32 +368,34 @@
         const op = Services.getOperator(a.operatorId);
         const svc = Services.getService(a.serviceId);
         const clients = (a.clientIds || []).map(Services.clientFullName).join(', ') || 'Blocco agenda';
-        const end = Services.minToTime(Services.timeToMin(a.startTime) + Number(a.durationMin || svc?.durationMin || 60));
+        const end = minToTime(timeToMin(a.startTime) + Number(a.durationMin || svc?.durationMin || 60));
         return `<div class="pt-event" style="border-left-color:${esc(svc?.color || '#1f6848')}"><strong>${esc(String(a.startTime || '').slice(0, 5))}-${esc(end)}</strong><span>${esc(operatorLabel(op))}</span><em>${esc(clients)}</em></div>`;
       }).join('') || '<div class="pt-empty">Nessun impegno</div>';
       return `<div class="pt-day"><h4>${day.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' })}</h4>${items}</div>`;
     }).join('');
   }
 
-  function enhanceAvailability() {
+  function renderAvailabilityIfActive() {
     const panel = document.getElementById('view-availability');
     if (!panel || !panel.classList.contains('active')) return;
     panel.querySelectorAll(`.${NS}`).forEach(el => el.remove());
     const wrap = document.createElement('div');
     wrap.className = NS;
-    wrap.innerHTML = `${renderAvailabilityBox()}
+    wrap.innerHTML = `${renderSearchBox()}
       <div class="pt-panel"><div class="pt-panel-title"><h3>Pacchetti e rinnovi</h3><span>quadro clienti</span></div><div class="pt-table-wrap"><table class="pt-package-table"><thead><tr><th>Cliente</th><th>PT</th><th>Inizio</th><th>Fine stimata</th><th>Pacchetto</th><th>Sedute</th><th>Stato</th><th>Follow-up</th></tr></thead><tbody>${renderPackageRows()}</tbody></table></div></div>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Orari impegnati della settimana</h3><span>appuntamenti reali</span></div><div class="pt-week-grid">${renderBusyColumns()}</div></div>`;
     panel.appendChild(wrap);
   }
 
   function scheduleEnhance() {
-    setTimeout(enhanceAvailability, 0);
-    setTimeout(enhanceAvailability, 250);
+    setTimeout(renderAvailabilityIfActive, 0);
+    setTimeout(renderAvailabilityIfActive, 250);
+    setTimeout(enhanceStaff, 0);
+    setTimeout(enhanceStaff, 250);
   }
 
   function hookCalendar() {
-    if (typeof Calendar === 'undefined' || Calendar.__ptAvailabilityHooked) return;
+    if (typeof Calendar === 'undefined' || Calendar.__ptAvailabilityHookedV2) return;
     const originalRender = Calendar.render;
     const originalSwitch = Calendar.switchView;
     Calendar.render = function () {
@@ -266,14 +408,14 @@
       scheduleEnhance();
       return out;
     };
-    Calendar.__ptAvailabilityHooked = true;
+    Calendar.__ptAvailabilityHookedV2 = true;
   }
 
-  window.PTAvailabilityOverview = { addDeclaredAvailability };
+  window.PTAvailabilityOverview = { toggleStaffAvailability, saveStaffAvailability, runAvailabilitySearch };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
-    document.querySelectorAll('[data-view="availability"]').forEach(btn => btn.addEventListener('click', scheduleEnhance));
+    document.querySelectorAll('[data-view="availability"],[data-view="operators"]').forEach(btn => btn.addEventListener('click', scheduleEnhance));
     scheduleEnhance();
   });
 })();
