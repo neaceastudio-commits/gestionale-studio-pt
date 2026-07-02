@@ -124,8 +124,9 @@
     const start = parseDate(typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || new Date();
     const now = new Date();
     const startMin = Services.timeToMin(CONFIG.workHours.start);
+    const firstFullHourMin = Math.ceil(startMin / 60) * 60;
     const endMin = Services.timeToMin(CONFIG.workHours.end);
-    const step = Number(CONFIG.slotIntervalMin || 30);
+    const step = 60;
     const duration = Number(svc.durationMin || 60);
     const buffer = Number(svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
     const out = [];
@@ -134,7 +135,7 @@
       const day = addDays(start, d);
       const ds = dateStr(day);
       const isToday = ds === dateStr(now);
-      for (let min = startMin; min + duration <= endMin && out.length < maxResults; min += step) {
+      for (let min = firstFullHourMin; min + duration <= endMin && out.length < maxResults; min += step) {
         if (isToday && min <= now.getHours() * 60 + now.getMinutes()) continue;
         const time = Services.minToTime(min);
         const availability = Services.getAvailableOperatorsForSlot(serviceId, ds, time, duration, buffer, null)
