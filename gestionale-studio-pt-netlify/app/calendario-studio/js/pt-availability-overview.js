@@ -23,6 +23,8 @@
   ];
   let staffEditorOpen = false;
   let staffEditorDirty = false;
+  let hoursSummaryOpen = false;
+  let hoursSummaryMonth = '';
   let lastSearchHtml = '';
   let lastSearchFilters = null;
 
@@ -126,6 +128,81 @@
     return dateStr(addDays(parseDate(currentDateValue()) || new Date(), 6));
   }
 
+  function currentMonthValue() {
+    const d = parseDate(currentDateValue()) || new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function monthLabel(value) {
+    const [year, month] = String(value || currentMonthValue()).split('-').map(Number);
+    if (!year || !month) return '-';
+    return new Date(year, month - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  }
+
+  function serviceLabel(serviceId) {
+    const svc = typeof Services !== 'undefined' && Services.getService ? Services.getService(serviceId) : null;
+    return svc?.label || CONFIG.SERVICES?.[serviceId]?.label || serviceId || 'Servizio';
+  }
+
+  function appointmentMinutes(appointment) {
+    const svc = typeof Services !== 'undefined' && Services.getService ? Services.getService(appointment.serviceId) : null;
+    return Number(appointment.durationMin || svc?.durationMin || 60);
+  }
+
+  function appointmentOperatorKey(appointment) {
+    const op = typeof Services !== 'undefined' && Services.getOperator ? Services.getOperator(appointment.operatorId) : null;
+    if (op) return operatorKey(op);
+    return String(appointment.operatorId || '');
+  }
+
+  function buildHoursSummary(monthValue) {
+    const month = monthValue || currentMonthValue();
+    const operators = activeOperators();
+    const rows = new Map();
+    operators.forEach(op => rows.set(operatorKey(op), { op, totalMin: 0, services: new Map() }));
+    State.getAppointments()
+      .filter(a => a.status !== 'annullato' && String(a.date || '').slice(0, 7) === month && a.operatorId)
+      .forEach(a => {
+        const opKey = appointmentOperatorKey(a);
+        if (!rows.has(opKey)) {
+          const op = typeof Services !== 'undefined' && Services.getOperator ? Services.getOperator(a.operatorId) : null;
+          rows.set(opKey, { op: op || { id: a.operatorId }, totalMin: 0, services: new Map() });
+        }
+        const row = rows.get(opKey);
+        const serviceId = a.serviceId || 'servizio';
+        const minutes = appointmentMinutes(a);
+        row.totalMin += minutes;
+        const item = row.services.get(serviceId) || { serviceId, minutes: 0, count: 0 };
+        item.minutes += minutes;
+        item.count += 1;
+        row.services.set(serviceId, item);
+      });
+    return [...rows.values()]
+      .filter(row => row.totalMin > 0)
+      .sort((a, b) => operatorLabel(a.op).localeCompare(operatorLabel(b.op), 'it'));
+  }
+
+  function fmtHours(minutes) {
+    const value = Math.round((Number(minutes || 0) / 60) * 10) / 10;
+    return `${String(value).replace('.', ',')} h`;
+  }
+
+  function openHoursSummary() {
+    hoursSummaryMonth = hoursSummaryMonth || currentMonthValue();
+    hoursSummaryOpen = true;
+    renderStaffIfActive();
+  }
+
+  function closeHoursSummary() {
+    hoursSummaryOpen = false;
+    renderStaffIfActive();
+  }
+
+  function changeHoursSummaryMonth(value) {
+    hoursSummaryMonth = value || currentMonthValue();
+    renderStaffIfActive();
+  }
+
   function toggleStaffAvailability() {
     if (staffEditorOpen && staffEditorDirty && !confirm('Ci sono disponibilita non salvate. Chiudere senza salvare?')) return;
     staffEditorOpen = !staffEditorOpen;
@@ -203,6 +280,41 @@
     }).join('');
   }
 
+  function renderHoursSummaryDrawer() {
+    if (!hoursSummaryOpen) return '';
+    const month = hoursSummaryMonth || currentMonthValue();
+    const rows = buildHoursSummary(month);
+    const body = rows.length ? rows.map(row => {
+      const services = [...row.services.values()].sort((a, b) => b.minutes - a.minutes).map(item => `
+        <div class="pt-hours-service">
+          <span>${esc(serviceLabel(item.serviceId))}</span>
+          <strong>${esc(fmtHours(item.minutes))}</strong>
+          <small>${esc(item.count)} appunt.</small>
+        </div>`).join('');
+      return `<div class="pt-hours-card">
+        <div class="pt-hours-person">
+          <strong>${esc(operatorLabel(row.op))}</strong>
+          <span>${esc(fmtHours(row.totalMin))}</span>
+        </div>
+        ${services}
+      </div>`;
+    }).join('') : '<div class="pt-search-empty">Nessuna ora trovata per questo mese.</div>';
+    return `<div class="pt-hours-overlay" onclick="PTAvailabilityOverview.closeHoursSummary()">
+      <aside class="pt-hours-drawer" onclick="event.stopPropagation()">
+        <div class="pt-hours-header">
+          <div>
+            <h3>Riepilogo ore</h3>
+            <span>${esc(monthLabel(month))}</span>
+          </div>
+          <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
+        </div>
+        <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
+        <p class="pt-help">Conteggio degli appuntamenti del mese non annullati, divisi per professionista e tipologia di servizio.</p>
+        <div class="pt-hours-list">${body}</div>
+      </aside>
+    </div>`;
+  }
+
   function renderStaffIfActive() {
     const panel = document.getElementById('view-operators');
     if (!panel || !panel.classList.contains('active')) return;
@@ -210,10 +322,13 @@
     const wrap = document.createElement('div');
     wrap.className = STAFF_NS;
     wrap.innerHTML = `
-      <div class="pt-panel pt-staff-setup">
-        <div class="pt-panel-title">
-          <h3>Disponibilita PT</h3>
-          <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">${staffEditorOpen ? 'Chiudi disponibilita' : 'Apri disponibilita'}</button>
+        <div class="pt-panel pt-staff-setup">
+          <div class="pt-panel-title">
+            <h3>Disponibilita PT</h3>
+          <div class="pt-title-actions">
+            <button class="pt-action pt-action-secondary" onclick="PTAvailabilityOverview.openHoursSummary()">Riepilogo ore</button>
+            <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">${staffEditorOpen ? 'Chiudi disponibilita' : 'Apri disponibilita'}</button>
+          </div>
         </div>
         <div id="pt-staff-availability-editor" ${staffEditorOpen ? '' : 'hidden'}>
           <p class="pt-help">Imposta le singole ore che ogni PT ti comunica. La ricerca in Disponibilita usera questi slot insieme agli appuntamenti gia prenotati.</p>
@@ -225,7 +340,8 @@
           </div>
           <div class="pt-staff-actions"><button class="pt-action" onclick="PTAvailabilityOverview.saveStaffAvailability()">Salva disponibilita</button><span id="pt-staff-save-result"></span></div>
         </div>
-      </div>`;
+      </div>
+      ${renderHoursSummaryDrawer()}`;
     panel.appendChild(wrap);
   }
 
@@ -476,7 +592,7 @@
     Calendar.__ptAvailabilityHookedV4 = true;
   }
 
-  window.PTAvailabilityOverview = { toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch };
+  window.PTAvailabilityOverview = { toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
