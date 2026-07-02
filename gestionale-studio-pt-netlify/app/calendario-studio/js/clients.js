@@ -16,7 +16,7 @@ const Clients = (() => {
   }
 
   function todayStr() {
-    return new Date().toISOString().slice(0, 10);
+    return dateToStr(new Date());
   }
 
   function frequencyPerWeek(value) {
@@ -35,7 +35,7 @@ const Clients = (() => {
   }
 
   function dateToStr(date) {
-    return date.toISOString().slice(0, 10);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
   function getPackageMetrics(client) {

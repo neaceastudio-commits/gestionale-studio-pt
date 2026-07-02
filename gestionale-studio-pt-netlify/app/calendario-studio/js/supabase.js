@@ -129,7 +129,7 @@ const SupabaseSync = (() => {
   }
 
   function parseLocalDate(value) {
-    const parts = String(value || new Date().toISOString().slice(0, 10)).split('-').map(Number);
+    const parts = String(value || localDateStr(new Date())).split('-').map(Number);
     return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
   }
 

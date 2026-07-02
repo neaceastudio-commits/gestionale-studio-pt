@@ -932,7 +932,7 @@ const App = {
       const idx = clients.findIndex(c=>c.id===clientId);
       if (idx!==-1) { clients[idx] = { ...clients[idx], ...data }; saved = clients[idx]; }
     } else {
-      const newC = { id: State.genId('c'), ...data, packageStart: new Date().toISOString().slice(0,10) };
+      const newC = { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
       clients.push(newC); saved = newC;
     }
     State.saveClients(clients);

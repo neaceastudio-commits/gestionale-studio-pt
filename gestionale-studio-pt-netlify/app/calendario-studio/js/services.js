@@ -1,6 +1,10 @@
 // Logica servizi/calendario condivisa, basata sullo State locale.
 
 const Services = (() => {
+  function localDateStr(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
   function getService(id) {
     return CONFIG.SERVICES[id] || null;
   }
@@ -98,7 +102,7 @@ const Services = (() => {
       return { total: 0, completed: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr(new Date());
     const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
     const activeAppts = State.getAppointments().filter(a =>
@@ -305,7 +309,7 @@ const Services = (() => {
   function getKPIForDate(date) {
     const appts = getAppointmentsForDate(date).filter(a => a.status !== 'annullato');
     const now = new Date();
-    const nowMin = now.toISOString().slice(0, 10) === date ? now.getHours() * 60 + now.getMinutes() : -1;
+    const nowMin = localDateStr(now) === date ? now.getHours() * 60 + now.getMinutes() : -1;
     return {
       totalAppts: appts.length,
       inSalaNow: nowMin < 0 ? 0 : appts.reduce((sum, a) => {
