@@ -115,16 +115,30 @@
     ).join('');
   }
 
+  function timeOptions() {
+    const startMin = Math.ceil(Services.timeToMin(CONFIG.workHours.start) / 60) * 60;
+    const endMin = Services.timeToMin(CONFIG.workHours.end);
+    const options = ['<option value="">Da adesso</option>'];
+    for (let min = startMin; min < endMin; min += 60) {
+      const time = Services.minToTime(min);
+      options.push(`<option value="${esc(time)}">Dalle ${esc(time)}</option>`);
+    }
+    return options.join('');
+  }
+
   function findFreeSlots() {
     const serviceId = document.getElementById('pt-free-service')?.value || 'pt11';
     const operatorId = document.getElementById('pt-free-operator')?.value || '';
     const horizonDays = Number(document.getElementById('pt-free-days')?.value || 14);
+    const requestedStartValue = document.getElementById('pt-free-from')?.value || '';
     const maxResults = Number(document.getElementById('pt-free-limit')?.value || 12);
     const svc = Services.getService(serviceId) || CONFIG.SERVICES.pt11;
     const start = parseDate(typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || new Date();
     const now = new Date();
     const startMin = Services.timeToMin(CONFIG.workHours.start);
     const firstFullHourMin = Math.ceil(startMin / 60) * 60;
+    const requestedStartMin = requestedStartValue ? Services.timeToMin(requestedStartValue) : firstFullHourMin;
+    const searchStartMin = Math.max(firstFullHourMin, Math.ceil(requestedStartMin / 60) * 60);
     const endMin = Services.timeToMin(CONFIG.workHours.end);
     const step = 60;
     const duration = Number(svc.durationMin || 60);
@@ -135,7 +149,7 @@
       const day = addDays(start, d);
       const ds = dateStr(day);
       const isToday = ds === dateStr(now);
-      for (let min = firstFullHourMin; min + duration <= endMin && out.length < maxResults; min += step) {
+      for (let min = searchStartMin; min + duration <= endMin && out.length < maxResults; min += step) {
         if (isToday && min <= now.getHours() * 60 + now.getMinutes()) continue;
         const time = Services.minToTime(min);
         const availability = Services.getAvailableOperatorsForSlot(serviceId, ds, time, duration, buffer, null)
@@ -171,10 +185,11 @@
           <label>Servizio<select id="pt-free-service">${serviceOptions()}</select></label>
           <label>PT<select id="pt-free-operator">${operatorOptions()}</select></label>
           <label>Periodo<select id="pt-free-days"><option value="7">Prossimi 7 giorni</option><option value="14" selected>Prossimi 14 giorni</option><option value="30">Prossimi 30 giorni</option></select></label>
+          <label>Da che ora<select id="pt-free-from">${timeOptions()}</select></label>
           <label>Risultati<select id="pt-free-limit"><option value="8">8 slot</option><option value="12" selected>12 slot</option><option value="20">20 slot</option></select></label>
           <button class="pt-free-search" onclick="PTAvailabilityOverview.findSlots()">Cerca slot</button>
         </div>
-        <div id="pt-free-results" class="pt-free-results">${lastResultsHtml || '<div class="pt-free-empty">Scegli servizio e PT, poi cerca gli orari liberi da proporre.</div>'}</div>
+        <div id="pt-free-results" class="pt-free-results">${lastResultsHtml || '<div class="pt-free-empty">Scegli servizio, PT e orario minimo, poi cerca gli orari liberi da proporre.</div>'}</div>
       </div>`;
   }
 
