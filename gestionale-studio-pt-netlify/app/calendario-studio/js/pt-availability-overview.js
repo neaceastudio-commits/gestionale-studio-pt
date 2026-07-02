@@ -21,15 +21,10 @@
     ['07:00-21:00', 'Tutta la giornata'],
     ...HOURLY_SLOTS.map(([value]) => [value, value])
   ];
-  const PERIODS = [
-    ['7', 'Prossimi 7 giorni'],
-    ['14', 'Prossimi 14 giorni'],
-    ['30', 'Prossimi 30 giorni']
-  ];
-
   let staffEditorOpen = false;
   let staffEditorDirty = false;
   let lastSearchHtml = '';
+  let lastSearchFilters = null;
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -125,6 +120,10 @@
     return prefix + activeOperators().map(op =>
       `<option value="${esc(operatorKey(op))}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
     ).join('');
+  }
+
+  function defaultRangeEnd() {
+    return dateStr(addDays(parseDate(currentDateValue()) || new Date(), 6));
   }
 
   function toggleStaffAvailability() {
@@ -269,15 +268,25 @@
   function runAvailabilitySearch() {
     const serviceId = document.getElementById('pt-search-service')?.value || 'pt11';
     const operatorChoice = document.getElementById('pt-search-operator')?.value || 'all';
-    const periodDays = Number(document.getElementById('pt-search-period')?.value || 7);
-    const windowRange = splitRange(document.getElementById('pt-search-window')?.value || '07:00-21:00');
+    const fromValue = document.getElementById('pt-search-from')?.value || currentDateValue();
+    const toValue = document.getElementById('pt-search-to')?.value || defaultRangeEnd();
+    const windowValue = document.getElementById('pt-search-window')?.value || '07:00-21:00';
+    const fromDate = parseDate(fromValue) || parseDate(currentDateValue()) || new Date();
+    const toDate = parseDate(toValue) || addDays(fromDate, 6);
+    const windowRange = splitRange(windowValue);
     const service = typeof Services !== 'undefined' && Services.getService ? Services.getService(serviceId) : null;
     const duration = Number(service?.durationMin || 60);
     const buffer = Number(service?.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
-    const startDate = parseDate(currentDateValue()) || new Date();
+    const periodDays = Math.floor((toDate - fromDate) / 86400000) + 1;
     const operators = activeOperators().filter(op => operatorChoice === 'all' || operatorKey(op) === operatorChoice);
     const results = [];
     const seenResults = new Set();
+    lastSearchFilters = { serviceId, operatorChoice, fromValue, toValue, windowValue };
+    if (periodDays <= 0) {
+      lastSearchHtml = '<div class="pt-search-empty">La data finale deve essere uguale o successiva alla data iniziale.</div>';
+      renderAvailabilityIfActive();
+      return;
+    }
     if (!windowRange) {
       lastSearchHtml = '<div class="pt-search-empty">Fascia oraria non valida.</div>';
       renderAvailabilityIfActive();
@@ -288,7 +297,7 @@
       if (!hasRoleForService(op, serviceId)) return;
       const opKey = operatorKey(op);
       for (let i = 0; i < periodDays; i++) {
-        const day = addDays(startDate, i);
+        const day = addDays(fromDate, i);
         const dayKey = DAY_KEYS[day.getDay()];
         const dayDate = dateStr(day);
         if (dayKey === 'sun') continue;
@@ -318,13 +327,21 @@
   }
 
   function renderSearchBox() {
+    const filters = lastSearchFilters || {
+      serviceId: 'pt11',
+      operatorChoice: 'all',
+      fromValue: currentDateValue(),
+      toValue: defaultRangeEnd(),
+      windowValue: '07:00-21:00'
+    };
     return `<div class="pt-panel pt-search-panel">
       <div class="pt-panel-title"><h3>Cerca disponibilita reale</h3><span>servizio, PT, periodo e fascia</span></div>
       <div class="pt-search-controls">
-        <label>Servizio<select id="pt-search-service">${serviceOptions()}</select></label>
-        <label>PT<select id="pt-search-operator">${operatorOptions(true)}</select></label>
-        <label>Periodo<select id="pt-search-period">${selectOptions(PERIODS, '7')}</select></label>
-        <label>Fascia oraria<select id="pt-search-window">${selectOptions(SEARCH_WINDOWS, '07:00-21:00')}</select></label>
+        <label>Servizio<select id="pt-search-service">${serviceOptions().replace(`value="${esc(filters.serviceId)}"`, `value="${esc(filters.serviceId)}" selected`)}</select></label>
+        <label>PT<select id="pt-search-operator">${operatorOptions(true).replace(`value="${esc(filters.operatorChoice)}"`, `value="${esc(filters.operatorChoice)}" selected`)}</select></label>
+        <label>Dal<input type="date" id="pt-search-from" value="${esc(filters.fromValue)}"></label>
+        <label>Al<input type="date" id="pt-search-to" value="${esc(filters.toValue)}"></label>
+        <label>Fascia oraria<select id="pt-search-window">${selectOptions(SEARCH_WINDOWS, filters.windowValue)}</select></label>
         <button class="pt-action" onclick="PTAvailabilityOverview.runAvailabilitySearch()">Cerca</button>
       </div>
       <div class="pt-search-output">${lastSearchHtml || '<div class="pt-search-empty">Imposta i filtri e cerca per vedere chi e quando e disponibile.</div>'}</div>
