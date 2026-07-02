@@ -141,15 +141,15 @@
   function verifySlot() {
     const serviceId = document.getElementById('pt-check-service')?.value || 'pt11';
     const operatorId = document.getElementById('pt-check-operator')?.value || '';
+    const date = document.getElementById('pt-check-date')?.value || currentDateValue();
     const time = document.getElementById('pt-check-time')?.value || '';
-    const date = currentDateValue();
     const result = document.getElementById('pt-check-result');
     const svc = Services.getService(serviceId) || CONFIG.SERVICES.pt11;
     const op = Services.getOperator(operatorId);
     checkServiceId = serviceId;
 
-    if (!operatorId || !time) {
-      lastCheckHtml = '<div class="pt-check-result warn">Seleziona PT e orario da verificare.</div>';
+    if (!operatorId || !date || !time) {
+      lastCheckHtml = '<div class="pt-check-result warn">Seleziona PT, data e orario da verificare.</div>';
       if (result) result.innerHTML = lastCheckHtml;
       return;
     }
@@ -158,17 +158,18 @@
     const buffer = Number(svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
     const status = Services.getAvailableOperatorsForSlot(serviceId, date, time, duration, buffer, null)
       .find(item => item.id === operatorId);
+    const end = Services.minToTime(Services.timeToMin(time) + duration);
+    const when = `${italianDate(date)} dalle ${time} alle ${end}`;
 
     if (!status) {
       lastCheckHtml = '<div class="pt-check-result danger">PT non trovato o non attivo.</div>';
     } else if (!status.hasRole) {
-      lastCheckHtml = `<div class="pt-check-result danger"><strong>Non compatibile</strong><span>${esc(operatorLabel(op))} non ha il ruolo per ${esc(svc.label)}.</span></div>`;
+      lastCheckHtml = `<div class="pt-check-result danger"><strong>Non compatibile</strong><span>${esc(operatorLabel(op))} non ha il ruolo per ${esc(svc.label)} il ${esc(when)}.</span></div>`;
     } else if (status.available) {
-      const end = Services.minToTime(Services.timeToMin(time) + duration);
-      lastCheckHtml = `<div class="pt-check-result ok"><strong>Libero</strong><span>${esc(operatorLabel(op))} e libero ${esc(fmtDate(date))} dalle ${esc(time)} alle ${esc(end)}.</span></div>`;
+      lastCheckHtml = `<div class="pt-check-result ok"><strong>Libero</strong><span>${esc(operatorLabel(op))} e libero ${esc(when)}.</span></div>`;
     } else {
       const conflicts = (status.conflicts || []).map(conflictLabel).join('<br>');
-      lastCheckHtml = `<div class="pt-check-result danger"><strong>Occupato</strong><span>${esc(operatorLabel(op))} non e libero: ${conflicts || 'impegno sovrapposto'}.</span></div>`;
+      lastCheckHtml = `<div class="pt-check-result danger"><strong>Occupato</strong><span>${esc(operatorLabel(op))} non e libero ${esc(when)}: ${conflicts || 'impegno sovrapposto'}.</span></div>`;
     }
 
     if (result) result.innerHTML = lastCheckHtml;
@@ -188,15 +189,16 @@
       <div class="pt-panel pt-checker">
         <div class="pt-panel-title">
           <h3>Verifica orario PT</h3>
-          <span>servizio, PT e ora</span>
+          <span>servizio, PT, data e ora</span>
         </div>
         <div class="pt-check-controls">
           <label>Servizio<select id="pt-check-service">${serviceOptions()}</select></label>
           <label>PT<select id="pt-check-operator">${operatorOptions()}</select></label>
+          <label>Data<input id="pt-check-date" type="date" value="${esc(date)}"></label>
           <label>Ora<input id="pt-check-time" type="time" value="${esc(nextHourValue())}" step="900"></label>
           <button class="pt-check-button" onclick="PTAvailabilityOverview.checkSlot()">Verifica</button>
         </div>
-        <div id="pt-check-result" class="pt-check-result-wrap">${lastCheckHtml || '<div class="pt-check-result read">Seleziona servizio, PT e orario per sapere subito se e libero.</div>'}</div>
+        <div id="pt-check-result" class="pt-check-result-wrap">${lastCheckHtml || '<div class="pt-check-result read">Seleziona servizio, PT, data e orario per sapere subito se e libero.</div>'}</div>
       </div>`;
   }
 
