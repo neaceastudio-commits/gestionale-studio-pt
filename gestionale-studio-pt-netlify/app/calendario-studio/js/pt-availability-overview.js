@@ -204,7 +204,14 @@
 
   function declaredRangesFor(opKey, dayKey) {
     const saved = loadAvailability()[opKey]?.[dayKey] || {};
-    return [saved.a, saved.b].map(splitRange).filter(Boolean);
+    const seen = new Set();
+    return [saved.a, saved.b].map(splitRange).filter(range => {
+      if (!range) return false;
+      const key = `${range.start}-${range.end}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   function hasRoleForService(operator, serviceId) {
@@ -242,6 +249,12 @@
     const startDate = parseDate(currentDateValue()) || new Date();
     const operators = activeOperators().filter(op => operatorChoice === 'all' || operatorKey(op) === operatorChoice);
     const results = [];
+    const seenResults = new Set();
+    if (!windowRange) {
+      lastSearchHtml = '<div class="pt-search-empty">Fascia oraria non valida.</div>';
+      renderAvailabilityIfActive();
+      return;
+    }
 
     operators.forEach(op => {
       if (!hasRoleForService(op, serviceId)) return;
@@ -249,13 +262,17 @@
       for (let i = 0; i < periodDays; i++) {
         const day = addDays(startDate, i);
         const dayKey = DAY_KEYS[day.getDay()];
+        const dayDate = dateStr(day);
         if (dayKey === 'sun') continue;
         declaredRangesFor(opKey, dayKey).forEach(range => {
           const overlap = overlapRange(range, windowRange);
           if (!overlap) return;
           for (let start = overlap.start; start + duration <= overlap.end; start += 30) {
-            if (isAvailableByCalendar(op, serviceId, dateStr(day), start, duration, buffer)) {
-              results.push({ op, date: dateStr(day), start, end: start + duration });
+            const resultKey = `${opKey}|${dayDate}|${start}`;
+            if (seenResults.has(resultKey)) continue;
+            if (isAvailableByCalendar(op, serviceId, dayDate, start, duration, buffer)) {
+              seenResults.add(resultKey);
+              results.push({ op, date: dayDate, start, end: start + duration });
               break;
             }
           }
