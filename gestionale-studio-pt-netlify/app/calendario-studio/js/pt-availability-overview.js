@@ -37,6 +37,7 @@
   ];
 
   let staffEditorOpen = false;
+  let staffEditorDirty = false;
   let lastSearchHtml = '';
 
   function esc(value) {
@@ -136,8 +137,20 @@
   }
 
   function toggleStaffAvailability() {
+    if (staffEditorOpen && staffEditorDirty && !confirm('Ci sono disponibilita non salvate. Chiudere senza salvare?')) return;
     staffEditorOpen = !staffEditorOpen;
+    if (!staffEditorOpen) staffEditorDirty = false;
     renderStaffIfActive();
+  }
+
+  function markStaffAvailabilityDirty() {
+    staffEditorDirty = true;
+    const msg = document.getElementById('pt-staff-save-result');
+    if (msg) msg.textContent = 'Modifiche non salvate.';
+  }
+
+  function shouldPauseAutoRefresh() {
+    return staffEditorOpen || staffEditorDirty;
   }
 
   function saveStaffAvailability() {
@@ -153,6 +166,7 @@
     });
     saveAvailability(data);
     staffEditorOpen = true;
+    staffEditorDirty = false;
     renderStaffIfActive();
     renderAvailabilityIfActive();
     const msg = document.getElementById('pt-staff-save-result');
@@ -168,8 +182,8 @@
       const days = WEEK_DAYS.map(([day, label]) => {
         const saved = data[opKey]?.[day] || { a: '', b: '' };
         return `<td>
-          <label><span>${esc(label)} fascia 1</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="a">${selectOptions(TIME_SLOTS, saved.a || '')}</select></label>
-          <label><span>${esc(label)} fascia 2</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="b">${selectOptions(TIME_SLOTS, saved.b || '')}</select></label>
+          <label><span>${esc(label)} fascia 1</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="a" onchange="PTAvailabilityOverview.markStaffAvailabilityDirty()">${selectOptions(TIME_SLOTS, saved.a || '')}</select></label>
+          <label><span>${esc(label)} fascia 2</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="b" onchange="PTAvailabilityOverview.markStaffAvailabilityDirty()">${selectOptions(TIME_SLOTS, saved.b || '')}</select></label>
         </td>`;
       }).join('');
       return `<tr><th><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></th>${days}</tr>`;
@@ -431,7 +445,7 @@
     Calendar.__ptAvailabilityHookedV4 = true;
   }
 
-  window.PTAvailabilityOverview = { toggleStaffAvailability, saveStaffAvailability, runAvailabilitySearch };
+  window.PTAvailabilityOverview = { toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();

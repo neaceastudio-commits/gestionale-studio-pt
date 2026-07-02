@@ -1664,7 +1664,8 @@ const App = {
     UI.showToast('Reset completo eseguito', 'success');
   },
 
-  async refreshFromSupabase({ silent = true } = {}) {
+  async refreshFromSupabase({ silent = true, force = false } = {}) {
+    if (!force && window.PTAvailabilityOverview?.shouldPauseAutoRefresh?.()) return;
     try {
       await SupabaseSync.pullAll();
       Calendar.render();
@@ -1706,7 +1707,7 @@ const App = {
   // ── INIT ─────────────────────────────────────────────
   async init() {
     State.init();
-    await App.refreshFromSupabase({ silent: true });
+    await App.refreshFromSupabase({ silent: true, force: true });
 
     document.querySelectorAll('[data-view]').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
