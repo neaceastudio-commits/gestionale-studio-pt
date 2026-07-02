@@ -1706,7 +1706,6 @@ const App = {
   // ── INIT ─────────────────────────────────────────────
   async init() {
     State.init();
-    await App.syncLocalToSupabase({ silent: true, refresh: false });
     await App.refreshFromSupabase({ silent: true });
 
     document.querySelectorAll('[data-view]').forEach(el => {
