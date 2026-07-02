@@ -12,23 +12,14 @@
     ['sat', 'Sabato']
   ];
   const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  const TIME_SLOTS = [
-    ['', 'Non disponibile'],
-    ['07:00-12:00', '07:00-12:00'],
-    ['08:00-13:00', '08:00-13:00'],
-    ['09:00-14:00', '09:00-14:00'],
-    ['12:00-16:00', '12:00-16:00'],
-    ['14:00-18:00', '14:00-18:00'],
-    ['15:00-20:00', '15:00-20:00'],
-    ['16:00-21:00', '16:00-21:00'],
-    ['07:00-21:00', 'Full day']
-  ];
+  const HOURLY_SLOTS = Array.from({ length: 14 }, (_, i) => {
+    const start = 7 + i;
+    const end = start + 1;
+    return [`${String(start).padStart(2, '0')}:00-${String(end).padStart(2, '0')}:00`, `${String(start).padStart(2, '0')}:00`];
+  });
   const SEARCH_WINDOWS = [
     ['07:00-21:00', 'Tutta la giornata'],
-    ['07:00-12:00', 'Mattina'],
-    ['12:00-16:00', 'Pranzo / primo pomeriggio'],
-    ['14:00-18:00', 'Pomeriggio'],
-    ['15:00-21:00', 'Pomeriggio / sera']
+    ...HOURLY_SLOTS.map(([value]) => [value, value])
   ];
   const PERIODS = [
     ['7', 'Prossimi 7 giorni'],
@@ -155,14 +146,14 @@
 
   function saveStaffAvailability() {
     const data = loadAvailability();
-    document.querySelectorAll('[data-pt-staff-slot]').forEach(select => {
-      const opKey = select.getAttribute('data-operator-key');
-      const day = select.getAttribute('data-day');
-      const slot = select.getAttribute('data-slot');
-      if (!opKey || !day || !slot) return;
+    document.querySelectorAll('[data-pt-staff-day]').forEach(dayWrap => {
+      const opKey = dayWrap.getAttribute('data-operator-key');
+      const day = dayWrap.getAttribute('data-day');
+      if (!opKey || !day) return;
       data[opKey] = data[opKey] || {};
-      data[opKey][day] = data[opKey][day] || { a: '', b: '' };
-      data[opKey][day][slot] = select.value;
+      data[opKey][day] = {
+        slots: [...dayWrap.querySelectorAll('[data-pt-hour-slot]:checked')].map(input => input.value)
+      };
     });
     saveAvailability(data);
     staffEditorOpen = true;
@@ -173,6 +164,29 @@
     if (msg) msg.textContent = 'Disponibilita salvata.';
   }
 
+  function savedSlotsForDay(saved) {
+    if (Array.isArray(saved?.slots)) return saved.slots;
+    const ranges = [saved?.a, saved?.b].map(splitRange).filter(Boolean);
+    const slots = new Set();
+    ranges.forEach(range => {
+      HOURLY_SLOTS.forEach(([value]) => {
+        const slot = splitRange(value);
+        if (slot && slot.start >= range.start && slot.end <= range.end) slots.add(value);
+      });
+    });
+    return [...slots];
+  }
+
+  function renderHourSlots(opKey, day, saved) {
+    const selected = new Set(savedSlotsForDay(saved));
+    return `<div class="pt-hour-grid" data-pt-staff-day="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}">
+      ${HOURLY_SLOTS.map(([value, label]) => `<label class="pt-hour-pill">
+        <input type="checkbox" data-pt-hour-slot="1" value="${esc(value)}" ${selected.has(value) ? 'checked' : ''} onchange="PTAvailabilityOverview.markStaffAvailabilityDirty()">
+        <span>${esc(label)}</span>
+      </label>`).join('')}
+    </div>`;
+  }
+
   function renderStaffRows() {
     const data = loadAvailability();
     const operators = activeOperators();
@@ -180,10 +194,10 @@
     return operators.map(op => {
       const opKey = operatorKey(op);
       const days = WEEK_DAYS.map(([day, label]) => {
-        const saved = data[opKey]?.[day] || { a: '', b: '' };
+        const saved = data[opKey]?.[day] || { slots: [] };
         return `<td>
-          <label><span>${esc(label)} fascia 1</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="a" onchange="PTAvailabilityOverview.markStaffAvailabilityDirty()">${selectOptions(TIME_SLOTS, saved.a || '')}</select></label>
-          <label><span>${esc(label)} fascia 2</span><select data-pt-staff-slot="1" data-operator-key="${esc(opKey)}" data-day="${esc(day)}" data-slot="b" onchange="PTAvailabilityOverview.markStaffAvailabilityDirty()">${selectOptions(TIME_SLOTS, saved.b || '')}</select></label>
+          <div class="pt-day-slot-title">${esc(label)}</div>
+          ${renderHourSlots(opKey, day, saved)}
         </td>`;
       }).join('');
       return `<tr><th><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></th>${days}</tr>`;
@@ -203,7 +217,7 @@
           <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">${staffEditorOpen ? 'Chiudi disponibilita' : 'Apri disponibilita'}</button>
         </div>
         <div id="pt-staff-availability-editor" ${staffEditorOpen ? '' : 'hidden'}>
-          <p class="pt-help">Imposta i giorni e le fasce orarie che ogni PT ti comunica. La ricerca in Disponibilita usera questi dati insieme agli appuntamenti gia prenotati.</p>
+          <p class="pt-help">Imposta le singole ore che ogni PT ti comunica. La ricerca in Disponibilita usera questi slot insieme agli appuntamenti gia prenotati.</p>
           <div class="pt-table-wrap">
             <table class="pt-staff-table">
               <thead><tr><th>PT</th>${WEEK_DAYS.map(([, label]) => `<th>${esc(label)}</th>`).join('')}</tr></thead>
@@ -219,7 +233,7 @@
   function declaredRangesFor(opKey, dayKey) {
     const saved = loadAvailability()[opKey]?.[dayKey] || {};
     const seen = new Set();
-    return [saved.a, saved.b].map(splitRange).filter(range => {
+    return savedSlotsForDay(saved).map(splitRange).filter(range => {
       if (!range) return false;
       const key = `${range.start}-${range.end}`;
       if (seen.has(key)) return false;
