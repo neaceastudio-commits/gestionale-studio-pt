@@ -2,6 +2,7 @@
 (function () {
   const NS = 'pt-availability-overview';
   const STAFF_NS = 'pt-staff-availability-week';
+  const STAFF_AVAILABILITY_KEY = 'neacea_staff_declared_availability_v1';
   let checkServiceId = 'pt11';
   let lastCheckHtml = '';
 
@@ -116,6 +117,25 @@
     const now = new Date();
     now.setHours(now.getHours() + 1, 0, 0, 0);
     return `${String(now.getHours()).padStart(2, '0')}:00`;
+  }
+
+  function loadStaffAvailability() {
+    try { return JSON.parse(localStorage.getItem(STAFF_AVAILABILITY_KEY) || '{}') || {}; }
+    catch { return {}; }
+  }
+
+  function saveStaffAvailability() {
+    const data = loadStaffAvailability();
+    document.querySelectorAll('[data-staff-availability]').forEach(input => {
+      const opId = input.getAttribute('data-operator-id');
+      const day = input.getAttribute('data-day');
+      if (!opId || !day) return;
+      data[opId] = data[opId] || {};
+      data[opId][day] = input.value.trim();
+    });
+    localStorage.setItem(STAFF_AVAILABILITY_KEY, JSON.stringify(data));
+    const msg = document.getElementById('pt-staff-availability-save-result');
+    if (msg) msg.textContent = 'Disponibilita staff salvata.';
   }
 
   function serviceOptions(selectedId = checkServiceId) {
@@ -267,18 +287,27 @@
 
   function renderStaffWeek() {
     const days = currentWeekDays();
+    const availability = loadStaffAvailability();
     const appointments = State.getAppointments().filter(a => a.status !== 'annullato');
     const operators = State.getOperators().filter(op => op.active !== false);
     if (!operators.length) return '<div class="pt-empty">Nessun PT/staff attivo trovato.</div>';
 
     return operators.map(op => {
+      const opId = String(op.id || op.email || operatorLabel(op));
       const daysHtml = days.map(day => {
         const ds = dateStr(day);
+        const declared = availability[opId]?.[ds] || '';
         const dayAppts = appointments
           .filter(a => a.date === ds && String(a.operatorId || '') === String(op.id || ''))
           .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
-        const items = dayAppts.length ? dayAppts.map(eventCard).join('') : '<div class="pt-empty">Libero da calendario</div>';
-        return `<div class="pt-day"><h4>${day.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' })}</h4>${items}</div>`;
+        const items = dayAppts.length ? dayAppts.map(eventCard).join('') : '<div class="pt-empty">Nessun impegno inserito</div>';
+        return `<div class="pt-day pt-staff-day">
+          <h4>${day.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' })}</h4>
+          <label class="pt-staff-availability-label">Disponibilita dichiarata
+            <input data-staff-availability="1" data-operator-id="${esc(opId)}" data-day="${esc(ds)}" value="${esc(declared)}" placeholder="es. 07:00-12:00, 15:00-20:00">
+          </label>
+          ${items}
+        </div>`;
       }).join('');
       return `<div class="pt-staff-card">
         <div class="pt-staff-card-head"><strong>${esc(operatorLabel(op))}</strong><span>${esc(op.email || '')}</span></div>
@@ -332,6 +361,7 @@
           <h3>Disponibilita orari nella settimana</h3>
           <span>sezione staff</span>
         </div>
+        <div class="pt-staff-actions"><button class="pt-check-button" onclick="PTAvailabilityOverview.saveStaffAvailability()">Salva disponibilita staff</button><span id="pt-staff-availability-save-result"></span></div>
         <div class="pt-staff-week-list">${renderStaffWeek()}</div>
       </div>`;
     panel.appendChild(wrap);
@@ -361,7 +391,7 @@
     Calendar.__ptAvailabilityHooked = true;
   }
 
-  window.PTAvailabilityOverview = { checkSlot: verifySlot };
+  window.PTAvailabilityOverview = { checkSlot: verifySlot, saveStaffAvailability };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
