@@ -77,8 +77,8 @@
   }
 
   function metricsFor(client) {
-    if (window.Clients?.getPackageMetrics) return Clients.getPackageMetrics(client);
-    if (window.Services?.getClientSessionMetrics) return Services.getClientSessionMetrics(client);
+    if (typeof Clients !== 'undefined' && Clients.getPackageMetrics) return Clients.getPackageMetrics(client);
+    if (typeof Services !== 'undefined' && Services.getClientSessionMetrics) return Services.getClientSessionMetrics(client);
     return { total: Number(client.sessionsTotal || 0), remaining: Number(client.sessionsRemaining || 0), completed: 0, scheduled: 0, toSchedule: 0 };
   }
 
@@ -94,7 +94,7 @@
   }
 
   function currentWeekDays() {
-    const base = parseDate(window.Calendar?.getCurrentDateStr?.()) || new Date();
+    const base = parseDate(typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || new Date();
     const offset = base.getDay() === 0 ? 6 : base.getDay() - 1;
     const monday = addDays(base, -offset);
     return Array.from({ length: 5 }, (_, i) => addDays(monday, i));
@@ -132,7 +132,6 @@
 
   function renderBusyColumns() {
     const days = currentWeekDays();
-    const operators = State.getOperators().filter(op => op.active !== false);
     const appointments = State.getAppointments().filter(a => a.status !== 'annullato');
 
     return days.map(day => {
@@ -206,7 +205,7 @@
   }
 
   function hookCalendar() {
-    if (!window.Calendar || Calendar.__ptAvailabilityHooked) return;
+    if (typeof Calendar === 'undefined' || Calendar.__ptAvailabilityHooked) return;
     const originalRender = Calendar.render;
     const originalSwitch = Calendar.switchView;
     Calendar.render = function () {
