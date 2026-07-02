@@ -1,7 +1,7 @@
-// Estensione vista Disponibilita: pacchetti PT, rinnovi, verifica orario e orari impegnati.
+// Estensione vista Disponibilita: pacchetti PT, rinnovi, orari impegnati e ricerca slot liberi.
 (function () {
   const NS = 'pt-availability-overview';
-  let lastCheckHtml = '';
+  let lastResultsHtml = '';
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -101,17 +101,6 @@
     return Array.from({ length: 5 }, (_, i) => addDays(monday, i));
   }
 
-  function currentDateValue() {
-    const current = typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '';
-    return current || dateStr(new Date());
-  }
-
-  function nextHourValue() {
-    const now = new Date();
-    now.setHours(now.getHours() + 1, 0, 0, 0);
-    return `${String(now.getHours()).padStart(2, '0')}:00`;
-  }
-
   function serviceOptions() {
     return Object.values(CONFIG.SERVICES)
       .filter(s => !s.isBlock)
@@ -121,68 +110,86 @@
 
   function operatorOptions() {
     const ops = State.getOperators().filter(op => op.active !== false);
-    return '<option value="">Scegli PT</option>' + ops.map(op =>
+    return '<option value="">Qualsiasi PT compatibile</option>' + ops.map(op =>
       `<option value="${esc(op.id)}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
     ).join('');
   }
 
-  function conflictLabel(appt) {
-    const svc = Services.getService(appt.serviceId);
-    const end = Services.minToTime(Services.timeToMin(appt.startTime) + Number(appt.durationMin || svc?.durationMin || 60));
-    const clients = (appt.clientIds || []).map(Services.clientFullName).join(', ') || 'Blocco agenda';
-    return `${String(appt.startTime || '').slice(0, 5)}-${end} · ${svc?.label || 'Impegno'} · ${clients}`;
+  function timeOptions() {
+    const startMin = Math.ceil(Services.timeToMin(CONFIG.workHours.start) / 60) * 60;
+    const endMin = Services.timeToMin(CONFIG.workHours.end);
+    const options = ['<option value="">Da adesso</option>'];
+    for (let min = startMin; min < endMin; min += 60) {
+      const time = Services.minToTime(min);
+      options.push(`<option value="${esc(time)}">Dalle ${esc(time)}</option>`);
+    }
+    return options.join('');
   }
 
-  function verifyPtSlot() {
-    const operatorId = document.getElementById('pt-check-operator')?.value || '';
-    const date = document.getElementById('pt-check-date')?.value || '';
-    const time = document.getElementById('pt-check-time')?.value || '';
-    const serviceId = document.getElementById('pt-check-service')?.value || 'pt11';
-    const result = document.getElementById('pt-check-result');
-    const op = Services.getOperator(operatorId);
+  function findFreeSlots() {
+    const serviceId = document.getElementById('pt-free-service')?.value || 'pt11';
+    const operatorId = document.getElementById('pt-free-operator')?.value || '';
+    const horizonDays = Number(document.getElementById('pt-free-days')?.value || 14);
+    const requestedStartValue = document.getElementById('pt-free-from')?.value || '';
+    const maxResults = Number(document.getElementById('pt-free-limit')?.value || 12);
     const svc = Services.getService(serviceId) || CONFIG.SERVICES.pt11;
-
-    if (!operatorId || !date || !time) {
-      lastCheckHtml = '<div class="pt-check-result warn">Seleziona PT, data e ora da verificare.</div>';
-      if (result) result.innerHTML = lastCheckHtml;
-      return;
-    }
-
+    const start = parseDate(typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || new Date();
+    const now = new Date();
+    const startMin = Services.timeToMin(CONFIG.workHours.start);
+    const firstFullHourMin = Math.ceil(startMin / 60) * 60;
+    const requestedStartMin = requestedStartValue ? Services.timeToMin(requestedStartValue) : firstFullHourMin;
+    const searchStartMin = Math.max(firstFullHourMin, Math.ceil(requestedStartMin / 60) * 60);
+    const endMin = Services.timeToMin(CONFIG.workHours.end);
+    const step = 60;
     const duration = Number(svc.durationMin || 60);
     const buffer = Number(svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
-    const row = Services.getAvailableOperatorsForSlot(serviceId, date, time, duration, buffer, null)
-      .find(item => item.id === operatorId);
+    const out = [];
 
-    if (!row) {
-      lastCheckHtml = '<div class="pt-check-result danger">PT non trovato o non attivo.</div>';
-    } else if (!row.hasRole) {
-      lastCheckHtml = `<div class="pt-check-result danger"><strong>Non compatibile</strong><span>${esc(operatorLabel(op))} non ha il ruolo per ${esc(svc.label)}.</span></div>`;
-    } else if (row.available) {
-      const end = Services.minToTime(Services.timeToMin(time) + duration);
-      lastCheckHtml = `<div class="pt-check-result ok"><strong>Libero</strong><span>${esc(operatorLabel(op))} e libero ${esc(fmtDate(date))} dalle ${esc(time)} alle ${esc(end)}.</span></div>`;
-    } else {
-      const conflicts = (row.conflicts || []).map(conflictLabel).join('<br>');
-      lastCheckHtml = `<div class="pt-check-result danger"><strong>Occupato</strong><span>${esc(operatorLabel(op))} non e libero: ${conflicts}</span></div>`;
+    for (let d = 0; d < horizonDays && out.length < maxResults; d += 1) {
+      const day = addDays(start, d);
+      const ds = dateStr(day);
+      const isToday = ds === dateStr(now);
+      for (let min = searchStartMin; min + duration <= endMin && out.length < maxResults; min += step) {
+        if (isToday && min <= now.getHours() * 60 + now.getMinutes()) continue;
+        const time = Services.minToTime(min);
+        const availability = Services.getAvailableOperatorsForSlot(serviceId, ds, time, duration, buffer, null)
+          .filter(item => item.available && item.hasRole);
+        const candidates = operatorId ? availability.filter(item => item.id === operatorId) : availability;
+        candidates.forEach(op => {
+          if (out.length < maxResults) out.push({ date: ds, time, end: Services.minToTime(min + duration), op, svc });
+        });
+      }
     }
 
-    if (result) result.innerHTML = lastCheckHtml;
+    lastResultsHtml = out.length ? out.map(slot => `
+      <div class="pt-free-result">
+        <div>
+          <strong>${esc(fmtDate(slot.date))} · ${esc(slot.time)}-${esc(slot.end)}</strong>
+          <span>${esc(slot.svc.label)} · ${esc(operatorLabel(slot.op))}${slot.op.email ? ' · ' + esc(slot.op.email) : ''}</span>
+        </div>
+        <button class="pt-free-book" onclick="App.openNewAppointment('${esc(slot.date)}', null, '${esc(slot.time)}', '${esc(slot.svc.id)}')">Crea</button>
+      </div>`).join('') : '<div class="pt-free-empty">Nessuno slot libero trovato con questi filtri.</div>';
+
+    const target = document.getElementById('pt-free-results');
+    if (target) target.innerHTML = lastResultsHtml;
   }
 
-  function renderChecker() {
+  function renderFinder() {
     return `
-      <div class="pt-panel pt-checker">
+      <div class="pt-panel pt-free-finder">
         <div class="pt-panel-title">
-          <h3>Verifica disponibilita PT</h3>
-          <span>controllo puntuale</span>
+          <h3>Trova primo slot libero</h3>
+          <span>per rispondere subito al cliente</span>
         </div>
-        <div class="pt-check-controls">
-          <label>PT<select id="pt-check-operator">${operatorOptions()}</select></label>
-          <label>Data<input id="pt-check-date" type="date" value="${esc(currentDateValue())}"></label>
-          <label>Ora<input id="pt-check-time" type="time" value="${esc(nextHourValue())}" step="900"></label>
-          <label>Servizio<select id="pt-check-service">${serviceOptions()}</select></label>
-          <button class="pt-check-button" onclick="PTAvailabilityOverview.checkSlot()">Verifica</button>
+        <div class="pt-free-controls">
+          <label>Servizio<select id="pt-free-service">${serviceOptions()}</select></label>
+          <label>PT<select id="pt-free-operator">${operatorOptions()}</select></label>
+          <label>Periodo<select id="pt-free-days"><option value="7">Prossimi 7 giorni</option><option value="14" selected>Prossimi 14 giorni</option><option value="30">Prossimi 30 giorni</option></select></label>
+          <label>Da che ora<select id="pt-free-from">${timeOptions()}</select></label>
+          <label>Risultati<select id="pt-free-limit"><option value="8">8 slot</option><option value="12" selected>12 slot</option><option value="20">20 slot</option></select></label>
+          <button class="pt-free-search" onclick="PTAvailabilityOverview.findSlots()">Cerca slot</button>
         </div>
-        <div id="pt-check-result" class="pt-check-result-wrap">${lastCheckHtml || '<div class="pt-check-result read">Scrivi l\'orario richiesto dal cliente e verifica se il PT e libero.</div>'}</div>
+        <div id="pt-free-results" class="pt-free-results">${lastResultsHtml || '<div class="pt-free-empty">Scegli servizio, PT e orario minimo, poi cerca gli orari liberi da proporre.</div>'}</div>
       </div>`;
   }
 
@@ -262,6 +269,7 @@
           <div><strong>${appts.length}</strong><span>impegni futuri/storici</span></div>
         </div>
       </div>
+      ${renderFinder()}
       <div class="pt-panel">
         <div class="pt-panel-title">
           <h3>Pacchetti e rinnovi</h3>
@@ -274,7 +282,6 @@
           </table>
         </div>
       </div>
-      ${renderChecker()}
       <div class="pt-panel">
         <div class="pt-panel-title">
           <h3>Orari impegnati della settimana</h3>
@@ -308,7 +315,7 @@
     Calendar.__ptAvailabilityHooked = true;
   }
 
-  window.PTAvailabilityOverview = { checkSlot: verifyPtSlot };
+  window.PTAvailabilityOverview = { findSlots: findFreeSlots };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
