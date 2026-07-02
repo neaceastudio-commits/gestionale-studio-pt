@@ -196,7 +196,7 @@
           <label>Ora<input id="pt-check-time" type="time" value="${esc(nextHourValue())}" step="900"></label>
           <button class="pt-check-button" onclick="PTAvailabilityOverview.checkSlot()">Verifica</button>
         </div>
-        <div id="pt-check-result" class="pt-check-result-wrap">${lastCheckHtml || '<div class="pt-check-result read">Controlla un orario preciso senza aprire lo specchio completo.</div>'}</div>
+        <div id="pt-check-result" class="pt-check-result-wrap">${lastCheckHtml || '<div class="pt-check-result read">Seleziona servizio, PT e orario per sapere subito se e libero.</div>'}</div>
       </div>`;
   }
 
@@ -257,26 +257,10 @@
     if (!panel || !panel.classList.contains('active')) return;
     panel.querySelectorAll(`.${NS}`).forEach(el => el.remove());
 
-    const operators = State.getOperators().filter(op => op.active !== false);
-    const clients = State.getClients().filter(c => c.active !== false);
-    const appts = State.getAppointments().filter(a => a.status !== 'annullato');
-
     const wrap = document.createElement('div');
     wrap.className = NS;
     wrap.innerHTML = `
       ${renderSlotChecker()}
-      <div class="pt-overview-head">
-        <div>
-          <div class="eyebrow">Disponibilita PT</div>
-          <h3>Quadro mensile pacchetti e orari impegnati</h3>
-          <p>Usa email/operatori gia presenti nel calendario. I PT modificano solo record collegati alla loro email; il resto resta in visualizzazione.</p>
-        </div>
-        <div class="pt-kpis">
-          <div><strong>${operators.length}</strong><span>PT/staff attivi</span></div>
-          <div><strong>${clients.length}</strong><span>clienti attivi</span></div>
-          <div><strong>${appts.length}</strong><span>impegni futuri/storici</span></div>
-        </div>
-      </div>
       <div class="pt-panel">
         <div class="pt-panel-title">
           <h3>Pacchetti e rinnovi</h3>
