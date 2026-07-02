@@ -1,10 +1,16 @@
-// Estensione vista Disponibilita: verifica puntuale, pacchetti PT, rinnovi e orari impegnati.
+// Sezione Staff: disponibilita settimanale dichiarata dai PT.
 (function () {
-  const NS = 'pt-availability-overview';
   const STAFF_NS = 'pt-staff-availability-week';
   const STAFF_AVAILABILITY_KEY = 'neacea_staff_declared_availability_v1';
-  let checkServiceId = 'pt11';
-  let lastCheckHtml = '';
+  const WEEK_DAYS = [
+    ['mon', 'Lunedi'],
+    ['tue', 'Martedi'],
+    ['wed', 'Mercoledi'],
+    ['thu', 'Giovedi'],
+    ['fri', 'Venerdi'],
+    ['sat', 'Sabato'],
+    ['sun', 'Domenica']
+  ];
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -12,111 +18,13 @@
     }[ch]));
   }
 
-  function parseDate(value) {
-    const parts = String(value || '').slice(0, 10).split('-').map(Number);
-    if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
-    return new Date(parts[0], parts[1] - 1, parts[2]);
-  }
-
-  function dateStr(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
-
-  function fmtDate(value) {
-    const d = parseDate(value);
-    return d ? d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' }) : '-';
-  }
-
-  function italianDate(value) {
-    const d = parseDate(value) || new Date();
-    return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
-  }
-
-  function addDays(date, days) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    return d;
-  }
-
-  function frequencyPerWeek(value) {
-    const raw = String(value || '').toLowerCase();
-    const n = parseInt((raw.match(/\d+/) || ['0'])[0], 10);
-    if (n > 0) return n;
-    if (raw.includes('bisettimanale')) return 0.5;
-    if (raw.includes('mensile')) return 0.25;
-    return 1;
-  }
-
   function operatorLabel(operator) {
     if (!operator) return '-';
     return `${operator.nome || ''} ${operator.cognome || ''}`.trim() || operator.email || operator.id || '-';
   }
 
-  function operatorForClient(client, operators) {
-    const raw = client.ptAssegnato || client.pt_assegnato || client.operatorId || client.operator_id || '';
-    if (!raw) return null;
-    const normalized = String(raw).toLowerCase();
-    return operators.find(op =>
-      String(op.id || '').toLowerCase() === normalized ||
-      String(op.email || '').toLowerCase() === normalized ||
-      `${op.nome || ''} ${op.cognome || ''}`.trim().toLowerCase() === normalized
-    ) || null;
-  }
-
-  function packageTypes(client) {
-    if (Array.isArray(client.packageTypes)) return client.packageTypes;
-    if (Array.isArray(client.package_types)) return client.package_types;
-    if (client.packageType) return [client.packageType];
-    return [];
-  }
-
-  function packageStart(client) {
-    return client.packageStart || client.package_start || client.dataInizio || client.data_inizio || '';
-  }
-
-  function packageEnd(client, metrics) {
-    const explicit = client.packageEnd || client.package_end || client.dataFine || client.data_fine || '';
-    if (explicit) return explicit;
-    if (metrics?.projectedEnd) return metrics.projectedEnd;
-    const start = parseDate(packageStart(client));
-    const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
-    if (!start || !total) return '';
-    const weeks = Math.max(1, Math.ceil(total / frequencyPerWeek(client.packageFrequency || client.package_frequency)));
-    return dateStr(addDays(start, weeks * 7));
-  }
-
-  function metricsFor(client) {
-    if (typeof Clients !== 'undefined' && Clients.getPackageMetrics) return Clients.getPackageMetrics(client);
-    if (typeof Services !== 'undefined' && Services.getClientSessionMetrics) return Services.getClientSessionMetrics(client);
-    return { total: Number(client.sessionsTotal || 0), remaining: Number(client.sessionsRemaining || 0), completed: 0, scheduled: 0, toSchedule: 0 };
-  }
-
-  function renewalStatus(client, metrics, end) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endDate = parseDate(end);
-    const remaining = Number(metrics.remaining ?? 0);
-    const total = Number(metrics.total ?? client.sessionsTotal ?? 0);
-    if ((total > 0 && remaining <= 0) || (endDate && endDate < today)) return { key: 'danger', label: 'Da contattare' };
-    if ((total > 0 && remaining <= 2) || (endDate && ((endDate - today) / 86400000) <= 14)) return { key: 'warn', label: 'Scade presto' };
-    return { key: 'ok', label: 'In corso' };
-  }
-
-  function currentDateValue() {
-    return (typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || dateStr(new Date());
-  }
-
-  function currentWeekDays() {
-    const base = parseDate(currentDateValue()) || new Date();
-    const offset = base.getDay() === 0 ? 6 : base.getDay() - 1;
-    const monday = addDays(base, -offset);
-    return Array.from({ length: 5 }, (_, i) => addDays(monday, i));
-  }
-
-  function nextHourValue() {
-    const now = new Date();
-    now.setHours(now.getHours() + 1, 0, 0, 0);
-    return `${String(now.getHours()).padStart(2, '0')}:00`;
+  function operatorKey(operator) {
+    return String(operator.id || operator.email || operatorLabel(operator));
   }
 
   function loadStaffAvailability() {
@@ -135,217 +43,22 @@
     });
     localStorage.setItem(STAFF_AVAILABILITY_KEY, JSON.stringify(data));
     const msg = document.getElementById('pt-staff-availability-save-result');
-    if (msg) msg.textContent = 'Disponibilita staff salvata.';
+    if (msg) msg.textContent = 'Disponibilita salvata.';
   }
 
-  function serviceOptions(selectedId = checkServiceId) {
-    return Object.values(CONFIG.SERVICES)
-      .filter(s => !s.isBlock)
-      .map(s => `<option value="${esc(s.id)}" ${selectedId === s.id ? 'selected' : ''}>${esc(s.label)}</option>`)
-      .join('');
-  }
-
-  function operatorOptions() {
-    const ops = State.getOperators().filter(op => op.active !== false);
-    return '<option value="">Scegli PT</option>' + ops.map(op =>
-      `<option value="${esc(op.id)}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
-    ).join('');
-  }
-
-  function conflictLabel(appt) {
-    const svc = Services.getService(appt.serviceId);
-    const end = Services.minToTime(Services.timeToMin(appt.startTime) + Number(appt.durationMin || svc?.durationMin || 60));
-    const clients = (appt.clientIds || []).map(Services.clientFullName).join(', ') || 'Blocco agenda';
-    return `${String(appt.startTime || '').slice(0, 5)}-${end} · ${svc?.label || 'Impegno'} · ${clients}`;
-  }
-
-  function eventCard(appt) {
-    const svc = Services.getService(appt.serviceId);
-    const clients = (appt.clientIds || []).map(Services.clientFullName).join(', ') || 'Blocco agenda';
-    const end = Services.minToTime(Services.timeToMin(appt.startTime) + Number(appt.durationMin || svc?.durationMin || 60));
-    return `<div class="pt-event" style="border-left-color:${esc(svc?.color || '#1f6848')}">
-      <strong>${esc(String(appt.startTime || '').slice(0, 5))}-${esc(end)}</strong>
-      <span>${esc(svc?.label || 'Impegno')}</span>
-      <em>${esc(clients)}</em>
-    </div>`;
-  }
-
-  function verifySlot() {
-    const serviceId = document.getElementById('pt-check-service')?.value || 'pt11';
-    const operatorId = document.getElementById('pt-check-operator')?.value || '';
-    const date = document.getElementById('pt-check-date')?.value || currentDateValue();
-    const time = document.getElementById('pt-check-time')?.value || '';
-    const result = document.getElementById('pt-check-result');
-    const svc = Services.getService(serviceId) || CONFIG.SERVICES.pt11;
-    const op = Services.getOperator(operatorId);
-    checkServiceId = serviceId;
-
-    if (!operatorId || !date || !time) {
-      lastCheckHtml = '<div class="pt-check-result warn">Seleziona PT, data disponibilita e orario da verificare.</div>';
-      if (result) result.innerHTML = lastCheckHtml;
-      return;
-    }
-
-    const duration = Number(svc.durationMin || 60);
-    const buffer = Number(svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
-    const status = Services.getAvailableOperatorsForSlot(serviceId, date, time, duration, buffer, null)
-      .find(item => item.id === operatorId);
-    const end = Services.minToTime(Services.timeToMin(time) + duration);
-    const when = `${italianDate(date)} dalle ${time} alle ${end}`;
-
-    if (!status) {
-      lastCheckHtml = '<div class="pt-check-result danger">PT non trovato o non attivo.</div>';
-    } else if (!status.hasRole) {
-      lastCheckHtml = `<div class="pt-check-result danger"><strong>Non compatibile</strong><span>${esc(operatorLabel(op))} non ha il ruolo per ${esc(svc.label)} il ${esc(when)}.</span></div>`;
-    } else if (status.available) {
-      lastCheckHtml = `<div class="pt-check-result ok"><strong>Libero</strong><span>${esc(operatorLabel(op))} e libero ${esc(when)}.</span></div>`;
-    } else {
-      const conflicts = (status.conflicts || []).map(conflictLabel).join('<br>');
-      lastCheckHtml = `<div class="pt-check-result danger"><strong>Occupato</strong><span>${esc(operatorLabel(op))} non e libero ${esc(when)}: ${conflicts || 'impegno sovrapposto'}.</span></div>`;
-    }
-
-    if (result) result.innerHTML = lastCheckHtml;
-  }
-
-  function renderSlotChecker() {
-    const date = currentDateValue();
-    return `
-      <div class="view-header pt-native-header">
-        <div class="nav-arrows">
-          <button class="btn btn-ghost btn-sm" onclick="Calendar.prevDay()">‹</button>
-          <h2 class="view-title">Disponibilità — ${esc(italianDate(date))}</h2>
-          <button class="btn btn-ghost btn-sm" onclick="Calendar.nextDay()">›</button>
-          <button class="btn btn-ghost btn-sm" onclick="Calendar.goToday()">Oggi</button>
-        </div>
-      </div>
-      <div class="pt-panel pt-checker">
-        <div class="pt-panel-title">
-          <h3>Verifica orario PT</h3>
-          <span>date pacchetto e disponibilita</span>
-        </div>
-        <div class="pt-check-controls">
-          <label>Servizio<select id="pt-check-service">${serviceOptions()}</select></label>
-          <label>PT<select id="pt-check-operator">${operatorOptions()}</select></label>
-          <label>Data disponibilita<input id="pt-check-date" type="date" value="${esc(date)}"></label>
-          <label>Ora<input id="pt-check-time" type="time" value="${esc(nextHourValue())}" step="900"></label>
-          <button class="pt-check-button" onclick="PTAvailabilityOverview.checkSlot()">Verifica</button>
-        </div>
-        <div class="pt-date-references">
-          <div class="pt-date-note"><strong>Date pacchetto</strong><span>Usale come riferimento quando stai proponendo inizio e fine del percorso.</span></div>
-          <label>Inizio pacchetto<input id="pt-package-start-date" type="date" value="${esc(date)}"></label>
-          <label>Fine pacchetto stimata<input id="pt-package-end-date" type="date"></label>
-          <div class="pt-date-note"><strong>Disponibilita PT</strong><span>La verifica usa data disponibilita e ora selezionate sopra.</span></div>
-        </div>
-        <div id="pt-check-result" class="pt-check-result-wrap">${lastCheckHtml || '<div class="pt-check-result read">Seleziona servizio, PT, data disponibilita e orario per sapere subito se e libero.</div>'}</div>
-      </div>`;
-  }
-
-  function renderPackageRows() {
-    const operators = State.getOperators();
-    const clients = State.getClients().filter(c => c.active !== false && packageTypes(c).length);
-    if (!clients.length) return '<tr><td colspan="8" class="pt-muted">Nessun pacchetto PT attivo trovato.</td></tr>';
-
-    return clients.map(client => {
-      const op = operatorForClient(client, operators);
-      const metrics = metricsFor(client);
-      const start = packageStart(client);
-      const end = packageEnd(client, metrics);
-      const status = renewalStatus(client, metrics, end);
-      const total = Number(metrics.total ?? client.sessionsTotal ?? 0) || '-';
-      const completed = Number(metrics.completed ?? 0);
-      const remaining = metrics.remaining ?? client.sessionsRemaining ?? '-';
-      const toSchedule = Number(metrics.toSchedule ?? 0);
-      const name = `${client.nome || ''} ${client.cognome || ''}`.trim() || client.id;
-      return `
-        <tr>
-          <td><strong>${esc(name)}</strong><small>${esc(client.email || '')}</small></td>
-          <td>${esc(operatorLabel(op))}<small>${esc(op?.email || client.ptAssegnato || '-')}</small></td>
-          <td>${esc(fmtDate(start))}</td>
-          <td>${esc(fmtDate(end))}</td>
-          <td>${esc(packageTypes(client).join(', ') || '-')}</td>
-          <td>${esc(completed)}/${esc(total)} fatte<br><small>${esc(remaining)} residue · ${esc(toSchedule)} da pianificare</small></td>
-          <td><span class="pt-status ${status.key}">${status.label}</span></td>
-          <td>${status.key === 'danger' ? '<span class="pt-status danger">Cliente da contattare</span>' : '<span class="pt-status read">Monitorare</span>'}</td>
-        </tr>`;
-    }).join('');
-  }
-
-  function renderBusyColumns() {
-    const days = currentWeekDays();
-    const appointments = State.getAppointments().filter(a => a.status !== 'annullato');
-
-    return days.map(day => {
-      const ds = dateStr(day);
-      const dayAppts = appointments.filter(a => a.date === ds).sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
-      const items = dayAppts.length ? dayAppts.map(a => {
-        const op = Services.getOperator(a.operatorId);
-        return eventCard({ ...a, _operatorLabel: operatorLabel(op) }).replace('<span>', `<span>${esc(operatorLabel(op))} · `);
-      }).join('') : '<div class="pt-empty">Nessun impegno</div>';
-      return `<div class="pt-day"><h4>${day.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' })}</h4>${items}</div>`;
-    }).join('');
-  }
-
-  function renderStaffWeek() {
-    const days = currentWeekDays();
+  function renderRows() {
     const availability = loadStaffAvailability();
-    const appointments = State.getAppointments().filter(a => a.status !== 'annullato');
     const operators = State.getOperators().filter(op => op.active !== false);
-    if (!operators.length) return '<div class="pt-empty">Nessun PT/staff attivo trovato.</div>';
+    if (!operators.length) return '<tr><td colspan="8" class="pt-muted">Nessun PT/staff attivo trovato.</td></tr>';
 
     return operators.map(op => {
-      const opId = String(op.id || op.email || operatorLabel(op));
-      const daysHtml = days.map(day => {
-        const ds = dateStr(day);
-        const declared = availability[opId]?.[ds] || '';
-        const dayAppts = appointments
-          .filter(a => a.date === ds && String(a.operatorId || '') === String(op.id || ''))
-          .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
-        const items = dayAppts.length ? dayAppts.map(eventCard).join('') : '<div class="pt-empty">Nessun impegno inserito</div>';
-        return `<div class="pt-day pt-staff-day">
-          <h4>${day.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' })}</h4>
-          <label class="pt-staff-availability-label">Disponibilita dichiarata
-            <input data-staff-availability="1" data-operator-id="${esc(opId)}" data-day="${esc(ds)}" value="${esc(declared)}" placeholder="es. 07:00-12:00, 15:00-20:00">
-          </label>
-          ${items}
-        </div>`;
+      const key = operatorKey(op);
+      const cells = WEEK_DAYS.map(([day, label]) => {
+        const value = availability[key]?.[day] || '';
+        return `<td><label><span>${label}</span><input data-staff-availability="1" data-operator-id="${esc(key)}" data-day="${esc(day)}" value="${esc(value)}" placeholder="es. 07:00-12:00"></label></td>`;
       }).join('');
-      return `<div class="pt-staff-card">
-        <div class="pt-staff-card-head"><strong>${esc(operatorLabel(op))}</strong><span>${esc(op.email || '')}</span></div>
-        <div class="pt-week-grid">${daysHtml}</div>
-      </div>`;
+      return `<tr><th><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></th>${cells}</tr>`;
     }).join('');
-  }
-
-  function enhanceAvailability() {
-    const panel = document.getElementById('view-availability');
-    if (!panel || !panel.classList.contains('active')) return;
-    panel.querySelectorAll(`.${NS}`).forEach(el => el.remove());
-
-    const wrap = document.createElement('div');
-    wrap.className = NS;
-    wrap.innerHTML = `
-      ${renderSlotChecker()}
-      <div class="pt-panel">
-        <div class="pt-panel-title">
-          <h3>Pacchetti e rinnovi</h3>
-          <span>date percorso cliente</span>
-        </div>
-        <div class="pt-table-wrap">
-          <table class="pt-package-table">
-            <thead><tr><th>Cliente</th><th>PT</th><th>Inizio pacchetto</th><th>Fine stimata</th><th>Pacchetto</th><th>Sedute</th><th>Stato</th><th>Follow-up</th></tr></thead>
-            <tbody>${renderPackageRows()}</tbody>
-          </table>
-        </div>
-      </div>
-      <div class="pt-panel">
-        <div class="pt-panel-title">
-          <h3>Orari impegnati della settimana</h3>
-          <span>derivati dagli appuntamenti reali</span>
-        </div>
-        <div class="pt-week-grid">${renderBusyColumns()}</div>
-      </div>`;
-
-    panel.appendChild(wrap);
   }
 
   function enhanceStaff() {
@@ -354,28 +67,34 @@
     panel.querySelectorAll(`.${STAFF_NS}`).forEach(el => el.remove());
 
     const wrap = document.createElement('div');
-    wrap.className = `${STAFF_NS} ${NS}`;
+    wrap.className = STAFF_NS;
     wrap.innerHTML = `
-      <div class="pt-panel">
-        <div class="pt-panel-title">
-          <h3>Disponibilita orari nella settimana</h3>
-          <span>sezione staff</span>
+      <div class="pt-staff-panel">
+        <div class="pt-staff-title">
+          <div>
+            <h3>Disponibilita settimanale PT</h3>
+            <p>Inserisci qui gli orari di lavoro che ogni PT ti comunica. Servono per capire a chi assegnare nuovi clienti e poi popolare il calendario.</p>
+          </div>
+          <button class="pt-staff-save" onclick="PTAvailabilityOverview.saveStaffAvailability()">Salva disponibilita</button>
         </div>
-        <div class="pt-staff-actions"><button class="pt-check-button" onclick="PTAvailabilityOverview.saveStaffAvailability()">Salva disponibilita staff</button><span id="pt-staff-availability-save-result"></span></div>
-        <div class="pt-staff-week-list">${renderStaffWeek()}</div>
+        <div id="pt-staff-availability-save-result" class="pt-staff-save-result"></div>
+        <div class="pt-staff-table-wrap">
+          <table class="pt-staff-availability-table">
+            <thead><tr><th>PT</th>${WEEK_DAYS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead>
+            <tbody>${renderRows()}</tbody>
+          </table>
+        </div>
       </div>`;
     panel.appendChild(wrap);
   }
 
   function scheduleEnhance() {
-    setTimeout(enhanceAvailability, 0);
-    setTimeout(enhanceAvailability, 250);
     setTimeout(enhanceStaff, 0);
     setTimeout(enhanceStaff, 250);
   }
 
   function hookCalendar() {
-    if (typeof Calendar === 'undefined' || Calendar.__ptAvailabilityHooked) return;
+    if (typeof Calendar === 'undefined' || Calendar.__ptStaffAvailabilityHooked) return;
     const originalRender = Calendar.render;
     const originalSwitch = Calendar.switchView;
     Calendar.render = function () {
@@ -388,14 +107,14 @@
       scheduleEnhance();
       return out;
     };
-    Calendar.__ptAvailabilityHooked = true;
+    Calendar.__ptStaffAvailabilityHooked = true;
   }
 
-  window.PTAvailabilityOverview = { checkSlot: verifySlot, saveStaffAvailability };
+  window.PTAvailabilityOverview = { saveStaffAvailability };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
-    document.querySelectorAll('[data-view="availability"],[data-view="operators"]').forEach(btn => btn.addEventListener('click', scheduleEnhance));
+    document.querySelectorAll('[data-view="operators"]').forEach(btn => btn.addEventListener('click', scheduleEnhance));
     scheduleEnhance();
   });
 })();
