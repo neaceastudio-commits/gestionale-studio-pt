@@ -2,7 +2,7 @@
 (function () {
   const NS = 'pt-availability-overview';
   const STAFF_NS = 'pt-staff-availability-setup';
-  const AVAILABILITY_KEY = 'neacea_pt_declared_availability_v3';
+  const AVAILABILITY_KEY = 'neacea_pt_declared_availability_v4';
   const WEEK_DAYS = [
     ['mon', 'Lunedi'],
     ['tue', 'Martedi'],
@@ -35,6 +35,8 @@
     ['14', 'Prossimi 14 giorni'],
     ['30', 'Prossimi 30 giorni']
   ];
+
+  let staffEditorOpen = false;
   let lastSearchHtml = '';
 
   function esc(value) {
@@ -84,8 +86,7 @@
     if (parts.length !== 2) return null;
     const start = timeToMin(parts[0]);
     const end = timeToMin(parts[1]);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
-    return { start, end };
+    return end > start ? { start, end } : null;
   }
 
   function overlapRange(a, b) {
@@ -103,6 +104,10 @@
     return String(operator.id || operator.email || operatorLabel(operator));
   }
 
+  function activeOperators() {
+    return State.getOperators().filter(op => op.active !== false);
+  }
+
   function loadAvailability() {
     try { return JSON.parse(localStorage.getItem(AVAILABILITY_KEY) || '{}') || {}; }
     catch { return {}; }
@@ -110,6 +115,10 @@
 
   function saveAvailability(data) {
     localStorage.setItem(AVAILABILITY_KEY, JSON.stringify(data));
+  }
+
+  function selectOptions(items, selected = '') {
+    return items.map(([value, label]) => `<option value="${esc(value)}" ${value === selected ? 'selected' : ''}>${esc(label)}</option>`).join('');
   }
 
   function serviceOptions() {
@@ -121,22 +130,14 @@
 
   function operatorOptions(includeAll) {
     const prefix = includeAll ? '<option value="all">Tutti i PT</option>' : '';
-    return prefix + State.getOperators().filter(op => op.active !== false).map(op =>
+    return prefix + activeOperators().map(op =>
       `<option value="${esc(operatorKey(op))}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
     ).join('');
   }
 
-  function selectOptions(items, selected = '') {
-    return items.map(([value, label]) => `<option value="${esc(value)}" ${value === selected ? 'selected' : ''}>${esc(label)}</option>`).join('');
-  }
-
-  function getOperatorByKey(key) {
-    return State.getOperators().find(op => operatorKey(op) === key || String(op.id || '') === key || String(op.email || '') === key) || null;
-  }
-
   function toggleStaffAvailability() {
-    const box = document.getElementById('pt-staff-availability-editor');
-    if (box) box.hidden = !box.hidden;
+    staffEditorOpen = !staffEditorOpen;
+    renderStaffIfActive();
   }
 
   function saveStaffAvailability() {
@@ -151,14 +152,16 @@
       data[opKey][day][slot] = select.value;
     });
     saveAvailability(data);
+    staffEditorOpen = true;
+    renderStaffIfActive();
+    renderAvailabilityIfActive();
     const msg = document.getElementById('pt-staff-save-result');
     if (msg) msg.textContent = 'Disponibilita salvata.';
-    renderAvailabilityIfActive();
   }
 
   function renderStaffRows() {
     const data = loadAvailability();
-    const operators = State.getOperators().filter(op => op.active !== false);
+    const operators = activeOperators();
     if (!operators.length) return '<tr><td colspan="7" class="pt-muted">Nessun PT/staff attivo trovato.</td></tr>';
     return operators.map(op => {
       const opKey = operatorKey(op);
@@ -173,7 +176,7 @@
     }).join('');
   }
 
-  function enhanceStaff() {
+  function renderStaffIfActive() {
     const panel = document.getElementById('view-operators');
     if (!panel || !panel.classList.contains('active')) return;
     panel.querySelectorAll(`.${STAFF_NS}`).forEach(el => el.remove());
@@ -183,9 +186,9 @@
       <div class="pt-panel pt-staff-setup">
         <div class="pt-panel-title">
           <h3>Disponibilita PT</h3>
-          <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">Apri disponibilita</button>
+          <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">${staffEditorOpen ? 'Chiudi disponibilita' : 'Apri disponibilita'}</button>
         </div>
-        <div id="pt-staff-availability-editor" hidden>
+        <div id="pt-staff-availability-editor" ${staffEditorOpen ? '' : 'hidden'}>
           <p class="pt-help">Imposta i giorni e le fasce orarie che ogni PT ti comunica. La ricerca in Disponibilita usera questi dati insieme agli appuntamenti gia prenotati.</p>
           <div class="pt-table-wrap">
             <table class="pt-staff-table">
@@ -237,7 +240,7 @@
     const duration = Number(service?.durationMin || 60);
     const buffer = Number(service?.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
     const startDate = parseDate(currentDateValue()) || new Date();
-    const operators = State.getOperators().filter(op => op.active !== false && (operatorChoice === 'all' || operatorKey(op) === operatorChoice));
+    const operators = activeOperators().filter(op => operatorChoice === 'all' || operatorKey(op) === operatorChoice);
     const results = [];
 
     operators.forEach(op => {
@@ -338,7 +341,7 @@
   }
 
   function renderPackageRows() {
-    const operators = State.getOperators();
+    const operators = activeOperators();
     const clients = State.getClients().filter(c => c.active !== false && packageTypes(c).length);
     if (!clients.length) return '<tr><td colspan="8" class="pt-muted">Nessun pacchetto PT attivo trovato.</td></tr>';
     return clients.map(client => {
@@ -390,12 +393,12 @@
   function scheduleEnhance() {
     setTimeout(renderAvailabilityIfActive, 0);
     setTimeout(renderAvailabilityIfActive, 250);
-    setTimeout(enhanceStaff, 0);
-    setTimeout(enhanceStaff, 250);
+    setTimeout(renderStaffIfActive, 0);
+    setTimeout(renderStaffIfActive, 250);
   }
 
   function hookCalendar() {
-    if (typeof Calendar === 'undefined' || Calendar.__ptAvailabilityHookedV2) return;
+    if (typeof Calendar === 'undefined' || Calendar.__ptAvailabilityHookedV4) return;
     const originalRender = Calendar.render;
     const originalSwitch = Calendar.switchView;
     Calendar.render = function () {
@@ -408,7 +411,7 @@
       scheduleEnhance();
       return out;
     };
-    Calendar.__ptAvailabilityHookedV2 = true;
+    Calendar.__ptAvailabilityHookedV4 = true;
   }
 
   window.PTAvailabilityOverview = { toggleStaffAvailability, saveStaffAvailability, runAvailabilitySearch };
