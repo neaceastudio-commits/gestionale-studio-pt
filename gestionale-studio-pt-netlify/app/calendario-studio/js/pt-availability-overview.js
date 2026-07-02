@@ -1,7 +1,6 @@
-// Estensione vista Disponibilita: pacchetti PT, rinnovi, orari impegnati e ricerca slot liberi.
+// Estensione vista Disponibilita: pacchetti PT, rinnovi e orari impegnati.
 (function () {
   const NS = 'pt-availability-overview';
-  let lastResultsHtml = '';
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -101,98 +100,6 @@
     return Array.from({ length: 5 }, (_, i) => addDays(monday, i));
   }
 
-  function serviceOptions() {
-    return Object.values(CONFIG.SERVICES)
-      .filter(s => !s.isBlock)
-      .map(s => `<option value="${esc(s.id)}" ${s.id === 'pt11' ? 'selected' : ''}>${esc(s.label)}</option>`)
-      .join('');
-  }
-
-  function operatorOptions() {
-    const ops = State.getOperators().filter(op => op.active !== false);
-    return '<option value="">Qualsiasi PT compatibile</option>' + ops.map(op =>
-      `<option value="${esc(op.id)}">${esc(operatorLabel(op))}${op.email ? ' · ' + esc(op.email) : ''}</option>`
-    ).join('');
-  }
-
-  function timeOptions() {
-    const startMin = Math.ceil(Services.timeToMin(CONFIG.workHours.start) / 60) * 60;
-    const endMin = Services.timeToMin(CONFIG.workHours.end);
-    const options = ['<option value="">Da adesso</option>'];
-    for (let min = startMin; min < endMin; min += 60) {
-      const time = Services.minToTime(min);
-      options.push(`<option value="${esc(time)}">Dalle ${esc(time)}</option>`);
-    }
-    return options.join('');
-  }
-
-  function findFreeSlots() {
-    const serviceId = document.getElementById('pt-free-service')?.value || 'pt11';
-    const operatorId = document.getElementById('pt-free-operator')?.value || '';
-    const horizonDays = Number(document.getElementById('pt-free-days')?.value || 14);
-    const requestedStartValue = document.getElementById('pt-free-from')?.value || '';
-    const maxResults = Number(document.getElementById('pt-free-limit')?.value || 12);
-    const svc = Services.getService(serviceId) || CONFIG.SERVICES.pt11;
-    const start = parseDate(typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || new Date();
-    const now = new Date();
-    const startMin = Services.timeToMin(CONFIG.workHours.start);
-    const firstFullHourMin = Math.ceil(startMin / 60) * 60;
-    const requestedStartMin = requestedStartValue ? Services.timeToMin(requestedStartValue) : firstFullHourMin;
-    const searchStartMin = Math.max(firstFullHourMin, Math.ceil(requestedStartMin / 60) * 60);
-    const endMin = Services.timeToMin(CONFIG.workHours.end);
-    const step = 60;
-    const duration = Number(svc.durationMin || 60);
-    const buffer = Number(svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10);
-    const out = [];
-
-    for (let d = 0; d < horizonDays && out.length < maxResults; d += 1) {
-      const day = addDays(start, d);
-      const ds = dateStr(day);
-      const isToday = ds === dateStr(now);
-      for (let min = searchStartMin; min + duration <= endMin && out.length < maxResults; min += step) {
-        if (isToday && min <= now.getHours() * 60 + now.getMinutes()) continue;
-        const time = Services.minToTime(min);
-        const availability = Services.getAvailableOperatorsForSlot(serviceId, ds, time, duration, buffer, null)
-          .filter(item => item.available && item.hasRole);
-        const candidates = operatorId ? availability.filter(item => item.id === operatorId) : availability;
-        candidates.forEach(op => {
-          if (out.length < maxResults) out.push({ date: ds, time, end: Services.minToTime(min + duration), op, svc });
-        });
-      }
-    }
-
-    lastResultsHtml = out.length ? out.map(slot => `
-      <div class="pt-free-result">
-        <div>
-          <strong>${esc(fmtDate(slot.date))} · ${esc(slot.time)}-${esc(slot.end)}</strong>
-          <span>${esc(slot.svc.label)} · ${esc(operatorLabel(slot.op))}${slot.op.email ? ' · ' + esc(slot.op.email) : ''}</span>
-        </div>
-        <button class="pt-free-book" onclick="App.openNewAppointment('${esc(slot.date)}', null, '${esc(slot.time)}', '${esc(slot.svc.id)}')">Crea</button>
-      </div>`).join('') : '<div class="pt-free-empty">Nessuno slot libero trovato con questi filtri.</div>';
-
-    const target = document.getElementById('pt-free-results');
-    if (target) target.innerHTML = lastResultsHtml;
-  }
-
-  function renderFinder() {
-    return `
-      <div class="pt-panel pt-free-finder">
-        <div class="pt-panel-title">
-          <h3>Trova primo slot libero</h3>
-          <span>per rispondere subito al cliente</span>
-        </div>
-        <div class="pt-free-controls">
-          <label>Servizio<select id="pt-free-service">${serviceOptions()}</select></label>
-          <label>PT<select id="pt-free-operator">${operatorOptions()}</select></label>
-          <label>Periodo<select id="pt-free-days"><option value="7">Prossimi 7 giorni</option><option value="14" selected>Prossimi 14 giorni</option><option value="30">Prossimi 30 giorni</option></select></label>
-          <label>Da che ora<select id="pt-free-from">${timeOptions()}</select></label>
-          <label>Risultati<select id="pt-free-limit"><option value="8">8 slot</option><option value="12" selected>12 slot</option><option value="20">20 slot</option></select></label>
-          <button class="pt-free-search" onclick="PTAvailabilityOverview.findSlots()">Cerca slot</button>
-        </div>
-        <div id="pt-free-results" class="pt-free-results">${lastResultsHtml || '<div class="pt-free-empty">Scegli servizio, PT e orario minimo, poi cerca gli orari liberi da proporre.</div>'}</div>
-      </div>`;
-  }
-
   function renderPackageRows() {
     const operators = State.getOperators();
     const clients = State.getClients().filter(c => c.active !== false && packageTypes(c).length);
@@ -269,7 +176,6 @@
           <div><strong>${appts.length}</strong><span>impegni futuri/storici</span></div>
         </div>
       </div>
-      ${renderFinder()}
       <div class="pt-panel">
         <div class="pt-panel-title">
           <h3>Pacchetti e rinnovi</h3>
@@ -314,8 +220,6 @@
     };
     Calendar.__ptAvailabilityHooked = true;
   }
-
-  window.PTAvailabilityOverview = { findSlots: findFreeSlots };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
