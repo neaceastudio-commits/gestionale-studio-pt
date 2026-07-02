@@ -79,6 +79,7 @@ const SupabaseSync = (() => {
       giorni_settimana: Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [],
       package_start: c.packageStart || null,
       notes: c.notes || '',
+      pt_assegnato: c.ptAssegnato || c.pt_assegnato || null,
       tipo_servizio: c.tipoServizio || c.tipo_servizio || '',
       tipo_abbonamento: c.tipoAbbonamento || c.tipo_abbonamento || '',
       stato_abbonamento: c.statoAbbonamento || c.stato_abbonamento || '',

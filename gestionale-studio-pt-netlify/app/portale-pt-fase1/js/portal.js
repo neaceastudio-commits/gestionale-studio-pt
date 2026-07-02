@@ -133,6 +133,29 @@ function fullName(item) {
   return [item?.nome, item?.cognome].filter(Boolean).join(' ') || '-';
 }
 
+function operatorFromAny(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const key = raw.toLowerCase();
+  return state.operators.find((op) =>
+    String(op.id || '').toLowerCase() === key ||
+    String(op.email || '').toLowerCase() === key ||
+    fullName(op).toLowerCase() === key
+  ) || null;
+}
+
+function operatorIdFromAny(value) {
+  return operatorFromAny(value)?.id || String(value || '').trim();
+}
+
+function clientTrainerId(client) {
+  return operatorIdFromAny(client?.trainer_id || client?.pt_assegnato || client?.operator_id);
+}
+
+function sessionTrainerId(session) {
+  return operatorIdFromAny(session?.trainer_id || session?.operator_id);
+}
+
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -362,8 +385,8 @@ function normalizeProgram(row) {
     rowId: row.id,
     id: data.id || row.id,
     client_id: clientId,
-    trainer_id: data.trainer_id || data.trainerId || '',
-    created_by: data.created_by || data.createdBy || data.trainer_id || '',
+    trainer_id: operatorIdFromAny(data.trainer_id || data.trainerId || ''),
+    created_by: operatorIdFromAny(data.created_by || data.createdBy || data.trainer_id || ''),
     name: data.name || data.nome || 'Scheda senza nome',
     goal: data.goal || data.obiettivo || data.note || '',
     level: data.level || data.livello || 'base',
@@ -474,8 +497,14 @@ async function loadPhase1() {
     portal_access_enabled: op.portal_access_enabled ?? op.pt_portal_enabled ?? false,
   }));
   state.metrics = metrics;
-  state.clients = clients;
-  state.sessions = sessions;
+  state.clients = clients.map((client) => ({
+    ...client,
+    trainer_id: clientTrainerId(client),
+  }));
+  state.sessions = sessions.map((session) => ({
+    ...session,
+    trainer_id: sessionTrainerId(session),
+  }));
 }
 
 async function loadFallback() {
@@ -491,6 +520,24 @@ async function loadFallback() {
     .filter((op) => Array.isArray(op.roles) && op.roles.includes('PT'))
     .map((op) => ({ ...op, roles: op.roles || [] }));
 
+  const inferredTrainerByClient = appointments.reduce((acc, appt) => {
+    const trainerId = operatorIdFromAny(appt.operator_id);
+    if (!trainerId) return acc;
+    const clientIds = Array.isArray(appt.client_ids) ? appt.client_ids : [];
+    clientIds.forEach((clientId) => {
+      acc[clientId] = acc[clientId] || {};
+      acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
+    });
+    return acc;
+  }, {});
+
+  function inferredTrainerId(clientId) {
+    const counts = inferredTrainerByClient[clientId] || {};
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([trainerId]) => trainerId)[0] || '';
+  }
+
   state.clients = clients.map((client) => {
     const acq = acquisitions.find((item) => {
       const emailMatch = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -501,7 +548,7 @@ async function loadFallback() {
 
     return {
       assignment_id: `legacy_${client.id}`,
-      trainer_id: client.pt_assegnato || '',
+      trainer_id: operatorIdFromAny(client.pt_assegnato || inferredTrainerId(client.id)),
       client_id: client.id,
       nome: client.nome,
       cognome: client.cognome,
@@ -535,10 +582,11 @@ async function loadFallback() {
     const clientIds = Array.isArray(appt.client_ids) ? appt.client_ids : [];
     return clientIds.map((clientId) => {
       const client = clients.find((item) => item.id === clientId) || {};
-      const trainer = operators.find((item) => item.id === appt.operator_id) || {};
+      const trainerId = operatorIdFromAny(appt.operator_id);
+      const trainer = operatorFromAny(appt.operator_id) || {};
       return {
         appointment_id: appt.id,
-        trainer_id: appt.operator_id,
+        trainer_id: trainerId,
         trainer_nome: trainer.nome,
         trainer_cognome: trainer.cognome,
         client_id: clientId,
@@ -561,8 +609,8 @@ function buildFallbackMetrics() {
   const start = todayIso();
   const end = addDaysIso(7);
   return state.operators.map((op) => {
-    const assigned = state.clients.filter((client) => client.trainer_id === op.id);
-    const sessions = state.sessions.filter((session) => session.trainer_id === op.id && session.status !== 'annullato');
+    const assigned = state.clients.filter((client) => clientTrainerId(client) === op.id);
+    const sessions = state.sessions.filter((session) => sessionTrainerId(session) === op.id && session.status !== 'annullato');
     return {
       trainer_id: op.id,
       trainer_nome: op.nome,
@@ -610,7 +658,7 @@ function operatorClients() {
   const q = els.clientSearch.value.trim().toLowerCase();
   const alertFilter = els.alertFilter.value;
   return state.clients
-    .filter((client) => !state.selectedOperatorId || client.trainer_id === state.selectedOperatorId)
+    .filter((client) => !state.selectedOperatorId || clientTrainerId(client) === state.selectedOperatorId)
     .filter((client) => {
       if (!q) return true;
       return `${client.nome || ''} ${client.cognome || ''} ${client.email || ''} ${client.telefono || ''}`
@@ -627,7 +675,7 @@ function operatorClients() {
 function operatorSessions(days = 14) {
   const end = addDaysIso(days);
   return state.sessions
-    .filter((session) => !state.selectedOperatorId || session.trainer_id === state.selectedOperatorId)
+    .filter((session) => !state.selectedOperatorId || sessionTrainerId(session) === state.selectedOperatorId)
     .filter((session) => session.status !== 'annullato')
     .filter((session) => session.date >= todayIso() && session.date <= end)
     .sort((a, b) => `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`));
@@ -638,7 +686,7 @@ function operatorPrograms() {
   const clientFilter = els.programClientFilter.value;
   const statusFilter = els.programStatusFilter.value;
   return state.programs
-    .filter((program) => !state.selectedOperatorId || program.trainer_id === state.selectedOperatorId || allowedClientIds.has(program.client_id))
+    .filter((program) => !state.selectedOperatorId || operatorIdFromAny(program.trainer_id) === state.selectedOperatorId || allowedClientIds.has(program.client_id))
     .filter((program) => !clientFilter || program.client_id === clientFilter)
     .filter((program) => !statusFilter || program.status === statusFilter)
     .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
@@ -673,7 +721,7 @@ function renderOperators() {
 
 function renderDashboard() {
   const metrics = state.selectedOperatorId
-    ? (state.metrics.find((item) => item.trainer_id === state.selectedOperatorId) || {})
+    ? (state.metrics.find((item) => operatorIdFromAny(item.trainer_id) === state.selectedOperatorId) || {})
     : {
         clienti_assegnati: operatorClients().length,
         sedute_oggi: state.sessions.filter((session) => session.status !== 'annullato' && session.date === todayIso()).length,
@@ -1909,21 +1957,35 @@ function renderCalendarMonth(sessions, reference) {
 }
 
 async function assignClient() {
-  if (state.mode !== 'phase1') return;
   const trainerId = els.assignTrainer.value;
   const clientId = els.assignClient.value;
   if (!trainerId || !clientId) return;
 
-  await sb('trainer_client_assignments', '?on_conflict=trainer_id,client_id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+  if (state.mode === 'phase1') {
+    try {
+      await sb('trainer_client_assignments', '?on_conflict=trainer_id,client_id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: {
+          id: `tca_manual_${trainerId}_${clientId}`.replace(/[^a-zA-Z0-9_]/g, '_'),
+          trainer_id: trainerId,
+          client_id: clientId,
+          assignment_source: 'manual',
+          active: true,
+          notes: 'Assegnazione manuale da Portale PT Fase 1',
+        },
+      });
+    } catch (error) {
+      console.warn('Assegnazione avanzata non salvata, aggiorno clients.pt_assegnato.', error);
+    }
+  }
+
+  await sb('clients', `?id=eq.${encodeURIComponent(clientId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
     body: {
-      id: `tca_manual_${trainerId}_${clientId}`.replace(/[^a-zA-Z0-9_]/g, '_'),
-      trainer_id: trainerId,
-      client_id: clientId,
-      assignment_source: 'manual',
-      active: true,
-      notes: 'Assegnazione manuale da Portale PT Fase 1',
+      pt_assegnato: trainerId,
+      updated_at: new Date().toISOString(),
     },
   });
   await refresh();

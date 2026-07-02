@@ -871,8 +871,30 @@
       return String(value || '').trim().toLowerCase();
     }
     function operatorName(id) {
-      const operator = state.operators.find(op => op.id === id);
+      const operator = operatorFromAny(id);
       return operator ? fullName(operator) : 'PT non assegnato';
+    }
+    function operatorKey(op) {
+      return String(op?.id || op?.email || fullName(op) || '').trim().toLowerCase();
+    }
+    function operatorFromAny(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return null;
+      const normalized = raw.toLowerCase();
+      return state.operators.find(op =>
+        String(op.id || '').toLowerCase() === normalized ||
+        String(op.email || '').toLowerCase() === normalized ||
+        fullName(op).toLowerCase() === normalized
+      ) || null;
+    }
+    function operatorIdFromAny(value) {
+      return operatorFromAny(value)?.id || (value || '');
+    }
+    function clientOperatorId(client) {
+      return operatorIdFromAny(client?.pt_assegnato);
+    }
+    function appointmentOperatorId(appt) {
+      return operatorIdFromAny(appt?.operator_id);
     }
     function money(value) {
       return Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -903,7 +925,7 @@
       const pay = document.getElementById('paymentSelect')?.value || '';
       return state.clients
         .filter(c => c.active !== false)
-        .filter(c => !opId || c.pt_assegnato === opId)
+        .filter(c => !opId || clientOperatorId(c) === opId)
         .filter(c => !pay || paymentStatus(c) === pay)
         .filter(c => !q || `${c.nome || ''} ${c.cognome || ''} ${c.email || ''} ${c.telefono || ''}`.toLowerCase().includes(q));
     }
@@ -912,7 +934,7 @@
       const end = addDaysStr(days);
       const opId = document.getElementById('operatorSelect')?.value || '';
       return state.appointments
-        .filter(a => !opId || a.operator_id === opId)
+        .filter(a => !opId || appointmentOperatorId(a) === opId)
         .filter(a => a.status !== 'annullato')
         .filter(a => a.date >= start && a.date <= end)
         .sort((a, b) => `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`));
@@ -920,7 +942,7 @@
     function filteredAllAppointments() {
       const opId = document.getElementById('operatorSelect')?.value || '';
       return state.appointments
-        .filter(a => !opId || a.operator_id === opId)
+        .filter(a => !opId || appointmentOperatorId(a) === opId)
         .filter(a => a.status !== 'annullato');
     }
     function percent(value, total) {
@@ -958,11 +980,14 @@
           appt.client_ids.forEach(id => {
             if (!byClient.has(id)) byClient.set(id, new Map());
             const ops = byClient.get(id);
-            ops.set(appt.operator_id, (ops.get(appt.operator_id) || 0) + 1);
+            const opId = appointmentOperatorId(appt);
+            if (opId) ops.set(opId, (ops.get(opId) || 0) + 1);
           });
         });
       state.clients = state.clients.map(client => {
-        if (client.pt_assegnato || !byClient.has(client.id)) return client;
+        const normalized = clientOperatorId(client);
+        if (normalized && normalized !== client.pt_assegnato) return { ...client, pt_assegnato: normalized };
+        if (normalized || !byClient.has(client.id)) return client;
         const best = [...byClient.get(client.id).entries()].sort((a, b) => b[1] - a[1])[0];
         return best ? { ...client, pt_assegnato: best[0] } : client;
       });
@@ -1311,14 +1336,14 @@
         revenue: 0,
       }));
       clients.forEach(client => {
-        const id = client.pt_assegnato || 'none';
+        const id = clientOperatorId(client) || 'none';
         if (!byPt.has(id)) byPt.set(id, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
         const row = byPt.get(id);
         row.clients += 1;
         if (paymentStatus(client) === 'Pagato') row.revenue += Number(client.importo || 0);
       });
       appointments.forEach(appt => {
-        const id = appt.operator_id || 'none';
+        const id = appointmentOperatorId(appt) || 'none';
         if (!byPt.has(id)) byPt.set(id, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
         const row = byPt.get(id);
         row.appts += 1;
