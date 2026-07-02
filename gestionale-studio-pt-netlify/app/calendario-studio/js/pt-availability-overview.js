@@ -1,6 +1,8 @@
-// Estensione vista Disponibilita: pacchetti PT, rinnovi e orari impegnati.
+// Estensione vista Disponibilita: specchio orari, pacchetti PT, rinnovi e orari impegnati.
 (function () {
   const NS = 'pt-availability-overview';
+  let mirrorServiceId = 'pt11';
+  let mirrorFromTime = '';
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -21,6 +23,11 @@
   function fmtDate(value) {
     const d = parseDate(value);
     return d ? d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' }) : '-';
+  }
+
+  function italianDate(value) {
+    const d = parseDate(value) || new Date();
+    return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   }
 
   function addDays(date, days) {
@@ -93,11 +100,138 @@
     return { key: 'ok', label: 'In corso' };
   }
 
+  function currentDateValue() {
+    return (typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || dateStr(new Date());
+  }
+
   function currentWeekDays() {
-    const base = parseDate(typeof Calendar !== 'undefined' && Calendar.getCurrentDateStr ? Calendar.getCurrentDateStr() : '') || new Date();
+    const base = parseDate(currentDateValue()) || new Date();
     const offset = base.getDay() === 0 ? 6 : base.getDay() - 1;
     const monday = addDays(base, -offset);
     return Array.from({ length: 5 }, (_, i) => addDays(monday, i));
+  }
+
+  function serviceOptions() {
+    return Object.values(CONFIG.SERVICES)
+      .filter(s => !s.isBlock)
+      .map(s => `<option value="${esc(s.id)}" ${mirrorServiceId === s.id ? 'selected' : ''}>${esc(s.label)}</option>`)
+      .join('');
+  }
+
+  function timeFilterOptions() {
+    const startMin = Math.ceil(Services.timeToMin(CONFIG.workHours.start) / 60) * 60;
+    const endMin = Services.timeToMin(CONFIG.workHours.end);
+    const options = [`<option value="" ${mirrorFromTime ? '' : 'selected'}>Tutto il giorno</option>`];
+    for (let min = startMin; min < endMin; min += 60) {
+      const time = Services.minToTime(min);
+      options.push(`<option value="${esc(time)}" ${mirrorFromTime === time ? 'selected' : ''}>Da ${esc(time)}</option>`);
+    }
+    return options.join('');
+  }
+
+  function serviceCompatibleOperators(serviceId) {
+    const svc = Services.getService(serviceId);
+    return State.getOperators()
+      .filter(op => op.active !== false)
+      .filter(op => {
+        if (!svc?.requiredRoles?.length) return true;
+        const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
+        return svc.requiredRoles.some(role => roles.includes(role));
+      });
+  }
+
+  function renderAvailabilityMirror() {
+    const date = currentDateValue();
+    const svc = Services.getService(mirrorServiceId) || Services.getService('pt11');
+    const operators = serviceCompatibleOperators(svc.id);
+    const startMin = Math.max(
+      Services.timeToMin(CONFIG.workHours.start),
+      mirrorFromTime ? Services.timeToMin(mirrorFromTime) : Services.timeToMin(CONFIG.workHours.start)
+    );
+    const endMin = Services.timeToMin(CONFIG.workHours.end);
+    const rows = [];
+
+    for (let min = startMin; min < endMin; min += 30) {
+      const time = Services.minToTime(min);
+      const availability = Services.getAvailableOperatorsForSlot(
+        svc.id,
+        date,
+        time,
+        svc.durationMin || 60,
+        svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        null
+      );
+
+      const cells = operators.map(op => {
+        const status = availability.find(item => item.id === op.id);
+        const conflicts = status?.conflicts || [];
+        const free = !!status?.available && !!status?.hasRole;
+        const draft = {
+          date,
+          startTime: time,
+          durationMin: svc.durationMin || 60,
+          bufferMin: svc.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        };
+        const directConflicts = conflicts.filter(a => Services.overlaps(draft, a, false));
+        const isBufferOnly = !free && conflicts.length && directConflicts.length === 0;
+        const conflictLabel = conflicts.map(a => {
+          const clients = (a.clientIds || []).map(Services.clientFullName).join(', ') || 'blocco';
+          const apptTime = String(a.startTime || '').slice(0, 5);
+          const shortClients = clients.length > 22 ? clients.slice(0, 21) + '...' : clients;
+          return `${isBufferOnly ? 'verso ' : ''}${apptTime} ${shortClients}`;
+        }).join(' · ');
+        const cellClass = free ? 'is-free' : (isBufferOnly ? 'is-buffer' : 'is-busy');
+        const statusLabel = free ? 'Libero' : (isBufferOnly ? 'Buffer' : 'Occupato');
+        return `<td class="availability-cell ${cellClass}">
+          <button class="availability-slot" ${free ? `onclick="App.openNewAppointment('${date}', null, '${time}', '${svc.id}')"` : (conflicts[0] ? `onclick="App.openDetail('${conflicts[0].id}')"` : '')}>
+            <strong>${statusLabel}</strong>
+            <span>${free ? 'clicca per creare' : (conflictLabel || 'non disponibile')}</span>
+          </button>
+        </td>`;
+      }).join('');
+
+      rows.push(`<tr>
+        <td class="availability-time">${time}</td>
+        ${cells}
+      </tr>`);
+    }
+
+    const headers = operators.map(op =>
+      `<th><span>${esc(operatorLabel(op))}</span><small>${esc((Array.isArray(op.roles) ? op.roles : []).join(', ') || 'staff')}</small></th>`
+    ).join('');
+
+    return `
+      <div class="view-header pt-native-header">
+        <div class="nav-arrows">
+          <button class="btn btn-ghost btn-sm" onclick="Calendar.prevDay()">‹</button>
+          <h2 class="view-title">Disponibilità — ${esc(italianDate(date))}</h2>
+          <button class="btn btn-ghost btn-sm" onclick="Calendar.nextDay()">›</button>
+          <button class="btn btn-ghost btn-sm" onclick="Calendar.goToday()">Oggi</button>
+        </div>
+        <div class="availability-tools pt-availability-tools">
+          <select class="form-input" onchange="PTAvailabilityOverview.setService(this.value)">${serviceOptions()}</select>
+          <select class="form-input" onchange="PTAvailabilityOverview.setFromTime(this.value)">${timeFilterOptions()}</select>
+        </div>
+      </div>
+      <div class="card pt-native-mirror">
+        <div class="card-header">
+          <h3 class="card-title">Specchio orari liberi</h3>
+          <span class="card-subtitle">${esc(svc.label)} · ${operators.length} professionisti compatibili${mirrorFromTime ? ' · da ' + esc(mirrorFromTime) : ''}</span>
+        </div>
+        <div class="availability-legend">
+          <span class="free">Libero</span>
+          <span class="buffer">Buffer</span>
+          <span class="busy">Occupato</span>
+        </div>
+        ${operators.length ? `
+          <div class="availability-table-wrap">
+            <table class="availability-table">
+              <thead><tr><th>Orario</th>${headers}</tr></thead>
+              <tbody>${rows.join('')}</tbody>
+            </table>
+          </div>
+        ` : '<p class="empty-state">Nessun professionista compatibile con questo servizio.</p>'}
+      </div>`;
   }
 
   function renderPackageRows() {
@@ -164,6 +298,7 @@
     const wrap = document.createElement('div');
     wrap.className = NS;
     wrap.innerHTML = `
+      ${renderAvailabilityMirror()}
       <div class="pt-overview-head">
         <div>
           <div class="eyebrow">Disponibilita PT</div>
@@ -220,6 +355,17 @@
     };
     Calendar.__ptAvailabilityHooked = true;
   }
+
+  window.PTAvailabilityOverview = {
+    setService(serviceId) {
+      mirrorServiceId = serviceId || 'pt11';
+      scheduleEnhance();
+    },
+    setFromTime(time) {
+      mirrorFromTime = time || '';
+      scheduleEnhance();
+    }
+  };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
