@@ -1145,8 +1145,7 @@ function renderExerciseBuilder() {
   if (!els.exercisePickList) return;
   const q = (els.exerciseSearch?.value || '').trim().toLowerCase();
   const exercises = flattenExercises()
-    .filter((item) => !q || `${item.name} ${item.category}`.toLowerCase().includes(q))
-    .slice(0, 80);
+    .filter((item) => !q || `${item.name} ${item.category}`.toLowerCase().includes(q));
   let currentCategory = '';
   els.exercisePickList.innerHTML = exercises.length
     ? exercises.map((item) => {
