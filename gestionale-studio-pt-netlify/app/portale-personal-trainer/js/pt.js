@@ -214,6 +214,29 @@ function fullName(item) {
   return [item?.nome, item?.cognome].filter(Boolean).join(' ') || item?.email || '-';
 }
 
+function operatorFromAny(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const key = raw.toLowerCase();
+  return state.operators.find((op) =>
+    String(op.id || '').toLowerCase() === key ||
+    String(op.email || '').toLowerCase() === key ||
+    fullName(op).toLowerCase() === key
+  ) || null;
+}
+
+function operatorIdFromAny(value) {
+  return operatorFromAny(value)?.id || String(value || '').trim();
+}
+
+function clientTrainerId(client) {
+  return operatorIdFromAny(client?.trainer_id || client?.pt_assegnato || client?.operator_id);
+}
+
+function sessionTrainerId(session) {
+  return operatorIdFromAny(session?.trainer_id || session?.operator_id);
+}
+
 function normalizeServiceId(serviceId) {
   const raw = String(serviceId || '').trim();
   if (SERVICES[raw]) return raw;
@@ -389,8 +412,14 @@ async function loadPhaseViews() {
     email: op.email,
     roles: op.system_roles || [],
   }));
-  state.clients = clients || [];
-  state.sessions = sessions || [];
+  state.clients = (clients || []).map((client) => ({
+    ...client,
+    trainer_id: clientTrainerId(client),
+  }));
+  state.sessions = (sessions || []).map((session) => ({
+    ...session,
+    trainer_id: sessionTrainerId(session),
+  }));
 }
 
 async function loadFallback() {
@@ -403,6 +432,25 @@ async function loadFallback() {
   state.operators = (operators || [])
     .filter((op) => !Array.isArray(op.roles) || op.roles.includes('PT') || op.roles.includes('Personal Trainer'))
     .map((op) => ({ ...op, roles: op.roles || [] }));
+
+  const inferredTrainerByClient = (appointments || []).reduce((acc, appt) => {
+    const trainerId = operatorIdFromAny(appt.operator_id);
+    if (!trainerId) return acc;
+    const clientIds = Array.isArray(appt.client_ids) ? appt.client_ids : [];
+    clientIds.forEach((clientId) => {
+      acc[clientId] = acc[clientId] || {};
+      acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
+    });
+    return acc;
+  }, {});
+
+  function inferredTrainerId(clientId) {
+    const counts = inferredTrainerByClient[clientId] || {};
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([trainerId]) => trainerId)[0] || '';
+  }
+
   state.clients = (clients || []).map((client) => {
     const acq = (acquisitions || []).find((item) => {
       const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -411,7 +459,7 @@ async function loadFallback() {
     });
     return {
       assignment_id: `legacy_${client.id}`,
-      trainer_id: client.pt_assegnato || client.trainer_id || '',
+      trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || inferredTrainerId(client.id)),
       client_id: client.id,
       nome: client.nome,
       cognome: client.cognome,
@@ -437,10 +485,11 @@ async function loadFallback() {
     const ids = Array.isArray(appt.client_ids) ? appt.client_ids : [];
     return ids.map((clientId) => {
       const client = (clients || []).find((item) => item.id === clientId) || {};
-      const trainer = (operators || []).find((item) => item.id === appt.operator_id) || {};
+      const trainerId = operatorIdFromAny(appt.operator_id);
+      const trainer = operatorFromAny(appt.operator_id) || {};
       return {
         appointment_id: appt.id,
-        trainer_id: appt.operator_id,
+        trainer_id: trainerId,
         trainer_nome: trainer.nome,
         trainer_cognome: trainer.cognome,
         client_id: clientId,
@@ -483,8 +532,8 @@ function normalizeProgram(row) {
     rowId: row.id,
     id: data.id || row.id,
     client_id: clientId,
-    trainer_id: data.trainer_id || data.created_by || '',
-    created_by: data.created_by || data.createdBy || data.trainer_id || '',
+    trainer_id: operatorIdFromAny(data.trainer_id || data.created_by || ''),
+    created_by: operatorIdFromAny(data.created_by || data.createdBy || data.trainer_id || ''),
     name: cleanProgramName(data.name || data.nome || 'Scheda PT'),
     goal: data.goal || data.obiettivo || '',
     level: data.level || data.livello || 'base',
@@ -511,7 +560,7 @@ async function loadPrograms() {
 }
 
 function myClients() {
-  return state.clients.filter((client) => client.trainer_id === state.currentPt?.id);
+  return state.clients.filter((client) => clientTrainerId(client) === state.currentPt?.id);
 }
 
 function myClientIds() {
@@ -520,7 +569,7 @@ function myClientIds() {
 
 function mySessions() {
   return state.sessions
-    .filter((session) => session.trainer_id === state.currentPt?.id)
+    .filter((session) => sessionTrainerId(session) === state.currentPt?.id)
     .filter((session) => session.status !== 'annullato')
     .sort((a, b) => `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`));
 }
@@ -530,7 +579,7 @@ function myPrograms() {
   const clientFilter = els.programClientFilter.value;
   const statusFilter = els.programStatusFilter.value;
   return state.programs
-    .filter((program) => allowed.has(program.client_id) || program.trainer_id === state.currentPt?.id)
+    .filter((program) => allowed.has(program.client_id) || operatorIdFromAny(program.trainer_id) === state.currentPt?.id)
     .filter((program) => !clientFilter || program.client_id === clientFilter)
     .filter((program) => !statusFilter || program.status === statusFilter)
     .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
@@ -678,7 +727,7 @@ function renderClientDetail() {
 }
 
 function renderSessionCard(session) {
-  const mine = session.trainer_id === state.currentPt?.id;
+  const mine = sessionTrainerId(session) === state.currentPt?.id;
   const isDone = session.status === 'fatto';
   const clientIds = sessionClientIds(session);
   const normalizedServiceId = normalizeServiceId(session.service_id);
@@ -1150,7 +1199,7 @@ async function saveExerciseLoad(sessionIndex, blockIndex, exerciseIndex) {
 
 function sessionsForRange(reference, view, onlyMine = false) {
   return state.sessions
-    .filter((session) => !onlyMine || session.trainer_id === state.currentPt?.id)
+    .filter((session) => !onlyMine || sessionTrainerId(session) === state.currentPt?.id)
     .filter((session) => session.status !== 'annullato')
     .filter((session) => {
       if (view === 'day') return session.date === reference;
@@ -1233,7 +1282,7 @@ async function markSessionDone(appointmentId) {
 async function editOwnSession(appointmentId) {
   if (!appointmentId) return;
   const session = state.sessions.find((item) => item.appointment_id === appointmentId);
-  if (!session || session.trainer_id !== state.currentPt?.id) {
+  if (!session || sessionTrainerId(session) !== state.currentPt?.id) {
     toast('Puoi modificare solo le tue sedute', true);
     return;
   }
@@ -1348,7 +1397,7 @@ function refreshSessionEditorClientMode() {
 async function saveSessionEditor() {
   const appointmentId = document.getElementById('editSessionId')?.value || state.editingSessionId;
   const original = state.sessions.find((item) => item.appointment_id === appointmentId);
-  if (!original || original.trainer_id !== state.currentPt?.id) {
+  if (!original || sessionTrainerId(original) !== state.currentPt?.id) {
     toast('Puoi modificare solo le tue sedute', true);
     return;
   }
