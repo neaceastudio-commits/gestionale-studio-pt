@@ -478,12 +478,88 @@ function clearError() {
   els.errorBox.classList.add('hidden');
 }
 
+function inferTrainerByClient(sessions) {
+  const byClient = {};
+  (sessions || []).forEach((session) => {
+    const trainerId = sessionTrainerId(session);
+    if (!trainerId) return;
+    const clientIds = Array.isArray(session.client_ids)
+      ? session.client_ids
+      : (session.client_id ? [session.client_id] : []);
+    clientIds.forEach((clientId) => {
+      byClient[clientId] = byClient[clientId] || {};
+      byClient[clientId][trainerId] = (byClient[clientId][trainerId] || 0) + 1;
+    });
+  });
+  return Object.fromEntries(Object.entries(byClient).map(([clientId, counts]) => {
+    const trainerId = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id)[0] || '';
+    return [clientId, trainerId];
+  }));
+}
+
+function clientsFromCanonical(canonicalClients, overviewClients, sessions) {
+  const overviewByClient = (overviewClients || []).reduce((acc, row) => {
+    const clientId = row.client_id || row.id;
+    if (!clientId) return acc;
+    acc[clientId] = acc[clientId] || [];
+    acc[clientId].push(row);
+    return acc;
+  }, {});
+  const inferred = inferTrainerByClient(sessions);
+
+  return (canonicalClients || []).map((client) => {
+    const rows = overviewByClient[client.id] || [];
+    const overview = rows[0] || {};
+    const alerts = rows.flatMap((row) => Array.isArray(row.alerts) ? row.alerts : []);
+    return {
+      ...overview,
+      assignment_id: overview.assignment_id || `client_${client.id}`,
+      trainer_id: operatorIdFromAny(client.pt_assegnato || overview.trainer_id || inferred[client.id]),
+      client_id: client.id,
+      nome: client.nome || overview.nome || '',
+      cognome: client.cognome || overview.cognome || '',
+      telefono: client.telefono || overview.telefono || '',
+      email: client.email || overview.email || '',
+      professione: client.professione || overview.professione || '',
+      obiettivo: client.obiettivo || overview.obiettivo || '',
+      package_frequency: client.package_frequency || client.sessioni_pref || overview.package_frequency || overview.sessioni_pref || '',
+      sessioni_pref: client.sessioni_pref || client.package_frequency || overview.sessioni_pref || overview.package_frequency || '',
+      giorni_settimana: Array.isArray(client.giorni_settimana) ? client.giorni_settimana : (overview.giorni_settimana || []),
+      tipo_servizio: client.tipo_servizio || overview.tipo_servizio || (Array.isArray(client.package_types) ? client.package_types.join(',') : ''),
+      tipo_abbonamento: client.tipo_abbonamento || overview.tipo_abbonamento || '',
+      stato_abbonamento: client.stato_abbonamento || overview.stato_abbonamento || '',
+      stato_pagamento: client.stato_pagamento || overview.stato_pagamento || '',
+      note_cliente: client.notes || overview.note_cliente || '',
+      anamnesi_obiettivo: overview.anamnesi_obiettivo || '',
+      obiettivo_libero: overview.obiettivo_libero || '',
+      esperienza: overview.esperienza || '',
+      livello_attivita_fisica: overview.livello_attivita_fisica || '',
+      sport: overview.sport || '',
+      non_funzionato: overview.non_funzionato || '',
+      note_operative: overview.note_operative || '',
+      patologie: overview.patologie || null,
+      farmaci: overview.farmaci || null,
+      infortuni: overview.infortuni || null,
+      limitazioni: overview.limitazioni || null,
+      stress: overview.stress || null,
+      sonno: overview.sonno || null,
+      controindicazioni: overview.controindicazioni || null,
+      alerts,
+      alert_count: alerts.length || Number(overview.alert_count || 0),
+      critical_alert_count: alerts.filter((alert) => alert.severity === 'critical').length || Number(overview.critical_alert_count || 0),
+    };
+  });
+}
+
 async function loadPhase1() {
-  const [roles, metrics, clients, sessions] = await Promise.all([
+  const [roles, overviewMetrics, overviewClients, sessions, canonicalClients] = await Promise.all([
     sb('operator_effective_roles', '?select=*&active=eq.true&order=cognome.asc,nome.asc'),
     sb('pt_dashboard_metrics', '?select=*'),
     sb('pt_client_overview', '?select=*&order=cognome.asc,nome.asc'),
     sb('pt_calendar_sessions', '?select=*&order=date.asc,start_time.asc'),
+    sb('clients', '?select=id,nome,cognome,email,telefono,professione,obiettivo,notes,active,pt_assegnato,package_frequency,sessioni_pref,giorni_settimana,tipo_servizio,tipo_abbonamento,stato_abbonamento,stato_pagamento,package_types,sessions_total,sessions_remaining,package_start,data_inizio&active=eq.true&order=cognome.asc,nome.asc'),
   ]);
 
   state.mode = 'phase1';
@@ -496,15 +572,13 @@ async function loadPhase1() {
     active: op.active !== false,
     portal_access_enabled: op.portal_access_enabled ?? op.pt_portal_enabled ?? false,
   }));
-  state.metrics = metrics;
-  state.clients = clients.map((client) => ({
-    ...client,
-    trainer_id: clientTrainerId(client),
-  }));
   state.sessions = sessions.map((session) => ({
     ...session,
     trainer_id: sessionTrainerId(session),
   }));
+  state.clients = clientsFromCanonical(canonicalClients, overviewClients, state.sessions);
+  state.metrics = buildFallbackMetrics();
+  if (!state.metrics.length) state.metrics = overviewMetrics;
 }
 
 async function loadFallback() {
