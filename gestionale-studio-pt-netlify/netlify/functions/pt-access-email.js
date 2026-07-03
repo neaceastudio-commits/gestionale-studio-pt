@@ -1,4 +1,6 @@
 const PORTAL_URL = 'https://neacea-portale-personal-trainer.netlify.app/';
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0rUGnUDD_Jb6shCE2LUfAXDYn8Vh85LLSXrtuxZvbyzkxXaAay9_lwn-s2NUlxC-Y/exec';
+const DEFAULT_TOKEN = 'neacea2026studio';
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -50,18 +52,12 @@ function buildEmail(payload) {
     'Il tuo accesso al Portale Personal Trainer Neacea e attivo.',
     `Apri il portale da qui: ${link}`,
   ].join('\n');
-  return { email, subject, html, text };
+  return { email, name, subject, html, text, link };
 }
 
 async function sendWithResend(message) {
   const apiKey = process.env.RESEND_API_KEY || '';
-  if (!apiKey) {
-    return {
-      ok: false,
-      status: 500,
-      body: { success: false, error: 'RESEND_API_KEY non configurata su Netlify.' },
-    };
-  }
+  if (!apiKey) return null;
 
   const from = process.env.MAIL_FROM || 'Neacea Studio <no-reply@neacea.com>';
   const replyTo = process.env.MAIL_REPLY_TO || 'neacea.desk@gmail.com';
@@ -93,6 +89,39 @@ async function sendWithResend(message) {
   };
 }
 
+async function sendWithGas(message) {
+  const scriptUrl = process.env.GAS_WEBAPP_URL || DEFAULT_SCRIPT_URL;
+  const token = process.env.GAS_SECRET_TOKEN || DEFAULT_TOKEN;
+  const response = await fetch(scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      _token: token,
+      action: 'notifyModuloPT',
+      type: 'accesso_portale_pt',
+      to: message.email,
+      subject: message.subject,
+      htmlBody: message.html,
+      textBody: message.text,
+      payload: {
+        nome: message.name,
+        email: message.email,
+        portal_url: message.link,
+      },
+    }),
+  });
+  const text = await response.text();
+  let result = {};
+  try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
+  return {
+    ok: response.ok && result.success !== false,
+    status: response.ok && result.success !== false ? 200 : 502,
+    body: response.ok && result.success !== false
+      ? { success: true, provider: 'google_apps_script', to: message.email, result }
+      : { success: false, provider: 'google_apps_script', error: result },
+  };
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
@@ -108,7 +137,7 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email PT non valida.' }) };
     }
 
-    const result = await sendWithResend(message);
+    const result = await sendWithResend(message) || await sendWithGas(message);
     return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
   } catch (error) {
     return {
