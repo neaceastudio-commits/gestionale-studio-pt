@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const PORTAL_URL = 'https://neacea-portale-personal-trainer.netlify.app/';
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0rUGnUDD_Jb6shCE2LUfAXDYn8Vh85LLSXrtuxZvbyzkxXaAay9_lwn-s2NUlxC-Y/exec';
 const DEFAULT_TOKEN = 'neacea2026studio';
@@ -24,10 +26,24 @@ function portalLink(email) {
   return url.toString();
 }
 
+function accessSecret() {
+  return process.env.PT_ACCESS_SECRET || process.env.RESEND_API_KEY || DEFAULT_TOKEN;
+}
+
+function accessCode(email) {
+  const digest = crypto
+    .createHmac('sha256', accessSecret())
+    .update(String(email || '').trim().toLowerCase())
+    .digest('hex');
+  const numeric = parseInt(digest.slice(0, 12), 16) % 1000000;
+  return String(numeric).padStart(6, '0');
+}
+
 function buildEmail(payload) {
   const email = String(payload.email || '').trim().toLowerCase();
   const name = String(payload.name || '').trim() || 'Personal Trainer';
   const link = portalLink(email);
+  const code = accessCode(email);
   const subject = 'Accesso al Portale Personal Trainer Neacea';
   const html = `
     <div style="font-family:Arial,sans-serif;background:#eef6fb;padding:24px;color:#17314a">
@@ -39,6 +55,10 @@ function buildEmail(payload) {
         <div style="padding:24px">
           <p style="margin:0 0 14px;font-size:17px;font-weight:700">Ciao ${clean(name)},</p>
           <p style="margin:0 0 18px;line-height:1.5">Il tuo accesso al Portale Personal Trainer e' attivo. Da qui puoi vedere clienti assegnati, schede e appuntamenti collegati alla tua email.</p>
+          <p style="margin:0 0 10px;font-weight:800">Email accesso</p>
+          <p style="margin:0 0 16px;background:#eef6fb;border:1px solid #d8e7ef;border-radius:10px;padding:12px 14px;font-size:18px;font-weight:800">${clean(email)}</p>
+          <p style="margin:0 0 10px;font-weight:800">Codice / password</p>
+          <p style="margin:0 0 22px;background:#17314a;color:#fff;border-radius:10px;padding:14px 16px;font-size:28px;letter-spacing:6px;font-weight:900;text-align:center">${clean(code)}</p>
           <p style="margin:0 0 24px">
             <a href="${clean(link)}" style="display:inline-block;background:#17314a;color:#fff;text-decoration:none;padding:13px 18px;border-radius:8px;font-weight:800">Entra nel portale</a>
           </p>
@@ -50,9 +70,11 @@ function buildEmail(payload) {
     `Ciao ${name},`,
     '',
     'Il tuo accesso al Portale Personal Trainer Neacea e attivo.',
+    `Email accesso: ${email}`,
+    `Codice / password: ${code}`,
     `Apri il portale da qui: ${link}`,
   ].join('\n');
-  return { email, name, subject, html, text, link };
+  return { email, name, subject, html, text, link, code };
 }
 
 async function sendWithResend(message) {
@@ -107,6 +129,7 @@ async function sendWithGas(message) {
         nome: message.name,
         email: message.email,
         portal_url: message.link,
+        access_code: message.code,
       },
     }),
   });
@@ -132,6 +155,26 @@ exports.handler = async (event) => {
 
   try {
     const input = JSON.parse(event.body || '{}');
+    const action = String(input.action || 'send').toLowerCase();
+    if (action === 'verify') {
+      const email = String(input.email || '').trim().toLowerCase();
+      const code = String(input.code || '').replace(/\D/g, '');
+      if (!email || !email.includes('@') || !code) {
+        return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email e codice sono obbligatori.' }) };
+      }
+      const valid = crypto.timingSafeEqual(
+        Buffer.from(accessCode(email)),
+        Buffer.from(code.padStart(6, '0').slice(-6))
+      );
+      return {
+        statusCode: valid ? 200 : 401,
+        headers,
+        body: JSON.stringify(valid
+          ? { success: true, email }
+          : { success: false, error: 'Codice accesso non valido.' }),
+      };
+    }
+
     const message = buildEmail(input);
     if (!message.email || !message.email.includes('@')) {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email PT non valida.' }) };

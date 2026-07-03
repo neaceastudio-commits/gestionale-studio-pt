@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portale Personal Trainer - NEACEA</title>
-  <link rel="stylesheet" href="css/pt.css">
+  <link rel="stylesheet" href="css/pt.css?v=2">
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -12,10 +12,14 @@
       <img src="assets/neacea-logo.png" alt="NEACEA" class="login-logo">
       <p class="eyebrow">Portale personale</p>
       <h1>Accesso Personal Trainer</h1>
-      <p class="login-copy">Inserisci l'email configurata per vedere clienti, sedute e calendario studio.</p>
+      <p class="login-copy">Inserisci email e codice ricevuti via mail per vedere solo clienti, sedute e calendario collegati a te.</p>
       <label>
         <span>Email PT</span>
         <input id="loginEmail" type="email" autocomplete="email" placeholder="nome@neacea.it">
+      </label>
+      <label>
+        <span>Codice / password</span>
+        <input id="loginCode" type="password" inputmode="numeric" autocomplete="current-password" placeholder="000000">
       </label>
       <button id="loginButton" class="primary-btn" type="button">Entra nel portale</button>
       <div id="loginError" class="notice error hidden"></div>
@@ -278,6 +282,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/pt.js?v=4"></script>
+  <script src="js/pt.js?v=5"></script>
 </body>
 </html>

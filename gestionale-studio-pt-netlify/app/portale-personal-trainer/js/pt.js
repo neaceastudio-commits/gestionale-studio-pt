@@ -641,24 +641,58 @@ function clientById(clientId) {
   return state.clients.find((client) => client.client_id === clientId) || null;
 }
 
-function loginByEmail() {
+async function verifyAccess(email, code) {
+  const response = await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'verify', email, code }),
+  });
+  const text = await response.text();
+  let result = {};
+  try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error || result.raw || 'Codice accesso non valido.');
+  }
+  return result;
+}
+
+async function loginByEmail() {
   const email = els.loginEmail.value.trim().toLowerCase();
+  const code = String(els.loginCode.value || '').trim();
+  els.loginError.classList.add('hidden');
   const pt = state.operators.find((op) => String(op.email || '').toLowerCase() === email);
   if (!pt) {
     els.loginError.textContent = 'Email non trovata tra i Personal Trainer configurati.';
     els.loginError.classList.remove('hidden');
     return;
   }
-  state.currentPt = pt;
-  localStorage.setItem('neacea_pt_email', email);
-  els.loginScreen.classList.add('hidden');
-  els.app.classList.remove('hidden');
-  renderAll();
+  if (!code) {
+    els.loginError.textContent = 'Inserisci il codice ricevuto via mail.';
+    els.loginError.classList.remove('hidden');
+    return;
+  }
+  try {
+    els.loginButton.disabled = true;
+    els.loginButton.textContent = 'Verifica...';
+    await verifyAccess(email, code);
+    state.currentPt = pt;
+    els.loginCode.value = '';
+    els.loginScreen.classList.add('hidden');
+    els.app.classList.remove('hidden');
+    renderAll();
+  } catch (error) {
+    state.currentPt = null;
+    els.loginError.textContent = error.message || 'Accesso non riuscito.';
+    els.loginError.classList.remove('hidden');
+  } finally {
+    els.loginButton.disabled = false;
+    els.loginButton.textContent = 'Entra nel portale';
+  }
 }
 
 function logout() {
-  localStorage.removeItem('neacea_pt_email');
   state.currentPt = null;
+  els.loginCode.value = '';
   els.app.classList.add('hidden');
   els.loginScreen.classList.remove('hidden');
 }
@@ -1490,9 +1524,9 @@ async function saveSessionEditor() {
 
 function bindEvents() {
   els.loginButton.addEventListener('click', loginByEmail);
-  els.loginEmail.addEventListener('keydown', (event) => {
+  [els.loginEmail, els.loginCode].forEach((input) => input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') loginByEmail();
-  });
+  }));
   els.logoutButton.addEventListener('click', logout);
   els.refreshButton.addEventListener('click', async () => {
     await loadData();
@@ -1713,7 +1747,7 @@ function activateView(name) {
 
 function cacheEls() {
   [
-    'loginScreen', 'app', 'loginEmail', 'loginButton', 'loginError', 'currentPtName', 'logoutButton',
+    'loginScreen', 'app', 'loginEmail', 'loginCode', 'loginButton', 'loginError', 'currentPtName', 'logoutButton',
     'refreshButton', 'heroTitle', 'heroSub', 'errorBox', 'toast', 'kpiClienti', 'kpiOggi',
     'kpiSettimana', 'kpiStudio', 'mySessionCount', 'myNextSessions', 'alertCount', 'alertClients',
     'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'programClientFilter',
@@ -1734,11 +1768,8 @@ async function init() {
   try {
     await loadData();
     const urlEmail = new URLSearchParams(window.location.search).get('email');
-    const savedEmail = urlEmail || localStorage.getItem('neacea_pt_email');
-    if (savedEmail) {
-      els.loginEmail.value = savedEmail;
-      loginByEmail();
-    }
+    els.loginEmail.value = urlEmail || '';
+    els.loginCode.focus();
   } catch (error) {
     els.loginError.textContent = `Caricamento non riuscito: ${error.message}`;
     els.loginError.classList.remove('hidden');
