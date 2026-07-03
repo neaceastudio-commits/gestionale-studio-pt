@@ -20,9 +20,10 @@ function clean(value) {
   }[char]));
 }
 
-function portalLink(email) {
+function portalLink(email, operatorId = '') {
   const url = new URL(PORTAL_URL);
   url.searchParams.set('email', email);
+  if (operatorId) url.searchParams.set('op', operatorId);
   return url.toString();
 }
 
@@ -30,10 +31,10 @@ function accessSecret() {
   return process.env.PT_ACCESS_SECRET || process.env.RESEND_API_KEY || DEFAULT_TOKEN;
 }
 
-function accessCode(email) {
+function accessCode(email, operatorId = '') {
   const digest = crypto
     .createHmac('sha256', accessSecret())
-    .update(String(email || '').trim().toLowerCase())
+    .update(`${String(email || '').trim().toLowerCase()}|${String(operatorId || '').trim()}`)
     .digest('hex');
   const numeric = parseInt(digest.slice(0, 12), 16) % 1000000;
   return String(numeric).padStart(6, '0');
@@ -41,9 +42,10 @@ function accessCode(email) {
 
 function buildEmail(payload) {
   const email = String(payload.email || '').trim().toLowerCase();
+  const operatorId = String(payload.operatorId || payload.operator_id || '').trim();
   const name = String(payload.name || '').trim() || 'Personal Trainer';
-  const link = portalLink(email);
-  const code = accessCode(email);
+  const link = portalLink(email, operatorId);
+  const code = accessCode(email, operatorId);
   const subject = 'Accesso al Portale Personal Trainer Neacea';
   const html = `
     <div style="font-family:Arial,sans-serif;background:#eef6fb;padding:24px;color:#17314a">
@@ -74,7 +76,7 @@ function buildEmail(payload) {
     `Codice / password: ${code}`,
     `Apri il portale da qui: ${link}`,
   ].join('\n');
-  return { email, name, subject, html, text, link, code };
+  return { email, operatorId, name, subject, html, text, link, code };
 }
 
 async function sendWithResend(message) {
@@ -128,6 +130,7 @@ async function sendWithGas(message) {
       payload: {
         nome: message.name,
         email: message.email,
+        operator_id: message.operatorId,
         portal_url: message.link,
         access_code: message.code,
       },
@@ -158,12 +161,13 @@ exports.handler = async (event) => {
     const action = String(input.action || 'send').toLowerCase();
     if (action === 'verify') {
       const email = String(input.email || '').trim().toLowerCase();
+      const operatorId = String(input.operatorId || input.operator_id || '').trim();
       const code = String(input.code || '').replace(/\D/g, '');
       if (!email || !email.includes('@') || !code) {
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email e codice sono obbligatori.' }) };
       }
       const valid = crypto.timingSafeEqual(
-        Buffer.from(accessCode(email)),
+        Buffer.from(accessCode(email, operatorId)),
         Buffer.from(code.padStart(6, '0').slice(-6))
       );
       return {

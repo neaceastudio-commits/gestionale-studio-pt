@@ -107,6 +107,7 @@ const state = {
   sessions: [],
   programs: [],
   currentPt: null,
+  loginOperatorId: '',
   selectedClientId: '',
   selectedProgramId: '',
   calendarView: 'week',
@@ -641,11 +642,11 @@ function clientById(clientId) {
   return state.clients.find((client) => client.client_id === clientId) || null;
 }
 
-async function verifyAccess(email, code) {
+async function verifyAccess(email, code, operatorId = '') {
   const response = await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'verify', email, code }),
+    body: JSON.stringify({ action: 'verify', email, code, operatorId }),
   });
   const text = await response.text();
   let result = {};
@@ -660,9 +661,14 @@ async function loginByEmail() {
   const email = els.loginEmail.value.trim().toLowerCase();
   const code = String(els.loginCode.value || '').trim();
   els.loginError.classList.add('hidden');
-  const pt = state.operators.find((op) => String(op.email || '').toLowerCase() === email);
+  const matches = state.operators.filter((op) => String(op.email || '').toLowerCase() === email);
+  const pt = state.loginOperatorId
+    ? matches.find((op) => String(op.id) === String(state.loginOperatorId))
+    : (matches.length === 1 ? matches[0] : null);
   if (!pt) {
-    els.loginError.textContent = 'Email non trovata tra i Personal Trainer configurati.';
+    els.loginError.textContent = matches.length > 1
+      ? 'Questa email e collegata a piu operatori. Apri il link ricevuto via mail o usa una email unica per ogni PT.'
+      : 'Email non trovata tra i Personal Trainer configurati.';
     els.loginError.classList.remove('hidden');
     return;
   }
@@ -674,7 +680,7 @@ async function loginByEmail() {
   try {
     els.loginButton.disabled = true;
     els.loginButton.textContent = 'Verifica...';
-    await verifyAccess(email, code);
+    await verifyAccess(email, code, pt.id);
     state.currentPt = pt;
     els.loginCode.value = '';
     els.loginScreen.classList.add('hidden');
@@ -1768,6 +1774,7 @@ async function init() {
   try {
     await loadData();
     const urlEmail = new URLSearchParams(window.location.search).get('email');
+    state.loginOperatorId = new URLSearchParams(window.location.search).get('op') || '';
     els.loginEmail.value = urlEmail || '';
     els.loginCode.focus();
   } catch (error) {

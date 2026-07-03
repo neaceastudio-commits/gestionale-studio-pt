@@ -2188,6 +2188,7 @@ async function sendPtAccessEmail() {
     body: JSON.stringify({
       email,
       name: fullName(operator),
+      operatorId: operator.id,
     }),
   });
   const resultText = await response.text();
