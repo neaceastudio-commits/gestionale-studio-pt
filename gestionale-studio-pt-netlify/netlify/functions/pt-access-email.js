@@ -137,7 +137,24 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email PT non valida.' }) };
     }
 
-    const result = await sendWithResend(message) || await sendWithGas(message);
+    const resendResult = await sendWithResend(message);
+    if (resendResult && resendResult.ok) {
+      return { statusCode: resendResult.status, headers, body: JSON.stringify(resendResult.body) };
+    }
+
+    const gasResult = await sendWithGas(message);
+    if (gasResult.ok) {
+      return {
+        statusCode: gasResult.status,
+        headers,
+        body: JSON.stringify({
+          ...gasResult.body,
+          primary_provider: resendResult ? resendResult.body : null,
+        }),
+      };
+    }
+
+    const result = resendResult || gasResult;
     return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
   } catch (error) {
     return {
