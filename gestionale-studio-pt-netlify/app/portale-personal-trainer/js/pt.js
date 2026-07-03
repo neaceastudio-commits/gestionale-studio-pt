@@ -214,6 +214,18 @@ function fullName(item) {
   return [item?.nome, item?.cognome].filter(Boolean).join(' ') || item?.email || '-';
 }
 
+function operatorRoles(op) {
+  return Array.from(new Set([
+    ...(Array.isArray(op?.system_roles) ? op.system_roles : []),
+    ...(Array.isArray(op?.legacy_roles) ? op.legacy_roles : []),
+    ...(Array.isArray(op?.roles) ? op.roles : []),
+  ].filter(Boolean)));
+}
+
+function isPersonalTrainer(op) {
+  return operatorRoles(op).some((role) => ['pt', 'personal_trainer', 'personal trainer'].includes(String(role).toLowerCase()));
+}
+
 function operatorFromAny(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -400,26 +412,66 @@ async function loadData() {
 }
 
 async function loadPhaseViews() {
-  const [operators, clients, sessions] = await Promise.all([
+  const [operators, clients, sessions, acquisitions] = await Promise.all([
     sb('operator_effective_roles', '?select=*&active=eq.true&order=cognome.asc,nome.asc'),
-    sb('pt_client_overview', '?select=*&order=cognome.asc,nome.asc'),
+    sb('clients', '?select=*&active=eq.true&order=cognome.asc,nome.asc'),
     sb('pt_calendar_sessions', '?select=*&order=date.asc,start_time.asc'),
+    sb('acquisizioni', '?select=*&order=data_acquisizione.desc'),
   ]);
   state.operators = (operators || []).map((op) => ({
     id: op.operator_id,
     nome: op.nome,
     cognome: op.cognome,
     email: op.email,
-    roles: op.system_roles || [],
-  }));
-  state.clients = (clients || []).map((client) => ({
-    ...client,
-    trainer_id: clientTrainerId(client),
-  }));
+    roles: operatorRoles(op),
+    active: op.active !== false,
+  })).filter((op) => isPersonalTrainer(op));
   state.sessions = (sessions || []).map((session) => ({
     ...session,
     trainer_id: sessionTrainerId(session),
   }));
+  const inferredTrainerByClient = state.sessions.reduce((acc, session) => {
+    const trainerId = sessionTrainerId(session);
+    if (!trainerId) return acc;
+    clientIdsFromSession(session).forEach((clientId) => {
+      acc[clientId] = acc[clientId] || {};
+      acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
+    });
+    return acc;
+  }, {});
+  const inferredTrainerId = (clientId) => Object.entries(inferredTrainerByClient[clientId] || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([trainerId]) => trainerId)[0] || '';
+  state.clients = (clients || []).map((client) => {
+    const acq = (acquisitions || []).find((item) => {
+      const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
+      const phone = client.telefono && item.telefono && client.telefono === item.telefono;
+      return email || phone;
+    });
+    return {
+      assignment_id: `client_${client.id}`,
+      trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || inferredTrainerId(client.id)),
+      client_id: client.id,
+      nome: client.nome,
+      cognome: client.cognome,
+      telefono: client.telefono,
+      email: client.email,
+      professione: client.professione,
+      obiettivo: client.obiettivo || acq?.obiettivo,
+      esperienza: acq?.esperienza,
+      livello_attivita_fisica: acq?.livello_attivita_fisica || acq?.inattivo,
+      sport: acq?.sport,
+      patologie: acq?.patologie,
+      farmaci: acq?.farmaci,
+      infortuni: acq?.infortuni,
+      limitazioni: acq?.limitazioni,
+      stress: acq?.stress,
+      sonno: acq?.sonno,
+      note_operative: acq?.impressioni || client.notes,
+      alerts: [],
+      alert_count: 0,
+    };
+  });
 }
 
 async function loadFallback() {
@@ -430,8 +482,8 @@ async function loadFallback() {
     sb('acquisizioni', '?select=*&order=data_acquisizione.desc'),
   ]);
   state.operators = (operators || [])
-    .filter((op) => !Array.isArray(op.roles) || op.roles.includes('PT') || op.roles.includes('Personal Trainer'))
-    .map((op) => ({ ...op, roles: op.roles || [] }));
+    .map((op) => ({ ...op, roles: operatorRoles(op) }))
+    .filter((op) => isPersonalTrainer(op));
 
   const inferredTrainerByClient = (appointments || []).reduce((acc, appt) => {
     const trainerId = operatorIdFromAny(appt.operator_id);

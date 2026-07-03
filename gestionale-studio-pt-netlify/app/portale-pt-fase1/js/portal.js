@@ -133,6 +133,18 @@ function fullName(item) {
   return [item?.nome, item?.cognome].filter(Boolean).join(' ') || '-';
 }
 
+function operatorRoles(op) {
+  return Array.from(new Set([
+    ...(Array.isArray(op?.system_roles) ? op.system_roles : []),
+    ...(Array.isArray(op?.legacy_roles) ? op.legacy_roles : []),
+    ...(Array.isArray(op?.roles) ? op.roles : []),
+  ].filter(Boolean)));
+}
+
+function isPersonalTrainer(op) {
+  return operatorRoles(op).some((role) => ['pt', 'personal_trainer', 'personal trainer'].includes(String(role).toLowerCase()));
+}
+
 function operatorFromAny(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -568,7 +580,7 @@ async function loadPhase1() {
     nome: op.nome,
     cognome: op.cognome,
     email: op.email,
-    roles: op.system_roles || [],
+    roles: operatorRoles(op),
     active: op.active !== false,
     portal_access_enabled: op.portal_access_enabled ?? op.pt_portal_enabled ?? false,
   }));
@@ -2105,7 +2117,7 @@ function renderPtAccess(message = '') {
     return;
   }
 
-  const hasPtRole = (operator.roles || []).includes('PT');
+  const hasPtRole = isPersonalTrainer(operator);
   const hasEmail = Boolean(operator.email);
   const enabled = Boolean(operator.portal_access_enabled || (hasEmail && hasPtRole && operator.active !== false));
   els.ptAccessEmail.value = operator.email || '';
