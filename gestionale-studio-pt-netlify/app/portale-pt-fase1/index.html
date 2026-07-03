@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portale PT - NEACEA</title>
-  <link rel="stylesheet" href="css/portal.css?v=2">
+  <link rel="stylesheet" href="css/portal.css?v=3">
 </head>
 <body>
   <header class="topbar">
@@ -304,7 +304,10 @@
               <input id="ptAccessEnabled" type="checkbox">
               <span>Abilita portale personale</span>
             </label>
-            <button id="savePtAccessButton" class="primary-btn" type="submit">Salva accesso</button>
+            <div class="access-actions">
+              <button id="savePtAccessButton" class="primary-btn" type="submit">Salva accesso</button>
+              <button id="sendPtAccessEmailButton" class="secondary-btn" type="button">Invia accesso via mail</button>
+            </div>
             <p id="ptAccessStatus" class="helper"></p>
           </form>
         </section>
@@ -317,6 +320,6 @@
     <img id="photoLightboxImg" alt="">
   </div>
 
-  <script src="js/portal.js?v=5"></script>
+  <script src="js/portal.js?v=6"></script>
 </body>
 </html>

@@ -1733,7 +1733,8 @@ async function init() {
   bindEvents();
   try {
     await loadData();
-    const savedEmail = localStorage.getItem('neacea_pt_email');
+    const urlEmail = new URLSearchParams(window.location.search).get('email');
+    const savedEmail = urlEmail || localStorage.getItem('neacea_pt_email');
     if (savedEmail) {
       els.loginEmail.value = savedEmail;
       loginByEmail();

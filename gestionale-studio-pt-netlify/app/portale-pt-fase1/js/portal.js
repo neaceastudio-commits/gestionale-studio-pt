@@ -2113,6 +2113,7 @@ function renderPtAccess(message = '') {
     els.ptAccessEnabled.checked = false;
     els.ptAccessBadge.textContent = '-';
     els.savePtAccessButton.disabled = true;
+    els.sendPtAccessEmailButton.disabled = true;
     els.ptAccessStatus.textContent = 'Seleziona un personal trainer.';
     return;
   }
@@ -2125,6 +2126,7 @@ function renderPtAccess(message = '') {
   els.ptAccessBadge.textContent = enabled ? 'attivo' : 'non attivo';
   els.ptAccessBadge.className = `pill${enabled ? ' info' : ''}`;
   els.savePtAccessButton.disabled = false;
+  els.sendPtAccessEmailButton.disabled = !enabled || !hasEmail;
   els.ptAccessStatus.textContent = message || 'L email verra usata dal portale personale per riconoscere il PT e mostrare solo i suoi clienti.';
 }
 
@@ -2169,6 +2171,32 @@ async function savePtAccess() {
   operator.portal_access_enabled = enabled;
   await refresh();
   renderPtAccess(enabled ? 'Accesso personale PT attivo.' : 'Email salvata. Accesso personale non attivo.');
+}
+
+async function sendPtAccessEmail() {
+  const operator = selectedOperator();
+  if (!operator) return;
+
+  const email = els.ptAccessEmail.value.trim().toLowerCase();
+  if (!email) throw new Error('Inserisci una email prima di inviare l accesso.');
+  if (!els.ptAccessEnabled.checked) throw new Error('Abilita il portale personale prima di inviare la mail.');
+
+  await savePtAccess();
+  const response = await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      name: fullName(operator),
+    }),
+  });
+  const resultText = await response.text();
+  let result = {};
+  try { result = JSON.parse(resultText); } catch (_) { result = { raw: resultText }; }
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error?.message || result.error || result.raw || 'Invio mail non riuscito.');
+  }
+  renderPtAccess(`Mail accesso inviata a ${email}.`);
 }
 
 function render() {
@@ -2338,6 +2366,18 @@ function bindEvents() {
       await savePtAccess();
     } catch (error) {
       showError(`Accesso PT non salvato: ${error.message}`);
+      renderPtAccess(error.message);
+    }
+  });
+
+  els.sendPtAccessEmailButton.addEventListener('click', async () => {
+    try {
+      clearError();
+      els.sendPtAccessEmailButton.disabled = true;
+      els.ptAccessStatus.textContent = 'Invio mail accesso...';
+      await sendPtAccessEmail();
+    } catch (error) {
+      showError(`Mail accesso non inviata: ${error.message}`);
       renderPtAccess(error.message);
     }
   });
@@ -2597,6 +2637,7 @@ function cacheElements() {
     'ptAccessBadge',
     'ptAccessStatus',
     'savePtAccessButton',
+    'sendPtAccessEmailButton',
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
