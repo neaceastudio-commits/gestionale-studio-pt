@@ -1674,19 +1674,25 @@ h2 {
 }
 
 .session-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
 .session-name-field {
   display: grid;
   gap: 5px;
-  min-width: min(360px, 100%);
+  min-width: 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.remove-session-btn {
+  justify-self: end;
+  min-width: 92px;
+  white-space: nowrap;
 }
 
 .block-card {

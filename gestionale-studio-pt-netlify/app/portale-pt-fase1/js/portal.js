@@ -1616,7 +1616,7 @@ function renderSessionEditor() {
           <span>Nome seduta</span>
           <input data-session-field="name" value="${esc(session.name || sessionName(sessionIndex))}">
         </label>
-        <button class="icon-btn" type="button" data-remove-session="${sessionIndex}">Rimuovi</button>
+        <button class="danger-btn slim remove-session-btn" type="button" data-remove-session="${sessionIndex}">Rimuovi</button>
       </div>
       <div class="program-form-grid compact">
         <label><span>Giorno/settimana</span><input data-session-field="weekDay" value="${esc(session.weekDay)}"></label>
