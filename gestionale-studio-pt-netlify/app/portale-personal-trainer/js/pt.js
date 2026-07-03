@@ -355,6 +355,25 @@ function flattenExercises() {
   return Object.entries(EXERCISE_LIBRARY).flatMap(([category, names]) => names.map((name) => ({ category, name })));
 }
 
+function exerciseMode(item) {
+  const text = `${item?.name || ''} ${item?.category || ''}`.toLowerCase();
+  if (/cavo|cavi|cable|pulley|pushdown|pulldown|woodchopper/.test(text)) return 'Cavi';
+  if (/bilanciere|barbell|ez|landmine|smith|multipower|rack pull/.test(text)) return 'Bilanciere / Multipower';
+  if (/manubri|manubrio|dumbbell/.test(text)) return 'Manubri';
+  if (/macchina|machine|pressa|leg press|leg extension|leg curl|lat machine|chest press|shoulder press|pec deck|abductor|adductor|tibialis machine|hack squat/.test(text)) return 'Macchine';
+  if (/corpo libero|piegamenti|push up|dip|trazioni|plank|hollow|bird dog|dead bug|burpee|bear crawl|mountain climber|pistol|skater|cossack|nordic|handstand|pike/.test(text)) return 'Corpo libero';
+  if (/kettlebell|club/.test(text)) return 'Kettlebell / Clubbell';
+  if (/elastico|band/.test(text)) return 'Elastici';
+  if (/trx|ring/.test(text)) return 'TRX / Anelli';
+  if (/med ball|wall ball|slam|throw/.test(text)) return 'Med ball';
+  if (/sled|air bike|row erg|ski erg|tapis|runner|battle rope|jump rope|step mill/.test(text)) return 'Conditioning';
+  return 'Altro';
+}
+
+function exerciseModeOptions() {
+  return ['Tutte le modalita', ...Array.from(new Set(flattenExercises().map(exerciseMode))).sort()];
+}
+
 function exerciseCategory(name) {
   const found = flattenExercises().find((item) => item.name.toLowerCase() === String(name || '').toLowerCase());
   return found?.category || '';
@@ -1143,9 +1162,22 @@ function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)
 
 function renderExerciseBuilder() {
   if (!els.exercisePickList) return;
+  const selectedGroup = els.exerciseGroupFilter?.value || '';
+  const selectedMode = els.exerciseModeFilter?.value || '';
   const q = (els.exerciseSearch?.value || '').trim().toLowerCase();
   const exercises = flattenExercises()
-    .filter((item) => !q || `${item.name} ${item.category}`.toLowerCase().includes(q));
+    .filter((item) => !selectedGroup || item.category === selectedGroup)
+    .filter((item) => !selectedMode || exerciseMode(item) === selectedMode)
+    .filter((item) => !q || `${item.name} ${item.category} ${exerciseMode(item)}`.toLowerCase().includes(q));
+  if (els.exerciseGroupFilter && !els.exerciseGroupFilter.options.length) {
+    els.exerciseGroupFilter.innerHTML = '<option value="">Tutti i gruppi</option>' +
+      Object.keys(EXERCISE_LIBRARY).map((category) => `<option value="${esc(category)}">${esc(category)}</option>`).join('');
+  }
+  if (els.exerciseModeFilter && !els.exerciseModeFilter.options.length) {
+    els.exerciseModeFilter.innerHTML = exerciseModeOptions().map((mode, index) =>
+      `<option value="${index === 0 ? '' : esc(mode)}">${esc(mode)}</option>`
+    ).join('');
+  }
   let currentCategory = '';
   els.exercisePickList.innerHTML = exercises.length
     ? exercises.map((item) => {
@@ -1155,7 +1187,7 @@ function renderExerciseBuilder() {
         return `${category}
           <button class="pick-item${selected}" type="button" data-pick-exercise="${esc(item.name)}" data-pick-category="${esc(item.category)}">
             <span>${esc(item.name)}</span>
-            <em>${esc(item.category)}</em>
+            <em>${esc(item.category)} · ${esc(exerciseMode(item))}</em>
           </button>`;
       }).join('')
     : '<div class="empty small">Nessun esercizio trovato</div>';
@@ -1784,6 +1816,8 @@ function bindEvents() {
     }
   });
   els.exerciseSearch.addEventListener('input', renderExerciseBuilder);
+  els.exerciseGroupFilter.addEventListener('change', renderExerciseBuilder);
+  els.exerciseModeFilter.addEventListener('change', renderExerciseBuilder);
   els.builderRest.addEventListener('change', renderBuilderCurrent);
   els.builderSession.addEventListener('change', () => {
     syncProgramEditor();
@@ -1936,7 +1970,7 @@ function cacheEls() {
     'programStatusFilter', 'programList', 'programCount', 'newProgramButton', 'programEditorTitle', 'programEditorStatus',
     'programForm', 'programId', 'programClient', 'programStatus', 'programName', 'programGoal',
     'programLevel', 'programWeeks', 'programFrequency', 'programSplit', 'programStart', 'programEnd',
-    'programNotes', 'neaceaString', 'exerciseSearch', 'manualExerciseName', 'builderRest', 'builderCurrent',
+    'programNotes', 'neaceaString', 'exerciseGroupFilter', 'exerciseModeFilter', 'exerciseSearch', 'manualExerciseName', 'builderRest', 'builderCurrent',
     'builderSession', 'addPickedExerciseButton', 'exercisePickList', 'progressionTabs',
     'progressionPickList', 'progressionPreview', 'builderNotes', 'addSessionButton', 'builderSessionPreview',
     'archiveProgramButton', 'sessionEditor',
