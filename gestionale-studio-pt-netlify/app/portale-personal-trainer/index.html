@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portale Personal Trainer - NEACEA</title>
-  <link rel="stylesheet" href="css/pt.css?v=2">
+  <link rel="stylesheet" href="css/pt.css?v=3">
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -199,21 +199,36 @@
 
               <div class="exercise-builder">
                 <div class="builder-column">
-                  <div class="section-title">Aggiungi esercizio</div>
+                  <div class="section-title">Aggiungi esercizio alla scheda</div>
                   <div class="builder-fast-row">
-                    <input id="exerciseSearch" class="search" type="search" placeholder="Cerca esercizio">
-                    <input id="manualExerciseName" type="text" placeholder="Oppure scrivi manuale">
-                    <select id="builderRest">
-                      <option>60"</option>
-                      <option>90"</option>
-                      <option value="2'" selected>2'</option>
-                      <option>3'</option>
-                      <option>4'</option>
-                      <option>Libero</option>
-                    </select>
-                    <select id="builderSession"></select>
+                    <label>
+                      <span>Cerca esercizio</span>
+                      <input id="exerciseSearch" class="search" type="search" placeholder="Squat, panca, pulley...">
+                    </label>
+                    <label>
+                      <span>Esercizio manuale</span>
+                      <input id="manualExerciseName" type="text" placeholder="Scrivi se non e' in libreria">
+                    </label>
+                    <label>
+                      <span>Recupero</span>
+                      <select id="builderRest">
+                        <option>45"</option>
+                        <option>60"</option>
+                        <option>75"</option>
+                        <option>90"</option>
+                        <option value="2'" selected>2'</option>
+                        <option>3'</option>
+                        <option>4'</option>
+                        <option>Libero</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Seduta destinazione</span>
+                      <select id="builderSession"></select>
+                    </label>
                     <button id="addPickedExerciseButton" class="primary-btn" type="button">Aggiungi</button>
                   </div>
+                  <div id="builderCurrent" class="builder-current"></div>
                   <div id="exercisePickList" class="pick-list"></div>
                 </div>
                 <div class="builder-column">
@@ -232,6 +247,7 @@
                 <span>Sedute</span>
                 <button id="addSessionButton" class="secondary-btn" type="button">Aggiungi seduta</button>
               </div>
+              <div id="builderSessionPreview" class="builder-session-preview"></div>
               <div id="sessionEditor" class="session-editor"></div>
 
               <div class="program-actions">
@@ -262,7 +278,7 @@
         <section class="panel">
           <div class="panel-head">
             <h2>Calendario studio</h2>
-            <div class="panel-actions">
+            <div class="panel-actions calendar-controls">
               <button class="icon-btn" data-cal-move="-1" type="button">‹</button>
               <button class="ghost-btn" id="calTodayButton" type="button">Oggi</button>
               <button class="icon-btn" data-cal-move="1" type="button">›</button>
@@ -282,6 +298,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/pt.js?v=6"></script>
+  <script src="js/pt.js?v=7"></script>
 </body>
 </html>

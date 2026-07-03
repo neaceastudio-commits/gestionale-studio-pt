@@ -17,20 +17,20 @@ const NEACEA_BLOCKS = [
 ];
 
 const EXERCISE_LIBRARY = {
-  'Mobilita Anca': ['90/90 anche', 'CARs anca', 'Frog stretch', 'Allungamento flessori anca', 'Tenuta squat profondo'],
-  'Attivazione Core': ['Dead bug', 'Bird dog', 'Tenuta hollow', 'Pallof press isometrico', 'Side plank breve'],
-  Petto: ['Panca piana bilanciere', 'Panca inclinata bilanciere', 'Panca presa stretta', 'Panca Smith machine', 'Spinte manubri panca piana', 'Spinte manubri panca inclinata', 'Croci manubri', 'Croci cavi alti', 'Croci cavi bassi', 'Croci cavi medi', 'Piegamenti', 'Dip alle parallele'],
-  'Schiena - Dorsali': ['Lat machine presa larga', 'Lat machine presa stretta', 'Lat machine presa neutra', 'Trazioni prone', 'Trazioni supine', 'Pulley basso presa larga', 'Pulley basso presa stretta', 'Pulley basso presa neutra', 'Rematore cavo monolaterale', 'Rematore bilanciere', 'Rematore Smith machine', 'Rematore manubrio', 'Pulldown braccia tese al cavo'],
-  'Schiena - Romboidi / Trapezio': ['Face pull', 'Rematore alto al cavo', 'Croci inverse al cavo', 'Croci inverse manubri', 'Alzate posteriori busto flesso', 'Pulley presa larga'],
-  Spalle: ['Military press', 'Military press Smith machine', 'Spinte manubri spalle', 'Arnold press', 'Alzate laterali manubri', 'Alzate laterali al cavo', 'Alzate frontali manubri', 'Alzate frontali al cavo', 'Tirate al mento', 'Y raise al cavo', 'Landmine press'],
-  Bicipiti: ['Curl bilanciere', 'Curl manubri', 'Curl martello', 'Curl cavo basso', 'Curl cavo alto', 'Curl barra EZ', 'Curl concentrato', 'Curl panca Scott al cavo'],
-  Tricipiti: ['Panca presa stretta', 'Dip alle parallele', 'Pushdown corda', 'Pushdown barra', 'Estensioni tricipiti sopra testa al cavo', 'Estensioni tricipiti sopra testa manubrio', 'French press', 'Pushdown monolaterale'],
-  Quadricipiti: ['Squat', 'Front squat', 'Squat con pausa', 'Pin squat', 'Squat Smith machine', 'Hack squat bilanciere', 'Bulgarian split squat', 'Split squat Smith machine', 'Goblet squat', 'Landmine squat', 'Affondi manubri', 'Affondi camminati', 'Step up'],
-  'Posteriori Coscia / Glutei': ['Stacco rumeno', 'Stacco da terra', 'Good morning', 'Hip thrust bilanciere', 'Hip thrust Smith machine', 'Hip thrust manubrio', 'Pull through al cavo', 'Swing kettlebell', 'Nordic curl', 'Stacco rumeno manubri', 'Stacco rumeno monopodalico'],
-  Polpacci: ['Calf raise bilanciere', 'Calf raise manubri', 'Calf raise al cavo', 'Calf raise seduto'],
-  Core: ['Plank', 'Side plank', 'Dead bug', 'Bird dog', 'Pallof press', 'Crunch al cavo', 'Sollevamento gambe alla sbarra', 'Ab wheel', 'Rotazioni landmine', 'Hollow body', 'Russian twist kettlebell'],
+  'Mobilita / Prehab': ['90/90 anche', 'CARs anca', 'CARs spalla', 'Frog stretch', 'World greatest stretch', 'Allungamento flessori anca', 'Tenuta squat profondo', 'Scapular push up', 'Wall slide', 'Extrarotazioni elastico', 'Band pull apart'],
+  'Attivazione / Core': ['Dead bug', 'Dead bug con elastico', 'Bird dog', 'Tenuta hollow', 'Pallof press isometrico', 'Pallof press dinamico', 'Side plank breve', 'Plank', 'Side plank', 'Ab wheel', 'Crunch al cavo', 'Sollevamento gambe alla sbarra'],
+  Petto: ['Panca piana bilanciere', 'Panca inclinata bilanciere', 'Panca declinata bilanciere', 'Panca presa stretta', 'Panca Smith machine', 'Spinte manubri panca piana', 'Spinte manubri panca inclinata', 'Chest press', 'Chest press convergente', 'Croci manubri', 'Croci cavi alti', 'Croci cavi bassi', 'Croci cavi medi', 'Pec deck', 'Piegamenti', 'Dip alle parallele'],
+  'Schiena - Dorsali': ['Lat machine presa larga', 'Lat machine presa stretta', 'Lat machine presa neutra', 'Lat machine monolaterale', 'Trazioni prone', 'Trazioni supine', 'Trazioni assistite', 'Pulley basso presa larga', 'Pulley basso presa stretta', 'Pulley basso presa neutra', 'Rematore cavo monolaterale', 'Rematore bilanciere', 'Rematore T-bar', 'Rematore Smith machine', 'Rematore manubrio', 'Pulldown braccia tese al cavo', 'Pullover macchina'],
+  'Schiena - Romboidi / Trapezio': ['Face pull', 'Rematore alto al cavo', 'Rematore chest supported', 'Croci inverse al cavo', 'Croci inverse manubri', 'Reverse pec deck', 'Alzate posteriori busto flesso', 'Scrollate manubri', 'Scrollate bilanciere', 'Pulley presa larga'],
+  Spalle: ['Military press', 'Military press Smith machine', 'Spinte manubri spalle', 'Shoulder press macchina', 'Arnold press', 'Alzate laterali manubri', 'Alzate laterali al cavo', 'Alzate laterali macchina', 'Alzate frontali manubri', 'Alzate frontali al cavo', 'Tirate al mento', 'Y raise al cavo', 'Landmine press'],
+  Bicipiti: ['Curl bilanciere', 'Curl manubri', 'Curl alternato', 'Curl martello', 'Curl cavo basso', 'Curl cavo alto', 'Curl barra EZ', 'Curl concentrato', 'Curl panca inclinata', 'Curl panca Scott', 'Curl panca Scott al cavo'],
+  Tricipiti: ['Panca presa stretta', 'Dip alle parallele', 'Dip panchetta', 'Pushdown corda', 'Pushdown barra', 'Estensioni tricipiti sopra testa al cavo', 'Estensioni tricipiti sopra testa manubrio', 'French press', 'Skull crusher', 'Pushdown monolaterale'],
+  Quadricipiti: ['Squat', 'Front squat', 'Box squat', 'Squat con pausa', 'Pin squat', 'Squat Smith machine', 'Hack squat macchina', 'Hack squat bilanciere', 'Leg press 45', 'Leg press orizzontale', 'Leg extension', 'Bulgarian split squat', 'Split squat Smith machine', 'Goblet squat', 'Landmine squat', 'Affondi manubri', 'Affondi camminati', 'Step up'],
+  'Posteriori Coscia / Glutei': ['Stacco rumeno', 'Stacco da terra', 'Stacco sumo', 'Good morning', 'Hip thrust bilanciere', 'Hip thrust Smith machine', 'Hip thrust manubrio', 'Glute bridge', 'Pull through al cavo', 'Leg curl sdraiato', 'Leg curl seduto', 'Leg curl in piedi', 'Swing kettlebell', 'Nordic curl', 'Stacco rumeno manubri', 'Stacco rumeno monopodalico', 'Abductor machine'],
+  Polpacci: ['Calf raise bilanciere', 'Calf raise manubri', 'Calf raise alla pressa', 'Calf raise in piedi macchina', 'Calf raise al cavo', 'Calf raise seduto'],
+  Core: ['Plank', 'Side plank', 'Dead bug', 'Bird dog', 'Pallof press', 'Crunch al cavo', 'Sollevamento gambe alla sbarra', 'Ab wheel', 'Rotazioni landmine', 'Hollow body', 'Russian twist kettlebell', 'Farmer carry', 'Suitcase carry'],
   'Kettlebell - Balistici': ['Swing kettlebell', 'Clean kettlebell', 'Snatch kettlebell', 'Press kettlebell', 'Turkish get up', 'Windmill', 'Halo', 'Goblet squat kettlebell'],
-  'Multiarticolari / Full Body': ['Stacco da terra', 'Clean landmine', 'Thruster landmine', 'Camminata del contadino', 'Complex kettlebell'],
+  'Conditioning / Full Body': ['Air bike', 'Row erg', 'Ski erg', 'Sled push', 'Sled pull', 'Battle rope', 'Burpee', 'Wall ball', 'Clean landmine', 'Thruster landmine', 'Camminata del contadino', 'Complex kettlebell'],
 };
 
 const PROGRESSION_LIBRARY = {
@@ -38,28 +38,38 @@ const PROGRESSION_LIBRARY = {
     { name: 'Circuito Tecnico Base', tut: '2/1/1/1', sessions: ['2x10', '2x10', '3x10', '3x10', '3x12', '3x12'] },
     { name: 'Ladder Tecnico', tut: '2/1/1/1', sessions: ['2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)', '2x5 (4-3-2)'] },
     { name: 'Progressione Lineare Tecnica', tut: '1/1/1/1', sessions: ['3x8', '3x9', '3x10', '4x8', '4x9', '4x10'] },
+    { name: 'Apprendimento Pattern', tut: '3/1/1/1', sessions: ['4x6 lente', '4x7 lente', '4x8', '5x6', '5x7', '5x8'] },
+    { name: 'Isometria + Dinamica', tut: '3/2/1/1', sessions: ['3x6 iso 2"', '3x7 iso 2"', '4x6 iso 2"', '4x7', '4x8', '5x6'] },
   ],
   Forza: [
     { name: 'Forza 5x5 Progressiva', tut: '2/1/1/1', sessions: ['5x5 @70%', '5x5 @72%', '5x5 @74%', '5x5 @76%', '5x5 @80%', '5x5 @82%'] },
     { name: 'Cluster Tecnico Forza', tut: '1/1/1/1', sessions: ['4x(2+2+2) @72%', '4x(2+2+2) @75%', '4x(2+2+2) @75%', '4x(2+2+2) @77%', '4x(2+2+2) @77%', '4x(2+2+2) @78%'] },
     { name: 'Top Set + Back Off', tut: '2/1/1/1', sessions: ['1x5@75%+2x6@65%', '1x5@77%+2x6@65%', '1x4@80%+3x6@68%', '1x4@82%+3x6@68%', '1x3@85%+3x5@70%', '1x3@85%+3x5@70%'] },
+    { name: 'Doppia Progressione Forza', tut: '2/1/1/1', sessions: ['4x4 RIR2', '4x5 RIR2', '5x4 RIR2', '5x5 RIR1', '6x4 RIR1', '6x5 RIR1'] },
+    { name: 'Wave Loading', tut: '1/1/1/1', sessions: ['6/4/2 x2', '5/3/2 x2', '6/4/2 x3', '5/3/1 x3', '4/3/2 x3', '3/2/1 x3'] },
   ],
   Ipertrofia: [
     { name: 'Ipertrofia Lineare', tut: '2/1/1/1', sessions: ['4x8 @65%', '4x9 @67%', '4x10 @70%', '5x8 @72%', '5x9 @72%', '5x10 @74%'] },
     { name: 'Complementare Progressiva', tut: '1/1/1/1', sessions: ['3x10', '3x11', '3x12', '4x10', '4x11', '4x12'] },
     { name: 'Rest Pause Ipertrofia', tut: '1/1/1/1', sessions: ['3x10 (4-3)', '3x11 (4-3)', '3x12 (4-3)', '4x10 (4-3)', '4x11 (4-3)', '4x12 (4-3)'] },
+    { name: 'Doppia Progressione 8-12', tut: '2/1/1/1', sessions: ['3x8 RIR2', '3x10 RIR2', '3x12 RIR2', '4x8 RIR1', '4x10 RIR1', '4x12 RIR1'] },
+    { name: 'Accumulo Volume', tut: '2/1/1/1', sessions: ['3x10', '4x10', '4x12', '5x10', '5x12', '6x10'] },
   ],
   Densita: [
     { name: 'Densita Progressiva', tut: '2/1/1/1', sessions: ['5x8 (120")', '5x8 (105")', '6x8 (90")', '6x8 (75")', '7x8 (75")', '8x8 (60")'] },
     { name: 'Myo Reps', tut: '2/1/1/1', sessions: ['1x15+3x5', '1x16+3x5', '1x17+4x5', '1x18+4x5', '1x19+5x5', '1x20+5x5'] },
+    { name: 'EMOM Tecnico', tut: '1/1/1/1', sessions: ['8x5 EMOM', '10x5 EMOM', '10x6 EMOM', '12x5 EMOM', '12x6 EMOM', '14x5 EMOM'] },
+    { name: 'Tempo Density', tut: '3/1/1/1', sessions: ['4x8 90"', '4x8 75"', '5x8 75"', '5x8 60"', '6x8 60"', '6x10 60"'] },
   ],
   Core: [
     { name: 'Core Stabilita', tut: '2/1/2/1', sessions: ['3x25"', '3x30"', '2x25"/lat', '2x30"/lat', '3x20"', '3x25"'] },
     { name: 'Core Circuito', tut: '2/1/2/1', sessions: ['2 giri x 3 ex', '2 giri (rip+)', '3 giri', '3 giri (rip+)', '3 giri', '3-4 giri'] },
+    { name: 'Anti Rotazione', tut: '2/1/2/1', sessions: ['3x10/lat', '3x12/lat', '4x10/lat', '4x12/lat', '5x10/lat', '5x12/lat'] },
   ],
   Scarico: [
     { name: 'Volume Minimo', tut: '2/1/1/1', sessions: ['3x8', '3x8', '3x8', '3x8', '3x8', '3x8'] },
     { name: 'Buffer Alto Costante', tut: '3/1/1/1', sessions: ['3x8@65%', '3x8', '3x8', '3x8', '3x8', '3x8'] },
+    { name: 'Deload Tecnico', tut: '3/1/1/1', sessions: ['2x8 RIR4', '2x10 RIR4', '3x8 RIR4', '3x10 RIR4', '2x8 RIR5', '2x10 RIR5'] },
   ],
 };
 
@@ -118,6 +128,8 @@ const state = {
   builderExercise: null,
   builderProgressionGroup: 'Tecnica',
   builderProgression: null,
+  builderSessionIndex: 0,
+  lastAddedExerciseId: '',
 };
 
 const els = {};
@@ -314,7 +326,25 @@ function sessionName(index) {
 }
 
 function defaultSessions() {
-  return [];
+  return [0, 1].map((index) => ({
+    id: id('session'),
+    name: sessionName(index),
+    weekDay: String(index + 1),
+    focus: index === 0 ? 'Seduta principale' : 'Seduta complementare',
+    duration: '60',
+    warmup: '',
+    cooldown: '',
+    notes: '',
+    blocks: [{ id: id('block'), code: 'N0', line: '', mode: 'Singolo', exercises: [] }],
+  }));
+}
+
+function ensureProgramSessions() {
+  if (!Array.isArray(state.programSessions) || !state.programSessions.length) {
+    state.programSessions = defaultSessions();
+    state.builderSessionIndex = 0;
+  }
+  return state.programSessions;
 }
 
 function normalizeLegacyExercises(data) {
@@ -959,22 +989,25 @@ function fillProgramForm(program) {
 }
 
 function renderSessionEditor() {
+  ensureProgramSessions();
   renderExerciseBuilder();
   if (!state.programSessions.length) {
     els.sessionEditor.innerHTML = '<div class="empty compact-empty">Nessuna seduta inserita. Premi "Aggiungi seduta" quando vuoi iniziare.</div>';
+    renderBuilderSessionPreview();
     return;
   }
+  if (state.builderSessionIndex >= state.programSessions.length) state.builderSessionIndex = 0;
   els.sessionEditor.innerHTML = state.programSessions.map((session, sessionIndex) => `
-    <article class="session-card" data-session-index="${sessionIndex}">
+    <article class="session-card ${sessionIndex === state.builderSessionIndex ? 'active-builder-session' : ''}" data-session-index="${sessionIndex}">
       <div class="session-head">
         <label class="session-name-field">
           <span>Nome seduta</span>
           <input data-session-field="name" value="${esc(session.name || sessionName(sessionIndex))}">
         </label>
-        <button class="icon-btn" type="button" data-remove-session="${sessionIndex}">Rimuovi</button>
+        <button class="danger-btn slim" type="button" data-remove-session="${sessionIndex}">Rimuovi seduta</button>
       </div>
       <div class="program-form-grid compact">
-        <label><span>Giorno/settimana</span><input data-session-field="weekDay" value="${esc(session.weekDay || '')}"></label>
+        <label><span>Giorno scheda</span><input data-session-field="weekDay" value="${esc(session.weekDay || '')}" placeholder="1, 2, 3..."></label>
         <label><span>Focus</span><input data-session-field="focus" value="${esc(session.focus || '')}"></label>
         <label><span>Durata min</span><input data-session-field="duration" value="${esc(session.duration || '60')}"></label>
       </div>
@@ -988,6 +1021,7 @@ function renderSessionEditor() {
       </div>
     </article>
   `).join('');
+  renderBuilderSessionPreview();
 }
 
 function renderBlockEditor(block, sessionIndex, blockIndex) {
@@ -1007,8 +1041,11 @@ function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)
   const progression = normalizeProgression(exercise.progression);
   const sedute = progression?.sessions || [];
   const loadKey = `${sessionIndex}:${blockIndex}:${exerciseIndex}`;
+  const justAdded = exercise.id && exercise.id === state.lastAddedExerciseId ? ' just-added' : '';
+  const lastLoad = Array.isArray(exercise.loads) && exercise.loads.length ? exercise.loads[exercise.loads.length - 1] : null;
+  const savedRows = lastLoad?.serie || [];
   return `
-    <div class="exercise-card-compact" data-exercise-index="${exerciseIndex}">
+    <div class="exercise-card-compact${justAdded}" data-exercise-index="${exerciseIndex}" data-exercise-id="${esc(exercise.id || '')}">
       <div class="exercise-display-head">
         <div class="exercise-order">${esc(exercise.order || exerciseIndex + 1)}</div>
         <div class="exercise-display-main">
@@ -1028,16 +1065,17 @@ function renderExerciseEditor(exercise, sessionIndex, blockIndex, exerciseIndex)
       <div class="load-box" data-load-exercise="${esc(loadKey)}">
         <div class="load-head">
           <span>Carichi seduta</span>
-          <input class="load-date" type="date" data-load-date value="${esc(todayIso())}">
+          <input class="load-date" type="date" data-load-date value="${esc(lastLoad?.data || todayIso())}">
         </div>
         ${[1, 2, 3, 4].map((setNumber) => `
           <div class="load-row" data-load-row="${setNumber}">
             <span>S${setNumber}</span>
-            <input data-load-field="kg" placeholder="kg">
-            <input data-load-field="reps" placeholder="rip">
-            <input data-load-field="note" placeholder="note">
+            <input data-load-field="kg" placeholder="kg" value="${esc(savedRows[setNumber - 1]?.kg || '')}">
+            <input data-load-field="reps" placeholder="rip" value="${esc(savedRows[setNumber - 1]?.ripetizioni || '')}">
+            <input data-load-field="note" placeholder="note" value="${esc(savedRows[setNumber - 1]?.note || '')}">
           </div>
         `).join('')}
+        ${lastLoad ? `<div class="load-last">Ultimo salvataggio: ${esc(formatDate(lastLoad.data))} · ${savedRows.length} serie</div>` : ''}
         <button class="secondary-btn slim load-save" type="button" data-save-load="${esc(loadKey)}">Salva carichi</button>
       </div>
     </div>
@@ -1088,9 +1126,61 @@ function renderExerciseBuilder() {
     }).join('')}`;
   renderBuilderProgressionPreview();
 
+  if (state.builderSessionIndex >= state.programSessions.length) state.builderSessionIndex = 0;
   els.builderSession.innerHTML = state.programSessions.map((session, index) =>
     `<option value="${index}">${esc(session.name || `Seduta ${index + 1}`)}</option>`
   ).join('');
+  els.builderSession.value = String(state.builderSessionIndex || 0);
+  renderBuilderCurrent();
+  renderBuilderSessionPreview();
+}
+
+function builderSelectedExerciseName() {
+  return state.builderExercise?.name || els.manualExerciseName?.value.trim() || els.exerciseSearch?.value.trim() || '';
+}
+
+function renderBuilderCurrent() {
+  if (!els.builderCurrent) return;
+  const session = state.programSessions[state.builderSessionIndex] || state.programSessions[0];
+  const progression = state.builderProgression === 'manual'
+    ? 'Manuale'
+    : (state.builderProgression?.name || 'Progressione non selezionata');
+  const exerciseName = builderSelectedExerciseName() || 'Seleziona o scrivi esercizio';
+  els.builderCurrent.innerHTML = `
+    <span>Pronto per</span>
+    <strong>${esc(session?.name || 'Seduta')}</strong>
+    <em>${esc(exerciseName)} · ${esc(progression)} · recupero ${esc(els.builderRest?.value || '-')}</em>
+  `;
+}
+
+function renderBuilderSessionPreview() {
+  if (!els.builderSessionPreview) return;
+  const session = state.programSessions[state.builderSessionIndex] || state.programSessions[0];
+  if (!session) {
+    els.builderSessionPreview.innerHTML = '<div class="empty compact-empty">Aggiungi una seduta per iniziare la scheda.</div>';
+    return;
+  }
+  const exercises = (session.blocks || []).flatMap((block) => block.exercises || []);
+  els.builderSessionPreview.innerHTML = `
+    <div class="builder-preview-head">
+      <div>
+        <span>Anteprima seduta destinazione</span>
+        <strong>${esc(session.name || 'Seduta')}</strong>
+      </div>
+      <em>${exercises.length} esercizi inseriti</em>
+    </div>
+    <div class="builder-preview-list">
+      ${exercises.length
+        ? exercises.map((exercise, index) => `
+          <button class="builder-preview-item${exercise.id === state.lastAddedExerciseId ? ' just-added' : ''}" type="button" data-jump-exercise="${esc(exercise.id || '')}">
+            <b>${index + 1}</b>
+            <span>${esc(exercise.name || 'Esercizio')}</span>
+            <em>${esc(normalizeProgression(exercise.progression)?.name || 'Manuale')}</em>
+          </button>
+        `).join('')
+        : '<div class="empty compact-empty">Questa seduta e vuota: il prossimo esercizio comparira qui subito.</div>'}
+    </div>
+  `;
 }
 
 function renderBuilderProgressionPreview() {
@@ -1157,12 +1247,14 @@ function renderSessionEditorAtSamePoint() {
 
 function addPickedExercise() {
   syncProgramEditor();
+  ensureProgramSessions();
   const manualName = els.manualExerciseName.value.trim();
   const typedName = els.exerciseSearch.value.trim();
   const picked = state.builderExercise;
   const name = picked?.name || manualName || typedName;
   if (!name) throw new Error('Seleziona o scrivi un esercizio');
-  const sessionIndex = Number(els.builderSession.value || 0);
+  const sessionIndex = Number(els.builderSession.value || state.builderSessionIndex || 0);
+  state.builderSessionIndex = sessionIndex;
   const session = state.programSessions[sessionIndex];
   if (!session) throw new Error('Seleziona una seduta');
   if (!Array.isArray(session.blocks) || !session.blocks.length) {
@@ -1171,8 +1263,9 @@ function addPickedExercise() {
   const block = session.blocks[0];
   const progression = state.builderProgression === 'manual' ? null : normalizeProgression(state.builderProgression);
   const exercises = block.exercises || [];
+  const exerciseId = id('exercise');
   exercises.push({
-    id: id('exercise'),
+    id: exerciseId,
     order: exercises.length + 1,
     name,
     category: picked?.category || exerciseCategory(name) || 'Manuale',
@@ -1185,13 +1278,14 @@ function addPickedExercise() {
     notes: els.builderNotes.value.trim(),
   });
   block.exercises = exercises;
+  state.lastAddedExerciseId = exerciseId;
   els.manualExerciseName.value = '';
   els.exerciseSearch.value = '';
   els.builderNotes.value = '';
   state.builderExercise = null;
-  state.builderProgression = null;
   renderSessionEditorAtSamePoint();
   updateNeaceaPreview();
+  toast(`${name} aggiunto a ${session.name || sessionName(sessionIndex)}`);
 }
 
 function programPayload(program) {
@@ -1287,6 +1381,12 @@ async function saveExerciseLoad(sessionIndex, blockIndex, exerciseIndex) {
       updated_at: new Date().toISOString(),
     },
   });
+  exercise.loads = [
+    ...(Array.isArray(exercise.loads) ? exercise.loads.filter((item) => item.data !== date) : []),
+    { data: date, serie: rows, updated_at: new Date().toISOString() },
+  ].sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  await saveProgram();
+  renderSessionEditorAtSamePoint();
 }
 
 function sessionsForRange(reference, view, onlyMine = false) {
@@ -1626,6 +1726,12 @@ function bindEvents() {
     }
   });
   els.exerciseSearch.addEventListener('input', renderExerciseBuilder);
+  els.builderRest.addEventListener('change', renderBuilderCurrent);
+  els.builderSession.addEventListener('change', () => {
+    syncProgramEditor();
+    state.builderSessionIndex = Number(els.builderSession.value || 0);
+    renderSessionEditorAtSamePoint();
+  });
   els.exercisePickList.addEventListener('click', (event) => {
     const item = event.target.closest('[data-pick-exercise]');
     if (!item) return;
@@ -1641,6 +1747,7 @@ function bindEvents() {
       state.builderExercise = null;
       renderExerciseBuilder();
     }
+    renderBuilderCurrent();
   });
   els.progressionTabs.addEventListener('click', (event) => {
     const tab = event.target.closest('[data-progression-group]');
@@ -1664,6 +1771,13 @@ function bindEvents() {
     } catch (error) {
       showError(`Esercizio non aggiunto: ${error.message}`);
     }
+  });
+  els.builderSessionPreview.addEventListener('click', (event) => {
+    const item = event.target.closest('[data-jump-exercise]');
+    if (!item) return;
+    const escapedId = window.CSS?.escape ? CSS.escape(item.dataset.jumpExercise) : String(item.dataset.jumpExercise).replaceAll('"', '\\"');
+    const target = els.sessionEditor.querySelector(`[data-exercise-id="${escapedId}"]`);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   els.sessionEditor.addEventListener('click', async (event) => {
     const saveLoad = event.target.closest('[data-save-load]');
@@ -1690,7 +1804,10 @@ function bindEvents() {
     if (addExercise) {
       const [sessionIndex, blockIndex] = addExercise.dataset.addExercise.split(':').map(Number);
       const exercises = state.programSessions[sessionIndex].blocks[blockIndex].exercises;
-      exercises.push(emptyExercise(exercises.length + 1));
+      const exercise = emptyExercise(exercises.length + 1);
+      exercises.push(exercise);
+      state.builderSessionIndex = sessionIndex;
+      state.lastAddedExerciseId = exercise.id;
     }
     if (removeSession) {
       state.programSessions.splice(Number(removeSession.dataset.removeSession), 1);
@@ -1698,6 +1815,7 @@ function bindEvents() {
     if (removeExercise) {
       const [sessionIndex, blockIndex, exerciseIndex] = removeExercise.dataset.removeExercise.split(':').map(Number);
       state.programSessions[sessionIndex].blocks[blockIndex].exercises.splice(exerciseIndex, 1);
+      state.programSessions[sessionIndex].blocks[blockIndex].exercises.forEach((exercise, index) => { exercise.order = index + 1; });
     }
     renderSessionEditorAtSamePoint();
     updateNeaceaPreview();
@@ -1760,9 +1878,9 @@ function cacheEls() {
     'programStatusFilter', 'programList', 'programCount', 'newProgramButton', 'programEditorTitle', 'programEditorStatus',
     'programForm', 'programId', 'programClient', 'programStatus', 'programName', 'programGoal',
     'programLevel', 'programWeeks', 'programFrequency', 'programSplit', 'programStart', 'programEnd',
-    'programNotes', 'neaceaString', 'exerciseSearch', 'manualExerciseName', 'builderRest',
+    'programNotes', 'neaceaString', 'exerciseSearch', 'manualExerciseName', 'builderRest', 'builderCurrent',
     'builderSession', 'addPickedExerciseButton', 'exercisePickList', 'progressionTabs',
-    'progressionPickList', 'progressionPreview', 'builderNotes', 'addSessionButton',
+    'progressionPickList', 'progressionPreview', 'builderNotes', 'addSessionButton', 'builderSessionPreview',
     'archiveProgramButton', 'sessionEditor',
     'myRange', 'myAgenda', 'myTodayButton', 'calRange', 'calTodayButton', 'studioCalendar',
   ].forEach((key) => { els[key] = document.getElementById(key); });
