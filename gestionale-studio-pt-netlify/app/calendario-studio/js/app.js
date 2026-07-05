@@ -1157,13 +1157,18 @@ const App = {
                 <label>Da data</label>
                 <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
               </div>
+              <div class="form-group">
+                <label>Nuove sedute rinnovo</label>
+                <input id="pkg-renew-count" class="form-input" type="number" min="1" step="1" value="${hasTotal ? metrics.total : 8}">
+              </div>
             </div>
           </div>
           <div class="package-reschedule-actions">
             <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
             <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
+            <button class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')">Rinnova pacchetto</button>
           </div>
-          <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte.</p>
+          <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte. Se il pacchetto e finito, usa Rinnova pacchetto per aggiungere nuove sedute e generarle da capo.</p>
         </section>
 
         <section class="package-panel">
@@ -1437,6 +1442,125 @@ const App = {
       alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
     } else {
       UI.showToast(`${created.length} sedute future rigenerate`, 'success');
+    }
+    App.openPackageOverview(clientId);
+  },
+
+  async _renewPackageAppointments(clientId) {
+    if (!App._limitPackagePlanDays(clientId)) return;
+    const currentClient = State.getClients().find(c => c.id === clientId);
+    if (!currentClient) return;
+
+    const days = App._selectedPackagePlanDays();
+    const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-plan-time')?.value || '09:00';
+    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null;
+    const renewCount = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
+    if (!days.length) {
+      UI.showToast('Seleziona almeno un giorno reale', 'error');
+      return;
+    }
+    if (!Number.isFinite(renewCount) || renewCount <= 0) {
+      UI.showToast('Inserisci il numero di nuove sedute del rinnovo', 'error');
+      return;
+    }
+
+    const serviceId = App._packageServiceId(currentClient);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    if (!service) {
+      UI.showToast('Pacchetto PT non impostato per questo cliente', 'error');
+      return;
+    }
+
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    const baseTotal = Math.max(
+      Number(metrics.total || 0),
+      Number(metrics.completed || 0) + Number(metrics.scheduled || 0)
+    );
+    const nextTotal = baseTotal + renewCount;
+    const operatorData = selectedOperator ? Services.getOperator(selectedOperator) : null;
+    const operatorLabel = operatorData ? `${operatorData.nome} ${operatorData.cognome}` : 'senza PT assegnato';
+    const confirmed = confirm(
+      `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n` +
+      `Aggiungo ${renewCount} nuove sedute dal ${fromDate}: ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
+      `Totale sedute: ${baseTotal} -> ${nextTotal}.`
+    );
+    if (!confirmed) return;
+
+    const backupClients = State.getClients();
+    const backupAppointments = State.getAppointments();
+    const updatedClient = {
+      ...currentClient,
+      giorniSettimana: days,
+      packageStart: fromDate,
+      ptAssegnato: selectedOperator,
+      sessionsTotal: nextTotal,
+      sessionsRemaining: Math.max(0, nextTotal - Number(metrics.completed || 0)),
+      active: true,
+      statoAbbonamento: currentClient.statoAbbonamento || 'Attivo',
+    };
+    State.saveClients(backupClients.map(c => c.id === clientId ? updatedClient : c));
+
+    const updatedMetrics = Services.getClientSessionMetrics(updatedClient);
+    const missing = Math.max(0, updatedMetrics.toSchedule);
+    if (!missing) {
+      await SupabaseSync.pushClient(updatedClient);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updatedClient);
+      UI.showToast('Pacchetto rinnovato: nessuna seduta da generare', 'success');
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    const dates = App._suggestPackageDates(updatedClient, missing * 8, { days, fromDate, includeStart: true });
+    const created = [];
+    const skipped = [];
+
+    dates.some(date => {
+      if (created.length >= missing) return true;
+      const draft = {
+        serviceId,
+        clientIds: [clientId],
+        operatorId: selectedOperator,
+        date,
+        startTime: time,
+        durationMin: service.durationMin || 60,
+        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        status: 'prenotato',
+        notes: `Rinnovo pacchetto da ${fromDate}`,
+      };
+      const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
+      if (!validation.ok) {
+        skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+        return false;
+      }
+      created.push(Services.addAppointment(draft));
+      return false;
+    });
+
+    if (!created.length) {
+      State.saveClients(backupClients);
+      State.saveAppointments(backupAppointments);
+      UI.showToast('Rinnovo non applicato: tutte le date sono in conflitto', 'error');
+      alert('Rinnovo non applicato per conflitti:\n' + skipped.slice(0, 12).join('\n'));
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    await Promise.all([
+      SupabaseSync.pushClient(updatedClient),
+      ...created.map(appt => SupabaseSync.pushAppointment(appt)),
+    ]);
+    if (CONFIG.SHEETS.enabled) {
+      Sheets.pushClient(updatedClient);
+      created.forEach(appt => Sheets.pushAppointment(appt));
+    }
+    Calendar.render();
+
+    if (skipped.length) {
+      UI.showToast(`Rinnovo salvato: ${created.length} create, ${skipped.length} saltate`, 'info');
+      alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
+    } else {
+      UI.showToast(`Rinnovo salvato: ${created.length} sedute create`, 'success');
     }
     App.openPackageOverview(clientId);
   },
