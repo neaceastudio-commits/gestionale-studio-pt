@@ -162,6 +162,7 @@ const Clients = (() => {
     const panel = document.getElementById('view-clients');
     if (!panel) return;
     const clients = State.getClients().filter(c => c.active !== false);
+    const isPtMode = typeof App !== 'undefined' && App.isPtMode?.();
 
     panel.innerHTML = `
       <div class="view-header">
@@ -186,6 +187,7 @@ const Clients = (() => {
           </thead>
           <tbody>
             ${clients.map(c => {
+              const canManageClient = !isPtMode || App._clientBelongsToCurrentPt?.(c.id);
               const pkgs = Array.isArray(c.packageTypes) ? c.packageTypes : (c.packageType ? [c.packageType] : []);
               const services = [...new Set(pkgs.flatMap(p => CONFIG.PACKAGE_SERVICE_MAP[p]||[]))]
                 .map(id => CONFIG.SERVICES[id])
@@ -194,7 +196,7 @@ const Clients = (() => {
               const metrics = getPackageMetrics(c);
               const remainingPct = metrics.total ? Math.round((metrics.remaining / metrics.total) * 100) : 0;
               return `
-              <tr class="${c.active === false ? 'row-inactive' : ''}" onclick="App.openEditClient('${c.id}')">
+              <tr class="${c.active === false ? 'row-inactive' : ''} ${canManageClient ? '' : 'row-readonly'}" onclick="${canManageClient ? `App.openEditClient('${c.id}')` : `UI.showToast('Sola lettura: cliente assegnato a un altro PT','info')`}">
                 <td>
                   <div class="op-name-cell">
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
@@ -236,9 +238,10 @@ const Clients = (() => {
                       <div class="text-muted" style="font-size:0.72rem">
                         Residuo salvato nel cliente: ${metrics.storedRemaining} · residuo corretto dagli appuntamenti fatti: ${metrics.computedRemaining}
                       </div>
-                      <button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
+                      ${canManageClient ? `<button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
                         Allinea residuo
                       </button>` : ''}
+                    ` : ''}
                     ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
                   </div>
                 </td>
@@ -246,12 +249,16 @@ const Clients = (() => {
                   <div class="action-btns">
                     <button class="btn-icon-sm" title="Quadro pacchetto" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">📊</button>
                     <button class="btn-icon-sm" title="Consenso informato" onclick="event.stopPropagation();window.open('consenso/?cliente=${encodeURIComponent(c.id)}','_blank')">📄</button>
-                    <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
-                    <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
-                    <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">
-                      ${c.active === false ? '🟢' : '🔴'}
-                    </button>
-                    <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
+                    ${canManageClient ? `
+                      <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
+                      <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
+                      ${isPtMode ? '' : `
+                        <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">
+                          ${c.active === false ? '🟢' : '🔴'}
+                        </button>
+                        <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
+                      `}
+                    ` : '<span class="form-hint">Sola lettura</span>'}
                   </div>
                 </td>
               </tr>`;

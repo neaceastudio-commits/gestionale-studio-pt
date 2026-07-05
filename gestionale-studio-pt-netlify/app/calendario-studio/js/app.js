@@ -48,6 +48,8 @@ const App = {
     return PT_ACCESS.operatorId || '';
   },
 
+  _lastRenewedPackage: null,
+
   _clientBelongsToCurrentPt(clientId) {
     if (!App.isPtMode()) return true;
     const client = State.getClients().find(c => c.id === clientId) || Services.getClient(clientId);
@@ -1140,7 +1142,13 @@ const App = {
     const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
-    const appointments = App._packageAppointments(client, true);
+    const renewedIds = new Set(App._lastRenewedPackage?.clientId === clientId ? App._lastRenewedPackage.appointmentIds : []);
+    const appointments = App._packageAppointments(client, true).sort((a, b) => {
+      const aRenewed = renewedIds.has(a.id) ? 0 : 1;
+      const bRenewed = renewedIds.has(b.id) ? 0 : 1;
+      if (aRenewed !== bRenewed) return aRenewed - bRenewed;
+      return `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`);
+    });
     const operators = State.getOperators()
       .filter(o => o.active !== false)
       .filter(o => !App.isPtMode() || o.id === App.currentPtId());
@@ -1164,25 +1172,28 @@ const App = {
       const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
         `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
       ).join('');
+      const disabledAttr = canManageRow ? '' : 'disabled';
+      const renewedBadge = renewedIds.has(a.id) ? '<span class="renewed-badge">Nuova</span>' : '';
       return `
-        <tr>
+        <tr class="${renewedIds.has(a.id) ? 'package-row-renewed' : ''}">
           <td>
-            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}">
+            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}" ${disabledAttr}>
+            ${renewedBadge}
           </td>
           <td>
             <div class="time-edit-cell">
-              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900">
+              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900" ${disabledAttr}>
             </div>
           </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>
-            <select id="pkg-operator-${a.id}" class="form-input package-operator-input">
+            <select id="pkg-operator-${a.id}" class="form-input package-operator-input" ${disabledAttr}>
               ${App.isPtMode() ? '' : '<option value="">—</option>'}
               ${operatorOptions}
             </select>
           </td>
           <td>
-            <select id="pkg-status-${a.id}" class="form-input package-status-input">
+            <select id="pkg-status-${a.id}" class="form-input package-status-input" ${disabledAttr}>
               ${statusOptions}
             </select>
           </td>
@@ -1675,6 +1686,7 @@ const App = {
       SupabaseSync.pushClient(updatedClient),
       ...created.map(appt => SupabaseSync.pushAppointment(appt)),
     ]);
+    App._lastRenewedPackage = { clientId, appointmentIds: created.map(appt => appt.id) };
     if (CONFIG.SHEETS.enabled) {
       Sheets.pushClient(updatedClient);
       created.forEach(appt => Sheets.pushAppointment(appt));
