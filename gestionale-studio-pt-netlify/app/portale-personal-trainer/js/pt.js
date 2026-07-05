@@ -1026,18 +1026,38 @@ function groupPhotosByVisit(photos) {
 
 function setPhotoDraft(files) {
   state.photoDraftFiles = Array.from(files || []).filter((file) => file.type.startsWith('image/'));
+  renderPhotoDraft();
+}
+
+function renderPhotoDraft() {
   els.photoThumbnails.innerHTML = '';
-  state.photoDraftFiles.forEach((file) => {
+  state.photoDraftFiles.forEach((file, index) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-draft-thumb';
+    const img = document.createElement('img');
+    img.alt = `Foto selezionata ${index + 1}`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', 'Rimuovi foto selezionata');
+    remove.dataset.removeDraftPhoto = String(index);
+    wrap.appendChild(img);
+    wrap.appendChild(remove);
+    els.photoThumbnails.appendChild(wrap);
     const reader = new FileReader();
     reader.onload = () => {
-      const img = document.createElement('img');
       img.src = reader.result;
-      els.photoThumbnails.appendChild(img);
     };
     reader.readAsDataURL(file);
   });
   els.photoDraftCount.textContent = `${state.photoDraftFiles.length} ${state.photoDraftFiles.length === 1 ? 'foto selezionata' : 'foto selezionate'}`;
   els.photoPreviewArea.classList.toggle('hidden', !state.photoDraftFiles.length);
+}
+
+function removeDraftPhoto(index) {
+  state.photoDraftFiles.splice(index, 1);
+  renderPhotoDraft();
+  if (!state.photoDraftFiles.length) els.photoInput.value = '';
 }
 
 function resizeImageFile(file, maxSize = 1200, quality = 0.82) {
@@ -2261,6 +2281,7 @@ function bindEvents() {
     const saveModal = event.target.closest('[data-save-session-modal]');
     const openPhoto = event.target.closest('[data-open-photo]');
     const deletePhotoButton = event.target.closest('[data-delete-photo]');
+    const removeDraftPhotoButton = event.target.closest('[data-remove-draft-photo]');
     const closePhoto = event.target.closest('[data-close-photo-lightbox]');
     if (edit) editOwnSession(edit.dataset.editSession).catch((error) => toast(error.message, true));
     if (done) markSessionDone(done.dataset.sessionDone).catch((error) => toast(error.message, true));
@@ -2268,6 +2289,7 @@ function bindEvents() {
     if (saveModal) saveSessionEditor().catch((error) => toast(error.message, true));
     if (openPhoto) openPhotoLightbox(openPhoto.dataset.openPhoto);
     if (deletePhotoButton) deletePhoto(deletePhotoButton.dataset.deletePhoto).catch((error) => toast(error.message, true));
+    if (removeDraftPhotoButton) removeDraftPhoto(Number(removeDraftPhotoButton.dataset.removeDraftPhoto));
     if (closePhoto) closePhotoLightbox();
   });
   document.body.addEventListener('change', (event) => {
