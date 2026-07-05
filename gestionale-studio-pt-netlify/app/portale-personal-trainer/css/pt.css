@@ -424,7 +424,7 @@ h3 { font-size: 15px; }
 
 .photo-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 180px auto;
+  grid-template-columns: minmax(220px, 1fr);
   gap: 10px;
   padding: 16px 16px 0;
   align-items: center;
@@ -533,6 +533,146 @@ h3 { font-size: 15px; }
   border-color: #f0c6c0;
   color: #9b2d20;
   background: #fff6f4;
+}
+
+.photo-visit-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px 12px;
+}
+
+.photo-visit-fields label {
+  display: grid;
+  gap: 6px;
+}
+
+.photo-visit-fields span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.photo-draft-count {
+  padding: 0 16px 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.photo-preview-area {
+  padding: 0 16px 16px;
+}
+
+.photo-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.photo-thumbnails img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+}
+
+.photo-visit-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.photo-visit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.photo-visit-head div {
+  display: grid;
+  gap: 2px;
+}
+
+.photo-visit-head strong {
+  color: var(--green);
+  font-size: 15px;
+}
+
+.photo-visit-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.photo-thumb-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.photo-thumb {
+  position: relative;
+  width: 112px;
+  height: 132px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f8fbfd;
+}
+
+.photo-thumb > button {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-thumb > div {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, .56);
+  color: #fff;
+}
+
+.photo-thumb span {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.photo-thumb div button {
+  width: 24px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(200, 50, 50, .75);
+  color: #fff;
+  font-weight: 900;
 }
 
 .photo-lightbox {
@@ -2081,7 +2221,7 @@ h3 { font-size: 15px; }
   .calendar-controls #calRange { min-width: 0; text-align: left; }
   .segments { width: 100%; }
   .segment { flex: 1; }
-  .kpi-grid, .info-grid, .client-sections, .form-grid, .program-toolbar, .photo-toolbar, .program-form-grid, .program-form-grid.compact, .builder-fast-row, .session-edit, .modal-grid, .program-row, .load-row, .progression-preview-grid { grid-template-columns: 1fr; }
+  .kpi-grid, .info-grid, .client-sections, .form-grid, .program-toolbar, .photo-toolbar, .photo-visit-fields, .program-form-grid, .program-form-grid.compact, .builder-fast-row, .session-edit, .modal-grid, .program-row, .load-row, .progression-preview-grid { grid-template-columns: 1fr; }
   .span-2, .builder-fast-row .primary-btn { grid-column: auto; }
   .program-row {
     gap: 6px;

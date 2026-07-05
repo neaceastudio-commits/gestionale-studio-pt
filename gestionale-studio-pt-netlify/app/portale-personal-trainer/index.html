@@ -280,20 +280,28 @@
         <section class="panel">
           <div class="panel-head">
             <div>
-              <h2>Foto clienti</h2>
-              <p class="panel-sub">Carica e consulta le foto dei tuoi clienti assegnati.</p>
+              <h2>Foto visite</h2>
+              <p class="panel-sub">Documentazione fotografica del percorso del cliente.</p>
             </div>
             <span id="photoCount" class="pill">0</span>
           </div>
           <div class="photo-toolbar">
             <select id="photoClientFilter" class="select"></select>
-            <input id="photoDate" class="select" type="date">
-            <button id="photoUploadButton" class="primary-btn slim" type="button">Carica foto</button>
             <input id="photoInput" type="file" accept="image/*" multiple hidden>
           </div>
           <div id="photoDrop" class="photo-drop">
-            <strong>Trascina qui le foto</strong>
-            <span>JPG, PNG o WebP. Ridimensionamento automatico prima del caricamento.</span>
+            <strong>Aggiungi foto visita</strong>
+            <span>JPG, PNG, HEIC o WebP. Puoi caricare più foto contemporaneamente.</span>
+          </div>
+          <div class="photo-visit-fields">
+            <label><span>Data visita</span><input id="photoDate" type="date"></label>
+            <label><span>Peso rilevato (kg)</span><input id="photoWeight" type="number" step="0.1" placeholder="-"></label>
+            <label><span>Note visita</span><input id="photoNote" type="text" placeholder="-"></label>
+          </div>
+          <div id="photoDraftCount" class="photo-draft-count">0 foto selezionate</div>
+          <div id="photoPreviewArea" class="photo-preview-area hidden">
+            <div id="photoThumbnails" class="photo-thumbnails"></div>
+            <button id="photoSaveButton" class="primary-btn" type="button">Salva visita</button>
           </div>
           <div class="upload-progress" id="photoProgress"><div id="photoProgressBar"></div></div>
           <div id="photoGrid" class="photo-grid"></div>
@@ -339,6 +347,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/pt.js?v=14"></script>
+  <script src="js/pt.js?v=15"></script>
 </body>
 </html>

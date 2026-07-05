@@ -191,6 +191,7 @@ const state = {
   builderProgression: null,
   builderSessionIndex: 0,
   lastAddedExerciseId: '',
+  photoDraftFiles: [],
 };
 
 const els = {};
@@ -749,6 +750,8 @@ function normalizePhoto(row) {
     filename: data.filename || '',
     date: data.data || data.date || row.created_at?.slice(0, 10) || todayIso(),
     visitId: data.visitaId || data.visitId || '',
+    weight: data.peso || data.weight || '',
+    note: data.note || data.notes || '',
     bucket: data.bucket || '',
     path: data.storagePath || data.storage_path || data.path || '',
     source: data.source || 'storage',
@@ -973,21 +976,68 @@ function renderPhotos() {
   renderPhotoOptions();
   const photos = myPhotos().filter((photo) => !state.selectedPhotoClientId || photo.client_id === state.selectedPhotoClientId);
   els.photoCount.textContent = photos.length;
-  els.photoGrid.innerHTML = photos.length ? photos.map((photo) => {
-    const client = clientById(photo.client_id);
+  const visits = groupPhotosByVisit(photos);
+  els.photoGrid.innerHTML = visits.length ? visits.map((visit) => {
     return `
-      <article class="photo-card">
-        <button class="photo-preview" type="button" data-open-photo="${esc(photo.url)}">
-          <img src="${esc(photo.url)}" alt="${esc(photo.filename || 'Foto cliente')}" loading="lazy">
-        </button>
-        <div class="photo-meta">
-          <strong>${esc(client ? fullName(client) : 'Cliente')}</strong>
-          <span>${esc(formatDate(photo.date))}</span>
+      <article class="photo-visit-card">
+        <div class="photo-visit-head">
+          <div>
+            <strong>${esc(formatDate(visit.date))}</strong>
+            <span>${visit.weight ? `${esc(visit.weight)} kg` : ''}${visit.note ? ` · ${esc(visit.note)}` : ''}</span>
+          </div>
+          <span class="pill">${visit.photos.length} foto</span>
         </div>
-        <button class="ghost-btn slim danger-lite" type="button" data-delete-photo="${esc(photo.id)}">Elimina</button>
+        <div class="photo-thumb-row">
+          ${visit.photos.map((photo, index) => `
+            <div class="photo-thumb">
+              <button type="button" data-open-photo="${esc(photo.url)}">
+                <img src="${esc(photo.url)}" alt="${esc(photo.filename || 'Foto visita')}" loading="lazy">
+              </button>
+              <div><span>${index + 1}/${visit.photos.length}</span><button type="button" data-delete-photo="${esc(photo.id)}">×</button></div>
+            </div>
+          `).join('')}
+        </div>
       </article>
     `;
   }).join('') : '<div class="empty">Nessuna foto per questo cliente</div>';
+}
+
+function groupPhotosByVisit(photos) {
+  const map = new Map();
+  photos.forEach((photo) => {
+    const key = photo.visitId || `${photo.client_id}_${photo.date}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        id: key,
+        date: photo.date,
+        weight: photo.weight || '',
+        note: photo.note || '',
+        photos: [],
+      });
+    }
+    const group = map.get(key);
+    if (!group.weight && photo.weight) group.weight = photo.weight;
+    if (!group.note && photo.note) group.note = photo.note;
+    group.photos.push(photo);
+  });
+  return Array.from(map.values())
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+}
+
+function setPhotoDraft(files) {
+  state.photoDraftFiles = Array.from(files || []).filter((file) => file.type.startsWith('image/'));
+  els.photoThumbnails.innerHTML = '';
+  state.photoDraftFiles.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = document.createElement('img');
+      img.src = reader.result;
+      els.photoThumbnails.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+  els.photoDraftCount.textContent = `${state.photoDraftFiles.length} ${state.photoDraftFiles.length === 1 ? 'foto selezionata' : 'foto selezionate'}`;
+  els.photoPreviewArea.classList.toggle('hidden', !state.photoDraftFiles.length);
 }
 
 function resizeImageFile(file, maxSize = 1200, quality = 0.82) {
@@ -1011,16 +1061,19 @@ function resizeImageFile(file, maxSize = 1200, quality = 0.82) {
   });
 }
 
-async function uploadPhotos(files) {
+async function savePhotoVisit() {
   const clientId = els.photoClientFilter.value || state.selectedPhotoClientId;
   const client = clientById(clientId);
   if (!client || !myClientIds().has(clientId)) {
     toast('Seleziona un tuo cliente assegnato', true);
     return;
   }
-  const selected = Array.from(files || []).filter((file) => file.type.startsWith('image/'));
+  const selected = state.photoDraftFiles;
   if (!selected.length) return;
   const date = els.photoDate.value || todayIso();
+  const visitId = idFromPhoto().replace('foto_', 'visit_');
+  const weight = els.photoWeight.value || '';
+  const note = els.photoNote.value.trim();
   els.photoProgress.classList.add('show');
   let uploaded = 0;
   for (let i = 0; i < selected.length; i++) {
@@ -1043,6 +1096,9 @@ async function uploadPhotos(files) {
       url: storage.url,
       filename: file.name,
       data: date,
+      visitaId: visitId,
+      peso: weight,
+      note,
       bucket: storage.bucket,
       storagePath: storage.path,
       storage_path: storage.path,
@@ -1062,6 +1118,12 @@ async function uploadPhotos(files) {
     els.photoProgressBar.style.width = '0';
   }, 500);
   els.photoInput.value = '';
+  state.photoDraftFiles = [];
+  els.photoThumbnails.innerHTML = '';
+  els.photoDraftCount.textContent = '0 foto selezionate';
+  els.photoPreviewArea.classList.add('hidden');
+  els.photoWeight.value = '';
+  els.photoNote.value = '';
   renderPhotos();
   if (uploaded) toast(`${uploaded} foto caricate`);
 }
@@ -2211,8 +2273,8 @@ function bindEvents() {
   document.body.addEventListener('change', (event) => {
     if (event.target?.id === 'editSessionService') refreshSessionEditorClientMode();
   });
-  els.photoUploadButton.addEventListener('click', () => els.photoInput.click());
-  els.photoInput.addEventListener('change', () => uploadPhotos(els.photoInput.files).catch((error) => toast(error.message, true)));
+  els.photoSaveButton.addEventListener('click', () => savePhotoVisit().catch((error) => toast(error.message, true)));
+  els.photoInput.addEventListener('change', () => setPhotoDraft(els.photoInput.files));
   els.photoClientFilter.addEventListener('change', () => {
     state.selectedPhotoClientId = els.photoClientFilter.value;
     renderPhotos();
@@ -2221,11 +2283,12 @@ function bindEvents() {
     event.preventDefault();
     els.photoDrop.classList.add('drag');
   });
+  els.photoDrop.addEventListener('click', () => els.photoInput.click());
   els.photoDrop.addEventListener('dragleave', () => els.photoDrop.classList.remove('drag'));
   els.photoDrop.addEventListener('drop', (event) => {
     event.preventDefault();
     els.photoDrop.classList.remove('drag');
-    uploadPhotos(event.dataTransfer.files).catch((error) => toast(error.message, true));
+    setPhotoDraft(event.dataTransfer.files);
   });
   document.querySelectorAll('[data-my-move]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -2268,8 +2331,9 @@ function cacheEls() {
     'loginScreen', 'app', 'loginEmail', 'loginCode', 'loginButton', 'loginError', 'currentPtName', 'logoutButton',
     'refreshButton', 'openCalendarButton', 'heroTitle', 'heroSub', 'errorBox', 'toast', 'kpiClienti', 'kpiOggi',
     'kpiSettimana', 'kpiStudio', 'mySessionCount', 'myNextSessions', 'alertCount', 'alertClients', 'renewalCount', 'renewalClients',
-    'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'photoCount', 'photoClientFilter', 'photoDate', 'photoUploadButton',
-    'photoInput', 'photoDrop', 'photoProgress', 'photoProgressBar', 'photoGrid', 'programClientFilter',
+    'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'photoCount', 'photoClientFilter', 'photoDate', 'photoWeight',
+    'photoNote', 'photoInput', 'photoDrop', 'photoDraftCount', 'photoPreviewArea', 'photoThumbnails', 'photoSaveButton',
+    'photoProgress', 'photoProgressBar', 'photoGrid', 'programClientFilter',
     'programStatusFilter', 'programList', 'programCount', 'newProgramButton', 'programEditorTitle', 'programEditorStatus',
     'programForm', 'programId', 'programClient', 'programStatus', 'programName', 'programGoal',
     'programLevel', 'programWeeks', 'programFrequency', 'programSplit', 'programStart', 'programEnd',
