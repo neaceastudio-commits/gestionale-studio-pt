@@ -77,6 +77,10 @@
             <label>Telefono<input id="telefono" type="tel" autocomplete="tel"></label>
             <label>Email *<input id="email" type="email" required autocomplete="email"></label>
             <label>Codice fiscale<input id="codiceFiscale" autocomplete="off" maxlength="16" placeholder="RSSMRA80A01H501U"></label>
+            <label>Indirizzo per fattura<input id="indirizzo" autocomplete="street-address" placeholder="Via / Piazza e numero civico"></label>
+            <label>CAP<input id="cap" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="09100"></label>
+            <label>Comune<input id="comune" autocomplete="address-level2" placeholder="Cagliari"></label>
+            <label>Provincia<input id="provincia" autocomplete="address-level1" maxlength="2" placeholder="CA"></label>
             <label>Professione<input id="professione"></label>
             <label>Contatto emergenza<input id="contattoEmergenza" placeholder="Nome e telefono"></label>
           </div>
@@ -179,6 +183,10 @@
     }
     const ACQUISIZIONE_LABELS = {
       codice_fiscale:'Codice fiscale',
+      indirizzo:'Indirizzo per fattura',
+      cap:'CAP',
+      comune:'Comune',
+      provincia:'Provincia',
       contatto_emergenza:'Contatto emergenza'
     };
     function missingColumn(error){
@@ -201,14 +209,25 @@
           }
         }
       }
-      return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
+      return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return:minimal'},body:fallback});
     }
     function body(){
       const id = new URLSearchParams(location.search).get('id') || genId('acq');
       const codiceFiscale = $('codiceFiscale').value.trim().toUpperCase();
+      const indirizzo = $('indirizzo').value.trim();
+      const cap = $('cap').value.trim();
+      const comune = $('comune').value.trim();
+      const provincia = $('provincia').value.trim().toUpperCase();
       const contattoEmergenza = $('contattoEmergenza').value.trim();
-      const noteParts = [
+      const fatturazioneParts = [
         codiceFiscale && 'Codice fiscale: '+codiceFiscale,
+        indirizzo && 'Indirizzo per fattura: '+indirizzo,
+        cap && 'CAP: '+cap,
+        comune && 'Comune: '+comune,
+        provincia && 'Provincia: '+provincia,
+      ].filter(Boolean);
+      const noteParts = [
+        fatturazioneParts.length && 'Dati fatturazione:\\n'+fatturazioneParts.join('\\n'),
         contattoEmergenza && 'Contatto emergenza: '+contattoEmergenza,
         $('note').value && 'Note cliente: '+$('note').value,
         $('patologie').value && 'Patologie: '+$('patologie').value,
@@ -227,6 +246,10 @@
         telefono:$('telefono').value.trim(),
         email:$('email').value.trim(),
         codice_fiscale:codiceFiscale,
+        indirizzo,
+        cap,
+        comune,
+        provincia,
         professione:$('professione').value.trim(),
         contatto_emergenza:contattoEmergenza,
         servizi:'PT',
