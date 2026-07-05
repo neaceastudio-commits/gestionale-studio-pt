@@ -571,6 +571,12 @@ async function loadPhaseViews() {
       email: client.email,
       professione: client.professione,
       obiettivo: client.obiettivo || acq?.obiettivo,
+      tipoServizio: client.tipo_servizio || client.tipoServizio || '',
+      tipoAbbonamento: client.tipo_abbonamento || client.tipoAbbonamento || '',
+      packageTypes: Array.isArray(client.package_types) ? client.package_types : (Array.isArray(client.packageTypes) ? client.packageTypes : []),
+      dataScadenza: client.data_scadenza || client.dataScadenza || '',
+      sessionsTotal: Number(client.sessions_total || client.sessionsTotal || 0),
+      sessionsRemaining: Number(client.sessions_remaining || client.sessionsRemaining || 0),
       esperienza: acq?.esperienza,
       livello_attivita_fisica: acq?.livello_attivita_fisica || acq?.inattivo,
       sport: acq?.sport,
@@ -632,6 +638,12 @@ async function loadFallback() {
       email: client.email,
       professione: client.professione,
       obiettivo: client.obiettivo || acq?.obiettivo,
+      tipoServizio: client.tipo_servizio || client.tipoServizio || '',
+      tipoAbbonamento: client.tipo_abbonamento || client.tipoAbbonamento || '',
+      packageTypes: Array.isArray(client.package_types) ? client.package_types : (Array.isArray(client.packageTypes) ? client.packageTypes : []),
+      dataScadenza: client.data_scadenza || client.dataScadenza || '',
+      sessionsTotal: Number(client.sessions_total || client.sessionsTotal || 0),
+      sessionsRemaining: Number(client.sessions_remaining || client.sessionsRemaining || 0),
       esperienza: acq?.esperienza,
       livello_attivita_fisica: acq?.livello_attivita_fisica || acq?.inattivo,
       sport: acq?.sport,
@@ -848,6 +860,48 @@ function renderDashboard() {
       <div class="row-sub">${esc((client.alerts || [])[0]?.title || 'Controllare anamnesi e note operative')}</div>
     </article>
   `).join('') : '<div class="empty">Nessun alert sui tuoi clienti</div>';
+
+  const renewals = renewalClients();
+  els.renewalCount.textContent = renewals.length;
+  els.renewalClients.innerHTML = renewals.length ? renewals.map(({ client, reason }) => `
+    <article class="row-card">
+      <div class="row-title"><span>${esc(fullName(client))}</span><span class="pill alert">${esc(reason)}</span></div>
+      <div class="row-sub">${esc(packageSummary(client))}</div>
+    </article>
+  `).join('') : '<div class="empty">Nessun rinnovo urgente sui tuoi clienti</div>';
+}
+
+function packageSummary(client) {
+  const type = Array.isArray(client.packageTypes) && client.packageTypes.length
+    ? client.packageTypes.join(', ')
+    : (client.tipoServizio || client.tipoAbbonamento || 'Pacchetto PT');
+  const remaining = Number(client.sessionsRemaining || 0);
+  const total = Number(client.sessionsTotal || 0);
+  const sessions = total ? `${remaining}/${total} sedute` : `${remaining} sedute residue`;
+  const expiry = client.dataScadenza ? ` · scade ${formatDate(client.dataScadenza)}` : '';
+  return `${type} · ${sessions}${expiry}`;
+}
+
+function daysTo(dateValue) {
+  if (!dateValue) return null;
+  const date = parseIso(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = parseIso(todayIso());
+  return Math.ceil((date - today) / 86400000);
+}
+
+function renewalClients() {
+  return myClients()
+    .map((client) => {
+      const remaining = Number(client.sessionsRemaining || 0);
+      const expiryDays = daysTo(client.dataScadenza);
+      if (remaining <= 0 && (client.sessionsTotal || client.dataScadenza)) return { client, reason: 'Finito' };
+      if (remaining > 0 && remaining <= 2) return { client, reason: 'Quasi finito' };
+      if (expiryDays !== null && expiryDays <= 7) return { client, reason: expiryDays < 0 ? 'Scaduto' : 'In scadenza' };
+      return null;
+    })
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function renderClients() {
@@ -905,6 +959,10 @@ function renderClientDetail() {
       <div class="section-card"><span>Email</span><strong>${esc(client.email || '-')}</strong></div>
       <div class="section-card"><span>Professione</span><strong>${esc(client.professione || '-')}</strong></div>
       <div class="section-card"><span>Obiettivo</span><strong>${esc(client.obiettivo || '-')}</strong></div>
+      <div class="section-card"><span>Pacchetto</span><strong>${esc(Array.isArray(client.packageTypes) && client.packageTypes.length ? client.packageTypes.join(', ') : (client.tipoServizio || client.tipoAbbonamento || '-'))}</strong></div>
+      <div class="section-card"><span>Sedute residue</span><strong>${esc(Number(client.sessionsTotal || 0) ? `${client.sessionsRemaining || 0}/${client.sessionsTotal}` : (client.sessionsRemaining || '-'))}</strong></div>
+      <div class="section-card"><span>Scadenza</span><strong>${esc(client.dataScadenza ? formatDate(client.dataScadenza) : '-')}</strong></div>
+      <div class="section-card"><span>Stato rinnovo</span><strong>${esc(renewalClients().find((item) => item.client.client_id === client.client_id)?.reason || 'OK')}</strong></div>
     </div>
     <div class="detail-block">
       <h3 class="detail-block-title">Anamnesi e riferimenti</h3>
@@ -1984,7 +2042,7 @@ function cacheEls() {
   [
     'loginScreen', 'app', 'loginEmail', 'loginCode', 'loginButton', 'loginError', 'currentPtName', 'logoutButton',
     'refreshButton', 'openCalendarButton', 'heroTitle', 'heroSub', 'errorBox', 'toast', 'kpiClienti', 'kpiOggi',
-    'kpiSettimana', 'kpiStudio', 'mySessionCount', 'myNextSessions', 'alertCount', 'alertClients',
+    'kpiSettimana', 'kpiStudio', 'mySessionCount', 'myNextSessions', 'alertCount', 'alertClients', 'renewalCount', 'renewalClients',
     'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'programClientFilter',
     'programStatusFilter', 'programList', 'programCount', 'newProgramButton', 'programEditorTitle', 'programEditorStatus',
     'programForm', 'programId', 'programClient', 'programStatus', 'programName', 'programGoal',
