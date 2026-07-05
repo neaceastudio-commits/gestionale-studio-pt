@@ -25,13 +25,83 @@ const UI = {
   },
 };
 
+const PT_ACCESS = (() => {
+  const params = new URLSearchParams(window.location.search);
+  const operatorId = params.get('op') || params.get('operatorId') || '';
+  const email = params.get('email') || '';
+  return {
+    enabled: params.get('pt') === '1' || !!operatorId,
+    operatorId,
+    email,
+  };
+})();
+
 // ── APP CONTROLLER ────────────────────────────────────────
 
 const App = {
 
+  isPtMode() {
+    return !!PT_ACCESS.enabled && !!PT_ACCESS.operatorId;
+  },
+
+  currentPtId() {
+    return PT_ACCESS.operatorId || '';
+  },
+
+  _clientBelongsToCurrentPt(clientId) {
+    if (!App.isPtMode()) return true;
+    const client = State.getClients().find(c => c.id === clientId) || Services.getClient(clientId);
+    return String(client?.ptAssegnato || client?.pt_assegnato || '') === App.currentPtId();
+  },
+
+  _ptCanManageClient(clientId, action = 'modificare') {
+    if (!App.isPtMode()) return true;
+    if (App._clientBelongsToCurrentPt(clientId)) return true;
+    UI.showToast(`Puoi ${action} solo i clienti assegnati a te`, 'error');
+    return false;
+  },
+
+  _ptCanManageAppointment(appt, { showToast = false, action = 'modificare' } = {}) {
+    if (!App.isPtMode()) return true;
+    if (!appt) return false;
+    const isOwnOperator = String(appt.operatorId || '') === App.currentPtId();
+    const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
+    const ownClients = clientIds.length > 0 && clientIds.every(id => App._clientBelongsToCurrentPt(id));
+    const canManage = !Services.getService(appt.serviceId)?.isBlock && isOwnOperator && ownClients;
+    if (!canManage && showToast) UI.showToast(`Puoi ${action} solo le sedute collegate ai tuoi clienti`, 'error');
+    return canManage;
+  },
+
+  _ptCanSaveAppointmentData(apptData, existing = null) {
+    if (!App.isPtMode()) return true;
+    if (existing && !App._ptCanManageAppointment(existing, { showToast: true })) return false;
+    const svc = Services.getService(apptData.serviceId);
+    if (svc?.isBlock) {
+      UI.showToast('Dal portale PT non puoi creare blocchi agenda', 'error');
+      return false;
+    }
+    if (String(apptData.operatorId || '') !== App.currentPtId()) {
+      UI.showToast('Dal portale PT puoi salvare solo sul tuo calendario', 'error');
+      return false;
+    }
+    const clientIds = Array.isArray(apptData.clientIds) ? apptData.clientIds : [];
+    if (!clientIds.length || !clientIds.every(id => App._clientBelongsToCurrentPt(id))) {
+      UI.showToast('Seleziona solo clienti assegnati a te', 'error');
+      return false;
+    }
+    return true;
+  },
+
   // ── APERTURA MODALI ──────────────────────────────────
 
   openNewAppointment(dateStr = null, clientId = null, startTime = null, serviceId = null) {
+    if (App.isPtMode()) {
+      if (serviceId === 'blocco') {
+        UI.showToast('Dal portale PT non puoi creare blocchi agenda', 'error');
+        return;
+      }
+      if (clientId && !App._ptCanManageClient(clientId, 'creare appuntamenti per')) return;
+    }
     App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : [], startTime || '09:00', serviceId || 'pt11');
   },
   openDetail(apptId) {
@@ -43,14 +113,16 @@ const App = {
 
   _renderAppointmentModal(apptId, defaultDate, preselectedClientIds = [], defaultStartTime = '09:00', defaultServiceId = 'pt11') {
     const appt   = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    if (App.isPtMode() && appt && !App._ptCanManageAppointment(appt, { showToast: true })) return;
     const isEdit = !!appt;
-    const curSvcId = appt?.serviceId || defaultServiceId || 'pt11';
+    const curSvcId = App.isPtMode() && defaultServiceId === 'blocco' ? 'pt11' : (appt?.serviceId || defaultServiceId || 'pt11');
     const svc = Services.getService(curSvcId);
 
     // Servizi dropdown
-    const svcsHtml = Object.values(CONFIG.SERVICES).map(s =>
-      `<option value="${s.id}" ${curSvcId===s.id?'selected':''}>${s.label}${s.isBlock?' 🚫':''}</option>`
-    ).join('');
+    const svcsHtml = Object.values(CONFIG.SERVICES)
+      .filter(s => !App.isPtMode() || !s.isBlock)
+      .map(s => `<option value="${s.id}" ${curSvcId===s.id?'selected':''}>${s.label}${s.isBlock?' 🚫':''}</option>`)
+      .join('');
 
     // Status dropdown
     const statusHtml = Object.entries(CONFIG.STATUS).map(([k,v]) =>
@@ -141,7 +213,8 @@ const App = {
   _buildClientsSection(serviceId, selectedIds) {
     const svc = Services.getService(serviceId);
     if (!svc || svc.isBlock) return '';
-    const compatible = Services.getCompatibleClients(serviceId);
+    const compatible = Services.getCompatibleClients(serviceId)
+      .filter(c => !App.isPtMode() || App._clientBelongsToCurrentPt(c.id));
     const compCount  = compatible.filter(c => c.compatible).length;
     const isMulti    = svc.maxClients > 1;
 
@@ -219,6 +292,18 @@ const App = {
     const bufferMin = svc?.bufferMin || 0;
     const excludeId = excludeAppointmentId || document.getElementById('appt-id')?.value || null;
     const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId);
+    if (App.isPtMode()) {
+      const current = Services.getOperator(App.currentPtId());
+      const label = current ? `${current.nome} ${current.cognome}` : 'PT corrente';
+      return `
+      <div class="form-group">
+        <label>Operatore</label>
+        <select id="appt-operator" class="form-input" disabled>
+          <option value="${App.currentPtId()}" selected>${label}</option>
+        </select>
+        <div class="form-hint">Modalita PT: puoi salvare solo sul tuo calendario.</div>
+      </div>`;
+    }
 
     // Se selectedOpId non valido, prova auto-assign
     if (!selectedOpId && date && startTime) {
@@ -293,7 +378,7 @@ const App = {
     App._rebuildOperatorSection();
 
     const svc = Services.getService(svcId);
-    const opId = document.getElementById('appt-operator')?.value || null;
+    const opId = App.isPtMode() ? App.currentPtId() : (document.getElementById('appt-operator')?.value || null);
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
     const clientIds = clientEls.map(el => el.value);
     const apptId = document.getElementById('appt-id')?.value || null;
@@ -377,7 +462,7 @@ const App = {
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
-    const opId    = document.getElementById('appt-operator')?.value || null;
+    const opId    = App.isPtMode() ? App.currentPtId() : (document.getElementById('appt-operator')?.value || null);
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
     const notes   = document.getElementById('appt-notes')?.value || '';
     const svc     = Services.getService(svcId);
@@ -550,6 +635,7 @@ const App = {
     };
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    if (!App._ptCanSaveAppointmentData(apptData, before)) return;
     const sameClients = before
       ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
       : false;
@@ -596,6 +682,7 @@ const App = {
     const isCircuit = svc?.isGroup;
     const isBlock   = svc?.isBlock;
     const clients   = State.getClients();
+    const canManage = App._ptCanManageAppointment(appt);
 
     let bodyHtml = '';
     if (isBlock) {
@@ -612,15 +699,16 @@ const App = {
               const c = Services.getClient(id);
               return `<div class="participant-row">
                 <span>${c?`${c.nome} ${c.cognome}`:id}</span>
-                <button class="btn-icon-sm" onclick="App._removeParticipant('${appt.id}','${id}')">✕</button>
+                ${canManage ? `<button class="btn-icon-sm" onclick="App._removeParticipant('${appt.id}','${id}')">✕</button>` : ''}
               </div>`;
             }).join('')}
           </div>
-          ${appt.clientIds.length < svc.maxClients ? `
+          ${canManage && appt.clientIds.length < svc.maxClients ? `
             <div class="add-participant">
               <select id="add-part-select" class="form-input form-input-sm">
                 <option value="">— aggiungi cliente —</option>
                 ${clients.filter(c => c.active !== false && !appt.clientIds.includes(c.id))
+                  .filter(c => !App.isPtMode() || App._clientBelongsToCurrentPt(c.id))
                   .map(c=>`<option value="${c.id}">${c.nome} ${c.cognome}</option>`).join('')}
               </select>
               <button class="btn-primary btn-sm" onclick="App._addParticipant('${appt.id}')">+</button>
@@ -661,36 +749,44 @@ const App = {
         ${appt.notes?`<div class="detail-section detail-section-full detail-notes"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
       </div>
       <div class="modal-footer">
-        <button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>
-        ${!isBlock?`
-          <button class="act-btn primary" onclick="App._markDone('${appt.id}')">✓ Fatto</button>
-          <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">No-show</button>
-        `:''}
-        <button class="btn-primary" onclick="App._renderAppointmentModal('${appt.id}','${appt.date}')">Modifica</button>
+        ${canManage ? `
+          <button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>
+          ${!isBlock?`
+            <button class="act-btn primary" onclick="App._markDone('${appt.id}')">✓ Fatto</button>
+            <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">No-show</button>
+          `:''}
+          <button class="btn-primary" onclick="App._renderAppointmentModal('${appt.id}','${appt.date}')">Modifica</button>
+        ` : '<span class="form-hint">Sola lettura: appuntamento non assegnato a te.</span>'}
+        <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
       </div>
     `;
     UI.openModal(html);
   },
 
   _addParticipant(apptId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!App._ptCanManageAppointment(appt, { showToast: true })) return;
     const sel = document.getElementById('add-part-select');
     if (!sel?.value) return;
     const result = Services.addCircuitParticipant(apptId, sel.value);
     if (result?.ok === false) { UI.showToast(result.error, 'error'); return; }
     UI.showToast('Partecipante aggiunto', 'success');
     Calendar.render();
-    const appt = State.getAppointments().find(a => a.id === apptId);
-    if (appt) App._renderDetailModal(appt);
+    const updatedAppt = State.getAppointments().find(a => a.id === apptId);
+    if (updatedAppt) App._renderDetailModal(updatedAppt);
   },
   _removeParticipant(apptId, clientId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!App._ptCanManageAppointment(appt, { showToast: true })) return;
     Services.removeCircuitParticipant(apptId, clientId);
     UI.showToast('Partecipante rimosso', 'success');
     Calendar.render();
-    const appt = State.getAppointments().find(a => a.id === apptId);
-    if (appt) App._renderDetailModal(appt);
+    const updatedAppt = State.getAppointments().find(a => a.id === apptId);
+    if (updatedAppt) App._renderDetailModal(updatedAppt);
   },
   _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
+    if (!App._ptCanManageAppointment(before, { showToast: true, action: 'segnare come fatto' })) return;
     const doneAppt = Services.updateAppointment(apptId, { status: 'fatto' });
     if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
@@ -718,12 +814,16 @@ const App = {
     });
   },
   _markNoShow(apptId) {
+    const before = State.getAppointments().find(a => a.id === apptId);
+    if (!App._ptCanManageAppointment(before, { showToast: true, action: 'segnare no-show su' })) return;
     const nsAppt = Services.updateAppointment(apptId, { status: 'noshow' });
     UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
     SupabaseSync.pushAppointment(nsAppt);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
   },
   _deleteAppt(apptId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!App._ptCanManageAppointment(appt, { showToast: true, action: 'eliminare' })) return;
     if (!confirm('Eliminare questo appuntamento?')) return;
     Services.deleteAppointment(apptId);
     SupabaseSync.deleteAppointment(apptId);
@@ -731,9 +831,18 @@ const App = {
   },
 
   // ── MODAL CLIENTE ────────────────────────────────────
-  openNewClient()        { App._renderClientModal(null); },
-  openEditClient(cid)    { App._renderClientModal(cid); },
-  openEditPackage(cid)   { App._renderClientModal(cid, true); },
+  openNewClient() {
+    if (App.isPtMode()) { UI.showToast('Dal portale PT non puoi creare nuovi clienti', 'error'); return; }
+    App._renderClientModal(null);
+  },
+  openEditClient(cid) {
+    if (!App._ptCanManageClient(cid)) return;
+    App._renderClientModal(cid);
+  },
+  openEditPackage(cid) {
+    if (!App._ptCanManageClient(cid)) return;
+    App._renderClientModal(cid, true);
+  },
 
   _renderClientModal(clientId, packageOnly = false) {
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
@@ -896,6 +1005,10 @@ const App = {
   },
 
   _saveClient(clientId) {
+    if (App.isPtMode()) {
+      if (!clientId) { UI.showToast('Dal portale PT non puoi creare nuovi clienti', 'error'); return; }
+      if (!App._ptCanManageClient(clientId)) return;
+    }
     const nome      = document.getElementById('cl-nome')?.value.trim();
     const cognome   = document.getElementById('cl-cognome')?.value.trim();
     const email     = document.getElementById('cl-email')?.value.trim();
@@ -1020,6 +1133,7 @@ const App = {
   openPackageOverview(clientId) {
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
+    const canManagePackage = !App.isPtMode() || App._clientBelongsToCurrentPt(clientId);
 
     const metrics = Services.getClientSessionMetrics(client);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
@@ -1027,7 +1141,9 @@ const App = {
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
     const appointments = App._packageAppointments(client, true);
-    const operators = State.getOperators().filter(o => o.active !== false);
+    const operators = State.getOperators()
+      .filter(o => o.active !== false)
+      .filter(o => !App.isPtMode() || o.id === App.currentPtId());
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
     const today = App._dateStr(new Date());
@@ -1041,8 +1157,10 @@ const App = {
       const svc = Services.getService(a.serviceId);
       const operatorOptions = State.getOperators()
         .filter(op => op.active !== false)
+        .filter(op => !App.isPtMode() || op.id === App.currentPtId())
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
+      const canManageRow = App._ptCanManageAppointment(a);
       const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
         `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
       ).join('');
@@ -1059,7 +1177,7 @@ const App = {
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>
             <select id="pkg-operator-${a.id}" class="form-input package-operator-input">
-              <option value="">—</option>
+              ${App.isPtMode() ? '' : '<option value="">—</option>'}
               ${operatorOptions}
             </select>
           </td>
@@ -1070,9 +1188,11 @@ const App = {
           </td>
           <td>
             <div class="package-row-actions">
-              <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
-              <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
-              <button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>
+              ${canManageRow ? `
+                <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
+                <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
+                <button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>
+              ` : '<span class="form-hint">Sola lettura</span>'}
             </div>
           </td>
         </tr>`;
@@ -1096,7 +1216,7 @@ const App = {
               ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
             </div>
           </div>
-          <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
+          ${canManagePackage ? `<button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>` : ''}
         </div>
 
         <div class="package-overview-kpis">
@@ -1127,7 +1247,7 @@ const App = {
             <div class="package-generate-row">
               <label>Ora</label>
               <input id="pkg-gen-time" class="form-input" type="time" value="09:00" step="900">
-              <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>
+              ${canManagePackage ? `<button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>` : '<span class="form-hint">Sola lettura</span>'}
             </div>
           </section>
         </div>
@@ -1149,7 +1269,7 @@ const App = {
               <div class="form-group">
                 <label>PT</label>
                 <select id="pkg-plan-operator" class="form-input">
-                  <option value="">Mantieni/auto</option>
+                  ${App.isPtMode() ? '' : '<option value="">Mantieni/auto</option>'}
                   ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
                 </select>
               </div>
@@ -1164,9 +1284,11 @@ const App = {
             </div>
           </div>
           <div class="package-reschedule-actions">
-            <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
-            <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
-            <button class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')">Rinnova pacchetto</button>
+            ${canManagePackage ? `
+              <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
+              <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
+              <button class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')">Rinnova pacchetto</button>
+            ` : '<span class="form-hint">Sola lettura: cliente non assegnato a te.</span>'}
           </div>
           <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte. Se il pacchetto e finito, usa Rinnova pacchetto per aggiungere nuove sedute e generarle da capo.</p>
         </section>
@@ -1181,7 +1303,7 @@ const App = {
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
-        <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
+        ${canManagePackage ? `<button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>` : ''}
       </div>
     `;
     UI.openModal(html);
@@ -1292,13 +1414,14 @@ const App = {
   },
 
   _savePackageSchedule(clientId) {
+    if (!App._ptCanManageClient(clientId, 'gestire')) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '';
-    const operatorId = document.getElementById('pkg-plan-operator')?.value || '';
+    const operatorId = App.isPtMode() ? App.currentPtId() : (document.getElementById('pkg-plan-operator')?.value || '');
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
@@ -1333,6 +1456,7 @@ const App = {
   },
 
   async _regenerateFuturePackageAppointments(clientId) {
+    if (!App._ptCanManageClient(clientId, 'rigenerare')) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
@@ -1340,7 +1464,7 @@ const App = {
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '09:00';
-    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || null;
+    const selectedOperator = App.isPtMode() ? App.currentPtId() : (document.getElementById('pkg-plan-operator')?.value || null);
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
@@ -1447,6 +1571,7 @@ const App = {
   },
 
   async _renewPackageAppointments(clientId) {
+    if (!App._ptCanManageClient(clientId, 'rinnovare')) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
@@ -1454,7 +1579,7 @@ const App = {
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '09:00';
-    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null;
+    const selectedOperator = App.isPtMode() ? App.currentPtId() : (document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null);
     const renewCount = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
@@ -1567,9 +1692,10 @@ const App = {
 
   async _updatePackageAppointmentRow(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!App._ptCanManageAppointment(appt, { showToast: true })) return;
     const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
     const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
-    const nextOperatorId = document.getElementById(`pkg-operator-${apptId}`)?.value || null;
+    const nextOperatorId = App.isPtMode() ? App.currentPtId() : (document.getElementById(`pkg-operator-${apptId}`)?.value || null);
     const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
     if (!appt || !nextDate || !nextTime || !nextStatus) return;
     if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && appt.status === nextStatus) {
@@ -1598,6 +1724,7 @@ const App = {
   async _deletePackageAppointment(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (!appt) return;
+    if (!App._ptCanManageAppointment(appt, { showToast: true, action: 'eliminare' })) return;
     if (!confirm('Eliminare questa seduta dal pacchetto?')) return;
     Services.deleteAppointment(apptId);
     await SupabaseSync.deleteAppointment(apptId);
@@ -1611,6 +1738,7 @@ const App = {
   async _generateMissingPackageAppointments(clientId) {
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
+    if (!App._ptCanManageClient(clientId, 'generare appuntamenti per')) return;
 
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
@@ -1676,6 +1804,7 @@ const App = {
 
   // ── GESTIONE DATI ────────────────────────────────────
   openDataManager() {
+    if (App.isPtMode()) { UI.showToast('Gestione dati disponibile solo allo studio', 'error'); return; }
     const hasBackup = !!localStorage.getItem('neacea_backup');
     const lastSync  = localStorage.getItem('neacea_last_sync');
     const bkRaw     = localStorage.getItem('neacea_backup');
@@ -1832,6 +1961,7 @@ const App = {
   async init() {
     State.init();
     await App.refreshFromSupabase({ silent: true, force: true });
+    App._applyPtAccessMode();
 
     document.querySelectorAll('[data-view]').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
@@ -1852,6 +1982,15 @@ const App = {
     }, 30000);
 
     if (CONFIG.SHEETS.enabled) setTimeout(() => Sheets.fullSync(), 1500);
+  },
+
+  _applyPtAccessMode() {
+    if (!App.isPtMode()) return;
+    document.querySelector('[data-view="operators"]')?.remove();
+    const newApptBtn = document.querySelector('.topbar-right .topbar-btn.primary');
+    if (newApptBtn) newApptBtn.textContent = '+ Mia seduta';
+    const sub = document.querySelector('.topbar-sub');
+    if (sub) sub.textContent = 'Calendario PT';
   },
 };
 

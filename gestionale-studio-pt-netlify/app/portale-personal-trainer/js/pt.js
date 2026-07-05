@@ -1737,7 +1737,17 @@ function bindEvents() {
     renderAll();
     toast('Dati aggiornati');
   });
-  els.openCalendarButton.addEventListener('click', () => activateView('calendario'));
+  els.openCalendarButton.addEventListener('click', () => {
+    if (!state.currentPt?.id) {
+      activateView('calendario');
+      return;
+    }
+    const calendarUrl = new URL('https://new-calendar-neacea.netlify.app/');
+    calendarUrl.searchParams.set('pt', '1');
+    calendarUrl.searchParams.set('op', state.currentPt.id);
+    if (state.currentPt.email) calendarUrl.searchParams.set('email', state.currentPt.email);
+    window.open(calendarUrl.toString(), '_blank', 'noopener');
+  });
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));

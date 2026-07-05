@@ -9,6 +9,10 @@ const Operators = (() => {
     const ops = State.getOperators();
     const panel = document.getElementById('view-operators');
     if (!panel) return;
+    if (typeof App !== 'undefined' && App.isPtMode?.()) {
+      panel.innerHTML = '<div class="card"><p class="text-muted">Staff disponibile solo allo studio.</p></div>';
+      return;
+    }
 
     panel.innerHTML = `
       <div class="view-header">
@@ -70,6 +74,7 @@ const Operators = (() => {
   }
 
   function openModal(opId = null) {
+    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
     const op = opId ? State.getOperators().find(o => o.id === opId) : null;
     const isEdit = !!op;
 
@@ -121,6 +126,7 @@ const Operators = (() => {
   }
 
   function save(opId) {
+    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
     const nome = document.getElementById('op-nome').value.trim();
     const cognome = document.getElementById('op-cognome').value.trim();
     const email = document.getElementById('op-email').value.trim();
@@ -147,6 +153,7 @@ const Operators = (() => {
   }
 
   async function toggleActive(opId) {
+    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
     const ops = State.getOperators();
     const idx = ops.findIndex(o => o.id === opId);
     if (idx !== -1) {
@@ -164,6 +171,7 @@ const Operators = (() => {
   }
 
   async function confirmDelete(opId) {
+    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
     const op = State.getOperators().find(o => o.id === opId);
     if (!op) return;
     if (confirm('Eliminare ' + op.nome + ' ' + op.cognome + '?\nQuesta azione non può essere annullata.')) {

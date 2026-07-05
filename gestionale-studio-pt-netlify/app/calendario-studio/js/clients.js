@@ -263,6 +263,10 @@ const Clients = (() => {
   }
 
   function toggleActive(clientId) {
+    if (typeof App !== 'undefined' && App.isPtMode?.()) {
+      UI.showToast('Dal portale PT non puoi attivare o disattivare clienti', 'error');
+      return;
+    }
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx !== -1) {
@@ -274,6 +278,10 @@ const Clients = (() => {
   }
 
   function confirmDelete(clientId) {
+    if (typeof App !== 'undefined' && App.isPtMode?.()) {
+      UI.showToast('Dal portale PT non puoi eliminare clienti', 'error');
+      return;
+    }
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx === -1) return;
@@ -292,6 +300,7 @@ const Clients = (() => {
   }
 
   function alignResidual(clientId) {
+    if (typeof App !== 'undefined' && App.isPtMode?.() && !App._ptCanManageClient?.(clientId, 'allineare il residuo di')) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx === -1) return;
