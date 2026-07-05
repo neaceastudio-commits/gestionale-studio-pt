@@ -209,7 +209,7 @@
           }
         }
       }
-      return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return:minimal'},body:fallback});
+      return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
     }
     function body(){
       const id = new URLSearchParams(location.search).get('id') || genId('acq');
