@@ -321,6 +321,10 @@ function sessionTrainerId(session) {
   return operatorIdFromAny(session?.trainer_id || session?.operator_id);
 }
 
+function canManageSession(session) {
+  return !!session?.appointment_id && sessionTrainerId(session) === state.currentPt?.id;
+}
+
 function normalizeServiceId(serviceId) {
   const raw = String(serviceId || '').trim();
   if (SERVICES[raw]) return raw;
@@ -1547,11 +1551,15 @@ function renderMonth(sessions) {
 async function markSessionDone(appointmentId) {
   if (!appointmentId) return;
   const session = state.sessions.find((item) => item.appointment_id === appointmentId);
+  if (!canManageSession(session)) {
+    toast('Puoi aggiornare solo le sedute collegate alla tua mail', true);
+    return;
+  }
   if (session?.status === 'fatto') {
     toast('Seduta gia segnata come fatta');
     return;
   }
-  await sb('appointments', `?id=eq.${encodeURIComponent(appointmentId)}`, {
+  await sb('appointments', `?id=eq.${encodeURIComponent(appointmentId)}&operator_id=eq.${encodeURIComponent(state.currentPt.id)}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: { status: 'fatto', updated_at: new Date().toISOString() },
@@ -1564,8 +1572,8 @@ async function markSessionDone(appointmentId) {
 async function editOwnSession(appointmentId) {
   if (!appointmentId) return;
   const session = state.sessions.find((item) => item.appointment_id === appointmentId);
-  if (!session || sessionTrainerId(session) !== state.currentPt?.id) {
-    toast('Puoi modificare solo le tue sedute', true);
+  if (!canManageSession(session)) {
+    toast('Puoi modificare solo le sedute collegate alla tua mail', true);
     return;
   }
   openSessionEditor(session);
@@ -1679,8 +1687,8 @@ function refreshSessionEditorClientMode() {
 async function saveSessionEditor() {
   const appointmentId = document.getElementById('editSessionId')?.value || state.editingSessionId;
   const original = state.sessions.find((item) => item.appointment_id === appointmentId);
-  if (!original || sessionTrainerId(original) !== state.currentPt?.id) {
-    toast('Puoi modificare solo le tue sedute', true);
+  if (!canManageSession(original)) {
+    toast('Puoi modificare solo le sedute collegate alla tua mail', true);
     return;
   }
   const serviceId = normalizeServiceId(document.getElementById('editSessionService')?.value || original.service_id || 'pt11');
@@ -1697,7 +1705,7 @@ async function saveSessionEditor() {
     toast('Seleziona almeno un cliente', true);
     return;
   }
-  await sb('appointments', `?id=eq.${encodeURIComponent(appointmentId)}`, {
+  await sb('appointments', `?id=eq.${encodeURIComponent(appointmentId)}&operator_id=eq.${encodeURIComponent(state.currentPt.id)}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: {
@@ -1729,6 +1737,7 @@ function bindEvents() {
     renderAll();
     toast('Dati aggiornati');
   });
+  els.openCalendarButton.addEventListener('click', () => activateView('calendario'));
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
@@ -1964,7 +1973,7 @@ function activateView(name) {
 function cacheEls() {
   [
     'loginScreen', 'app', 'loginEmail', 'loginCode', 'loginButton', 'loginError', 'currentPtName', 'logoutButton',
-    'refreshButton', 'heroTitle', 'heroSub', 'errorBox', 'toast', 'kpiClienti', 'kpiOggi',
+    'refreshButton', 'openCalendarButton', 'heroTitle', 'heroSub', 'errorBox', 'toast', 'kpiClienti', 'kpiOggi',
     'kpiSettimana', 'kpiStudio', 'mySessionCount', 'myNextSessions', 'alertCount', 'alertClients',
     'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'programClientFilter',
     'programStatusFilter', 'programList', 'programCount', 'newProgramButton', 'programEditorTitle', 'programEditorStatus',
