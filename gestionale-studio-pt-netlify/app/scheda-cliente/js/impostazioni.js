@@ -3,6 +3,7 @@
 //  NOTE PT
 // ═══════════════════════════════════════════════════════
 function salvaNoteCliente() {
+  if (!clienteAtt || bloccaClienteNonGestibile(clienteAtt)) return;
   salvaStorage(clienteAtt.id, 'note_pt', document.getElementById('note-pt-area').value);
   toast('Note salvate', 'ok');
 }
@@ -12,7 +13,12 @@ function salvaNoteCliente() {
 //  IMPOSTAZIONI / PT
 // ═══════════════════════════════════════════════════════
 function apriImpostazioni(id) {
+  if (accessoCentralePt.attivo) {
+    toast('Impostazioni riservate allo studio', 'err');
+    return;
+  }
   clienteAtt = clientiAll.find(c => c.id === id);
+  if (!clienteAtt) return;
   // Popola select PT
   const opts = staffAll.map(s => `<option value="${s.id}" ${clienteAtt.ptAssegnato===s.id?'selected':''}>${s.nome} ${s.cognome} (${s.ruolo})</option>`).join('');
   document.getElementById('imp-pt').innerHTML = '<option value="">— Nessun PT —</option>' + opts;
@@ -23,6 +29,10 @@ function apriImpostazioni(id) {
 }
 
 async function salvaImpostazioni() {
+  if (accessoCentralePt.attivo || !clienteAtt) {
+    toast('Impostazioni riservate allo studio', 'err');
+    return;
+  }
   const ptId      = document.getElementById('imp-pt').value;
   const spostaId  = document.getElementById('imp-sposta').value;
   const tipoAbb   = document.getElementById('imp-tipo-abb').value;
@@ -44,6 +54,7 @@ async function salvaImpostazioni() {
 //  MODIFICA CLIENTE
 // ═══════════════════════════════════════════════════════
 async function salvaModifica() {
+  if (!clienteAtt || bloccaClienteNonGestibile(clienteAtt)) return;
   const dati = {
     id: clienteAtt.id,
     nome: gv('mod-nome'), cognome: gv('mod-cognome'),
@@ -64,6 +75,7 @@ async function salvaModifica() {
 //  DOPPIO CLIENTE 1:2
 // ═══════════════════════════════════════════════════════
 function apriDoppio() {
+  if (!clienteAtt || bloccaClienteNonGestibile(clienteAtt)) return;
   document.getElementById('dual-nome-1').textContent = clienteAtt.nome + ' ' + clienteAtt.cognome;
   const schede1 = schedeAtt;
   document.getElementById('dual-prog-1').innerHTML = schede1.length
@@ -73,7 +85,7 @@ function apriDoppio() {
   // Popola select secondo cliente
   const sel = document.getElementById('doppio-select');
   sel.innerHTML = '<option value="">— Seleziona cliente 2 —</option>';
-  clientiAll.filter(c => c.id !== clienteAtt.id).forEach(c => {
+  clientiGestibiliInCentrale().filter(c => c.id !== clienteAtt.id).forEach(c => {
     const o = document.createElement('option');
     o.value = c.id; o.textContent = c.nome + ' ' + c.cognome;
     sel.appendChild(o);
@@ -86,6 +98,7 @@ function caricaSecondoCliente() {
   const id = document.getElementById('doppio-select').value;
   if (!id) { document.getElementById('dual-prog-2').innerHTML = '<div class="empty"><div class="empty-title">Seleziona un cliente</div></div>'; return; }
   const c2 = clientiAll.find(c => c.id === id);
+  if (!c2 || bloccaClienteNonGestibile(c2)) return;
   document.getElementById('dual-nome-2').textContent = c2.nome + ' ' + c2.cognome;
   const schede2 = leggiStorage(id, 'schede') || [];
   document.getElementById('dual-prog-2').innerHTML = schede2.length

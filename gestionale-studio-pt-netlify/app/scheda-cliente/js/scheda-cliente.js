@@ -5,6 +5,10 @@
 async function apriScheda(id) {
   clienteAtt = clientiAll.find(c => c.id === id);
   if (!clienteAtt) return;
+  if (bloccaClienteNonGestibile(clienteAtt)) {
+    clienteAtt = null;
+    return;
+  }
 
   // Carica dati
   datiFisiciAtt = leggiStorage(id, 'datiFisici') || [];
@@ -36,6 +40,8 @@ async function apriScheda(id) {
   document.getElementById('nav-cliente-wrap').style.display = 'flex';
   document.getElementById('nav-sezioni').style.display = 'flex';
   document.getElementById('btn-back').style.display = '';
+  const impNav = document.getElementById('snav-imp');
+  if (impNav) impNav.style.display = accessoCentralePt.attivo ? 'none' : '';
 
   // Hero
   document.getElementById('ch-nome').textContent = clienteAtt.nome + ' ' + clienteAtt.cognome;
@@ -57,6 +63,10 @@ async function apriScheda(id) {
 // ═══════════════════════════════════════════════════════
 function setSezione(sez) {
   if (sez === 'impostazioni') {
+    if (accessoCentralePt.attivo) {
+      toast('Impostazioni riservate allo studio', 'err');
+      return;
+    }
     if (clienteAtt && typeof apriImpostazioni === 'function') apriImpostazioni(clienteAtt.id);
     return;
   }
