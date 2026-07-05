@@ -36,6 +36,7 @@
       <nav class="tabs" aria-label="Sezioni">
         <button class="tab active" data-view="dashboard" type="button">Dashboard</button>
         <button class="tab" data-view="clienti" type="button">Clienti</button>
+        <button class="tab" data-view="foto" type="button">Foto</button>
         <button class="tab" data-view="schede" type="button">Schede</button>
         <button class="tab" data-view="agenda" type="button">Agenda</button>
         <button class="tab" data-view="calendario" type="button">Calendario studio</button>
@@ -275,6 +276,30 @@
         </div>
       </section>
 
+      <section id="foto" class="view">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Foto clienti</h2>
+              <p class="panel-sub">Carica e consulta le foto dei tuoi clienti assegnati.</p>
+            </div>
+            <span id="photoCount" class="pill">0</span>
+          </div>
+          <div class="photo-toolbar">
+            <select id="photoClientFilter" class="select"></select>
+            <input id="photoDate" class="select" type="date">
+            <button id="photoUploadButton" class="primary-btn slim" type="button">Carica foto</button>
+            <input id="photoInput" type="file" accept="image/*" multiple hidden>
+          </div>
+          <div id="photoDrop" class="photo-drop">
+            <strong>Trascina qui le foto</strong>
+            <span>JPG, PNG o WebP. Ridimensionamento automatico prima del caricamento.</span>
+          </div>
+          <div class="upload-progress" id="photoProgress"><div id="photoProgressBar"></div></div>
+          <div id="photoGrid" class="photo-grid"></div>
+        </section>
+      </section>
+
       <section id="agenda" class="view">
         <section class="panel">
           <div class="panel-head">
@@ -314,6 +339,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/pt.js?v=13"></script>
+  <script src="js/pt.js?v=14"></script>
 </body>
 </html>

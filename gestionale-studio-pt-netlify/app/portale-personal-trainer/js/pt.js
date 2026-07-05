@@ -175,9 +175,11 @@ const state = {
   clients: [],
   sessions: [],
   programs: [],
+  photos: [],
   currentPt: null,
   loginOperatorId: '',
   selectedClientId: '',
+  selectedPhotoClientId: '',
   selectedProgramId: '',
   calendarView: 'week',
   calendarReference: todayIso(),
@@ -522,6 +524,8 @@ async function loadData() {
     await loadFallback();
   }
   await loadPrograms();
+  if (state.currentPt) await loadPhotos();
+  else state.photos = [];
 }
 
 async function loadPhaseViews() {
@@ -736,12 +740,44 @@ async function loadPrograms() {
   }
 }
 
+function normalizePhoto(row) {
+  const data = row.data || {};
+  return {
+    id: row.id || data.id || '',
+    client_id: row.cliente_id || data.clienteId || data.client_id || '',
+    url: data.url || row.url || '',
+    filename: data.filename || '',
+    date: data.data || data.date || row.created_at?.slice(0, 10) || todayIso(),
+    visitId: data.visitaId || data.visitId || '',
+    bucket: data.bucket || '',
+    path: data.storagePath || data.storage_path || data.path || '',
+    source: data.source || 'storage',
+    created_at: row.created_at || data.created_at || '',
+  };
+}
+
+async function loadPhotos() {
+  try {
+    const rows = await sb('foto_allenamento', '?select=id,cliente_id,data,created_at&order=created_at.desc');
+    state.photos = (rows || []).map(normalizePhoto).filter((photo) => photo.url);
+  } catch (error) {
+    state.photos = [];
+  }
+}
+
 function myClients() {
   return state.clients.filter((client) => clientTrainerId(client) === state.currentPt?.id);
 }
 
 function myClientIds() {
   return new Set(myClients().map((client) => client.client_id));
+}
+
+function myPhotos() {
+  const allowed = myClientIds();
+  return state.photos
+    .filter((photo) => allowed.has(photo.client_id))
+    .sort((a, b) => `${b.date} ${b.created_at}`.localeCompare(`${a.date} ${a.created_at}`));
 }
 
 function mySessions() {
@@ -806,6 +842,7 @@ async function loginByEmail() {
     els.loginButton.textContent = 'Verifica...';
     await verifyAccess(email, code, pt.id);
     state.currentPt = pt;
+    await loadPhotos();
     els.loginCode.value = '';
     els.loginScreen.classList.add('hidden');
     els.app.classList.remove('hidden');
@@ -834,6 +871,7 @@ function renderAll() {
   els.heroSub.textContent = 'Qui trovi clienti, prenotazioni, schede e calendario studio.';
   renderDashboard();
   renderClients();
+  renderPhotos();
   renderProgramOptions();
   renderPrograms();
   renderMyAgenda();
@@ -918,6 +956,171 @@ function renderClients() {
     </article>
   `).join('') : '<div class="empty">Nessun cliente assegnato</div>';
   renderClientDetail();
+}
+
+function renderPhotoOptions() {
+  const clients = myClients();
+  if (els.photoDate && !els.photoDate.value) els.photoDate.value = todayIso();
+  const options = clients.map((client) => `<option value="${esc(client.client_id)}">${esc(fullName(client))}</option>`).join('');
+  els.photoClientFilter.innerHTML = options || '<option value="">Nessun cliente assegnato</option>';
+  if (!clients.some((client) => client.client_id === state.selectedPhotoClientId)) {
+    state.selectedPhotoClientId = state.selectedClientId || clients[0]?.client_id || '';
+  }
+  els.photoClientFilter.value = state.selectedPhotoClientId;
+}
+
+function renderPhotos() {
+  renderPhotoOptions();
+  const photos = myPhotos().filter((photo) => !state.selectedPhotoClientId || photo.client_id === state.selectedPhotoClientId);
+  els.photoCount.textContent = photos.length;
+  els.photoGrid.innerHTML = photos.length ? photos.map((photo) => {
+    const client = clientById(photo.client_id);
+    return `
+      <article class="photo-card">
+        <button class="photo-preview" type="button" data-open-photo="${esc(photo.url)}">
+          <img src="${esc(photo.url)}" alt="${esc(photo.filename || 'Foto cliente')}" loading="lazy">
+        </button>
+        <div class="photo-meta">
+          <strong>${esc(client ? fullName(client) : 'Cliente')}</strong>
+          <span>${esc(formatDate(photo.date))}</span>
+        </div>
+        <button class="ghost-btn slim danger-lite" type="button" data-delete-photo="${esc(photo.id)}">Elimina</button>
+      </article>
+    `;
+  }).join('') : '<div class="empty">Nessuna foto per questo cliente</div>';
+}
+
+function resizeImageFile(file, maxSize = 1200, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Lettura foto non riuscita'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Immagine non leggibile'));
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhotos(files) {
+  const clientId = els.photoClientFilter.value || state.selectedPhotoClientId;
+  const client = clientById(clientId);
+  if (!client || !myClientIds().has(clientId)) {
+    toast('Seleziona un tuo cliente assegnato', true);
+    return;
+  }
+  const selected = Array.from(files || []).filter((file) => file.type.startsWith('image/'));
+  if (!selected.length) return;
+  const date = els.photoDate.value || todayIso();
+  els.photoProgress.classList.add('show');
+  let uploaded = 0;
+  for (let i = 0; i < selected.length; i++) {
+    els.photoProgressBar.style.width = `${Math.round((i / selected.length) * 100)}%`;
+    const file = selected[i];
+    const dataUrl = await resizeImageFile(file);
+    const storage = await uploadPhotoStorage({
+      clienteId: clientId,
+      base64: dataUrl.split(',')[1],
+      filename: file.name,
+      mimeType: 'image/jpeg',
+      data: date,
+    });
+    if (!storage.success) {
+      toast(storage.error || 'Upload foto non riuscito', true);
+      continue;
+    }
+    const id = idFromPhoto();
+    const photoData = {
+      url: storage.url,
+      filename: file.name,
+      data: date,
+      bucket: storage.bucket,
+      storagePath: storage.path,
+      storage_path: storage.path,
+      source: 'portal-pt',
+    };
+    await sb('foto_allenamento', '', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: { id, cliente_id: clientId, data: photoData },
+    });
+    state.photos.unshift(normalizePhoto({ id, cliente_id: clientId, data: photoData, created_at: new Date().toISOString() }));
+    uploaded++;
+  }
+  els.photoProgressBar.style.width = '100%';
+  setTimeout(() => {
+    els.photoProgress.classList.remove('show');
+    els.photoProgressBar.style.width = '0';
+  }, 500);
+  els.photoInput.value = '';
+  renderPhotos();
+  if (uploaded) toast(`${uploaded} foto caricate`);
+}
+
+function idFromPhoto() {
+  return `foto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function uploadPhotoStorage(payload) {
+  const response = await fetch('/.netlify/functions/foto-pt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'uploadFoto', ...payload }),
+  });
+  const text = await response.text();
+  let json = {};
+  try { json = JSON.parse(text); } catch (_) { json = { success: false, error: text }; }
+  if (!response.ok) return { success: false, error: json.error || text || 'Upload non riuscito' };
+  return json;
+}
+
+async function deletePhoto(photoId) {
+  const photo = state.photos.find((item) => item.id === photoId);
+  if (!photo || !myClientIds().has(photo.client_id)) {
+    toast('Puoi eliminare solo foto dei tuoi clienti', true);
+    return;
+  }
+  if (!confirm('Eliminare questa foto?')) return;
+  if (photo.bucket && photo.path) {
+    await fetch('/.netlify/functions/foto-pt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteFoto', bucket: photo.bucket, path: photo.path }),
+    });
+  }
+  await sb('foto_allenamento', `?id=eq.${encodeURIComponent(photo.id)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' },
+  });
+  state.photos = state.photos.filter((item) => item.id !== photo.id);
+  renderPhotos();
+  toast('Foto eliminata');
+}
+
+function openPhotoLightbox(url) {
+  let modal = document.getElementById('photoLightbox');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'photoLightbox';
+    modal.className = 'modal-overlay hidden';
+    modal.innerHTML = '<div class="photo-lightbox"><button class="icon-btn photo-close" type="button" data-close-photo-lightbox>×</button><img id="photoLightboxImg" alt="Foto cliente"></div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('photoLightboxImg').src = url;
+  modal.classList.remove('hidden');
+}
+
+function closePhotoLightbox() {
+  document.getElementById('photoLightbox')?.classList.add('hidden');
 }
 
 function field(label, value) {
@@ -1994,13 +2197,35 @@ function bindEvents() {
     const done = event.target.closest('[data-session-done]');
     const closeModal = event.target.closest('[data-close-session-modal]');
     const saveModal = event.target.closest('[data-save-session-modal]');
+    const openPhoto = event.target.closest('[data-open-photo]');
+    const deletePhotoButton = event.target.closest('[data-delete-photo]');
+    const closePhoto = event.target.closest('[data-close-photo-lightbox]');
     if (edit) editOwnSession(edit.dataset.editSession).catch((error) => toast(error.message, true));
     if (done) markSessionDone(done.dataset.sessionDone).catch((error) => toast(error.message, true));
     if (closeModal) closeSessionEditor();
     if (saveModal) saveSessionEditor().catch((error) => toast(error.message, true));
+    if (openPhoto) openPhotoLightbox(openPhoto.dataset.openPhoto);
+    if (deletePhotoButton) deletePhoto(deletePhotoButton.dataset.deletePhoto).catch((error) => toast(error.message, true));
+    if (closePhoto) closePhotoLightbox();
   });
   document.body.addEventListener('change', (event) => {
     if (event.target?.id === 'editSessionService') refreshSessionEditorClientMode();
+  });
+  els.photoUploadButton.addEventListener('click', () => els.photoInput.click());
+  els.photoInput.addEventListener('change', () => uploadPhotos(els.photoInput.files).catch((error) => toast(error.message, true)));
+  els.photoClientFilter.addEventListener('change', () => {
+    state.selectedPhotoClientId = els.photoClientFilter.value;
+    renderPhotos();
+  });
+  els.photoDrop.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    els.photoDrop.classList.add('drag');
+  });
+  els.photoDrop.addEventListener('dragleave', () => els.photoDrop.classList.remove('drag'));
+  els.photoDrop.addEventListener('drop', (event) => {
+    event.preventDefault();
+    els.photoDrop.classList.remove('drag');
+    uploadPhotos(event.dataTransfer.files).catch((error) => toast(error.message, true));
   });
   document.querySelectorAll('[data-my-move]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -2043,7 +2268,8 @@ function cacheEls() {
     'loginScreen', 'app', 'loginEmail', 'loginCode', 'loginButton', 'loginError', 'currentPtName', 'logoutButton',
     'refreshButton', 'openCalendarButton', 'heroTitle', 'heroSub', 'errorBox', 'toast', 'kpiClienti', 'kpiOggi',
     'kpiSettimana', 'kpiStudio', 'mySessionCount', 'myNextSessions', 'alertCount', 'alertClients', 'renewalCount', 'renewalClients',
-    'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'programClientFilter',
+    'clientCount', 'clientSearch', 'clientList', 'clientDetail', 'photoCount', 'photoClientFilter', 'photoDate', 'photoUploadButton',
+    'photoInput', 'photoDrop', 'photoProgress', 'photoProgressBar', 'photoGrid', 'programClientFilter',
     'programStatusFilter', 'programList', 'programCount', 'newProgramButton', 'programEditorTitle', 'programEditorStatus',
     'programForm', 'programId', 'programClient', 'programStatus', 'programName', 'programGoal',
     'programLevel', 'programWeeks', 'programFrequency', 'programSplit', 'programStart', 'programEnd',
