@@ -21,54 +21,35 @@ const Operators = (() => {
           <span class="btn-icon">+</span> Aggiungi
         </button>
       </div>
-      <div class="card">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Email</th>
-              <th>Ruoli</th>
-              <th>Stato</th>
-              <th>Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${ops.map(op => `
-              <tr class="${op.active ? '' : 'row-inactive'}">
-                <td>
-                  <div class="op-name-cell">
-                    <span class="op-avatar" style="background:${op.color}">${op.nome[0]}${op.cognome[0]}</span>
-                    <span>${op.nome} ${op.cognome}</span>
-                  </div>
-                </td>
-                <td class="text-muted">${op.email}</td>
-                <td>
-                  <div class="role-tags">
-                    ${op.roles.map(r => `<span class="role-tag">${r}</span>`).join('')}
-                  </div>
-                </td>
-                <td>
-                  <span class="status-badge ${op.active ? 'status-attivo' : 'status-inattivo'}">
-                    ${op.active ? 'Attivo' : 'Non attivo'}
-                  </span>
-                </td>
-                <td>
-                  <div class="action-btns">
-                    <button class="btn-icon-sm" title="Modifica" onclick="Operators.openModal('${op.id}')">✏️</button>
-                    <button class="btn-icon-sm" title="${op.active ? 'Disattiva' : 'Attiva'}" onclick="Operators.toggleActive('${op.id}')">
-                      ${op.active ? '🔴' : '🟢'}
-                    </button>
-                    <button class="btn-icon-sm" title="Elimina" onclick="Operators.confirmDelete('${op.id}')">🗑️</button>
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+      <div class="operators-list">
+        ${ops.map(op => `
+          <section class="operator-card ${op.active ? '' : 'row-inactive'}">
+            <div class="op-name-cell">
+              <span class="op-avatar" style="background:${op.color}">${op.nome[0]}${op.cognome[0]}</span>
+              <div>
+                <strong>${op.nome} ${op.cognome}</strong>
+                <small>${op.email || 'Email non inserita'}</small>
+              </div>
+            </div>
+            <div class="role-tags">
+              ${op.roles.map(r => `<span class="role-tag">${r}</span>`).join('')}
+            </div>
+            <span class="status-badge ${op.active ? 'status-attivo' : 'status-inattivo'}">
+              ${op.active ? 'Attivo' : 'Non attivo'}
+            </span>
+            <div class="action-btns">
+              <button class="btn-icon-sm" title="Modifica" onclick="Operators.openModal('${op.id}')">✏️</button>
+              <button class="btn-icon-sm" title="${op.active ? 'Disattiva' : 'Attiva'}" onclick="Operators.toggleActive('${op.id}')">
+                ${op.active ? '🔴' : '🟢'}
+              </button>
+              <button class="btn-icon-sm" title="Elimina" onclick="Operators.confirmDelete('${op.id}')">🗑️</button>
+            </div>
+          </section>
+        `).join('')}
       </div>
       <div id="staff-availability-setup"></div>
     `;
-    if (window.StaffAvailability) StaffAvailability.renderSetup();
+    if (typeof StaffAvailability !== 'undefined') StaffAvailability.renderSetup();
   }
 
   function openModal(opId = null) {
