@@ -321,10 +321,6 @@ const Calendar = (() => {
     if (!panel) return;
     const rooms = Object.values(CONFIG.ROOMS);
 
-    const roomHeaders = rooms.map(r =>
-      `<th class="room-th">${r.label}<span class="room-th-max"> max ${r.max}</span></th>`
-    ).join('');
-
     const rows = sat.map(s => {
       const allAppts = Services.getAppointmentsForDate(dateStr).filter(a => a.status !== 'annullato');
       const slot = { startTime: s.time, durationMin: 60, bufferMin: 0 };
@@ -336,7 +332,8 @@ const Calendar = (() => {
           const svc = Services.getService(a.serviceId);
           return svc && svc.room === r.id && !svc.isBlock && Services.overlaps(slot, a, false);
         });
-        return `<td class="room-cell">
+        return `<div class="room-resource-card">
+          <div class="room-resource-head"><strong>${r.label}</strong><span>max ${r.max}</span></div>
           <div class="room-cell-bar">
             <div class="room-bar-mini" style="width:${rd.pct}%;background:${color}"></div>
           </div>
@@ -350,7 +347,7 @@ const Calendar = (() => {
               </span>`;
             }).join('')}
           </div>
-        </td>`;
+        </div>`;
       }).join('');
 
       const blocks = allAppts.filter(a => {
@@ -361,10 +358,10 @@ const Calendar = (() => {
         ? `<span class="block-badge" title="${blocks.map(b => Services.operatorFullName(b.operatorId) + ': ' + (b.notes||'blocco')).join(', ')}">🚫 ${blocks.length}</span>`
         : '';
 
-      return `<tr class="room-row">
-        <td class="room-time">${s.time}<br><span class="room-time-end">${s.label.split('\u2013')[1] || ''}</span>${blockBadge}</td>
+      return `<section class="room-row-card">
+        <div class="room-time">${s.time}<br><span class="room-time-end">${s.label.split('\u2013')[1] || ''}</span>${blockBadge}</div>
         ${roomCells}
-      </tr>`;
+      </section>`;
     }).join('');
 
     panel.innerHTML = `
@@ -381,12 +378,7 @@ const Calendar = (() => {
           <h3 class="card-title">Saturazione per sala e fascia oraria</h3>
           <span class="card-subtitle">3 risorse indipendenti</span>
         </div>
-        <div style="overflow-x:auto">
-          <table class="room-table">
-            <thead><tr><th>Orario</th>${roomHeaders}</tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <div class="room-grid">${rows}</div>
       </div>
     `;
   }

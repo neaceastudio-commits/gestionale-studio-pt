@@ -81,6 +81,20 @@ const StaffAvailability = (() => {
     return Object.values(data || {}).some(days => Object.values(days || {}).some(v => Array.isArray(v?.slots) && v.slots.length));
   }
 
+  function mergeAvailability(base, incoming) {
+    const merged = { ...(base || {}) };
+    Object.entries(incoming || {}).forEach(([opKey, days]) => {
+      merged[opKey] = { ...(merged[opKey] || {}) };
+      Object.entries(days || {}).forEach(([day, value]) => {
+        const current = merged[opKey][day]?.slots || [];
+        const next = Array.isArray(value?.slots) ? value.slots : [];
+        const slots = [...new Set([...current, ...next])].filter(Boolean).sort();
+        merged[opKey][day] = { ...(merged[opKey][day] || {}), ...(value || {}), slots };
+      });
+    });
+    return merged;
+  }
+
   function legacyAvailability() {
     try { return JSON.parse(localStorage.getItem(LEGACY_KEY) || '{}') || {}; }
     catch { return {}; }
@@ -95,10 +109,13 @@ const StaffAvailability = (() => {
       availability = remote || {};
 
       const legacy = legacyAvailability();
-      if (!hasRemoteRows(availability) && hasRemoteRows(legacy)) {
-        const migrated = await SupabaseSync.pushOperatorAvailability(legacy);
+      if (hasRemoteRows(legacy)) {
+        const merged = mergeAvailability(availability, legacy);
+        const migrated = await SupabaseSync.pushOperatorAvailability(merged);
         if (migrated?.error) throw new Error('Migrazione disponibilita non riuscita: ' + migrated.error);
-        availability = legacy;
+        const verified = await SupabaseSync.pullOperatorAvailability();
+        if (verified?.error) throw new Error('Rilettura disponibilita non riuscita: ' + verified.error);
+        availability = verified || merged;
         localStorage.removeItem(LEGACY_KEY);
       }
 
@@ -111,6 +128,10 @@ const StaffAvailability = (() => {
 
   function slotsFor(opKey, day) {
     return new Set(availability[opKey]?.[day]?.slots || []);
+  }
+
+  function savedSlotsForOperator(operator, day) {
+    return availability[operatorKey(operator)]?.[day]?.slots || [];
   }
 
   function renderHourSlots(opKey, day) {
@@ -195,6 +216,14 @@ const StaffAvailability = (() => {
       console.error('[StaffAvailability] save failed', res.error);
       return;
     }
+    const verified = await SupabaseSync.pullOperatorAvailability();
+    if (verified?.error) {
+      if (status) status.textContent = 'Errore Supabase: dati non verificati.';
+      UI.showToast('Errore Supabase: verifica salvataggio fallita', 'error');
+      console.error('[StaffAvailability] verify failed', verified.error);
+      return;
+    }
+    availability = verified || availability;
     dirty = false;
     loaded = true;
     if (status) status.textContent = 'Disponibilita salvata su Supabase.';
@@ -248,13 +277,12 @@ const StaffAvailability = (() => {
       .filter(op => operatorChoice === 'all' || operatorKey(op) === operatorChoice)
       .filter(op => hasRoleForService(op, serviceId))
       .forEach(op => {
-        const opKey = operatorKey(op);
         for (let i = 0; i < days; i++) {
           const day = addDays(fromDate, i);
           const dayKey = DAY_KEYS[day.getDay()];
           if (dayKey === 'sun') continue;
           const date = dateStr(day);
-          (availability[opKey]?.[dayKey]?.slots || []).forEach(slotValue => {
+          savedSlotsForOperator(op, dayKey).forEach(slotValue => {
             const slot = splitRange(slotValue);
             if (!slot) return;
             if (isFreeByCalendar(op, serviceId, date, slot.start, duration, buffer)) {
@@ -303,3 +331,5 @@ const StaffAvailability = (() => {
 
   return { renderSetup, renderSearch, runSearch, save, markDirty };
 })();
+
+window.StaffAvailability = StaffAvailability;
