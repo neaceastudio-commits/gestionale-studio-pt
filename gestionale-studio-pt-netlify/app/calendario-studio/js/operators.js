@@ -9,10 +9,6 @@ const Operators = (() => {
     const ops = State.getOperators();
     const panel = document.getElementById('view-operators');
     if (!panel) return;
-    if (typeof App !== 'undefined' && App.isPtMode?.()) {
-      panel.innerHTML = '<div class="card"><p class="text-muted">Staff disponibile solo allo studio.</p></div>';
-      return;
-    }
 
     panel.innerHTML = `
       <div class="view-header">
@@ -74,7 +70,6 @@ const Operators = (() => {
   }
 
   function openModal(opId = null) {
-    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
     const op = opId ? State.getOperators().find(o => o.id === opId) : null;
     const isEdit = !!op;
 
@@ -126,7 +121,6 @@ const Operators = (() => {
   }
 
   function save(opId) {
-    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
     const nome = document.getElementById('op-nome').value.trim();
     const cognome = document.getElementById('op-cognome').value.trim();
     const email = document.getElementById('op-email').value.trim();
@@ -152,8 +146,7 @@ const Operators = (() => {
     UI.showToast(opId ? 'Professionista aggiornato' : 'Professionista aggiunto', 'success');
   }
 
-  async function toggleActive(opId) {
-    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
+  function toggleActive(opId) {
     const ops = State.getOperators();
     const idx = ops.findIndex(o => o.id === opId);
     if (idx !== -1) {
@@ -161,26 +154,13 @@ const Operators = (() => {
       State.saveOperators(ops);
       render();
       Calendar.render();
-      const res = await SupabaseSync.pushOperator(ops[idx]);
-      if (res?.error) {
-        UI.showToast('Errore salvataggio stato staff', 'error');
-        return;
-      }
-      UI.showToast(ops[idx].active ? 'Professionista attivato' : 'Professionista disattivato', 'success');
     }
   }
 
-  async function confirmDelete(opId) {
-    if (typeof App !== 'undefined' && App.isPtMode?.()) { UI.showToast('Staff disponibile solo allo studio', 'error'); return; }
+  function confirmDelete(opId) {
     const op = State.getOperators().find(o => o.id === opId);
     if (!op) return;
     if (confirm('Eliminare ' + op.nome + ' ' + op.cognome + '?\nQuesta azione non può essere annullata.')) {
-      const deletedOp = { ...op, active: false };
-      const res = await SupabaseSync.pushOperator(deletedOp);
-      if (res?.error) {
-        UI.showToast('Errore eliminazione staff', 'error');
-        return;
-      }
       State.saveOperators(State.getOperators().filter(o => o.id !== opId));
       render();
       Calendar.render();

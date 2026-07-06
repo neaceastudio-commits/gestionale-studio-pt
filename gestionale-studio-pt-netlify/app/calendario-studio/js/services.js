@@ -1,10 +1,6 @@
 // Logica servizi/calendario condivisa, basata sullo State locale.
 
 const Services = (() => {
-  function localDateStr(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
-
   function getService(id) {
     return CONFIG.SERVICES[id] || null;
   }
@@ -48,15 +44,6 @@ const Services = (() => {
     return c ? `${c.nome} ${c.cognome}`.trim() : id || '-';
   }
 
-  function clientConflictLabel(id) {
-    const c = getClient(id);
-    if (c) {
-      const name = `${c.nome} ${c.cognome}`.trim() || id || '-';
-      return c.active === false ? `${name} (non attivo)` : name;
-    }
-    return `cliente non attivo/non caricato (${id || '-'})`;
-  }
-
   function operatorFullName(id) {
     const o = getOperator(id);
     return o ? `${o.nome} ${o.cognome}`.trim() : '-';
@@ -84,68 +71,29 @@ const Services = (() => {
       .sort((a, b) => Number(b.compatible) - Number(a.compatible) || `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
   }
 
-  function clientCanUseService(client, serviceId) {
-    const compatiblePkgs = Object.entries(CONFIG.PACKAGE_SERVICE_MAP)
-      .filter(([, services]) => services.includes(serviceId))
-      .map(([pkg]) => pkg);
-    if (!compatiblePkgs.length) return true;
-    return packageTypes(client).some(pkg => compatiblePkgs.includes(pkg));
-  }
-
-  function serviceUsesPackageSessions(serviceOrId) {
-    const svc = typeof serviceOrId === 'string' ? getService(serviceOrId) : serviceOrId;
-    return !!svc && !svc.isBlock && !svc.isNutri && !svc.isValuation;
-  }
-
-  function getClientSessionMetrics(client, excludeAppointmentId = null) {
-    if (!client) {
-      return { total: 0, completed: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
-    }
-
-    const today = localDateStr(new Date());
-    const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
-    const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
-    const activeAppts = State.getAppointments().filter(a =>
-      a.id !== excludeAppointmentId &&
-      a.status !== 'annullato' &&
-      Array.isArray(a.clientIds) &&
-      a.clientIds.includes(client.id) &&
-      serviceUsesPackageSessions(a.serviceId)
-    );
-    const completed = activeAppts.filter(a => a.status === 'fatto').length;
-    const scheduled = activeAppts.filter(a => a.status !== 'fatto' && a.date >= today).length;
-    const plannedTotal = completed + scheduled;
-    const remaining = total > 0 ? Math.max(0, total - completed) : storedRemaining;
-    const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
-    const overPlanned = total > 0 ? Math.max(0, plannedTotal - total) : 0;
-
-    return { total, completed, scheduled, plannedTotal, remaining, toSchedule, overPlanned, storedRemaining };
-  }
-
   function opHasRole(op, svc) {
     if (!svc?.requiredRoles?.length) return true;
     const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
     return svc.requiredRoles.some(r => roles.includes(r));
   }
 
-  function getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId = null) {
+  function getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin) {
     const svc = getService(serviceId);
     const tmp = { serviceId, date, startTime, durationMin, bufferMin };
     return State.getOperators().filter(o => o.active !== false).map(op => {
       const hasRole = opHasRole(op, svc);
       const conflicts = State.getAppointments().filter(a =>
-        a.id !== excludeId &&
         a.status !== 'annullato' &&
         a.operatorId === op.id &&
         a.date === date &&
-        overlaps(tmp, a, false)
+        overlaps(tmp, a, true)
       );
       return { ...op, hasRole, available: conflicts.length === 0, conflicts };
     });
   }
 
-  function autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin, excludeId = null) {
-    const ops = getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId);
+  function autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin) {
+    const ops = getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin);
     const best = ops.find(o => o.hasRole && o.available);
     return best ? best.id : null;
   }
@@ -178,7 +126,7 @@ const Services = (() => {
       }, 0);
   }
 
-  function canBookAppointment(appt, options = {}) {
+  function canBookAppointment(appt) {
     const errors = [];
     const svc = getService(appt.serviceId);
     if (!svc) errors.push('Servizio non valido');
@@ -199,47 +147,22 @@ const Services = (() => {
     if (appt.operatorId) {
       const op = getOperator(appt.operatorId);
       if (op && !opHasRole(op, svc)) errors.push('Operatore senza ruolo compatibile');
-      const operatorConflict = appts.find(a => a.operatorId === appt.operatorId && overlaps(appt, a, false));
-      if (operatorConflict) {
-        const conflictClients = (operatorConflict.clientIds || []).map(clientConflictLabel).join(', ') || 'nessun cliente';
-        errors.push(`${operatorFullName(appt.operatorId)} occupato alle ${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`);
+      if (appts.some(a => a.operatorId === appt.operatorId && overlaps(appt, a, true))) {
+        errors.push('Operatore occupato nello slot');
       }
     }
 
-    const clientConflictId = (appt.clientIds || []).find(cid =>
+    const clientConflict = (appt.clientIds || []).some(cid =>
       appts.some(a => (a.clientIds || []).includes(cid) && overlaps(appt, a, false))
     );
-    if (clientConflictId) errors.push(`${clientFullName(clientConflictId)} ha gia un appuntamento alle ${String(appt.startTime || '').slice(0, 5)}`);
+    if (clientConflict) errors.push('Cliente gia prenotato nello slot');
 
-    const incompatibleClient = (appt.clientIds || []).map(getClient).find(c =>
-      c && svc && !svc.isBlock && !clientCanUseService(c, appt.serviceId)
-    );
-    if (incompatibleClient) {
-      errors.push(`${clientFullName(incompatibleClient.id)} non ha un pacchetto compatibile con ${svc.label}`);
-    }
-
-    if (serviceUsesPackageSessions(svc)) {
-      const apptDay = weekdayName(appt.date);
-      if (options.strictPackageDays) {
-        const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
-          const days = c?.giorniSettimana || c?.giorni_settimana || [];
-          return Array.isArray(days) && days.length && !days.includes(apptDay);
-        });
-        if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nella pianificazione reale del pacchetto`);
-      }
-
-      const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
-        const metrics = getClientSessionMetrics(c, appt.id || null);
-        return metrics.total > 0 && metrics.remaining <= 0;
-      });
-      if (noSessionsClient) errors.push(`${clientFullName(noSessionsClient.id)} non ha sessioni rimanenti`);
-
-      const fullyPlannedClient = (appt.clientIds || []).map(getClient).find(c => {
-        const metrics = getClientSessionMetrics(c, appt.id || null);
-        return !appt.id && metrics.total > 0 && appt.status !== 'fatto' && metrics.toSchedule <= 0;
-      });
-      if (fullyPlannedClient) errors.push(`${clientFullName(fullyPlannedClient.id)} ha gia tutte le sedute programmate`);
-    }
+    const apptDay = weekdayName(appt.date);
+    const dayMismatch = (appt.clientIds || []).map(getClient).find(c => {
+      const days = c?.giorniSettimana || c?.giorni_settimana || [];
+      return Array.isArray(days) && days.length && !days.includes(apptDay);
+    });
+    if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nel pacchetto`);
 
     if (svc?.room) {
       const current = getRoomLoadAt(appt.date, appt.startTime, appt.durationMin, svc.room, appt.id);
@@ -309,7 +232,7 @@ const Services = (() => {
   function getKPIForDate(date) {
     const appts = getAppointmentsForDate(date).filter(a => a.status !== 'annullato');
     const now = new Date();
-    const nowMin = localDateStr(now) === date ? now.getHours() * 60 + now.getMinutes() : -1;
+    const nowMin = now.toISOString().slice(0, 10) === date ? now.getHours() * 60 + now.getMinutes() : -1;
     return {
       totalAppts: appts.length,
       inSalaNow: nowMin < 0 ? 0 : appts.reduce((sum, a) => {
@@ -337,11 +260,7 @@ const Services = (() => {
     getClient,
     getOperator,
     clientFullName,
-    clientConflictLabel,
     operatorFullName,
-    clientCanUseService,
-    serviceUsesPackageSessions,
-    getClientSessionMetrics,
     getCompatibleClients,
     getAvailableOperatorsForSlot,
     autoAssignOperator,
