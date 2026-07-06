@@ -134,19 +134,19 @@ const StaffAvailability = (() => {
           </div>
           <button class="staff-avail-action" onclick="StaffAvailability.save()">Salva disponibilita</button>
         </div>
-        <div class="staff-avail-table-wrap">
-          <table class="staff-avail-table">
-            <thead><tr><th>Collaboratore</th>${WEEK_DAYS.map(([, label]) => `<th>${esc(label)}</th>`).join('')}</tr></thead>
-            <tbody>
-              ${operators.length ? operators.map(op => {
-                const key = operatorKey(op);
-                return `<tr>
-                  <th><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></th>
-                  ${WEEK_DAYS.map(([day]) => `<td>${renderHourSlots(key, day)}</td>`).join('')}
-                </tr>`;
-              }).join('') : '<tr><td colspan="7" class="staff-avail-empty">Nessun collaboratore attivo trovato.</td></tr>'}
-            </tbody>
-          </table>
+        <div class="staff-avail-list">
+          ${operators.length ? operators.map(op => {
+            const key = operatorKey(op);
+            return `<section class="staff-avail-card">
+              <div class="staff-avail-person"><strong>${esc(operatorLabel(op))}</strong><small>${esc(op.email || '')}</small></div>
+              <div class="staff-day-grid">
+                ${WEEK_DAYS.map(([day, label]) => `<div class="staff-day-block">
+                  <h4>${esc(label)}</h4>
+                  ${renderHourSlots(key, day)}
+                </div>`).join('')}
+              </div>
+            </section>`;
+          }).join('') : '<div class="staff-avail-empty">Nessun collaboratore attivo trovato.</div>'}
         </div>
         <div class="staff-avail-footer"><span id="staff-avail-status">${dirty ? 'Modifiche non salvate.' : 'Dati caricati da Supabase.'}</span></div>
       </div>`;

@@ -43,49 +43,57 @@
   white-space: nowrap;
 }
 
-.staff-avail-table-wrap {
-  overflow-x: auto;
+.staff-avail-list {
+  display: grid;
+  gap: 12px;
 }
 
-.staff-avail-table {
-  border-collapse: collapse;
-  min-width: 1040px;
-  width: 100%;
-}
-
-.staff-avail-table th,
-.staff-avail-table td {
-  border-bottom: 1px solid var(--border);
-  padding: 10px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.staff-avail-table thead th {
-  background: var(--bg);
-  color: var(--text3);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-
-.staff-avail-table tbody th {
+.staff-avail-card {
   background: #fff;
-  width: 190px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
 }
 
-.staff-avail-table strong {
-  display: block;
-  font-size: 13px;
+.staff-avail-person {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+.staff-avail-person strong {
   color: var(--text);
+  display: block;
+  font-size: 15px;
 }
 
-.staff-avail-table small {
+.staff-avail-person small {
   color: var(--text3);
   display: block;
   font-size: 11px;
   margin-top: 3px;
+}
+
+.staff-day-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.staff-day-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+}
+
+.staff-day-block h4 {
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
 .staff-hour-grid {
@@ -202,6 +210,7 @@
 }
 
 @media (max-width: 1120px) {
+  .staff-day-grid,
   .staff-search-controls {
     grid-template-columns: 1fr 1fr;
   }
@@ -212,7 +221,7 @@
 }
 
 @media (max-width: 720px) {
-  .staff-avail-title,
+  .staff-day-grid,
   .staff-search-controls {
     grid-template-columns: 1fr;
   }
