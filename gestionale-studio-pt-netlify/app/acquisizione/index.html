@@ -316,6 +316,10 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
         </div>
         <div class="field"><label>Data inizio</label><input type="date" id="conf-data" onchange="refreshPtMirror()"></div>
       </div>
+      <div class="grid-2">
+        <div class="field"><label>Orario preferito</label><input type="time" id="conf-time" step="900" onchange="refreshPtMirror()"></div>
+        <div class="field"><label>Scelta rapida</label><div class="conf-note" style="margin:0">Puoi scegliere PT e orario manualmente oppure cliccare uno slot libero sotto.</div></div>
+      </div>
       <div class="grid-2" id="conf-sess-row" style="display:none">
         <div class="field"><label>Sessioni totali</label><input type="number" id="conf-sess-tot" min="1" onchange="limitConfDays();refreshPtMirror()"></div>
         <div class="field"><label>Sessioni usate</label><input type="number" id="conf-sess-used" value="0" min="0"></div>
@@ -743,7 +747,8 @@ function confAddDays(dateStr,days){
 }
 function confPreferredTimes(acq){
   const raw=String(acq?.orari||'');
-  const times=[];
+  const manual=document.getElementById('conf-time')?.value;
+  const times=manual?[manual]:[];
   if(raw.includes('6–9'))times.push('07:00','08:00');
   if(raw.includes('9–12'))times.push('09:00','10:00','11:00');
   if(raw.includes('Pausa'))times.push('12:00','13:00');
@@ -823,6 +828,7 @@ async function refreshPtMirror(force=false){
 }
 function selectPtFromMirror(ptId,date,time){
   const sel=document.getElementById('conf-pt');if(sel)sel.value=ptId;
+  const timeEl=document.getElementById('conf-time');if(timeEl)timeEl.value=time;
   document.querySelectorAll('.pt-slot.selected').forEach(el=>el.classList.remove('selected'));
   const op=staffAll.find(s=>s.id===ptId);
   showToast(`PT assegnato: ${op?`${op.nome||''} ${op.cognome||''}`.trim():'selezionato'} · slot libero ${date} ${time}`,'success');
@@ -859,7 +865,7 @@ async function apiFetch(p){
     const packageType=p.packageType||'PT 1:1';
     const existingClient=await findClientForAcquisition(acq);
     const clientId=existingClient?.id||('c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7));
-    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
+    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],orario_preferito:p.orarioPreferito||null,package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
     let ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body});
     if(ins?.error&&String(ins.error).toLowerCase().includes('column')){
       const fallback={...body};
@@ -871,6 +877,7 @@ async function apiFetch(p){
       delete fallback.cap;
       delete fallback.comune;
       delete fallback.provincia;
+      delete fallback.orario_preferito;
       delete fallback.contatto_emergenza;
       ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
     }
@@ -1268,6 +1275,7 @@ function apriConfermaById(id){
   const srv=normSrv(c.servizi);document.getElementById('conf-package').value=srv.includes('Nutrizione')&&!srv.includes('PT')?'Nutrizione':'PT 1:1';
   document.getElementById('conf-pt').innerHTML='<option value="">— seleziona dopo —</option>'+staffAll.map(s=>`<option value="${s.id}">${s.nome||''} ${s.cognome||''}</option>`).join('');
   document.getElementById('conf-tipo').value='';document.getElementById('conf-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('conf-time').value=confStartTime(c);
   document.getElementById('conf-importo').value='';document.getElementById('conf-pagamento').value='Da pagare';
   document.getElementById('conf-sess-row').style.display='none';document.getElementById('conf-abb-row').style.display='none';document.getElementById('conf-days-row').style.display='none';document.querySelectorAll('#conf-days input').forEach(c=>{c.checked=false});
   openMo('mo-conferma');
@@ -1287,7 +1295,7 @@ async function eseguiConferma(){
   if(needsPlan&&!tipoAbbonamento){showToast('Seleziona il tipo di abbonamento','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   if(needsPlan&&sessioniTotali<=0){showToast('Inserisci le sessioni totali acquistate','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
   if(needsPlan&&!giorniSettimana.length){showToast('Seleziona almeno un giorno del pacchetto','error');btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
-  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType,ptId:document.getElementById('conf-pt').value,tipoAbbonamento,dataInizio:document.getElementById('conf-data').value,sessioni_totali:sessioniTotali,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
+  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType,ptId:document.getElementById('conf-pt').value,orarioPreferito:document.getElementById('conf-time').value,tipoAbbonamento,dataInizio:document.getElementById('conf-data').value,sessioni_totali:sessioniTotali,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
   if(res.success){showToast('Cliente trasferito e acquisizione archiviata','success');closeMo('mo-conferma');const idx=acquisizioni.findIndex(x=>x.id===idConferma);if(idx>=0)acquisizioni[idx]={...acquisizioni[idx],stato:'Convertito'};renderStats();apriScheda(idConferma)}
   else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
   btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
