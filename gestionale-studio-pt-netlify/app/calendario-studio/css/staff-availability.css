@@ -1,0 +1,223 @@
+.staff-avail-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-top: 18px;
+}
+
+.staff-avail-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.staff-avail-title h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.staff-avail-title p,
+.staff-avail-footer {
+  margin: 4px 0 0;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.staff-avail-action {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  min-height: 40px;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+.staff-avail-table-wrap {
+  overflow-x: auto;
+}
+
+.staff-avail-table {
+  border-collapse: collapse;
+  min-width: 1040px;
+  width: 100%;
+}
+
+.staff-avail-table th,
+.staff-avail-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.staff-avail-table thead th {
+  background: var(--bg);
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.staff-avail-table tbody th {
+  background: #fff;
+  width: 190px;
+}
+
+.staff-avail-table strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.staff-avail-table small {
+  color: var(--text3);
+  display: block;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.staff-hour-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.staff-hour-pill {
+  display: block;
+}
+
+.staff-hour-pill input {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.staff-hour-pill span {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text2);
+  display: flex;
+  font-size: 11px;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 28px;
+}
+
+.staff-hour-pill input:checked + span {
+  background: #e6f3ec;
+  border-color: #8fc7a7;
+  box-shadow: inset 0 0 0 1px #8fc7a7;
+  color: #1e6843;
+}
+
+.staff-search-controls {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1fr) minmax(140px, .75fr) minmax(140px, .75fr) auto;
+}
+
+.staff-search-controls label {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.staff-search-controls select,
+.staff-search-controls input {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  margin-top: 6px;
+  min-height: 40px;
+  padding: 9px 10px;
+  width: 100%;
+}
+
+.staff-search-output {
+  margin-top: 14px;
+}
+
+.staff-result-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.staff-result {
+  background: #e6f3ec;
+  border: 1px solid #b7d8c6;
+  border-radius: var(--radius-sm);
+  padding: 10px;
+}
+
+.staff-result strong {
+  color: #1e6843;
+  display: block;
+  font-size: 13px;
+}
+
+.staff-result span {
+  color: var(--text2);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.staff-avail-empty,
+.staff-avail-error {
+  background: #fff;
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text3);
+  font-size: 13px;
+  padding: 12px;
+  text-align: center;
+}
+
+.staff-avail-error {
+  border-color: var(--red);
+  color: var(--red);
+  font-weight: 800;
+}
+
+@media (max-width: 1120px) {
+  .staff-search-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .staff-result-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .staff-avail-title,
+  .staff-search-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-avail-title {
+    flex-direction: column;
+  }
+}

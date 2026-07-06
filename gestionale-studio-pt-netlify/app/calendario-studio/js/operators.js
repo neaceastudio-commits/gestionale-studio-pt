@@ -66,7 +66,9 @@ const Operators = (() => {
           </tbody>
         </table>
       </div>
+      <div id="staff-availability-setup"></div>
     `;
+    if (window.StaffAvailability) StaffAvailability.renderSetup();
   }
 
   function openModal(opId = null) {

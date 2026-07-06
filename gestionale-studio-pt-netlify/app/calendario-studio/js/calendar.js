@@ -48,6 +48,7 @@ const Calendar = (() => {
       case 'day': renderDay(); break;
       case 'week': renderWeek(); break;
       case 'room': renderRoom(); break;
+      case 'availability': StaffAvailability.renderSearch(); break;
       case 'operators': Operators.render(); break;
       case 'clients': Clients.render(); break;
     }
