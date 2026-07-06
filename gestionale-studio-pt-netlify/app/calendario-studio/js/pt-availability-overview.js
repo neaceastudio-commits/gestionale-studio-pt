@@ -27,6 +27,8 @@
   let hoursSummaryMonth = '';
   let lastSearchHtml = '';
   let lastSearchFilters = null;
+  let availabilityCache = null;
+  let availabilitySyncStarted = false;
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -97,13 +99,87 @@
     return State.getOperators().filter(op => op.active !== false);
   }
 
-  function loadAvailability() {
+  function loadLocalAvailability() {
     try { return JSON.parse(localStorage.getItem(AVAILABILITY_KEY) || '{}') || {}; }
     catch { return {}; }
   }
 
-  function saveAvailability(data) {
+  function saveLocalAvailability(data) {
     localStorage.setItem(AVAILABILITY_KEY, JSON.stringify(data));
+  }
+
+  function hasAvailabilityRows(data) {
+    return Object.values(data || {}).some(days =>
+      Object.values(days || {}).some(value => Array.isArray(value?.slots) && value.slots.length)
+    );
+  }
+
+  function mergeAvailability(base, incoming) {
+    const merged = { ...(base || {}) };
+    Object.entries(incoming || {}).forEach(([opKey, days]) => {
+      merged[opKey] = { ...(merged[opKey] || {}) };
+      Object.entries(days || {}).forEach(([day, value]) => {
+        const current = Array.isArray(merged[opKey][day]?.slots) ? merged[opKey][day].slots : [];
+        const next = Array.isArray(value?.slots) ? value.slots : [];
+        const slots = [...new Set([...current, ...next])].filter(Boolean).sort();
+        merged[opKey][day] = { ...(merged[opKey][day] || {}), ...(value || {}), slots };
+      });
+    });
+    return merged;
+  }
+
+  function loadAvailability() {
+    if (!availabilityCache) availabilityCache = loadLocalAvailability();
+    return availabilityCache;
+  }
+
+  function saveAvailability(data) {
+    availabilityCache = data || {};
+    saveLocalAvailability(availabilityCache);
+  }
+
+  function syncAvailable() {
+    return typeof SupabaseSync !== 'undefined' &&
+      typeof SupabaseSync.pullOperatorAvailability === 'function' &&
+      typeof SupabaseSync.pushOperatorAvailability === 'function';
+  }
+
+  async function pushAvailabilityToSupabase(data, statusEl = null) {
+    if (!syncAvailable()) return { skipped: true };
+    try {
+      const res = await SupabaseSync.pushOperatorAvailability(data || {});
+      if (res?.error) throw new Error(res.error);
+      if (statusEl) statusEl.textContent = 'Disponibilita salvata anche su Supabase.';
+      return { success: true };
+    } catch (err) {
+      console.warn('[PTAvailabilityOverview] Supabase availability sync failed', err);
+      if (statusEl) statusEl.textContent = 'Disponibilita salvata in locale. Supabase non raggiungibile.';
+      return { success: false, error: err };
+    }
+  }
+
+  async function startAvailabilitySync() {
+    if (availabilitySyncStarted) return;
+    availabilitySyncStarted = true;
+    availabilityCache = loadLocalAvailability();
+    if (!syncAvailable()) return;
+    try {
+      const remote = await SupabaseSync.pullOperatorAvailability();
+      if (remote?.error) throw new Error(remote.error);
+      const localHasRows = hasAvailabilityRows(availabilityCache);
+      const remoteHasRows = hasAvailabilityRows(remote);
+      if (localHasRows) {
+        const merged = remoteHasRows ? mergeAvailability(remote, availabilityCache) : availabilityCache;
+        saveAvailability(merged);
+        await pushAvailabilityToSupabase(merged);
+      } else if (remoteHasRows) {
+        saveAvailability(remote);
+        renderStaffIfActive();
+        renderAvailabilityIfActive();
+      }
+    } catch (err) {
+      console.warn('[PTAvailabilityOverview] Supabase availability init failed; local fallback active', err);
+    }
   }
 
   function selectOptions(items, selected = '') {
@@ -238,6 +314,7 @@
     renderAvailabilityIfActive();
     const msg = document.getElementById('pt-staff-save-result');
     if (msg) msg.textContent = 'Disponibilita salvata.';
+    pushAvailabilityToSupabase(data, msg);
   }
 
   function savedSlotsForDay(saved) {
@@ -596,6 +673,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
+    startAvailabilitySync();
     document.querySelectorAll('[data-view="availability"],[data-view="operators"]').forEach(btn => btn.addEventListener('click', scheduleEnhance));
     scheduleEnhance();
   });

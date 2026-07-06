@@ -316,6 +316,50 @@ const SupabaseSync = (() => {
     });
   }
 
+  function availabilityFromDb(rows) {
+    const data = {};
+    (Array.isArray(rows) ? rows : []).forEach(row => {
+      const opKey = row.operator_id || row.operator_key || '';
+      const day = row.day_key || '';
+      if (!opKey || !day) return;
+      data[opKey] = data[opKey] || {};
+      data[opKey][day] = {
+        slots: Array.isArray(row.slots) ? row.slots : [],
+        updatedAt: row.updated_at || '',
+      };
+    });
+    return data;
+  }
+
+  async function pullOperatorAvailability() {
+    const rows = await request('operator_availability', {
+      query: '?select=operator_id,day_key,slots,updated_at&order=operator_id.asc,day_key.asc',
+    });
+    if (rows?.error) return rows;
+    return availabilityFromDb(rows);
+  }
+
+  async function pushOperatorAvailability(data) {
+    const rows = [];
+    Object.entries(data || {}).forEach(([operatorId, days]) => {
+      Object.entries(days || {}).forEach(([dayKey, value]) => {
+        rows.push({
+          operator_id: operatorId,
+          day_key: dayKey,
+          slots: Array.isArray(value?.slots) ? value.slots : [],
+          updated_at: new Date().toISOString(),
+        });
+      });
+    });
+    if (!rows.length) return null;
+    return request('operator_availability', {
+      method: 'POST',
+      query: '?on_conflict=operator_id,day_key',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: rows,
+    });
+  }
+
   async function pushLocalSnapshot(snapshot = {}) {
     const operators = Array.isArray(snapshot.operators) ? snapshot.operators : [];
     const clients = Array.isArray(snapshot.clients) ? snapshot.clients : [];
@@ -340,5 +384,5 @@ const SupabaseSync = (() => {
     };
   }
 
-  return { pullAll, pushAppointment, pushClient, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments };
+  return { pullAll, pushAppointment, pushClient, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();
