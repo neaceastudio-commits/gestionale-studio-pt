@@ -7,8 +7,11 @@ const Calendar = (() => {
 
   let currentDate = new Date();
   let currentView = 'dashboard';
+  let availabilityServiceId = 'pt11';
 
-  function fmt(d) { return d.toISOString().slice(0, 10); }
+  function fmt(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
   function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
 
   function todayStr() { return fmt(new Date()); }
@@ -48,7 +51,7 @@ const Calendar = (() => {
       case 'day': renderDay(); break;
       case 'week': renderWeek(); break;
       case 'room': renderRoom(); break;
-      case 'availability': StaffAvailability.renderSearch(); break;
+      case 'availability': renderAvailability(); break;
       case 'operators': Operators.render(); break;
       case 'clients': Clients.render(); break;
     }
@@ -145,6 +148,15 @@ const Calendar = (() => {
             }).join('')}
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Gestione pacchetti clienti</span>
+        </div>
+        <div class="package-alert-list">
+          ${Clients.renderDashboardAlerts ? Clients.renderDashboardAlerts() : '<p class="empty-state">Indicatori clienti non disponibili</p>'}
+        </div>
+      </div>
     `;
   }
 
@@ -169,7 +181,6 @@ const Calendar = (() => {
       return `top:${top}px;height:${height}px`;
     }
 
-    // Raggruppa appuntamenti per colonna (evita overlap visivo)
     function assignColumns(appts) {
       const cols = [];
       appts.forEach(a => {
@@ -321,6 +332,10 @@ const Calendar = (() => {
     if (!panel) return;
     const rooms = Object.values(CONFIG.ROOMS);
 
+    const roomHeaders = rooms.map(r =>
+      `<th class="room-th">${r.label}<span class="room-th-max"> max ${r.max}</span></th>`
+    ).join('');
+
     const rows = sat.map(s => {
       const allAppts = Services.getAppointmentsForDate(dateStr).filter(a => a.status !== 'annullato');
       const slot = { startTime: s.time, durationMin: 60, bufferMin: 0 };
@@ -332,8 +347,7 @@ const Calendar = (() => {
           const svc = Services.getService(a.serviceId);
           return svc && svc.room === r.id && !svc.isBlock && Services.overlaps(slot, a, false);
         });
-        return `<div class="room-resource-card">
-          <div class="room-resource-head"><strong>${r.label}</strong><span>max ${r.max}</span></div>
+        return `<td class="room-cell">
           <div class="room-cell-bar">
             <div class="room-bar-mini" style="width:${rd.pct}%;background:${color}"></div>
           </div>
@@ -347,7 +361,7 @@ const Calendar = (() => {
               </span>`;
             }).join('')}
           </div>
-        </div>`;
+        </td>`;
       }).join('');
 
       const blocks = allAppts.filter(a => {
@@ -358,10 +372,10 @@ const Calendar = (() => {
         ? `<span class="block-badge" title="${blocks.map(b => Services.operatorFullName(b.operatorId) + ': ' + (b.notes||'blocco')).join(', ')}">🚫 ${blocks.length}</span>`
         : '';
 
-      return `<section class="room-row-card">
-        <div class="room-time">${s.time}<br><span class="room-time-end">${s.label.split('\u2013')[1] || ''}</span>${blockBadge}</div>
+      return `<tr class="room-row">
+        <td class="room-time">${s.time}<br><span class="room-time-end">${s.label.split('\u2013')[1] || ''}</span>${blockBadge}</td>
         ${roomCells}
-      </section>`;
+      </tr>`;
     }).join('');
 
     panel.innerHTML = `
@@ -378,14 +392,48 @@ const Calendar = (() => {
           <h3 class="card-title">Saturazione per sala e fascia oraria</h3>
           <span class="card-subtitle">3 risorse indipendenti</span>
         </div>
-        <div class="room-grid">${rows}</div>
+        <div style="overflow-x:auto">
+          <table class="room-table">
+            <thead><tr><th>Orario</th>${roomHeaders}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
       </div>
     `;
+  }
+
+  function availabilityServiceOptions() {
+    return Object.values(CONFIG.SERVICES)
+      .filter(s => !s.isBlock)
+      .map(s => `<option value="${s.id}" ${availabilityServiceId === s.id ? 'selected' : ''}>${s.label}</option>`)
+      .join('');
+  }
+
+  function serviceCompatibleOperators(serviceId) {
+    const svc = Services.getService(serviceId);
+    return State.getOperators()
+      .filter(op => op.active !== false)
+      .filter(op => {
+        if (!svc?.requiredRoles?.length) return true;
+        const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
+        return svc.requiredRoles.some(role => roles.includes(role));
+      });
+  }
+
+  function renderAvailability() {
+    const panel = document.getElementById('view-availability');
+    if (!panel) return;
+    panel.innerHTML = '';
   }
 
   // ─────────────────────────────────────────────────────
   // NAVIGAZIONE
   // ─────────────────────────────────────────────────────
+
+  function setAvailabilityService(serviceId) {
+    availabilityServiceId = serviceId || 'pt11';
+    renderAvailability();
+  }
 
   function prevDay() { currentDate.setDate(currentDate.getDate() - 1); render(); }
   function nextDay() { currentDate.setDate(currentDate.getDate() + 1); render(); }
@@ -395,5 +443,5 @@ const Calendar = (() => {
 
   function getCurrentDateStr() { return fmt(currentDate); }
 
-  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt };
+  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
 })();

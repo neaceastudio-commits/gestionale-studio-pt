@@ -43,12 +43,20 @@ const State = (() => {
   function init() {
     const savedVersion = localStorage.getItem(KEYS.version);
     if (!localStorage.getItem(KEYS.initialized) || savedVersion !== DATA_VERSION) {
-      localStorage.setItem(KEYS.operators,    JSON.stringify([]));
-      localStorage.setItem(KEYS.clients,      JSON.stringify([]));
-      localStorage.setItem(KEYS.appointments, JSON.stringify([]));
+      const hasLocalData =
+        getOperators().length > 0 ||
+        getClients().length > 0 ||
+        getAppointments().length > 0;
+      if (!hasLocalData) {
+        localStorage.setItem(KEYS.operators,    JSON.stringify([]));
+        localStorage.setItem(KEYS.clients,      JSON.stringify([]));
+        localStorage.setItem(KEYS.appointments, JSON.stringify([]));
+      }
       localStorage.setItem(KEYS.initialized,  '1');
       localStorage.setItem(KEYS.version,      DATA_VERSION);
-      console.log('[NEACEA] Archivio locale inizializzato vuoto (v' + DATA_VERSION + ')');
+      console.log(hasLocalData
+        ? '[NEACEA] Archivio locale esistente preservato (v' + DATA_VERSION + ')'
+        : '[NEACEA] Archivio locale inizializzato vuoto (v' + DATA_VERSION + ')');
     }
     purgeLegacyDemoData();
   }

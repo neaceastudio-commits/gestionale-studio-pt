@@ -8,11 +8,11 @@
 const UI = {
   openModal(html) {
     document.getElementById('modal-content').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById('modal-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   },
   closeModal() {
-    document.getElementById('modal-overlay').classList.remove('active');
+    document.getElementById('modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
   },
   showToast(msg, type = 'info') {
@@ -31,8 +31,8 @@ const App = {
 
   // ── APERTURA MODALI ──────────────────────────────────
 
-  openNewAppointment(dateStr = null) {
-    App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr());
+  openNewAppointment(dateStr = null, clientId = null, startTime = null, serviceId = null) {
+    App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : [], startTime || '09:00', serviceId || 'pt11');
   },
   openDetail(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
@@ -41,10 +41,10 @@ const App = {
 
   // ── MODAL APPUNTAMENTO ───────────────────────────────
 
-  _renderAppointmentModal(apptId, defaultDate) {
+  _renderAppointmentModal(apptId, defaultDate, preselectedClientIds = [], defaultStartTime = '09:00', defaultServiceId = 'pt11') {
     const appt   = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     const isEdit = !!appt;
-    const curSvcId = appt?.serviceId || 'pt11';
+    const curSvcId = appt?.serviceId || defaultServiceId || 'pt11';
     const svc = Services.getService(curSvcId);
 
     // Servizi dropdown
@@ -76,6 +76,7 @@ const App = {
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="appt-id" value="${apptId || ''}">
 
         <div class="form-row">
           <div class="form-group">
@@ -97,7 +98,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Ora *</label>
-            <input type="time" id="appt-time" class="form-input" value="${appt?.startTime||'09:00'}" step="900" onchange="App._onSlotChange()">
+            <input type="time" id="appt-time" class="form-input" value="${appt?.startTime||defaultStartTime||'09:00'}" step="900" onchange="App._onSlotChange()">
           </div>
           <div class="form-group" id="duration-group">
             <label>Durata</label>
@@ -107,12 +108,12 @@ const App = {
 
         <!-- Clienti: ricostruito da _buildClientsSection -->
         <div id="clients-section">
-          ${isBlock ? '' : App._buildClientsSection(curSvcId, appt?.clientIds||[])}
+          ${isBlock ? '' : App._buildClientsSection(curSvcId, appt?.clientIds || preselectedClientIds)}
         </div>
 
         <!-- Operatore: ricostruito da _buildOperatorSection -->
         <div id="operator-section">
-          ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||'09:00', appt?.durationMin||svc?.durationMin||60)}
+          ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||defaultStartTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
         </div>
 
         <div id="slot-validation" class="slot-validation" style="margin-bottom:8px"></div>
@@ -168,28 +169,66 @@ const App = {
         </label>
         <select id="appt-clients" class="form-input"
                 size="${Math.min(5, compatible.length+1)}"
-                ${isMulti?'multiple':''}>
+                ${isMulti?'multiple':''}
+                onchange="App._onClientSelectionChange()">
           ${options}
         </select>
         <div class="form-hint">${hint}</div>
+        <div id="appt-package-preview" class="appt-package-preview">
+          ${App._clientPackagePreview(selectedIds)}
+        </div>
       </div>`;
   },
 
+  _clientPackagePreview(clientIds = []) {
+    if (!clientIds.length) return '<div class="package-mini-empty">Seleziona un cliente per vedere il quadro pacchetto.</div>';
+    return clientIds.map(id => {
+      const c = Services.getClient(id);
+      if (!c) return '';
+      const metrics = Services.getClientSessionMetrics(c);
+      const pkgs = Array.isArray(c.packageTypes) ? c.packageTypes : (c.packageType ? [c.packageType] : []);
+      const days = Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [];
+      const totalLabel = metrics.total || 'da impostare';
+      const remainingLabel = metrics.total ? metrics.remaining : '—';
+      return `
+        <div class="package-mini-card">
+          <div>
+            <strong>${c.nome} ${c.cognome}</strong>
+            <span>${pkgs.join(', ') || 'Nessun pacchetto'} · ${days.join(', ') || 'giorni non impostati'}</span>
+          </div>
+          <div class="package-mini-stats">
+            <span>${metrics.completed}/${totalLabel} fatte</span>
+            <span>${remainingLabel} residue</span>
+            <span>${metrics.scheduled} programmate</span>
+            <span>${metrics.toSchedule} da pianificare</span>
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  _onClientSelectionChange() {
+    const selected = [...(document.getElementById('appt-clients')?.selectedOptions || [])].map(el => el.value);
+    const target = document.getElementById('appt-package-preview');
+    if (target) target.innerHTML = App._clientPackagePreview(selected);
+    App._onSlotChange();
+  },
+
   // ── SEZIONE OPERATORE ─────────────────────────────────
-  _buildOperatorSection(serviceId, selectedOpId, date, startTime, durationMin) {
+  _buildOperatorSection(serviceId, selectedOpId, date, startTime, durationMin, excludeAppointmentId = null) {
     const svc = Services.getService(serviceId);
     const bufferMin = svc?.bufferMin || 0;
-    const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin);
+    const excludeId = excludeAppointmentId || document.getElementById('appt-id')?.value || null;
+    const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId);
 
     // Se selectedOpId non valido, prova auto-assign
     if (!selectedOpId && date && startTime) {
-      selectedOpId = Services.autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin) || '';
+      selectedOpId = Services.autoAssignOperator(serviceId, date, startTime, durationMin, bufferMin, excludeId) || '';
     }
 
     const opsHtml = `<option value="">— nessuno / scegli —</option>` + ops.map(op => {
       let icon = '';
       if (!op.hasRole)    icon = ' 🚫 ruolo mancante';
-      else if (!op.available) icon = ` ⚠ occupato ${op.conflicts.map(c=>c.startTime).join(',')}`;
+      else if (!op.available) icon = ` ⚠ occupato ${[...new Set(op.conflicts.map(c=>c.startTime))].join(', ')}`;
       else                icon = ' ✓';
       return `<option value="${op.id}"
         ${op.id===selectedOpId?'selected':''}
@@ -257,9 +296,10 @@ const App = {
     const opId = document.getElementById('appt-operator')?.value || null;
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
     const clientIds = clientEls.map(el => el.value);
+    const apptId = document.getElementById('appt-id')?.value || null;
 
     const tmpAppt = {
-      id: null, serviceId: svcId, clientIds, operatorId: opId,
+      id: apptId, serviceId: svcId, clientIds, operatorId: opId,
       date, startTime: time, durationMin: dur, bufferMin: svc?.bufferMin||0, status: 'prenotato',
     };
 
@@ -269,7 +309,7 @@ const App = {
       if (validation.ok) {
         let roomInfo = '';
         if (svc?.room) {
-          const load = Services.getRoomLoadAt(date, time, dur, svc.room);
+          const load = Services.getRoomLoadAt(date, time, dur, svc.room, apptId);
           const eff  = svc.isGroup ? clientIds.length : (svc.roomLoad||0);
           const max  = Services.getRoomMax(svc.room);
           roomInfo = ` · ${CONFIG.ROOMS[svc.room].label}: ${load+eff}/${max}`;
@@ -289,10 +329,202 @@ const App = {
     const time  = document.getElementById('appt-time')?.value;
     const dur   = parseInt(document.getElementById('appt-duration')?.value) || 60;
     const curOp = document.getElementById('appt-operator')?.value || null;
+    const apptId = document.getElementById('appt-id')?.value || null;
     const os = document.getElementById('operator-section');
     if (os && svcId && date && time) {
-      os.innerHTML = App._buildOperatorSection(svcId, curOp, date, time, dur);
+      os.innerHTML = App._buildOperatorSection(svcId, curOp, date, time, dur, apptId);
     }
+  },
+
+  _escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[ch]));
+  },
+
+  _apptTimeRange(appt, includeBuffer = false) {
+    const start = String(appt.startTime || '').slice(0, 5);
+    const end = Services.minToTime(Services.effectiveEnd(appt, includeBuffer));
+    return `${start}-${end}`;
+  },
+
+  _appointmentMiniCard(appt, { markConflict = false } = {}) {
+    const svc = Services.getService(appt.serviceId);
+    const op = Services.getOperator(appt.operatorId);
+    const room = svc?.room ? CONFIG.ROOMS[svc.room]?.label : 'nessuna sala';
+    const clients = (appt.clientIds || []).map(Services.clientConflictLabel).join(', ') || 'nessun cliente';
+    return `
+      <div class="conflict-appt ${markConflict ? 'is-conflict' : ''}">
+        <div class="conflict-appt-main">
+          <span class="conflict-time">${App._escapeHtml(App._apptTimeRange(appt, false))}</span>
+          <strong>${App._escapeHtml(svc?.label || appt.serviceId || 'Appuntamento')}</strong>
+          <span>${App._escapeHtml(clients)}</span>
+        </div>
+        <div class="conflict-appt-meta">
+          <span>${App._escapeHtml(op ? `${op.nome} ${op.cognome}` : 'PT non assegnato')}</span>
+          <span>${App._escapeHtml(room)}</span>
+          <button class="btn-icon-sm" title="Apri appuntamento" onclick="App.openDetail('${appt.id}')">✏️</button>
+        </div>
+      </div>`;
+  },
+
+  _openCurrentAppointmentConflict() {
+    const svcId   = document.getElementById('appt-service')?.value;
+    const date    = document.getElementById('appt-date')?.value;
+    const time    = document.getElementById('appt-time')?.value;
+    const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
+    const opId    = document.getElementById('appt-operator')?.value || null;
+    const status  = document.getElementById('appt-status')?.value || 'prenotato';
+    const notes   = document.getElementById('appt-notes')?.value || '';
+    const svc     = Services.getService(svcId);
+    const clientIds = [...(document.getElementById('appt-clients')?.selectedOptions || [])].map(el => el.value);
+    const apptId = document.getElementById('appt-id')?.value || null;
+    if (!svcId || !date || !time) return;
+
+    const draft = {
+      id: apptId,
+      serviceId: svcId,
+      clientIds,
+      operatorId: opId,
+      date,
+      startTime: time,
+      durationMin: dur,
+      bufferMin: svc?.bufferMin ?? 10,
+      status,
+      notes,
+    };
+    const validation = Services.canBookAppointment(draft);
+    App._openConflictOverview(draft, validation.errors);
+  },
+
+  _openConflictOverview(draft, errors = [], context = {}) {
+    const svc = Services.getService(draft.serviceId);
+    const op = Services.getOperator(draft.operatorId);
+    const dateAppts = Services.getAppointmentsForDate(draft.date)
+      .filter(a => a.id !== draft.id && a.status !== 'annullato')
+      .sort((a, b) => `${a.startTime}`.localeCompare(`${b.startTime}`));
+    const draftRoom = svc?.room || null;
+    const draftClientIds = new Set(draft.clientIds || []);
+
+    const conflictAppts = dateAppts.filter(a => {
+      const otherSvc = Services.getService(a.serviceId);
+      const sameOperator = draft.operatorId && a.operatorId === draft.operatorId && Services.overlaps(draft, a, false);
+      const sameClient = (a.clientIds || []).some(id => draftClientIds.has(id)) && Services.overlaps(draft, a, false);
+      const sameRoom = draftRoom && otherSvc?.room === draftRoom && Services.overlaps(draft, a, false);
+      return sameOperator || sameClient || sameRoom;
+    });
+
+    const operators = Services.getAvailableOperatorsForSlot(
+      draft.serviceId,
+      draft.date,
+      draft.startTime,
+      draft.durationMin,
+      draft.bufferMin,
+      draft.id || null
+    );
+    const operatorRows = operators.map(operator => {
+      const conflicts = operator.conflicts || [];
+      const status = operator.available && operator.hasRole ? 'Libero' : (!operator.hasRole ? 'Ruolo non compatibile' : 'Occupato');
+      return `
+        <div class="conflict-operator ${operator.available && operator.hasRole ? 'is-free' : 'is-busy'}">
+          <div>
+            <strong>${App._escapeHtml(`${operator.nome} ${operator.cognome}`)}</strong>
+            <span>${App._escapeHtml(status)}</span>
+          </div>
+          <div class="conflict-operator-conflicts">
+            ${conflicts.length
+              ? conflicts.map(a => `<button class="mini-link" onclick="App.openDetail('${a.id}')">${App._escapeHtml(App._apptTimeRange(a, false))} · ${App._escapeHtml((a.clientIds || []).map(Services.clientConflictLabel).join(', '))}</button>`).join('')
+              : '<span class="text-muted">nessun blocco nello slot</span>'}
+          </div>
+        </div>`;
+    }).join('');
+
+    const startMin = Services.timeToMin(draft.startTime);
+    const workStart = Services.timeToMin(CONFIG.workHours.start);
+    const workEnd = Services.timeToMin(CONFIG.workHours.end);
+    const windowStart = Math.max(workStart, Math.floor((startMin - 90) / 30) * 30);
+    const windowEnd = Math.min(workEnd, Math.ceil((Services.effectiveEnd(draft, false) + 120) / 30) * 30);
+    const rooms = Object.values(CONFIG.ROOMS);
+    const timelineRows = [];
+    for (let t = windowStart; t < windowEnd; t += 30) {
+      const slot = { date: draft.date, startTime: Services.minToTime(t), durationMin: 30, bufferMin: 0 };
+      const slotAppts = dateAppts.filter(a => Services.overlaps(slot, a, false));
+      const staffBusy = slotAppts
+        .filter(a => a.operatorId)
+        .map(a => `${Services.operatorFullName(a.operatorId)}: ${(a.clientIds || []).map(Services.clientConflictLabel).join(', ') || Services.getService(a.serviceId)?.label || 'blocco'}`);
+      const roomLoads = rooms.map(room => {
+        const load = Services.getRoomLoadAt(draft.date, slot.startTime, 30, room.id, draft.id || null);
+        const max = Services.getRoomMax(room.id);
+        return `<span class="${load >= max ? 'is-full' : ''}">${App._escapeHtml(room.label)} ${load}/${max}</span>`;
+      }).join('');
+      timelineRows.push(`
+        <tr class="${t <= startMin && startMin < t + 30 ? 'is-target' : ''}">
+          <td>${App._escapeHtml(slot.startTime)}</td>
+          <td>${staffBusy.length ? staffBusy.map(App._escapeHtml).join('<br>') : '<span class="text-muted">PT liberi</span>'}</td>
+          <td>${roomLoads}</td>
+        </tr>`);
+    }
+
+    const draftClients = (draft.clientIds || []).map(Services.clientConflictLabel).join(', ') || 'nessun cliente';
+    const draftRoomLabel = draftRoom ? CONFIG.ROOMS[draftRoom]?.label : 'nessuna sala';
+    const errorList = errors.length
+      ? errors.map(err => `<li>${App._escapeHtml(err)}</li>`).join('')
+      : '<li>Slot non disponibile.</li>';
+    const returnPackageButton = context.returnPackageClientId
+      ? `<button class="btn" onclick="App.openPackageOverview('${context.returnPackageClientId}')">Torna al quadro pacchetto</button>`
+      : '';
+
+    const html = `
+      <div class="modal-header conflict-header">
+        <div>
+          <h3>Panoramica conflitto</h3>
+          <p class="modal-subtitle">${App._escapeHtml(draft.date)} · ${App._escapeHtml(App._apptTimeRange(draft, false))}</p>
+        </div>
+        <button class="modal-close" onclick="UI.closeModal()">✕</button>
+      </div>
+      <div class="modal-body conflict-overview">
+        <section class="conflict-summary">
+          <div>
+            <div class="eyebrow">Stai provando a salvare</div>
+            <h4>${App._escapeHtml(svc?.label || draft.serviceId)} · ${App._escapeHtml(draftClients)}</h4>
+            <p>${App._escapeHtml(op ? `${op.nome} ${op.cognome}` : 'PT non assegnato')} · ${App._escapeHtml(draftRoomLabel)}</p>
+          </div>
+          <ul>${errorList}</ul>
+        </section>
+
+        <section class="conflict-section">
+          <h4>Appuntamenti che impattano lo slot</h4>
+          <div class="conflict-appt-list">
+            ${conflictAppts.length ? conflictAppts.map(a => App._appointmentMiniCard(a, { markConflict: true })).join('') : '<p class="empty-state">Nessun appuntamento diretto trovato: controlla capienza sala o vincoli pacchetto.</p>'}
+          </div>
+        </section>
+
+        <section class="conflict-section">
+          <h4>Disponibilità PT nello slot</h4>
+          <div class="conflict-operator-list">${operatorRows || '<p class="empty-state">Nessun PT configurato.</p>'}</div>
+        </section>
+
+        <section class="conflict-section">
+          <h4>Studio nella fascia vicina</h4>
+          <div class="conflict-table-wrap">
+            <table class="conflict-table">
+              <thead><tr><th>Ora</th><th>PT / clienti</th><th>Sale</th></tr></thead>
+              <tbody>${timelineRows.join('')}</tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        ${returnPackageButton}
+        <button class="btn" onclick="UI.closeModal();Calendar.switchView('room','${draft.date}')">Vista sale del giorno</button>
+        <button class="btn-primary" onclick="UI.closeModal()">Chiudi</button>
+      </div>`;
+
+    UI.openModal(html);
   },
 
   // ── SALVA APPUNTAMENTO ───────────────────────────────
@@ -317,20 +549,37 @@ const App = {
       bufferMin: svc?.bufferMin ?? 10, status, notes,
     };
 
-    const validation = Services.canBookAppointment({ ...apptData, id: apptId||null });
+    const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    const sameClients = before
+      ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
+      : false;
+    const sameSlot = before &&
+      before.serviceId === svcId &&
+      before.date === date &&
+      before.startTime === time &&
+      Number(before.durationMin || 60) === dur &&
+      (before.operatorId || null) === opId &&
+      sameClients;
+
+    const validation = sameSlot
+      ? { ok: true, errors: [] }
+      : Services.canBookAppointment({ ...apptData, id: apptId||null });
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       const ve = document.getElementById('slot-validation');
-      if (ve) ve.innerHTML = `<div class="val-error">⚠ ${validation.errors.join(' · ')}</div>`;
+      if (ve) ve.innerHTML = `<div class="val-error">⚠ ${validation.errors.join(' · ')} <button class="mini-link" onclick="App._openCurrentAppointmentConflict()">Panoramica</button></div>`;
+      App._openConflictOverview({ ...apptData, id: apptId || null }, validation.errors);
       return;
     }
 
     let saved;
     if (apptId) {
       saved = Services.updateAppointment(apptId, apptData);
+      if (before?.status !== 'fatto' && saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento aggiornato', 'success');
     } else {
       saved = Services.addAppointment(apptData);
+      if (saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento creato', 'success');
     }
 
@@ -350,13 +599,13 @@ const App = {
 
     let bodyHtml = '';
     if (isBlock) {
-      bodyHtml = `<div class="detail-section">
+      bodyHtml = `<div class="detail-section detail-section-full">
         <div class="detail-label">Tipo</div>
         <div class="detail-value" style="color:var(--text3)">Blocco agenda — operatore non disponibile</div>
       </div>`;
     } else if (isCircuit) {
       bodyHtml = `
-        <div class="detail-section">
+        <div class="detail-section detail-section-full">
           <div class="detail-label">Partecipanti (${appt.clientIds.length}/${svc.maxClients})</div>
           <div class="participant-list">
             ${appt.clientIds.map(id => {
@@ -371,7 +620,7 @@ const App = {
             <div class="add-participant">
               <select id="add-part-select" class="form-input form-input-sm">
                 <option value="">— aggiungi cliente —</option>
-                ${clients.filter(c => !appt.clientIds.includes(c.id))
+                ${clients.filter(c => c.active !== false && !appt.clientIds.includes(c.id))
                   .map(c=>`<option value="${c.id}">${c.nome} ${c.cognome}</option>`).join('')}
               </select>
               <button class="btn-primary btn-sm" onclick="App._addParticipant('${appt.id}')">+</button>
@@ -395,9 +644,9 @@ const App = {
         </div>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
-      <div class="modal-body">
-        ${bodyHtml}
+      <div class="modal-body appt-detail-body">
         <div class="detail-grid">
+          ${bodyHtml}
           <div class="detail-section">
             <div class="detail-label">Operatore</div>
             <div class="detail-value">${op?`${op.nome} ${op.cognome}`:'—'}</div>
@@ -409,7 +658,7 @@ const App = {
             </div>
           </div>
         </div>
-        ${appt.notes?`<div class="detail-section"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
+        ${appt.notes?`<div class="detail-section detail-section-full detail-notes"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
       </div>
       <div class="modal-footer">
         <button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>
@@ -441,10 +690,32 @@ const App = {
     if (appt) App._renderDetailModal(appt);
   },
   _markDone(apptId) {
+    const before = State.getAppointments().find(a => a.id === apptId);
     const doneAppt = Services.updateAppointment(apptId, { status: 'fatto' });
+    if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
     SupabaseSync.pushAppointment(doneAppt);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(doneAppt);
+  },
+  _consumeClientSessions(appt) {
+    if (!appt?.clientIds?.length) return;
+    const clients = State.getClients();
+    const touched = [];
+    appt.clientIds.forEach(id => {
+      const idx = clients.findIndex(c => c.id === id);
+      if (idx < 0) return;
+      const total = Number(clients[idx].sessionsTotal ?? clients[idx].sessions_total ?? 0);
+      const remaining = Number(clients[idx].sessionsRemaining ?? clients[idx].sessions_remaining ?? 0);
+      if (total <= 0 || remaining <= 0) return;
+      clients[idx] = { ...clients[idx], sessionsRemaining: Math.max(0, remaining - 1) };
+      touched.push(clients[idx]);
+    });
+    if (!touched.length) return;
+    State.saveClients(clients);
+    touched.forEach(client => {
+      SupabaseSync.pushClient(client);
+      if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
+    });
   },
   _markNoShow(apptId) {
     const nsAppt = Services.updateAppointment(apptId, { status: 'noshow' });
@@ -462,8 +733,9 @@ const App = {
   // ── MODAL CLIENTE ────────────────────────────────────
   openNewClient()        { App._renderClientModal(null); },
   openEditClient(cid)    { App._renderClientModal(cid); },
+  openEditPackage(cid)   { App._renderClientModal(cid, true); },
 
-  _renderClientModal(clientId) {
+  _renderClientModal(clientId, packageOnly = false) {
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
     const isEdit = !!client;
     // Supporta sia vecchio schema stringa che nuovo array
@@ -481,6 +753,7 @@ const App = {
       `<option value="${f}" ${client?.packageFrequency===f?'selected':''}>${f}</option>`
     ).join('');
     const curDays = Array.isArray(client?.giorniSettimana) ? client.giorniSettimana : [];
+    const currentMetrics = client ? Services.getClientSessionMetrics(client) : null;
     const dayOptions = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label">
         <input type="checkbox" name="client-day" value="${g}" ${curDays.includes(g)?'checked':''} onchange="App._limitClientDays(this)">
@@ -489,7 +762,7 @@ const App = {
 
     const html = `
       <div class="modal-header">
-        <h3>${isEdit?'Modifica Cliente':'Nuovo Cliente'}</h3>
+        <h3>${packageOnly ? 'Modifica pacchetto e giorni' : (isEdit?'Modifica Cliente':'Nuovo Cliente')}</h3>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body">
@@ -513,8 +786,33 @@ const App = {
             <input type="text" id="cl-telefono" class="form-input" value="${client?.telefono||''}">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data di nascita</label>
+            <input type="date" id="cl-nascita" class="form-input" value="${client?.nascita||''}">
+          </div>
+          <div class="form-group">
+            <label>Codice fiscale</label>
+            <input type="text" id="cl-codice-fiscale" class="form-input" value="${client?.codiceFiscale||''}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Documento</label>
+            <input type="text" id="cl-documento" class="form-input" value="${client?.documento||''}">
+          </div>
+          <div class="form-group">
+            <label>Contatto emergenza</label>
+            <input type="text" id="cl-contatto-emergenza" class="form-input" value="${client?.contattoEmergenza||''}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Indirizzo</label>
+          <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}">
+        </div>
 
         <div class="form-section-label">Pacchetti acquistati</div>
+        ${packageOnly ? '<div class="form-hint" style="margin-bottom:8px">Qui modifichi pacchetto, frequenza, sessioni totali e giorni acquistati. Le sedute gia in calendario restano sotto controllo nel Quadro pacchetto.</div>' : ''}
         <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
           ${pkgCheckboxes}
         </div>
@@ -534,8 +832,11 @@ const App = {
             <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${client?.sessionsTotal||''}" onchange="App._limitClientDays()">
           </div>
           <div class="form-group">
-            <label>Sessioni rimanenti</label>
-            <input type="number" id="cl-sessions-rem" class="form-input" min="0" value="${client?.sessionsRemaining||''}">
+            <label>Sessioni residue automatiche</label>
+            <div class="computed-field">
+              ${client ? (currentMetrics?.total ? `${currentMetrics.remaining} residue · ${currentMetrics.completed} fatte` : 'Imposta le sessioni totali') : 'Calcolate dopo il salvataggio'}
+            </div>
+            <div class="form-hint">Si aggiornano segnando le sedute come fatto.</div>
           </div>
         </div>
 
@@ -561,12 +862,13 @@ const App = {
     App._limitClientDays();
   },
 
-  _maxClientDays() {
-    const raw = document.getElementById('cl-frequency')?.value || '';
-    const total = parseInt(document.getElementById('cl-sessions-total')?.value || '0', 10);
-    if (total === 2) return 1;
+  _frequencyMaxDaysValue(raw) {
     const n = parseInt((raw.match(/\d+/) || ['0'])[0], 10);
     return Number.isFinite(n) && n > 0 ? n : null;
+  },
+
+  _maxClientDays() {
+    return App._frequencyMaxDaysValue(document.getElementById('cl-frequency')?.value || '');
   },
 
   _limitClientDays(changed) {
@@ -598,10 +900,14 @@ const App = {
     const cognome   = document.getElementById('cl-cognome')?.value.trim();
     const email     = document.getElementById('cl-email')?.value.trim();
     const telefono  = document.getElementById('cl-telefono')?.value.trim();
+    const nascita   = document.getElementById('cl-nascita')?.value || null;
+    const codiceFiscale = document.getElementById('cl-codice-fiscale')?.value.trim();
+    const documento = document.getElementById('cl-documento')?.value.trim();
+    const indirizzo = document.getElementById('cl-indirizzo')?.value.trim();
+    const contattoEmergenza = document.getElementById('cl-contatto-emergenza')?.value.trim();
     const pkgs      = [...document.querySelectorAll('input[name="pkg"]:checked')].map(el=>el.value);
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
-    const sessRem   = parseInt(document.getElementById('cl-sessions-rem')?.value)||0;
     const notes     = document.getElementById('cl-notes')?.value.trim();
     if (!App._limitClientDays()) return;
     const giorniSettimana = [...document.querySelectorAll('input[name="client-day"]:checked')].map(el=>el.value);
@@ -609,8 +915,11 @@ const App = {
     if (!nome||!cognome) { UI.showToast('Nome e cognome obbligatori','error'); return; }
 
     const clients = State.getClients();
+    const currentClient = clientId ? clients.find(c => c.id === clientId) : null;
+    const completedSessions = currentClient ? Services.getClientSessionMetrics({ ...currentClient, sessionsTotal: sessTotal }).completed : 0;
+    const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
     const data = {
-      nome, cognome, email, telefono,
+      nome, cognome, email, telefono, nascita, codiceFiscale, documento, indirizzo, contattoEmergenza,
       packageTypes: pkgs,
       packageFrequency: frequency,
       giorniSettimana,
@@ -623,7 +932,7 @@ const App = {
       const idx = clients.findIndex(c=>c.id===clientId);
       if (idx!==-1) { clients[idx] = { ...clients[idx], ...data }; saved = clients[idx]; }
     } else {
-      const newC = { id: State.genId('c'), ...data, packageStart: new Date().toISOString().slice(0,10) };
+      const newC = { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
       clients.push(newC); saved = newC;
     }
     State.saveClients(clients);
@@ -633,6 +942,611 @@ const App = {
     UI.closeModal();
     if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
     UI.showToast(clientId?'Cliente aggiornato':'Cliente salvato','success');
+  },
+
+  // ── QUADRO PACCHETTO CLIENTE ─────────────────────────
+  _packageServiceId(client) {
+    const pkgs = Array.isArray(client?.packageTypes) ? client.packageTypes : [];
+    if (pkgs.includes('PT 1:1')) return 'pt11';
+    if (pkgs.includes('PT 1:2')) return 'pt12';
+    if (pkgs.includes('Circuit')) return 'circuit';
+    if (pkgs.includes('Valutazioni') || pkgs.includes('Visbody')) return 'visbody';
+    if (pkgs.includes('Baiobit')) return 'baiobit';
+    return null;
+  },
+
+  _packageAppointments(client, includeNutrition = true) {
+    const trainingServiceId = App._packageServiceId(client);
+    return State.getAppointments()
+      .filter(a => a.status !== 'annullato')
+      .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
+      .filter(a => {
+        if (trainingServiceId && a.serviceId === trainingServiceId) return true;
+        return includeNutrition && (a.serviceId === 'nutrizione' || a.serviceId === 'check');
+      })
+      .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
+  },
+
+  _fmtLongDate(dateStr) {
+    if (!dateStr) return '—';
+    const parts = String(dateStr).split('-').map(Number);
+    const d = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+  },
+
+  _dateStr(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  },
+
+  _parseDate(dateStr) {
+    const parts = String(dateStr || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return new Date();
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  },
+
+  _weekdayName(dateStr) {
+    const names = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const d = App._parseDate(dateStr);
+    return names[d.getDay()];
+  },
+
+  _suggestPackageDates(client, count, options = {}) {
+    const days = Array.isArray(options.days) ? options.days : (Array.isArray(client.giorniSettimana) ? client.giorniSettimana : []);
+    if (!days.length || count <= 0) return [];
+
+    const wanted = new Set(days);
+    const trainingServiceId = App._packageServiceId(client);
+    const existing = App._packageAppointments(client, false).filter(a => a.serviceId === trainingServiceId);
+    const usedDates = new Set(existing.map(a => a.date));
+    const lastPlanned = existing[existing.length - 1]?.date;
+    const today = App._dateStr(new Date());
+    const startSeed = options.fromDate || [today, client.packageStart, lastPlanned].filter(Boolean).sort().pop();
+    const cursor = App._parseDate(startSeed);
+    if (!options.includeStart && usedDates.has(App._dateStr(cursor))) cursor.setDate(cursor.getDate() + 1);
+
+    const out = [];
+    for (let guard = 0; out.length < count && guard < 420; guard += 1) {
+      const date = App._dateStr(cursor);
+      if (wanted.has(App._weekdayName(date)) && !usedDates.has(date)) {
+        out.push(date);
+        usedDates.add(date);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return out;
+  },
+
+  openPackageOverview(clientId) {
+    const client = State.getClients().find(c => c.id === clientId);
+    if (!client) return;
+
+    const metrics = Services.getClientSessionMetrics(client);
+    const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
+    const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
+    const serviceId = App._packageServiceId(client);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    const appointments = App._packageAppointments(client, true);
+    const operators = State.getOperators().filter(o => o.active !== false);
+    const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
+    const hasTotal = metrics.total > 0;
+    const today = App._dateStr(new Date());
+    const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
+      <label class="checkbox-label package-plan-day">
+        <input type="checkbox" name="pkg-plan-day" value="${g}" ${days.includes(g) ? 'checked' : ''} onchange="App._limitPackagePlanDays('${client.id}', this)">
+        <span>${g.slice(0, 3)}</span>
+      </label>`).join('');
+
+    const rows = appointments.length ? appointments.map(a => {
+      const svc = Services.getService(a.serviceId);
+      const operatorOptions = State.getOperators()
+        .filter(op => op.active !== false)
+        .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
+        .join('');
+      const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
+        `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
+      ).join('');
+      return `
+        <tr>
+          <td>
+            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}">
+          </td>
+          <td>
+            <div class="time-edit-cell">
+              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900">
+            </div>
+          </td>
+          <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
+          <td>
+            <select id="pkg-operator-${a.id}" class="form-input package-operator-input">
+              <option value="">—</option>
+              ${operatorOptions}
+            </select>
+          </td>
+          <td>
+            <select id="pkg-status-${a.id}" class="form-input package-status-input">
+              ${statusOptions}
+            </select>
+          </td>
+          <td>
+            <div class="package-row-actions">
+              <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
+              <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
+              <button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('') : `
+        <tr><td colspan="6" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
+
+    const html = `
+      <div class="modal-header">
+        <div>
+          <h3>Quadro pacchetto</h3>
+          <p class="modal-subtitle">${client.nome} ${client.cognome}</p>
+        </div>
+        <button class="modal-close" onclick="UI.closeModal()">✕</button>
+      </div>
+      <div class="modal-body package-overview">
+        <div class="package-overview-head">
+          <div>
+            <div class="eyebrow">Pacchetto acquistato</div>
+            <div class="package-overview-title">${pkgs.join(' + ') || 'Nessun pacchetto impostato'}</div>
+            <div class="package-overview-sub">
+              ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
+            </div>
+          </div>
+          <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
+        </div>
+
+        <div class="package-overview-kpis">
+          <div class="${hasTotal ? '' : 'warn'}"><span>Totali</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
+          <div><span>Fatte</span><strong>${metrics.completed}</strong></div>
+          <div><span>Future</span><strong>${metrics.scheduled}</strong></div>
+          <div><span>Residue</span><strong>${hasTotal ? metrics.remaining : '—'}</strong></div>
+          <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
+          <div class="${metrics.overPlanned ? 'warn' : ''}"><span>Oltre pacchetto</span><strong>${metrics.overPlanned || 0}</strong></div>
+        </div>
+
+        <div class="package-overview-grid">
+          <section class="package-panel">
+            <h4>Giornate acquistate</h4>
+            <div class="day-chip-row">
+              ${days.length ? days.map(day => `<span>${day}</span>`).join('') : '<em>Nessun giorno impostato</em>'}
+            </div>
+            <p>Queste sono le giornate reali usate per generare le prossime sedute. L'acquisizione resta nello storico iniziale.</p>
+          </section>
+
+          <section class="package-panel">
+            <h4>Prossime date suggerite</h4>
+            <div class="suggested-date-row">
+              ${hasTotal
+                ? (suggested.length ? suggested.map(date => `<span>${App._fmtLongDate(date)}</span>`).join('') : '<em>Nessuna data da generare</em>')
+                : '<em>Imposta prima il numero di sessioni totali del pacchetto.</em>'}
+            </div>
+            <div class="package-generate-row">
+              <label>Ora</label>
+              <input id="pkg-gen-time" class="form-input" type="time" value="09:00" step="900">
+              <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="package-panel package-reschedule-panel">
+          <h4>Cambio giorni/orari futuri</h4>
+          <div class="package-reschedule-grid">
+            <div>
+              <label>Nuovi giorni reali</label>
+              <div class="checkbox-grid package-plan-grid">
+                ${planningDays}
+              </div>
+            </div>
+            <div class="package-reschedule-fields">
+              <div class="form-group">
+                <label>Orario</label>
+                <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
+              </div>
+              <div class="form-group">
+                <label>PT</label>
+                <select id="pkg-plan-operator" class="form-input">
+                  <option value="">Mantieni/auto</option>
+                  ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Da data</label>
+                <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
+              </div>
+            </div>
+          </div>
+          <div class="package-reschedule-actions">
+            <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
+            <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
+          </div>
+          <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte.</p>
+        </section>
+
+        <section class="package-panel">
+          <h4>Appuntamenti collegati</h4>
+          <table class="package-timeline-table">
+            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Azioni</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
+        <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
+      </div>
+    `;
+    UI.openModal(html);
+  },
+
+  _selectedPackagePlanDays() {
+    return [...document.querySelectorAll('input[name="pkg-plan-day"]:checked')].map(el => el.value);
+  },
+
+  _limitPackagePlanDays(clientId, changed) {
+    const client = State.getClients().find(c => c.id === clientId);
+    const max = App._frequencyMaxDaysValue(client?.packageFrequency || '');
+    if (!max) return true;
+    const checked = [...document.querySelectorAll('input[name="pkg-plan-day"]:checked')];
+    if (checked.length <= max) return true;
+    if (changed) changed.checked = false;
+    else checked.slice(max).forEach(input => { input.checked = false; });
+    UI.showToast(`La frequenza del pacchetto prevede massimo ${max} giorni a settimana`, 'error');
+    return false;
+  },
+
+  _updateClientPackageDays(clientId, days) {
+    const clients = State.getClients();
+    const idx = clients.findIndex(c => c.id === clientId);
+    if (idx < 0) return null;
+    clients[idx] = {
+      ...clients[idx],
+      giorniSettimana: days
+    };
+    State.saveClients(clients);
+    SupabaseSync.pushClient(clients[idx]);
+    if (CONFIG.SHEETS.enabled) Sheets.pushClient(clients[idx]);
+    return clients[idx];
+  },
+
+  _packageAvailabilitySuggestions(appt, limit = 8) {
+    const svc = Services.getService(appt.serviceId);
+    if (!svc || !appt.date) return [];
+
+    const start = Services.timeToMin(CONFIG.workHours.start);
+    const end = Services.timeToMin(CONFIG.workHours.end);
+    const duration = Number(appt.durationMin || svc.durationMin || 60);
+    const buffer = Number(appt.bufferMin ?? svc.bufferMin ?? CONFIG.defaultBufferMin ?? 0);
+    const operators = State.getOperators().filter(o => o.active !== false);
+    const suggestions = [];
+    const seen = new Set();
+
+    for (let t = start; t + duration <= end && suggestions.length < limit; t += 15) {
+      const time = Services.minToTime(t);
+      const candidates = appt.operatorId
+        ? [appt.operatorId, ...operators.map(o => o.id).filter(id => id !== appt.operatorId)]
+        : [null, ...operators.map(o => o.id)];
+
+      for (const operatorId of candidates) {
+        const draft = { ...appt, startTime: time, operatorId };
+        const validation = Services.canBookAppointment(draft, { strictPackageDays: false });
+        if (!validation.ok) continue;
+
+        const key = `${time}-${operatorId || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const opName = operatorId ? Services.operatorFullName(operatorId) : 'senza PT assegnato';
+        const roomInfo = svc.room
+          ? ` · ${CONFIG.ROOMS[svc.room]?.label || 'Sala'} ok`
+          : '';
+        suggestions.push(`${time} con ${opName}${roomInfo}`);
+        break;
+      }
+    }
+
+    return suggestions;
+  },
+
+  _showPackageAvailabilityError(title, appt, errors) {
+    const suggestions = App._packageAvailabilitySuggestions(appt);
+    const detail = [
+      title,
+      '',
+      ...errors.map(e => `- ${e}`),
+      '',
+      suggestions.length
+        ? 'Orari disponibili nella stessa data:\n' + suggestions.map(s => `- ${s}`).join('\n')
+        : 'Non ho trovato orari disponibili nella stessa data con sala/cliente/PT compatibili.'
+    ].join('\n');
+
+    UI.showToast(errors[0] || 'Slot non disponibile', 'error');
+    alert(detail);
+  },
+
+  _plannedPackageFutureChanges(clientId, fromDate, time, operatorId, serviceId) {
+    return State.getAppointments()
+      .filter(a =>
+        a.status !== 'annullato' &&
+        a.status !== 'fatto' &&
+        a.date >= fromDate &&
+        a.serviceId === serviceId &&
+        Array.isArray(a.clientIds) &&
+        a.clientIds.includes(clientId)
+      )
+      .map(appt => {
+        const patch = {};
+        if (time) patch.startTime = time;
+        if (operatorId) patch.operatorId = operatorId;
+        return { appt, patch, next: { ...appt, ...patch } };
+      })
+      .filter(change => Object.keys(change.patch).length);
+  },
+
+  _savePackageSchedule(clientId) {
+    if (!App._limitPackagePlanDays(clientId)) return;
+    const currentClient = State.getClients().find(c => c.id === clientId);
+    if (!currentClient) return;
+    const days = App._selectedPackagePlanDays();
+    const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-plan-time')?.value || '';
+    const operatorId = document.getElementById('pkg-plan-operator')?.value || '';
+    if (!days.length) {
+      UI.showToast('Seleziona almeno un giorno reale', 'error');
+      return;
+    }
+    const serviceId = App._packageServiceId(currentClient);
+    const changes = App._plannedPackageFutureChanges(clientId, fromDate, time, operatorId, serviceId);
+    const conflicts = changes
+      .map(change => ({ ...change, validation: Services.canBookAppointment(change.next, { strictPackageDays: false }) }))
+      .filter(change => !change.validation.ok);
+
+    if (conflicts.length) {
+      const first = conflicts[0];
+      App._showPackageAvailabilityError(
+        `Cambio non salvato: ${conflicts.length} sedute future hanno conflitti.`,
+        first.next,
+        first.validation.errors
+      );
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    const saved = App._updateClientPackageDays(clientId, days);
+    if (!saved) return;
+    const touched = changes
+      .map(change => Services.updateAppointment(change.appt.id, change.patch))
+      .filter(Boolean);
+    touched.forEach(appt => SupabaseSync.pushAppointment(appt));
+    if (CONFIG.SHEETS.enabled) touched.forEach(appt => Sheets.pushAppointment(appt));
+    Calendar.render();
+    UI.showToast(touched.length ? `Giorni, orario e PT salvati su ${touched.length} sedute future` : 'Giorni reali del pacchetto salvati', 'success');
+    App.openPackageOverview(clientId);
+  },
+
+  async _regenerateFuturePackageAppointments(clientId) {
+    if (!App._limitPackagePlanDays(clientId)) return;
+    const currentClient = State.getClients().find(c => c.id === clientId);
+    if (!currentClient) return;
+
+    const days = App._selectedPackagePlanDays();
+    const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-plan-time')?.value || '09:00';
+    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || null;
+    if (!days.length) {
+      UI.showToast('Seleziona almeno un giorno reale', 'error');
+      return;
+    }
+
+    const serviceId = App._packageServiceId(currentClient);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    if (!service) {
+      UI.showToast('Pacchetto PT non impostato per questo cliente', 'error');
+      return;
+    }
+
+    const allAppointments = State.getAppointments();
+    const futureToReplace = allAppointments.filter(a =>
+      a.status !== 'annullato' &&
+      a.status !== 'fatto' &&
+      a.date >= fromDate &&
+      a.serviceId === serviceId &&
+      Array.isArray(a.clientIds) &&
+      a.clientIds.includes(clientId)
+    );
+    const fallbackOperator = selectedOperator ||
+      futureToReplace[0]?.operatorId ||
+      [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
+      currentClient.ptAssegnato ||
+      null;
+    const fallbackOperatorData = fallbackOperator ? Services.getOperator(fallbackOperator) : null;
+    const fallbackOperatorLabel = fallbackOperatorData ? `${fallbackOperatorData.nome} ${fallbackOperatorData.cognome}` : 'senza PT assegnato';
+
+    const confirmed = confirm(
+      `Rigenero le sedute future di ${currentClient.nome} ${currentClient.cognome} da ${fromDate}.\n` +
+      `Le sedute future non svolte (${futureToReplace.length}) saranno sostituite con: ${days.join(', ')} alle ${time}, PT ${fallbackOperatorLabel}.\n\n` +
+      'Le sedute gia fatte non vengono toccate.'
+    );
+    if (!confirmed) return;
+
+    const backupClients = State.getClients();
+    const updatedClient = App._updateClientPackageDays(clientId, days);
+    if (!updatedClient) return;
+    const backupAppointments = State.getAppointments();
+    const futureIds = new Set(futureToReplace.map(a => a.id));
+    State.saveAppointments(backupAppointments.filter(a => !futureIds.has(a.id)));
+
+    const metricsAfterRemoval = Services.getClientSessionMetrics(updatedClient);
+    const missing = metricsAfterRemoval.toSchedule;
+    if (missing <= 0) {
+      await Promise.all(futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)));
+      Calendar.render();
+      UI.showToast('Pianificazione aggiornata: nessuna seduta futura da creare', 'success');
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    const dates = App._suggestPackageDates(updatedClient, missing * 8, { days, fromDate, includeStart: true });
+    const created = [];
+    const skipped = [];
+
+    dates.some(date => {
+      if (created.length >= missing) return true;
+      const draft = {
+        serviceId,
+        clientIds: [clientId],
+        operatorId: fallbackOperator,
+        date,
+        startTime: time,
+        durationMin: service.durationMin || 60,
+        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        status: 'prenotato',
+        notes: `Rigenerata per cambio giorni da ${fromDate}`,
+      };
+      const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
+      if (!validation.ok) {
+        skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+        return false;
+      }
+      created.push(Services.addAppointment(draft));
+      return false;
+    });
+
+    if (!created.length && skipped.length) {
+      State.saveAppointments(backupAppointments);
+      State.saveClients(backupClients);
+      SupabaseSync.pushClient(currentClient);
+      UI.showToast('Cambio non applicato: tutte le date sono in conflitto', 'error');
+      alert('Cambio giorni non applicato per conflitti:\n' + skipped.slice(0, 12).join('\n'));
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    await Promise.all([
+      ...futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)),
+      ...created.map(a => SupabaseSync.pushAppointment(a)),
+    ]);
+    if (CONFIG.SHEETS.enabled) created.forEach(a => Sheets.pushAppointment(a));
+    Calendar.render();
+
+    if (skipped.length) {
+      UI.showToast(`${created.length} create, ${skipped.length} date saltate per conflitti`, 'info');
+      alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
+    } else {
+      UI.showToast(`${created.length} sedute future rigenerate`, 'success');
+    }
+    App.openPackageOverview(clientId);
+  },
+
+  async _updatePackageAppointmentRow(apptId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
+    const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
+    const nextOperatorId = document.getElementById(`pkg-operator-${apptId}`)?.value || null;
+    const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
+    if (!appt || !nextDate || !nextTime || !nextStatus) return;
+    if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && appt.status === nextStatus) {
+      UI.showToast('Riga gia aggiornata', 'success');
+      return;
+    }
+
+    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus };
+    const validation = Services.canBookAppointment(patch);
+    if (!validation.ok) {
+      UI.showToast(validation.errors[0], 'error');
+      App._openConflictOverview(patch, validation.errors, { returnPackageClientId: appt.clientIds?.[0] || null });
+      return;
+    }
+
+    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus });
+    if (appt.status !== saved.status) App._consumeClientSessions(saved);
+    await SupabaseSync.pushAppointment(saved);
+    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
+    Calendar.render();
+    UI.showToast('Appuntamento aggiornato', 'success');
+    const clientId = saved?.clientIds?.[0];
+    if (clientId) App.openPackageOverview(clientId);
+  },
+
+  async _deletePackageAppointment(apptId) {
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!appt) return;
+    if (!confirm('Eliminare questa seduta dal pacchetto?')) return;
+    Services.deleteAppointment(apptId);
+    await SupabaseSync.deleteAppointment(apptId);
+    if (appt.status === 'fatto') App._consumeClientSessions(appt);
+    Calendar.render();
+    UI.showToast('Seduta eliminata dal pacchetto', 'success');
+    const clientId = appt.clientIds?.[0];
+    if (clientId) App.openPackageOverview(clientId);
+  },
+
+  async _generateMissingPackageAppointments(clientId) {
+    const client = State.getClients().find(c => c.id === clientId);
+    if (!client) return;
+
+    const serviceId = App._packageServiceId(client);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    if (!service) {
+      UI.showToast('Pacchetto PT non impostato per questo cliente', 'error');
+      return;
+    }
+
+    const metrics = Services.getClientSessionMetrics(client);
+    if (metrics.total <= 0) {
+      UI.showToast('Imposta prima le sessioni totali del pacchetto', 'error');
+      return;
+    }
+    const missing = metrics.toSchedule;
+    if (missing <= 0) {
+      UI.showToast('Non ci sono sedute mancanti da programmare', 'success');
+      return;
+    }
+
+    const time = document.getElementById('pkg-gen-time')?.value || '09:00';
+    const dates = App._suggestPackageDates(client, missing * 6);
+    const created = [];
+    const skipped = [];
+
+    dates.some(date => {
+      if (created.length >= missing) return true;
+      const draft = {
+        serviceId,
+        clientIds: [client.id],
+        operatorId: client.ptAssegnato || null,
+        date,
+        startTime: time,
+        durationMin: service.durationMin || 60,
+        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        status: 'prenotato',
+        notes: 'Programmazione generata dal quadro pacchetto',
+      };
+      const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
+      if (!validation.ok) {
+        skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+        return false;
+      }
+      created.push(Services.addAppointment(draft));
+      return false;
+    });
+
+    if (created.length) {
+      await Promise.all(created.map(appt => SupabaseSync.pushAppointment(appt)));
+      if (CONFIG.SHEETS.enabled) created.forEach(appt => Sheets.pushAppointment(appt));
+      Calendar.render();
+    }
+
+    if (skipped.length) {
+      UI.showToast(`${created.length} create, ${skipped.length} date saltate per conflitti`, created.length ? 'info' : 'error');
+      alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
+      console.warn('[Pacchetto] Sedute saltate:', skipped);
+    } else {
+      UI.showToast(`${created.length} sedute programmate`, 'success');
+    }
+    App.openPackageOverview(client.id);
   },
 
 
@@ -671,6 +1585,14 @@ const App = {
           </label>
         </div>
 
+        <div class="data-action-row" style="border-color:#2563EB;background:rgba(37,99,235,.06)">
+          <div class="data-action-info">
+            <div class="data-action-title">⇧ Porta il locale su Supabase</div>
+            <div class="data-action-sub">Invia a Supabase i dati presenti in questo browser prima di rileggerli dal database</div>
+          </div>
+          <button class="act-btn primary" onclick="App.syncLocalToSupabase({ silent:false, refresh:true })">Sincronizza ora</button>
+        </div>
+
         ${hasBackup ? `
         <div class="data-action-row" style="border-color:var(--green);background:var(--green-pale)">
           <div class="data-action-info">
@@ -706,13 +1628,14 @@ const App = {
     UI.openModal(html);
   },
 
-  _importFile(input) {
+  async _importFile(input) {
     const file = input.files[0];
     if (!file) return;
-    State.importData(file).then(res => {
+    State.importData(file).then(async res => {
+      await App.syncLocalToSupabase({ silent: true, refresh: false });
       UI.closeModal();
       Calendar.render();
-      UI.showToast(`Importati: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
+      UI.showToast(`Importati e caricati su Supabase: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
     }).catch(err => UI.showToast('Errore importazione: ' + err.message, 'error'));
   },
 
@@ -741,17 +1664,50 @@ const App = {
     UI.showToast('Reset completo eseguito', 'success');
   },
 
+  async refreshFromSupabase({ silent = true, force = false } = {}) {
+    if (!force && window.PTAvailabilityOverview?.shouldPauseAutoRefresh?.()) return;
+    try {
+      await SupabaseSync.pullAll();
+      Calendar.render();
+      if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
+      if (!silent) UI.showToast('Calendario aggiornato da Supabase', 'success');
+    } catch (err) {
+      console.warn('[Supabase] refresh non riuscito:', err);
+      if (!silent) UI.showToast('Aggiornamento Supabase non riuscito', 'error');
+    }
+  },
+
+  async syncLocalToSupabase({ silent = true, refresh = false } = {}) {
+    const snapshot = {
+      operators: State.getOperators(),
+      clients: State.getClients(),
+      appointments: State.getAppointments(),
+    };
+    const total = snapshot.operators.length + snapshot.clients.length + snapshot.appointments.length;
+    if (!total) return { operators: 0, clients: 0, appointments: 0, success: true, errors: [] };
+
+    try {
+      const res = await SupabaseSync.pushLocalSnapshot(snapshot);
+      localStorage.setItem('neacea_last_push_to_supabase', new Date().toISOString());
+      if (res.errors?.length) {
+        console.warn('[Supabase] alcune righe locali non sono state caricate:', res.errors);
+        if (!silent) UI.showToast(`${res.errors.length} elementi locali non caricati su Supabase`, 'error');
+      } else if (!silent) {
+        UI.showToast(`Locale caricato su Supabase: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
+      }
+      if (refresh) await App.refreshFromSupabase({ silent: true });
+      return res;
+    } catch (err) {
+      console.warn('[Supabase] push locale non riuscito:', err);
+      if (!silent) UI.showToast('Caricamento locale su Supabase non riuscito', 'error');
+      return { success: false, errors: [{ label: 'syncLocalToSupabase', error: String(err?.message || err) }] };
+    }
+  },
+
   // ── INIT ─────────────────────────────────────────────
   async init() {
     State.init();
-    try {
-      await SupabaseSync.pullAll();
-    } catch (err) {
-      console.warn('[Supabase] sync non riuscita:', err);
-      UI.showToast('Supabase non raggiungibile: uso dati locali', 'error');
-    }
-
-
+    await App.refreshFromSupabase({ silent: true, force: true });
 
     document.querySelectorAll('[data-view]').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
@@ -762,6 +1718,14 @@ const App = {
     });
 
     Calendar.switchView('dashboard');
+
+    window.addEventListener('focus', () => App.refreshFromSupabase({ silent: true }));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) App.refreshFromSupabase({ silent: true });
+    });
+    setInterval(() => {
+      if (!document.hidden) App.refreshFromSupabase({ silent: true });
+    }, 30000);
 
     if (CONFIG.SHEETS.enabled) setTimeout(() => Sheets.fullSync(), 1500);
   },

@@ -106,7 +106,7 @@ const Sheets = (() => {
             v.date === appt.date &&
             v.operatorId === appt.operatorId &&
             v.status !== 'annullato' &&
-            Services.overlaps(appt, v, true)
+            Services.overlaps(appt, v, false)
           );
 
           // Controlla conflitto cliente (stesso cliente stessa ora)
