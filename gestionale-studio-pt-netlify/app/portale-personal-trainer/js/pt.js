@@ -1060,6 +1060,14 @@ function removeDraftPhoto(index) {
   if (!state.photoDraftFiles.length) els.photoInput.value = '';
 }
 
+function clearPhotoDraft() {
+  els.photoInput.value = '';
+  state.photoDraftFiles = [];
+  els.photoThumbnails.innerHTML = '';
+  els.photoDraftCount.textContent = '0 foto selezionate';
+  els.photoPreviewArea.classList.add('hidden');
+}
+
 function resizeImageFile(file, maxSize = 1200, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1089,59 +1097,67 @@ async function savePhotoVisit() {
     return;
   }
   const selected = state.photoDraftFiles;
-  if (!selected.length) return;
+  if (!selected.length) {
+    toast('Seleziona almeno una foto', true);
+    return;
+  }
   const date = els.photoDate.value || todayIso();
   const visitId = idFromPhoto().replace('foto_', 'visit_');
   const weight = els.photoWeight.value || '';
   const note = els.photoNote.value.trim();
   els.photoProgress.classList.add('show');
+  els.photoSaveButton.disabled = true;
+  els.photoSaveButton.textContent = 'Salvataggio...';
   let uploaded = 0;
-  for (let i = 0; i < selected.length; i++) {
-    els.photoProgressBar.style.width = `${Math.round((i / selected.length) * 100)}%`;
-    const file = selected[i];
-    const dataUrl = await resizeImageFile(file);
-    const storage = await uploadPhotoStorage({
-      clienteId: clientId,
-      base64: dataUrl.split(',')[1],
-      filename: file.name,
-      mimeType: 'image/jpeg',
-      data: date,
-    });
-    if (!storage.success) {
-      toast(storage.error || 'Upload foto non riuscito', true);
-      continue;
+  try {
+    for (let i = 0; i < selected.length; i++) {
+      els.photoProgressBar.style.width = `${Math.round((i / selected.length) * 100)}%`;
+      const file = selected[i];
+      const dataUrl = await resizeImageFile(file);
+      const storage = await uploadPhotoStorage({
+        clienteId: clientId,
+        base64: dataUrl.split(',')[1],
+        filename: file.name,
+        mimeType: 'image/jpeg',
+        data: date,
+      });
+      if (!storage.success) {
+        throw new Error(storage.error || 'Upload foto non riuscito');
+      }
+      const id = idFromPhoto();
+      const photoData = {
+        url: storage.url,
+        filename: file.name,
+        data: date,
+        visitaId: visitId,
+        peso: weight,
+        note,
+        bucket: storage.bucket,
+        storagePath: storage.path,
+        storage_path: storage.path,
+        source: 'portal-pt',
+      };
+      await sb('foto_allenamento', '', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: { id, cliente_id: clientId, data: photoData },
+      });
+      state.photos.unshift(normalizePhoto({ id, cliente_id: clientId, data: photoData, created_at: new Date().toISOString() }));
+      uploaded++;
     }
-    const id = idFromPhoto();
-    const photoData = {
-      url: storage.url,
-      filename: file.name,
-      data: date,
-      visitaId: visitId,
-      peso: weight,
-      note,
-      bucket: storage.bucket,
-      storagePath: storage.path,
-      storage_path: storage.path,
-      source: 'portal-pt',
-    };
-    await sb('foto_allenamento', '', {
-      method: 'POST',
-      headers: { Prefer: 'return=minimal' },
-      body: { id, cliente_id: clientId, data: photoData },
-    });
-    state.photos.unshift(normalizePhoto({ id, cliente_id: clientId, data: photoData, created_at: new Date().toISOString() }));
-    uploaded++;
+  } catch (error) {
+    toast(error.message || 'Salvataggio visita non riuscito', true);
+    return;
+  } finally {
+    els.photoSaveButton.disabled = false;
+    els.photoSaveButton.textContent = 'Salva visita';
+    setTimeout(() => {
+      els.photoProgress.classList.remove('show');
+      els.photoProgressBar.style.width = '0';
+    }, 500);
   }
   els.photoProgressBar.style.width = '100%';
-  setTimeout(() => {
-    els.photoProgress.classList.remove('show');
-    els.photoProgressBar.style.width = '0';
-  }, 500);
-  els.photoInput.value = '';
-  state.photoDraftFiles = [];
-  els.photoThumbnails.innerHTML = '';
-  els.photoDraftCount.textContent = '0 foto selezionate';
-  els.photoPreviewArea.classList.add('hidden');
+  clearPhotoDraft();
   els.photoWeight.value = '';
   els.photoNote.value = '';
   renderPhotos();
