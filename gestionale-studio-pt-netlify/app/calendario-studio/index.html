@@ -4,12 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEACEA — Calendario Gestionale</title>
-  <link rel="stylesheet" href="css/base.css?v=29">
-  <link rel="stylesheet" href="css/layout.css?v=29">
-  <link rel="stylesheet" href="css/calendar.css?v=29">
-  <link rel="stylesheet" href="css/clients-fix.css?v=29">
-  <link rel="stylesheet" href="css/ui-fixes.css?v=34">
-  <link rel="stylesheet" href="css/pt-availability-overview.css?v=11">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/calendar.css">
 </head>
 <body>
 
@@ -25,7 +22,6 @@
     <button class="topbar-tab" data-view="day">📋 Giorno</button>
     <button class="topbar-tab" data-view="week">🗓 Settimana</button>
     <button class="topbar-tab" data-view="room">📊 Sale</button>
-    <button class="topbar-tab" data-view="availability">⏱ Disponibilità</button>
     <button class="topbar-tab" data-view="clients">👤 Clienti</button>
     <button class="topbar-tab" data-view="operators">👥 Staff</button>
   </div>
@@ -51,9 +47,6 @@
   <!-- Sale / Saturazione -->
   <div id="view-room" class="view-panel"></div>
 
-  <!-- Disponibilità PT -->
-  <div id="view-availability" class="view-panel"></div>
-
   <!-- Clienti -->
   <div id="view-clients" class="view-panel"></div>
 
@@ -74,21 +67,21 @@
 
 <!-- ── SCRIPTS ──────────────────────────────────── -->
 <script>
-  // Il gestionale usa Supabase come sorgente dati, ma conserva eventuali
-  // dati locali abbastanza a lungo da migrarli prima del refresh dal database.
+  // Pulizia anti-demo: il gestionale ora usa Supabase come sorgente dati.
+  // A ogni avvio rimuoviamo solo la cache locale di clienti/appuntamenti,
+  // poi app.js rilegge i dati reali dal database.
+  localStorage.removeItem('neacea_clients');
+  localStorage.removeItem('neacea_appointments');
 </script>
-<script src="js/config.js?v=29"></script>
-<script src="js/state.js?v=30"></script>
-<script src="js/supabase.js?v=34"></script>
-<script src="js/services.js?v=34"></script>
-<script src="js/calendar.js?v=34"></script>
-<script src="js/clients.js?v=34"></script>
-<script src="js/operators.js?v=31"></script>
-<script src="js/sheets.js?v=30"></script>
-<script src="js/app.js?v=45"></script>
-<script src="js/nutrition-fixes.js?v=29"></script>
-<script src="js/session-fixes.js?v=29"></script>
-<script src="js/pt-availability-overview.js?v=21"></script>
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/services.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/clients.js"></script>
+<script src="js/operators.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/app.js"></script>
 
 <script>
   // Orologio topbar

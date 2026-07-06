@@ -7,11 +7,8 @@ const Calendar = (() => {
 
   let currentDate = new Date();
   let currentView = 'dashboard';
-  let availabilityServiceId = 'pt11';
 
-  function fmt(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
+  function fmt(d) { return d.toISOString().slice(0, 10); }
   function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
 
   function todayStr() { return fmt(new Date()); }
@@ -51,7 +48,6 @@ const Calendar = (() => {
       case 'day': renderDay(); break;
       case 'week': renderWeek(); break;
       case 'room': renderRoom(); break;
-      case 'availability': renderAvailability(); break;
       case 'operators': Operators.render(); break;
       case 'clients': Clients.render(); break;
     }
@@ -148,15 +144,6 @@ const Calendar = (() => {
             }).join('')}
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Gestione pacchetti clienti</span>
-        </div>
-        <div class="package-alert-list">
-          ${Clients.renderDashboardAlerts ? Clients.renderDashboardAlerts() : '<p class="empty-state">Indicatori clienti non disponibili</p>'}
-        </div>
-      </div>
     `;
   }
 
@@ -181,6 +168,7 @@ const Calendar = (() => {
       return `top:${top}px;height:${height}px`;
     }
 
+    // Raggruppa appuntamenti per colonna (evita overlap visivo)
     function assignColumns(appts) {
       const cols = [];
       appts.forEach(a => {
@@ -402,38 +390,9 @@ const Calendar = (() => {
     `;
   }
 
-  function availabilityServiceOptions() {
-    return Object.values(CONFIG.SERVICES)
-      .filter(s => !s.isBlock)
-      .map(s => `<option value="${s.id}" ${availabilityServiceId === s.id ? 'selected' : ''}>${s.label}</option>`)
-      .join('');
-  }
-
-  function serviceCompatibleOperators(serviceId) {
-    const svc = Services.getService(serviceId);
-    return State.getOperators()
-      .filter(op => op.active !== false)
-      .filter(op => {
-        if (!svc?.requiredRoles?.length) return true;
-        const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
-        return svc.requiredRoles.some(role => roles.includes(role));
-      });
-  }
-
-  function renderAvailability() {
-    const panel = document.getElementById('view-availability');
-    if (!panel) return;
-    panel.innerHTML = '';
-  }
-
   // ─────────────────────────────────────────────────────
   // NAVIGAZIONE
   // ─────────────────────────────────────────────────────
-
-  function setAvailabilityService(serviceId) {
-    availabilityServiceId = serviceId || 'pt11';
-    renderAvailability();
-  }
 
   function prevDay() { currentDate.setDate(currentDate.getDate() - 1); render(); }
   function nextDay() { currentDate.setDate(currentDate.getDate() + 1); render(); }
@@ -443,5 +402,5 @@ const Calendar = (() => {
 
   function getCurrentDateStr() { return fmt(currentDate); }
 
-  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
+  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt };
 })();
