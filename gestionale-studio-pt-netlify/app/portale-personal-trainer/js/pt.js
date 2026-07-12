@@ -1,5 +1,7 @@
 const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+const PROGRAM_SCHEMA_VERSION = 4;
+const PROGRAM_DRAFT_PREFIX = 'neacea_pt_program_draft_v1';
 
 const NEACEA_BLOCKS = [
   ['N0', 'Tecnico'],
@@ -150,6 +152,20 @@ const STATUS_LABELS = {
   noshow: 'No-show',
 };
 
+const PROGRAM_FIELD_IDS = new Set([
+  'programClient',
+  'programStatus',
+  'programName',
+  'programGoal',
+  'programLevel',
+  'programWeeks',
+  'programFrequency',
+  'programSplit',
+  'programStart',
+  'programEnd',
+  'programNotes',
+]);
+
 const SERVICE_ALIASES = {
   'pt 1:1': 'pt11',
   'pt 1-1': 'pt11',
@@ -175,6 +191,7 @@ const state = {
   clients: [],
   sessions: [],
   programs: [],
+  programLoads: [],
   photos: [],
   currentPt: null,
   loginOperatorId: '',
@@ -192,6 +209,7 @@ const state = {
   builderSessionIndex: 0,
   lastAddedExerciseId: '',
   photoDraftFiles: [],
+  programDraftTimer: null,
 };
 
 const els = {};
@@ -279,6 +297,13 @@ function sameMonth(value, reference = todayIso()) {
 function formatDate(value) {
   if (!value) return '-';
   return parseIso(value).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatTime(value) {
@@ -517,6 +542,94 @@ function toast(message, isError = false) {
   toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2600);
 }
 
+function isPersistentProgramInput(target) {
+  if (!target) return false;
+  if (target.matches?.('[data-session-field]')) return true;
+  return PROGRAM_FIELD_IDS.has(target.id);
+}
+
+function setProgramSaveStatus(message, type = 'idle', actionHtml = '') {
+  if (!els.programSaveStatus) return;
+  els.programSaveStatus.className = `save-status ${type}`;
+  els.programSaveStatus.innerHTML = `<span>${esc(message)}</span>${actionHtml || ''}`;
+}
+
+function programDraftKey(programId = '', clientId = '') {
+  const owner = state.currentPt?.id || 'anon';
+  const draftId = programId || `new_${clientId || 'no_client'}`;
+  return `${PROGRAM_DRAFT_PREFIX}:${owner}:${draftId}`;
+}
+
+function readLocalProgramDraft(programId = '', clientId = '') {
+  try {
+    const raw = window.localStorage.getItem(programDraftKey(programId, clientId));
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function clearLocalProgramDraft(programId = '', clientId = '') {
+  try {
+    window.localStorage.removeItem(programDraftKey(programId, clientId));
+  } catch (_) {
+    // Local backup is optional: Supabase remains the source of truth.
+  }
+}
+
+function saveLocalProgramDraft() {
+  if (!state.currentPt || !els.programClient?.value) return;
+  try {
+    const program = readProgramForm({ ensureId: true });
+    const savedAt = new Date().toISOString();
+    window.localStorage.setItem(programDraftKey(program.id, program.client_id), JSON.stringify({
+      saved_at: savedAt,
+      schema_version: PROGRAM_SCHEMA_VERSION,
+      program: programPayload(program, { localDraft: true }),
+    }));
+    setProgramSaveStatus(`Modifiche non salvate. Bozza locale ${formatDateTime(savedAt)}`, 'dirty');
+  } catch (_) {
+    setProgramSaveStatus('Modifiche non salvate. Bozza locale non disponibile', 'warning');
+  }
+}
+
+function queueProgramDraftSave() {
+  if (!state.currentPt) return;
+  setProgramSaveStatus('Modifiche non salvate', 'dirty');
+  clearTimeout(state.programDraftTimer);
+  state.programDraftTimer = setTimeout(saveLocalProgramDraft, 500);
+}
+
+function showProgramDraftStatus(program) {
+  if (!program?.id) {
+    setProgramSaveStatus('Nuova scheda: salva per registrarla su Supabase', 'idle');
+    return;
+  }
+  const draft = readLocalProgramDraft(program.id, program.client_id);
+  const draftTime = draft?.saved_at ? new Date(draft.saved_at).getTime() : 0;
+  const savedTime = program.updated_at ? new Date(program.updated_at).getTime() : 0;
+  if (draftTime && draftTime > savedTime) {
+    setProgramSaveStatus(
+      `Bozza locale piu recente: ${formatDateTime(draft.saved_at)}`,
+      'dirty',
+      '<button class="secondary-btn slim" type="button" data-restore-program-draft>Ripristina</button>'
+    );
+    return;
+  }
+  setProgramSaveStatus(program.updated_at ? `Ultimo salvataggio Supabase: ${formatDateTime(program.updated_at)}` : 'Scheda caricata', 'saved');
+}
+
+function restoreLocalProgramDraft() {
+  const draft = readLocalProgramDraft(els.programId.value, els.programClient.value);
+  if (!draft?.program) {
+    toast('Nessuna bozza locale da ripristinare', true);
+    return;
+  }
+  fillProgramForm({ ...draft.program, updated_at: draft.saved_at });
+  setProgramSaveStatus(`Bozza locale ripristinata: ${formatDateTime(draft.saved_at)}`, 'dirty');
+  toast('Bozza locale ripristinata');
+}
+
 async function loadData() {
   clearError();
   try {
@@ -551,7 +664,7 @@ async function loadPhaseViews() {
   const inferredTrainerByClient = state.sessions.reduce((acc, session) => {
     const trainerId = sessionTrainerId(session);
     if (!trainerId) return acc;
-    clientIdsFromSession(session).forEach((clientId) => {
+    sessionClientIds(session).forEach((clientId) => {
       acc[clientId] = acc[clientId] || {};
       acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
     });
@@ -727,17 +840,102 @@ function normalizeProgram(row) {
     status: data.status || data.stato || 'bozza',
     notes: data.notes || data.note || data.note_generali || '',
     neacea_string: data.neacea_string || '',
+    matrix: data.matrix || data.matrice || null,
+    save_meta: data.save_meta || null,
+    schema_version: Number(data.schema_version || 1),
     sessions,
     updated_at: row.updated_at || row.created_at || '',
   };
 }
 
+function normalizeLoadRow(row) {
+  const data = row.data || {};
+  const serie = Array.isArray(data.serie)
+    ? data.serie
+    : ((data.kg || data.rip || data.ripetizioni || data.note) ? [{
+        serie: Number(data.serie || 1),
+        kg: data.kg || '',
+        ripetizioni: data.ripetizioni || data.rip || '',
+        note: data.note || '',
+      }] : []);
+  return {
+    id: row.id || data.id || '',
+    client_id: row.cliente_id || data.client_id || data.clienteId || '',
+    program_id: data.program_id || data.programId || data.schedaId || data.scheda_id || '',
+    program_name: data.program_name || '',
+    session_id: data.session_id || '',
+    session_name: data.session_name || data.seduta || data.giorno || '',
+    block_id: data.block_id || '',
+    exercise_id: data.exercise_id || '',
+    exercise_name: data.esercizio || data.exercise_name || '',
+    date: data.data || data.date || row.updated_at?.slice(0, 10) || '',
+    serie,
+    notes: data.notes || data.note || '',
+    updated_at: row.updated_at || row.created_at || data.updated_at || '',
+  };
+}
+
+function mergeProgramLoads(programs, loads) {
+  const byProgram = loads.reduce((acc, load) => {
+    if (!load.program_id) return acc;
+    acc[load.program_id] = acc[load.program_id] || [];
+    acc[load.program_id].push(load);
+    return acc;
+  }, {});
+  programs.forEach((program) => {
+    const programLoads = byProgram[program.id] || byProgram[program.rowId] || [];
+    if (!programLoads.length) return;
+    (program.sessions || []).forEach((session) => {
+      (session.blocks || []).forEach((block) => {
+        (block.exercises || []).forEach((exercise) => {
+          const matchingLoads = programLoads.filter((load) =>
+            (load.exercise_id && load.exercise_id === exercise.id) ||
+            (!load.exercise_id && load.exercise_name && load.exercise_name === exercise.name && (!load.session_name || load.session_name === session.name))
+          );
+          if (!matchingLoads.length) return;
+          const currentLoads = Array.isArray(exercise.loads) ? exercise.loads : [];
+          const merged = new Map(currentLoads.map((item) => [item.data || item.date || '', item]));
+          const loadsByDate = matchingLoads.reduce((acc, load) => {
+            const date = load.date || todayIso();
+            acc[date] = acc[date] || { data: date, serie: [], updated_at: load.updated_at, source: 'carichi_allenamento' };
+            acc[date].serie.push(...load.serie);
+            if (String(load.updated_at || '').localeCompare(String(acc[date].updated_at || '')) > 0) {
+              acc[date].updated_at = load.updated_at;
+            }
+            return acc;
+          }, {});
+          Object.values(loadsByDate).forEach((load) => {
+            merged.set(load.data, {
+              ...load,
+              serie: load.serie.sort((a, b) => Number(a.serie || 0) - Number(b.serie || 0)),
+            });
+          });
+          exercise.loads = Array.from(merged.values())
+            .filter((item) => item.data || item.date)
+            .sort((a, b) => String(a.data || a.date).localeCompare(String(b.data || b.date)));
+        });
+      });
+    });
+  });
+}
+
 async function loadPrograms() {
   try {
     const rows = await sb('schede_allenamento', '?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc');
-    state.programs = (rows || []).map(normalizeProgram);
+    const programs = (rows || []).map(normalizeProgram);
+    let loads = [];
+    try {
+      const loadRows = await sb('carichi_allenamento', '?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc');
+      loads = (loadRows || []).map(normalizeLoadRow);
+      mergeProgramLoads(programs, loads);
+    } catch (_) {
+      loads = [];
+    }
+    state.programLoads = loads;
+    state.programs = programs;
   } catch (error) {
     state.programs = [];
+    state.programLoads = [];
   }
 }
 
@@ -1410,7 +1608,7 @@ function newProgram(clientId = '') {
 
 function fillProgramForm(program) {
   if (!program) return;
-  state.programSessions = JSON.parse(JSON.stringify(program.sessions?.length ? program.sessions : defaultSessions()));
+  state.programSessions = JSON.parse(JSON.stringify(Array.isArray(program.sessions) ? program.sessions : defaultSessions()));
   els.programId.value = program.id || '';
   els.programClient.value = program.client_id || myClients()[0]?.client_id || '';
   els.programStatus.value = program.status || 'bozza';
@@ -1427,13 +1625,14 @@ function fillProgramForm(program) {
   els.programEditorStatus.textContent = program.status || 'bozza';
   renderSessionEditor();
   updateNeaceaPreview();
+  showProgramDraftStatus(program);
 }
 
 function renderSessionEditor() {
-  ensureProgramSessions();
+  if (!Array.isArray(state.programSessions)) state.programSessions = [];
   renderExerciseBuilder();
   if (!state.programSessions.length) {
-    els.sessionEditor.innerHTML = '<div class="empty compact-empty">Nessuna seduta inserita. Premi "Aggiungi seduta" quando vuoi iniziare.</div>';
+    els.sessionEditor.innerHTML = '<div class="empty compact-empty">Nessuna scheda/seduta inserita. Premi "Aggiungi scheda/seduta" quando vuoi iniziare.</div>';
     renderBuilderSessionPreview();
     return;
   }
@@ -1664,10 +1863,19 @@ function syncProgramEditor() {
   });
 }
 
-function readProgramForm() {
+function ensureProgramId(ensureId = true) {
+  const current = els.programId.value || state.selectedProgramId || '';
+  if (current || !ensureId) return current;
+  const newId = id('pt_program');
+  els.programId.value = newId;
+  return newId;
+}
+
+function readProgramForm(options = {}) {
   syncProgramEditor();
+  const programId = ensureProgramId(options.ensureId !== false);
   const program = {
-    id: els.programId.value || id('pt_program'),
+    id: programId,
     client_id: els.programClient.value,
     trainer_id: state.currentPt.id,
     created_by: state.currentPt.id,
@@ -1688,7 +1896,7 @@ function readProgramForm() {
 }
 
 function updateNeaceaPreview() {
-  const program = readProgramForm();
+  const program = readProgramForm({ ensureId: false });
   els.neaceaString.textContent = buildNeaceaString(program);
 }
 
@@ -1738,14 +1946,80 @@ function addPickedExercise() {
   state.builderExercise = null;
   renderSessionEditorAtSamePoint();
   updateNeaceaPreview();
+  queueProgramDraftSave();
   toast(`${name} aggiunto a ${session.name || sessionName(sessionIndex)}`);
 }
 
-function programPayload(program) {
+function buildProgramMatrix(program) {
+  const sessions = (program.sessions || []).map((session, sessionIndex) => {
+    const blocks = (session.blocks || []).map((block) => ({
+      id: block.id || '',
+      code: block.code || 'N0',
+      mode: block.mode || 'Singolo',
+      exercises: (block.exercises || []).map((exercise, exerciseIndex) => {
+        const progression = normalizeProgression(exercise.progression);
+        return {
+          id: exercise.id || '',
+          order: exercise.order || exerciseIndex + 1,
+          name: exercise.name || '',
+          category: exercise.category || exerciseCategory(exercise.name),
+          progression: progression?.name || 'Manuale',
+          rest: exercise.rest || '',
+          tut: progression?.tut || exercise.tut || '',
+          notes: exercise.notes || '',
+        };
+      }),
+    }));
+    const exerciseCount = blocks.reduce((total, block) => total + block.exercises.length, 0);
+    return {
+      id: session.id || '',
+      order: sessionIndex + 1,
+      name: session.name || sessionName(sessionIndex),
+      weekDay: session.weekDay || '',
+      focus: session.focus || '',
+      duration: session.duration || '',
+      warmup: session.warmup || '',
+      cooldown: session.cooldown || '',
+      notes: session.notes || '',
+      exercise_count: exerciseCount,
+      blocks,
+    };
+  });
+  const progressions = Array.from(new Set(sessions
+    .flatMap((session) => session.blocks)
+    .flatMap((block) => block.exercises)
+    .map((exercise) => exercise.progression)
+    .filter(Boolean)));
+  return {
+    type: 'neacea_pt_matrix',
+    version: 1,
+    generated_at: new Date().toISOString(),
+    name: cleanProgramName(program.name),
+    goal: program.goal || '',
+    level: program.level || 'base',
+    weeks: Number(program.weeks || 4),
+    frequency: Number(program.frequency || 1),
+    split: program.split || '',
+    session_count: sessions.length,
+    exercise_count: sessions.reduce((total, session) => total + session.exercise_count, 0),
+    progression_count: progressions.length,
+    progressions,
+    sessions,
+  };
+}
+
+function programPayload(program, options = {}) {
+  const savedAt = new Date().toISOString();
   return {
     ...program,
     name: cleanProgramName(program.name),
-    schema_version: 3,
+    schema_version: PROGRAM_SCHEMA_VERSION,
+    matrix: buildProgramMatrix(program),
+    save_meta: {
+      saved_at: savedAt,
+      saved_by: state.currentPt?.id || '',
+      source: options.localDraft ? 'local_draft' : 'supabase',
+    },
   };
 }
 
@@ -1756,21 +2030,76 @@ async function saveProgram(event) {
     toast('Puoi salvare schede solo per i tuoi clienti assegnati', true);
     return;
   }
-  await sb('schede_allenamento', '?on_conflict=id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: {
-      id: program.id,
-      cliente_id: program.client_id,
-      data: programPayload(program),
-      updated_at: new Date().toISOString(),
-    },
-  });
-  state.selectedProgramId = program.id;
-  await loadPrograms();
-  renderPrograms();
-  renderClientDetail();
-  toast('Scheda salvata');
+  clearTimeout(state.programDraftTimer);
+  state.programDraftTimer = null;
+  setProgramSaveStatus('Salvataggio su Supabase...', 'saving');
+  if (els.saveProgramButton) els.saveProgramButton.disabled = true;
+  try {
+    await sb('schede_allenamento', '?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: {
+        id: program.id,
+        cliente_id: program.client_id,
+        data: programPayload(program),
+        updated_at: new Date().toISOString(),
+      },
+    });
+    clearLocalProgramDraft(program.id, program.client_id);
+    state.selectedProgramId = program.id;
+    await loadPrograms();
+    renderPrograms();
+    renderClientDetail();
+    setProgramSaveStatus(`Salvata su Supabase: ${formatDateTime(new Date().toISOString())}`, 'saved');
+    toast('Scheda salvata');
+  } catch (error) {
+    setProgramSaveStatus('Salvataggio non riuscito. La bozza locale resta disponibile', 'error');
+    throw error;
+  } finally {
+    if (els.saveProgramButton) els.saveProgramButton.disabled = false;
+  }
+}
+
+function cloneSessionsForMatrix(sessions) {
+  return JSON.parse(JSON.stringify(sessions || [])).map((session, sessionIndex) => ({
+    ...session,
+    id: id('session'),
+    name: session.name || sessionName(sessionIndex),
+    blocks: (session.blocks || [{ id: id('block'), code: 'N0', line: '', mode: 'Singolo', exercises: [] }]).map((block) => ({
+      ...block,
+      id: id('block'),
+      exercises: (block.exercises || []).map((exercise, exerciseIndex) => ({
+        ...exercise,
+        id: id('exercise'),
+        order: exerciseIndex + 1,
+        load: '',
+        loads: [],
+      })),
+    })),
+  }));
+}
+
+function duplicateProgramMatrix() {
+  syncProgramEditor();
+  const current = readProgramForm({ ensureId: false });
+  const sessions = cloneSessionsForMatrix(current.sessions || []);
+  if (!sessions.length) {
+    toast('Aggiungi almeno una seduta prima di duplicare la matrice', true);
+    return;
+  }
+  state.selectedProgramId = '';
+  els.programId.value = '';
+  els.programStatus.value = 'bozza';
+  els.programName.value = `${cleanProgramName(current.name || 'Scheda PT')} - copia`;
+  state.programSessions = sessions;
+  state.builderSessionIndex = 0;
+  state.lastAddedExerciseId = '';
+  els.programEditorTitle.textContent = 'Nuova scheda da matrice';
+  els.programEditorStatus.textContent = 'bozza';
+  renderSessionEditor();
+  updateNeaceaPreview();
+  queueProgramDraftSave();
+  toast('Matrice duplicata: salva per registrarla');
 }
 
 async function archiveProgram() {
@@ -2152,13 +2481,17 @@ function bindEvents() {
     renderPrograms();
   });
   els.newProgramButton.addEventListener('click', () => newProgram());
-  els.programForm.addEventListener('input', () => {
+  els.programForm.addEventListener('input', (event) => {
+    if (!isPersistentProgramInput(event.target)) return;
     syncProgramEditor();
     updateNeaceaPreview();
+    queueProgramDraftSave();
   });
-  els.programForm.addEventListener('change', () => {
+  els.programForm.addEventListener('change', (event) => {
+    if (!isPersistentProgramInput(event.target)) return;
     syncProgramEditor();
     updateNeaceaPreview();
+    queueProgramDraftSave();
   });
   els.programForm.addEventListener('submit', async (event) => {
     try {
@@ -2184,7 +2517,9 @@ function bindEvents() {
     });
     renderSessionEditorAtSamePoint();
     updateNeaceaPreview();
+    queueProgramDraftSave();
   });
+  els.duplicateProgramButton.addEventListener('click', duplicateProgramMatrix);
   els.archiveProgramButton.addEventListener('click', async () => {
     try {
       clearError();
@@ -2280,7 +2615,14 @@ function bindEvents() {
       state.lastAddedExerciseId = exercise.id;
     }
     if (removeSession) {
-      state.programSessions.splice(Number(removeSession.dataset.removeSession), 1);
+      const sessionIndex = Number(removeSession.dataset.removeSession);
+      const session = state.programSessions[sessionIndex];
+      const exerciseCount = (session?.blocks || []).reduce((total, block) => total + (block.exercises || []).length, 0);
+      if (exerciseCount && !confirm(`Rimuovere ${session.name || sessionName(sessionIndex)} con ${exerciseCount} esercizi?`)) return;
+      state.programSessions.splice(sessionIndex, 1);
+      if (state.builderSessionIndex >= state.programSessions.length) {
+        state.builderSessionIndex = Math.max(0, state.programSessions.length - 1);
+      }
     }
     if (removeExercise) {
       const [sessionIndex, blockIndex, exerciseIndex] = removeExercise.dataset.removeExercise.split(':').map(Number);
@@ -2289,6 +2631,10 @@ function bindEvents() {
     }
     renderSessionEditorAtSamePoint();
     updateNeaceaPreview();
+    queueProgramDraftSave();
+  });
+  els.programSaveStatus.addEventListener('click', (event) => {
+    if (event.target.closest('[data-restore-program-draft]')) restoreLocalProgramDraft();
   });
   document.body.addEventListener('click', (event) => {
     const edit = event.target.closest('[data-edit-session]');
@@ -2378,7 +2724,7 @@ function cacheEls() {
     'programNotes', 'neaceaString', 'exerciseGroupFilter', 'exerciseModeFilter', 'exerciseSearch', 'manualExerciseName', 'builderRest', 'builderCurrent',
     'builderSession', 'addPickedExerciseButton', 'exercisePickList', 'progressionTabs',
     'progressionPickList', 'progressionPreview', 'builderNotes', 'addSessionButton', 'builderSessionPreview',
-    'archiveProgramButton', 'sessionEditor',
+    'saveProgramButton', 'duplicateProgramButton', 'archiveProgramButton', 'programSaveStatus', 'sessionEditor',
     'myRange', 'myAgenda', 'myTodayButton', 'calRange', 'calTodayButton', 'studioCalendar',
   ].forEach((key) => { els[key] = document.getElementById(key); });
 }

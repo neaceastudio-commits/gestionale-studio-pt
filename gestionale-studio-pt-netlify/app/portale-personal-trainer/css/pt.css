@@ -1651,8 +1651,48 @@ h3 { font-size: 15px; }
 .program-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
   padding-top: 4px;
+}
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: #fbfdfe;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.save-status.saved {
+  border-color: #b8dccb;
+  background: #eefaf4;
+  color: var(--green);
+}
+
+.save-status.dirty {
+  border-color: #ead287;
+  background: #fff9e8;
+  color: #7a610e;
+}
+
+.save-status.saving {
+  border-color: #a7cfe5;
+  background: #eef8fc;
+  color: #1e7192;
+}
+
+.save-status.error,
+.save-status.warning {
+  border-color: #f0b9b2;
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .secondary-btn,
@@ -2260,6 +2300,15 @@ h3 { font-size: 15px; }
   }
   .exercise-builder {
     padding: 12px;
+  }
+  .program-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .save-status {
+    justify-content: center;
+    flex-wrap: wrap;
+    text-align: center;
   }
   .pick-list {
     max-height: 280px;

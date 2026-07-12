@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portale Personal Trainer - NEACEA</title>
-  <link rel="stylesheet" href="css/pt.css?v=5">
+  <link rel="stylesheet" href="css/pt.css?v=6">
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -261,15 +261,17 @@
               </div>
 
               <div class="section-title with-action">
-                <span>Sedute</span>
-                <button id="addSessionButton" class="secondary-btn" type="button">Aggiungi seduta</button>
+                <span>Sedute / schede A-B-C</span>
+                <button id="addSessionButton" class="secondary-btn" type="button">Aggiungi scheda/seduta</button>
               </div>
               <div id="builderSessionPreview" class="builder-session-preview"></div>
               <div id="sessionEditor" class="session-editor"></div>
 
               <div class="program-actions">
-                <button class="primary-btn" type="submit">Salva scheda</button>
+                <button id="saveProgramButton" class="primary-btn" type="submit">Salva scheda</button>
+                <button id="duplicateProgramButton" class="secondary-btn" type="button">Duplica matrice</button>
                 <button id="archiveProgramButton" class="danger-btn" type="button">Archivia</button>
+                <div id="programSaveStatus" class="save-status" aria-live="polite">Scheda non ancora salvata</div>
               </div>
             </form>
           </section>
@@ -347,6 +349,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/pt.js?v=17"></script>
+  <script src="js/pt.js?v=18"></script>
 </body>
 </html>

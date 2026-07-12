@@ -50,6 +50,13 @@ Supabase e' la verita'. Le app Netlify possono avere cache locale per velocita' 
 - `foto_allenamento`: foto tecniche.
 - `carichi_allenamento`: carichi e storico sedute.
 
+## Salvataggi schede PT
+
+- `schede_allenamento.data` salva la scheda completa come sorgente principale: cliente, PT, stato, note, sedute, esercizi, progressioni e carichi gia' agganciati alla scheda.
+- Dalla versione `schema_version: 4` il payload include anche `matrix`, una fotografia leggera della struttura della scheda utile per duplicazioni, template e analisi future.
+- `carichi_allenamento` resta lo storico operativo delle singole sedute: il portale PT deve rileggerlo e fonderlo con la scheda per mostrare i dati la volta successiva.
+- `localStorage` puo' contenere solo bozze temporanee anti-perdita. Il salvataggio ufficiale resta sempre Supabase.
+
 ## Responsabilita' per evitare doppioni
 
 - Acquisizione confermata crea cliente e appuntamenti iniziali.
