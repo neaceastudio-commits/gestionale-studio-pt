@@ -1,5 +1,5 @@
 [build]
-  publish = "app/cruscotto-pt"
+  publish = "app/portale-personal-trainer"
 
 [[headers]]
   for = "/*"
