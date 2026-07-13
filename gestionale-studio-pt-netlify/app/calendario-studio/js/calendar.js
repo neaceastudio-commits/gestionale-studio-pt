@@ -72,12 +72,15 @@ const Calendar = (() => {
     if (!panel) return;
 
     const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    const dashboardName = typeof App !== 'undefined' && App.isPortalPtMode?.()
+      ? (App._operatorLabel?.(App.currentPortalOperator?.()) || 'PT')
+      : 'Gianluca';
 
     panel.innerHTML = `
       <div class="view-header">
         <div>
           <div class="eyebrow">Neacea · Calendario</div>
-          <div class="page-title">Buongiorno, <em>Gianluca</em></div>
+          <div class="page-title">Buongiorno, <em>${dashboardName}</em></div>
           <div class="page-sub">${italianDate(new Date())}</div>
         </div>
         <button class="btn-primary" onclick="App.openNewAppointment()">+ Appuntamento</button>

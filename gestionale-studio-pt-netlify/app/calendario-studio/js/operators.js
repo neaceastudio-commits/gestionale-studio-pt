@@ -9,6 +9,7 @@ const Operators = (() => {
     const ops = State.getOperators();
     const panel = document.getElementById('view-operators');
     if (!panel) return;
+    const canManage = !(typeof App !== 'undefined' && App.isPortalPtMode());
 
     panel.innerHTML = `
       <div class="view-header">
@@ -17,9 +18,9 @@ const Operators = (() => {
           <div class="page-title">Staff <em>e professionisti</em></div>
           
         </div>
-        <button class="btn-primary" onclick="Operators.openModal()">
+        ${canManage ? `<button class="btn-primary" onclick="Operators.openModal()">
           <span class="btn-icon">+</span> Aggiungi
-        </button>
+        </button>` : '<span class="form-hint">Modalita PT: staff in sola lettura.</span>'}
       </div>
       <div class="card">
         <table class="data-table">
@@ -54,11 +55,13 @@ const Operators = (() => {
                 </td>
                 <td>
                   <div class="action-btns">
-                    <button class="btn-icon-sm" title="Modifica" onclick="Operators.openModal('${op.id}')">✏️</button>
-                    <button class="btn-icon-sm" title="${op.active ? 'Disattiva' : 'Attiva'}" onclick="Operators.toggleActive('${op.id}')">
-                      ${op.active ? '🔴' : '🟢'}
-                    </button>
-                    <button class="btn-icon-sm" title="Elimina" onclick="Operators.confirmDelete('${op.id}')">🗑️</button>
+                    ${canManage ? `
+                      <button class="btn-icon-sm" title="Modifica" onclick="Operators.openModal('${op.id}')">✏️</button>
+                      <button class="btn-icon-sm" title="${op.active ? 'Disattiva' : 'Attiva'}" onclick="Operators.toggleActive('${op.id}')">
+                        ${op.active ? '🔴' : '🟢'}
+                      </button>
+                      <button class="btn-icon-sm" title="Elimina" onclick="Operators.confirmDelete('${op.id}')">🗑️</button>
+                    ` : '<span class="text-muted">Sola lettura</span>'}
                   </div>
                 </td>
               </tr>
@@ -70,6 +73,10 @@ const Operators = (() => {
   }
 
   function openModal(opId = null) {
+    if (typeof App !== 'undefined' && App.isPortalPtMode()) {
+      UI.showToast('Modalita PT: staff in sola lettura', 'error');
+      return;
+    }
     const op = opId ? State.getOperators().find(o => o.id === opId) : null;
     const isEdit = !!op;
 
@@ -121,6 +128,10 @@ const Operators = (() => {
   }
 
   function save(opId) {
+    if (typeof App !== 'undefined' && App.isPortalPtMode()) {
+      UI.showToast('Modalita PT: staff in sola lettura', 'error');
+      return;
+    }
     const nome = document.getElementById('op-nome').value.trim();
     const cognome = document.getElementById('op-cognome').value.trim();
     const email = document.getElementById('op-email').value.trim();
@@ -147,6 +158,10 @@ const Operators = (() => {
   }
 
   async function toggleActive(opId) {
+    if (typeof App !== 'undefined' && App.isPortalPtMode()) {
+      UI.showToast('Modalita PT: staff in sola lettura', 'error');
+      return;
+    }
     const ops = State.getOperators();
     const idx = ops.findIndex(o => o.id === opId);
     if (idx !== -1) {
@@ -164,6 +179,10 @@ const Operators = (() => {
   }
 
   async function confirmDelete(opId) {
+    if (typeof App !== 'undefined' && App.isPortalPtMode()) {
+      UI.showToast('Modalita PT: staff in sola lettura', 'error');
+      return;
+    }
     const op = State.getOperators().find(o => o.id === opId);
     if (!op) return;
     if (confirm('Eliminare ' + op.nome + ' ' + op.cognome + '?\nQuesta azione non può essere annullata.')) {

@@ -193,8 +193,9 @@ const Clients = (() => {
               const svcColor = services[0]?.color || '#94A3B8';
               const metrics = getPackageMetrics(c);
               const remainingPct = metrics.total ? Math.round((metrics.remaining / metrics.total) * 100) : 0;
+              const canEdit = typeof App !== 'undefined' ? App.canEditClient(c.id) : true;
               return `
-              <tr class="${c.active === false ? 'row-inactive' : ''}" onclick="App.openEditClient('${c.id}')">
+              <tr class="${c.active === false ? 'row-inactive' : ''}" onclick="App.openClientFromList('${c.id}')">
                 <td>
                   <div class="op-name-cell">
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
@@ -246,12 +247,14 @@ const Clients = (() => {
                   <div class="action-btns">
                     <button class="btn-icon-sm" title="Quadro pacchetto" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">📊</button>
                     <button class="btn-icon-sm" title="Consenso informato" onclick="event.stopPropagation();window.open('consenso/?cliente=${encodeURIComponent(c.id)}','_blank')">📄</button>
-                    <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
-                    <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
-                    <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">
-                      ${c.active === false ? '🟢' : '🔴'}
-                    </button>
-                    <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
+                    ${canEdit ? `
+                      <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
+                      <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
+                      <button class="btn-icon-sm" title="${c.active===false ? 'Attiva' : 'Disattiva'}" onclick="event.stopPropagation();Clients.toggleActive('${c.id}')">
+                        ${c.active === false ? '🟢' : '🔴'}
+                      </button>
+                      <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
+                    ` : '<span class="text-muted">Sola lettura</span>'}
                   </div>
                 </td>
               </tr>`;
@@ -263,6 +266,7 @@ const Clients = (() => {
   }
 
   function toggleActive(clientId) {
+    if (typeof App !== 'undefined' && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx !== -1) {
@@ -274,6 +278,7 @@ const Clients = (() => {
   }
 
   function confirmDelete(clientId) {
+    if (typeof App !== 'undefined' && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx === -1) return;
@@ -292,6 +297,7 @@ const Clients = (() => {
   }
 
   function alignResidual(clientId) {
+    if (typeof App !== 'undefined' && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx === -1) return;
