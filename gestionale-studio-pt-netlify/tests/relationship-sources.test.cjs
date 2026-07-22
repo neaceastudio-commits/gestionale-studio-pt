@@ -32,13 +32,42 @@ test('i portali attivi leggono il responsabile soltanto dal dominio canonico', (
   const personal = functionBody(
     source('portale-personal-trainer/index.html'),
     'function clientTrainerId(',
-    'function sessionTrainerId('
+    'function storageKeyFor('
   );
 
   [fase1, personal].forEach((body) => {
     assert.match(body, /responsibleTrainerId/);
     assert.doesNotMatch(body, /trainer_id|operator_id|email|nome/i);
   });
+});
+
+test('la modalita PT basata su op resta esplicitamente in sola lettura', () => {
+  const contents = source('calendario-studio/js/app.js');
+  assert.match(contents, /const PORTAL_PT_MUTATIONS_ENABLED = false/);
+  const clientGuard = functionBody(contents, 'canEditClient(', 'canEditAppointment(');
+  const appointmentGuard = functionBody(contents, 'canEditAppointment(', 'guardPortalEdit(');
+  assert.match(clientGuard, /if \(!App\.portalPtMutationsEnabled\(\)\) return false/);
+  assert.match(appointmentGuard, /if \(!App\.portalPtMutationsEnabled\(\)\) return false/);
+  const newAppointment = functionBody(contents, 'openNewAppointment(', 'openDetail(');
+  assert.match(newAppointment, /!App\.portalPtMutationsEnabled\(\)/);
+  assert.match(contents, /button\.disabled = true/);
+  assert.match(contents, /classList\.add\('portal-pt-readonly'\)/);
+  assert.match(contents, /\[data-view="availability"\], \[data-view="operators"\]/);
+  assert.match(contents, /portalBlockedView/);
+  const dataManager = functionBody(contents, 'openDataManager(', '_importData(');
+  assert.match(dataManager, /if \(App\.isPortalPtMode\(\)\)/);
+  const localSync = functionBody(contents, 'async syncLocalToSupabase(', '// ── INIT');
+  assert.match(localSync, /!App\.portalPtMutationsEnabled\(\)/);
+  const clients = source('calendario-studio/js/clients.js');
+  assert.match(clients, /canEdit \? `<button[^`]+Clients\.alignResidual/);
+});
+
+test('la modifica di una seduta non forza operator_id dal parametro URL', () => {
+  const contents = source('calendario-studio/js/app.js');
+  const saveAppointment = functionBody(contents, 'async _saveAppointment(', '_renderDetailModal(');
+  const savePackageRow = functionBody(contents, 'async _updatePackageAppointmentRow(', 'async _deletePackageAppointment(');
+  assert.doesNotMatch(saveAppointment, /opId\s*=\s*App\.portalOperatorId/);
+  assert.doesNotMatch(savePackageRow, /nextOperatorId\s*=\s*App\.portalOperatorId/);
 });
 
 test('la rigenerazione conserva il PT delle sedute future ma non usa l ultimo appuntamento', () => {
@@ -58,4 +87,24 @@ test('non esiste inferenza del responsabile dagli appuntamenti nei portali attiv
   ].join('\n');
 
   assert.doesNotMatch(activeSources, /inferTrainerByClient|inferredTrainerByClient|inferredTrainerId/);
+});
+
+test('il fallback pre-migrazione riconosce soltanto la colonna esecutore mancante', () => {
+  const activeSources = [
+    source('calendario-studio/js/supabase.js'),
+    source('portale-pt/index.html'),
+    source('cruscotto-pt/index.html'),
+  ].join('\n');
+
+  assert.match(activeSources, /PGRST204/);
+  assert.match(activeSources, /42703/);
+  assert.doesNotMatch(activeSources, /includes\(['"]performed_['"]\)/);
+});
+
+test('il codice morto del correttivo sessioni non viene piu caricato', () => {
+  const calendarHtml = source('calendario-studio/index.html');
+  const personalPortal = source('portale-personal-trainer/index.html');
+  assert.doesNotMatch(calendarHtml, /session-fixes\.js/);
+  assert.doesNotMatch(personalPortal, /function sessionTrainerId\(/);
+  assert.doesNotMatch(personalPortal, /pt_calendar_sessions/);
 });

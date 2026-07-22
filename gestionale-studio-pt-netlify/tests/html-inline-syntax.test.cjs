@@ -16,7 +16,6 @@ const classicScripts = [
   'calendario-studio/js/clients.js',
   'calendario-studio/js/pt-availability-overview.js',
   'calendario-studio/js/services.js',
-  'calendario-studio/js/session-fixes.js',
   'calendario-studio/js/supabase.js',
   'portale-pt-fase1/js/portal.js',
 ];

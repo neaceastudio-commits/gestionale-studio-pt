@@ -1250,19 +1250,6 @@
       return NeaceaPtDomain.responsibleTrainerId(client, appState.operators);
     }
 
-    function sessionTrainerId(session) {
-      return operatorIdFromAny(session?.trainer_id || session?.operator_id || session?.pt_id);
-    }
-
-    function sessionClientIds(session) {
-      return Array.from(new Set([
-        ...(Array.isArray(session?.client_ids) ? session.client_ids : []),
-        ...(Array.isArray(session?.clientIds) ? session.clientIds : []),
-        session?.client_id,
-        session?.cliente_id
-      ].filter(Boolean).map(String)));
-    }
-
     function storageKeyFor(clientId = appState.selectedClientId) {
       const ptId = appState.currentPt?.id || "anon";
       return `${STORAGE_PREFIX}_${ptId}_${clientId || "no_client"}`;
@@ -1410,9 +1397,8 @@
     async function loadData() {
       const operators = await sb("operator_effective_roles", "?select=*&active=eq.true&order=cognome.asc,nome.asc")
         .catch(() => sb("operators", "?select=*&active=eq.true&order=cognome.asc,nome.asc").catch(() => []));
-      const [clients, sessions, acquisitions, programs] = await Promise.all([
+      const [clients, acquisitions, programs] = await Promise.all([
         sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
-        sb("pt_calendar_sessions", "?select=*&order=date.asc,start_time.asc").catch(() => []),
         sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
         sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
       ]);

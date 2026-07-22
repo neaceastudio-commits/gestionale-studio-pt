@@ -239,9 +239,9 @@ const Clients = (() => {
                       <div class="text-muted" style="font-size:0.72rem">
                         Residuo salvato nel cliente: ${metrics.storedRemaining} · residuo corretto dagli appuntamenti fatti: ${metrics.computedRemaining}
                       </div>
-                      <button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
+                      ${canEdit ? `<button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
                         Allinea residuo
-                      </button>` : ''}
+                      </button>` : ''}` : ''}
                     ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
                   </div>
                 </td>

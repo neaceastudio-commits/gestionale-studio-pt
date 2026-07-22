@@ -1,7 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 require('../app/shared/pt-domain.js');
 const domain = global.NeaceaPtDomain;
+
+const contract = JSON.parse(fs.readFileSync(
+  path.join(__dirname, 'fixtures', 'pt-domain-contract.json'),
+  'utf8'
+));
 
 const operators = [
   { id: 'pt-responsabile', nome: 'PT', cognome: 'Responsabile', email: 'responsabile@example.test' },
@@ -30,6 +37,22 @@ test('un sostituto nella singola seduta non cambia il responsabile del cliente',
   assert.equal(domain.scheduledTrainerId(appointment, operators), 'pt-sostituto');
   assert.equal(domain.performedTrainerId(appointment, operators), 'pt-sostituto');
   assert.equal(client.pt_assegnato, 'pt-responsabile');
+});
+
+test('la modifica di una seduta con sostituto conserva il PT programmato salvo cambio esplicito', () => {
+  const previous = {
+    id: 'appointment-1',
+    operatorId: 'pt-sostituto',
+    status: 'prenotato',
+  };
+  const normalized = domain.normalizePerformanceTransition(previous, {
+    ...previous,
+    date: '2026-07-23',
+    startTime: '10:00',
+  }, operators, 'pt-responsabile');
+
+  assert.equal(normalized.operatorId, 'pt-sostituto');
+  assert.equal(normalized.performedByOperatorId, '');
 });
 
 test('le statistiche usano il PT esecutore esplicito, non quello pianificato', () => {
@@ -107,4 +130,12 @@ test('riaprire una seduta rimuove l esecutore e ripristina il residuo al ricalco
   });
   assert.equal(metrics.completed, 0);
   assert.equal(metrics.remaining, 10);
+});
+
+test('le fixture contrattuali condivise rispettano lo stesso dominio PT', () => {
+  contract.cases.forEach(({ name, client, appointment, expected }) => {
+    assert.equal(domain.responsibleTrainerId(client, contract.operators), expected.responsible, `${name}: responsabile`);
+    assert.equal(domain.scheduledTrainerId(appointment, contract.operators), expected.scheduled, `${name}: programmato`);
+    assert.equal(domain.performedTrainerId(appointment, contract.operators), expected.performer, `${name}: esecutore`);
+  });
 });

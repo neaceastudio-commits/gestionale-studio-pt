@@ -921,11 +921,26 @@
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     }
+    function isMissingPerformedByColumnError(error) {
+      const raw = error?.message || error?.error || error || '';
+      let details = raw;
+      if (typeof raw === 'string') {
+        try { details = JSON.parse(raw); } catch (_) { details = { message: raw }; }
+      }
+      const code = String(details?.code || '');
+      const message = String(details?.message || details?.error || '').toLowerCase();
+      return message.includes('performed_by_operator_id') && (
+        code === '42703'
+        || code === 'PGRST204'
+        || message.includes('does not exist')
+        || message.includes('schema cache')
+      );
+    }
     async function loadAppointments() {
       try {
         return await supabase('appointments', '?select=id,service_id,client_ids,operator_id,performed_by_operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc');
       } catch (error) {
-        if (!String(error?.message || error).includes('performed_')) throw error;
+        if (!isMissingPerformedByColumnError(error)) throw error;
         return supabase('appointments', '?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc');
       }
     }

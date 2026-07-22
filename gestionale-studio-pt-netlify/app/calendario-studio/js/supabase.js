@@ -79,6 +79,9 @@ const SupabaseSync = (() => {
       giorni_settimana: Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [],
       package_start: c.packageStart || null,
       notes: c.notes || '',
+      pt_assegnato: Object.prototype.hasOwnProperty.call(c, 'ptAssegnato')
+        ? (c.ptAssegnato || null)
+        : (c.pt_assegnato || null),
       tipo_servizio: c.tipoServizio || c.tipo_servizio || '',
       tipo_abbonamento: c.tipoAbbonamento || c.tipo_abbonamento || '',
       stato_abbonamento: c.statoAbbonamento || c.stato_abbonamento || '',
@@ -236,8 +239,12 @@ const SupabaseSync = (() => {
       id: a.id,
       service_id: a.serviceId,
       client_ids: a.clientIds || [],
-      operator_id: a.operatorId || null,
-      performed_by_operator_id: a.performedByOperatorId || null,
+      operator_id: Object.prototype.hasOwnProperty.call(a, 'operatorId')
+        ? (a.operatorId || null)
+        : (a.operator_id || null),
+      performed_by_operator_id: Object.prototype.hasOwnProperty.call(a, 'performedByOperatorId')
+        ? (a.performedByOperatorId || null)
+        : (a.performed_by_operator_id || null),
       date: a.date,
       start_time: a.startTime,
       duration_min: parseInt(a.durationMin) || 60,
@@ -246,6 +253,29 @@ const SupabaseSync = (() => {
       notes: a.notes || '',
       updated_at: new Date().toISOString(),
     };
+  }
+
+  function supabaseErrorDetails(result) {
+    const raw = result?.error || result || '';
+    if (raw && typeof raw === 'object') return raw;
+    try {
+      return JSON.parse(String(raw || ''));
+    } catch (_) {
+      return { message: String(raw || '') };
+    }
+  }
+
+  function isMissingPerformedByColumnError(result) {
+    const details = supabaseErrorDetails(result);
+    const code = String(details.code || '');
+    const message = String(details.message || details.error || '').toLowerCase();
+    const namesColumn = message.includes('performed_by_operator_id');
+    return namesColumn && (
+      code === '42703'
+      || code === 'PGRST204'
+      || message.includes('does not exist')
+      || message.includes('schema cache')
+    );
   }
 
   async function pullAll() {
@@ -263,16 +293,29 @@ const SupabaseSync = (() => {
   async function pushAppointment(appt) {
     if (!appt) return;
     const body = appointmentToDb(appt);
+    if (body.status === 'fatto' && !body.performed_by_operator_id) {
+      return {
+        error: JSON.stringify({
+          code: 'NEACEA_PERFORMER_REQUIRED',
+          message: 'performed_by_operator_id is required when status is fatto',
+        }),
+      };
+    }
     const result = await request('appointments', {
       method: 'POST',
       query: '?on_conflict=id',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body,
     });
-    if (!result?.error || !String(result.error).includes('performed_')) return result;
+    if (!result?.error) return result;
+    if (!isMissingPerformedByColumnError(result)) return result;
 
-    // Compatibilita durante il deploy in due passi: il codice puo precedere la
-    // migrazione additiva senza rendere indisponibile l'Agenda.
+    // Una prestazione svolta deve conservare l'esecutore. Prima della
+    // migrazione il salvataggio resta bloccato, invece di degradare il dato.
+    if (body.status === 'fatto' || body.performed_by_operator_id) return result;
+
+    // Compatibilita pre-migrazione consentita solo per sedute non svolte e solo
+    // quando Supabase certifica che la colonna non esiste ancora.
     const legacyBody = { ...body };
     delete legacyBody.performed_by_operator_id;
     return request('appointments', {
@@ -399,5 +442,16 @@ const SupabaseSync = (() => {
     };
   }
 
-  return { pullAll, pushAppointment, pushClient, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return {
+    pullAll,
+    pushAppointment,
+    pushClient,
+    pushOperator,
+    pushLocalSnapshot,
+    deleteAppointment,
+    ensurePackageAppointments,
+    pullOperatorAvailability,
+    pushOperatorAvailability,
+    isMissingPerformedByColumnError,
+  };
 })();
