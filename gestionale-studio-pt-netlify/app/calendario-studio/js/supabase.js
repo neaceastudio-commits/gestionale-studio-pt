@@ -111,6 +111,7 @@ const SupabaseSync = (() => {
       serviceId: r.service_id,
       clientIds: Array.isArray(r.client_ids) ? r.client_ids : [],
       operatorId: r.operator_id || null,
+      performedByOperatorId: r.performed_by_operator_id || null,
       date: r.date,
       startTime: String(r.start_time || '').slice(0, 5),
       durationMin: r.duration_min || 60,
@@ -236,6 +237,7 @@ const SupabaseSync = (() => {
       service_id: a.serviceId,
       client_ids: a.clientIds || [],
       operator_id: a.operatorId || null,
+      performed_by_operator_id: a.performedByOperatorId || null,
       date: a.date,
       start_time: a.startTime,
       duration_min: parseInt(a.durationMin) || 60,
@@ -260,11 +262,24 @@ const SupabaseSync = (() => {
 
   async function pushAppointment(appt) {
     if (!appt) return;
+    const body = appointmentToDb(appt);
+    const result = await request('appointments', {
+      method: 'POST',
+      query: '?on_conflict=id',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body,
+    });
+    if (!result?.error || !String(result.error).includes('performed_')) return result;
+
+    // Compatibilita durante il deploy in due passi: il codice puo precedere la
+    // migrazione additiva senza rendere indisponibile l'Agenda.
+    const legacyBody = { ...body };
+    delete legacyBody.performed_by_operator_id;
     return request('appointments', {
       method: 'POST',
       query: '?on_conflict=id',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: appointmentToDb(appt),
+      body: legacyBody,
     });
   }
 

@@ -46,15 +46,17 @@ const Clients = (() => {
       .filter(a => Services.serviceUsesPackageSessions(a.serviceId))
       .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
 
-    const activeAppts = clientAppts.filter(a => a.status !== 'annullato');
-    const completed = activeAppts.filter(a => a.status === 'fatto').length;
-    const scheduled = activeAppts.filter(a => a.status !== 'fatto' && a.date >= today).length;
+    const packageStart = client.packageStart || client.package_start || '';
+    const activeAppts = clientAppts.filter(a => a.status !== 'annullato' && (!packageStart || a.date >= packageStart));
+    const canonicalMetrics = Services.getClientSessionMetrics(client);
+    const completed = canonicalMetrics.completed;
+    const scheduled = canonicalMetrics.scheduled;
     const noShow = activeAppts.filter(a => a.status === 'noshow').length;
     const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : (client.packageType ? [client.packageType] : []);
     const hasPackage = pkgs.length > 0;
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
-    const computedRemaining = total > 0 ? Math.max(0, total - completed) : 0;
+    const computedRemaining = total > 0 ? canonicalMetrics.remaining : 0;
     const residualMismatch = total > 0 && Math.abs(storedRemaining - computedRemaining) > 0;
     const remaining = total > 0 ? computedRemaining : storedRemaining;
     const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;

@@ -102,24 +102,45 @@ const Services = (() => {
       return { total: 0, completed: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
     }
 
-    const today = localDateStr(new Date());
     const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
-    const activeAppts = State.getAppointments().filter(a =>
-      a.id !== excludeAppointmentId &&
-      a.status !== 'annullato' &&
-      Array.isArray(a.clientIds) &&
-      a.clientIds.includes(client.id) &&
-      serviceUsesPackageSessions(a.serviceId)
-    );
-    const completed = activeAppts.filter(a => a.status === 'fatto').length;
-    const scheduled = activeAppts.filter(a => a.status !== 'fatto' && a.date >= today).length;
-    const plannedTotal = completed + scheduled;
-    const remaining = total > 0 ? Math.max(0, total - completed) : storedRemaining;
-    const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
-    const overPlanned = total > 0 ? Math.max(0, plannedTotal - total) : 0;
+    const metrics = NeaceaPtDomain.calculatePackageSessions({
+      clientId: client.id,
+      total,
+      appointments: State.getAppointments().filter(a => a.id !== excludeAppointmentId),
+      packageStart: client.packageStart || client.package_start || '',
+      serviceUsesPackageSessions,
+      today: localDateStr(new Date()),
+    });
+    return {
+      ...metrics,
+      remaining: total > 0 ? metrics.remaining : storedRemaining,
+      storedRemaining,
+    };
+  }
 
-    return { total, completed, scheduled, plannedTotal, remaining, toSchedule, overPlanned, storedRemaining };
+  function recalculateClientSessions(clientIds = []) {
+    const wanted = new Set(clientIds.map(String).filter(Boolean));
+    if (!wanted.size) return [];
+    const clients = State.getClients();
+    const touched = [];
+
+    clients.forEach((client, index) => {
+      if (!wanted.has(String(client.id))) return;
+      const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
+      if (total <= 0) return;
+      const metrics = getClientSessionMetrics(client);
+      if (Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0) === metrics.remaining) return;
+      clients[index] = {
+        ...client,
+        sessionsRemaining: metrics.remaining,
+        sessions_remaining: metrics.remaining,
+      };
+      touched.push(clients[index]);
+    });
+
+    if (touched.length) State.saveClients(clients);
+    return touched;
   }
 
   function opHasRole(op, svc) {
@@ -342,6 +363,7 @@ const Services = (() => {
     clientCanUseService,
     serviceUsesPackageSessions,
     getClientSessionMetrics,
+    recalculateClientSessions,
     getCompatibleClients,
     getAvailableOperatorsForSlot,
     autoAssignOperator,

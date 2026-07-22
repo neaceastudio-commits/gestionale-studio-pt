@@ -92,7 +92,7 @@
   }
 
   function operatorKey(operator) {
-    return String(operator.id || operator.email || operatorLabel(operator));
+    return String(operator.id || '');
   }
 
   function activeOperators() {
@@ -542,10 +542,8 @@
   }
 
   function operatorForClient(client, operators) {
-    const raw = client.ptAssegnato || client.pt_assegnato || client.operatorId || client.operator_id || '';
-    if (!raw) return null;
-    const normalized = String(raw).toLowerCase();
-    return operators.find(op => String(op.id || '').toLowerCase() === normalized || String(op.email || '').toLowerCase() === normalized || operatorLabel(op).toLowerCase() === normalized) || null;
+    const operatorId = NeaceaPtDomain.responsibleTrainerId(client, operators);
+    return operatorId ? operators.find(op => String(op.id || '') === operatorId) || null : null;
   }
 
   function packageTypes(client) {

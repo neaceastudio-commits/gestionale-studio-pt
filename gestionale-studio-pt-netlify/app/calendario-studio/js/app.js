@@ -31,47 +31,24 @@ const App = {
   portalPt: {
     enabled: false,
     operator: null,
-    opParam: '',
-    emailParam: ''
-  },
-
-  _normKey(value) {
-    return String(value || '').trim().toLowerCase();
+    opParam: ''
   },
 
   _operatorLabel(operator) {
     return [operator?.nome, operator?.cognome].filter(Boolean).join(' ').trim() || operator?.email || operator?.id || '';
   },
 
-  _operatorKeys(operator) {
-    return [
-      operator?.id,
-      operator?.operator_id,
-      operator?.email,
-      App._operatorLabel(operator)
-    ].map(App._normKey).filter(Boolean);
-  },
-
-  _clientTrainerKeys(client) {
-    return [
-      client?.ptAssegnato,
-      client?.pt_assegnato,
-      client?.trainer_id,
-      client?.operatorId,
-      client?.operator_id
-    ].map(App._normKey).filter(Boolean);
+  _isPtOperator(operator) {
+    const roles = Array.isArray(operator?.roles) ? operator.roles : [];
+    return roles.some(role => ['pt', 'personal_trainer', 'personal trainer'].includes(String(role).toLowerCase()));
   },
 
   _resolvePortalOperator(params = new URLSearchParams(window.location.search)) {
     const opParam = params.get('op') || params.get('operator') || params.get('operator_id') || '';
-    const emailParam = params.get('email') || params.get('ptEmail') || '';
-    const wanted = [opParam, emailParam].map(App._normKey).filter(Boolean);
     const operators = State.getOperators();
-    const operator = operators.find(op => {
-      const keys = App._operatorKeys(op);
-      return wanted.some(value => keys.includes(value));
-    }) || null;
-    return { operator, opParam, emailParam };
+    const operatorId = NeaceaPtDomain.strictOperatorId(opParam, operators);
+    const operator = operatorId ? operators.find(op => op.id === operatorId) || null : null;
+    return { operator, opParam };
   },
 
   _initPortalPtMode() {
@@ -86,7 +63,7 @@ const App = {
   _renderPortalPtBadge() {
     const topbarRight = document.querySelector('.topbar-right');
     if (!topbarRight || document.getElementById('portal-pt-badge')) return;
-    const label = App._operatorLabel(App.portalPt.operator) || App.portalPt.emailParam || App.portalPt.opParam || 'PT';
+    const label = App._operatorLabel(App.portalPt.operator) || App.portalPt.opParam || 'PT';
     const badge = document.createElement('span');
     badge.id = 'portal-pt-badge';
     badge.className = 'topbar-btn';
@@ -106,7 +83,9 @@ const App = {
   },
 
   portalOperatorId() {
-    return App.currentPortalOperator()?.id || App.portalPt.opParam || App.portalPt.emailParam || '';
+    return App.currentPortalOperator()?.id
+      || NeaceaPtDomain.strictOperatorId(App.portalPt.opParam, State.getOperators())
+      || '';
   },
 
   canEditClient(clientOrId) {
@@ -115,12 +94,9 @@ const App = {
       ? State.getClients().find(c => c.id === clientOrId)
       : clientOrId;
     if (!client) return false;
-    const operatorKeys = App._operatorKeys(App.portalPt.operator);
-    if (!operatorKeys.length) {
-      operatorKeys.push(App._normKey(App.portalPt.opParam), App._normKey(App.portalPt.emailParam));
-    }
-    const trainerKeys = App._clientTrainerKeys(client);
-    return operatorKeys.some(key => trainerKeys.includes(key));
+    const operatorId = App.portalOperatorId();
+    return !!operatorId
+      && NeaceaPtDomain.responsibleTrainerId(client, State.getOperators()) === operatorId;
   },
 
   canEditAppointment(appt) {
@@ -128,11 +104,9 @@ const App = {
     if (!appt) return false;
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
     if (clientIds.length) return clientIds.every(clientId => App.canEditClient(clientId));
-    const operatorKeys = App._operatorKeys(App.portalPt.operator);
-    if (!operatorKeys.length) {
-      operatorKeys.push(App._normKey(App.portalPt.opParam), App._normKey(App.portalPt.emailParam));
-    }
-    return operatorKeys.includes(App._normKey(appt.operatorId));
+    const operatorId = App.portalOperatorId();
+    return !!operatorId
+      && NeaceaPtDomain.scheduledTrainerId(appt, State.getOperators()) === operatorId;
   },
 
   guardPortalEdit(kind, item) {
@@ -213,7 +187,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Stato</label>
-            <select id="appt-status" class="form-input">${statusHtml}</select>
+            <select id="appt-status" class="form-input" onchange="App._onStatusChange()">${statusHtml}</select>
           </div>
         </div>
 
@@ -242,6 +216,10 @@ const App = {
           ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||defaultStartTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
         </div>
 
+        <div id="performer-section">
+          ${App._buildPerformerSection(appt?.performedByOperatorId || null)}
+        </div>
+
         <div id="slot-validation" class="slot-validation" style="margin-bottom:8px"></div>
 
         <div class="form-group">
@@ -261,6 +239,7 @@ const App = {
     UI.openModal(html);
     // Trigger validazione iniziale
     App._onSlotChange();
+    App._onStatusChange();
   },
 
   // ── SEZIONE CLIENTI ──────────────────────────────────
@@ -348,7 +327,7 @@ const App = {
     const portalOperator = App.currentPortalOperator();
     if (portalOperator?.id) selectedOpId = portalOperator.id;
     const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId)
-      .filter(op => !App.isPortalPtMode() || !portalOperator || App._operatorKeys(op).some(key => App._operatorKeys(portalOperator).includes(key)));
+      .filter(op => !App.isPortalPtMode() || !portalOperator || op.id === portalOperator.id);
 
     // Se selectedOpId non valido, prova auto-assign
     if (!selectedOpId && date && startTime) {
@@ -381,6 +360,31 @@ const App = {
         </select>
         ${warning}
       </div>`;
+  },
+
+  _buildPerformerSection(selectedPerformerId = null) {
+    const operators = State.getOperators().filter(operator => operator.active !== false);
+    const selected = NeaceaPtDomain.strictOperatorId(selectedPerformerId, operators);
+    const options = operators.map(operator => `
+      <option value="${operator.id}" ${operator.id === selected ? 'selected' : ''}>${operator.nome} ${operator.cognome}</option>
+    `).join('');
+    return `
+      <div class="form-group" id="appt-performer-group">
+        <label>PT esecutore della prestazione</label>
+        <select id="appt-performer" class="form-input">
+          <option value="">— seleziona quando la seduta è svolta —</option>
+          ${options}
+        </select>
+        <div class="form-hint">Usato per statistiche e compensi. Non modifica il PT responsabile del cliente.</div>
+      </div>`;
+  },
+
+  _onStatusChange() {
+    const status = document.getElementById('appt-status')?.value || 'prenotato';
+    const performerGroup = document.getElementById('appt-performer-group');
+    const performer = document.getElementById('appt-performer');
+    if (performerGroup) performerGroup.hidden = status !== 'fatto';
+    if (status !== 'fatto' && performer) performer.value = '';
   },
 
   // ── CAMBIO SERVIZIO ──────────────────────────────────
@@ -665,6 +669,7 @@ const App = {
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
     let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
+    const performerId = document.getElementById('appt-performer')?.value || null;
     const notes   = document.getElementById('appt-notes')?.value || '';
     const svc     = Services.getService(svcId);
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
@@ -674,14 +679,25 @@ const App = {
     if (!svcId || !date || !time) { UI.showToast('Compila tutti i campi obbligatori', 'error'); return; }
     if (!svc?.isBlock && clientIds.length === 0) { UI.showToast('Seleziona almeno un cliente', 'error'); return; }
 
-    const apptData = {
+    let apptData = {
       serviceId: svcId, clientIds, operatorId: opId,
       date, startTime: time, durationMin: dur,
       bufferMin: svc?.bufferMin ?? 10, status, notes,
+      performedByOperatorId: performerId,
     };
     if (!App.guardPortalEdit('appointment', { ...apptData, id: apptId || null })) return;
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    apptData = NeaceaPtDomain.normalizePerformanceTransition(
+      before,
+      apptData,
+      State.getOperators(),
+      App.portalOperatorId()
+    );
+    if (status === 'fatto' && !apptData.performedByOperatorId) {
+      UI.showToast('Seleziona il PT che ha eseguito la prestazione', 'error');
+      return;
+    }
     const sameClients = before
       ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
       : false;
@@ -707,13 +723,16 @@ const App = {
     let saved;
     if (apptId) {
       saved = Services.updateAppointment(apptId, apptData);
-      if (before?.status !== 'fatto' && saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento aggiornato', 'success');
     } else {
       saved = Services.addAppointment(apptData);
-      if (saved?.status === 'fatto') App._consumeClientSessions(saved);
       UI.showToast('Appuntamento creato', 'success');
     }
+
+    App._consumeClientSessions({
+      ...saved,
+      clientIds: [...new Set([...(before?.clientIds || []), ...(saved?.clientIds || [])])],
+    });
 
     UI.closeModal();
     Calendar.render();
@@ -725,6 +744,7 @@ const App = {
   _renderDetailModal(appt) {
     const svc     = Services.getService(appt.serviceId);
     const op      = Services.getOperator(appt.operatorId);
+    const performer = Services.getOperator(appt.performedByOperatorId);
     const isCircuit = svc?.isGroup;
     const isBlock   = svc?.isBlock;
     const clients   = State.getClients();
@@ -782,9 +802,13 @@ const App = {
         <div class="detail-grid">
           ${bodyHtml}
           <div class="detail-section">
-            <div class="detail-label">Operatore</div>
+            <div class="detail-label">PT della seduta</div>
             <div class="detail-value">${op?`${op.nome} ${op.cognome}`:'—'}</div>
           </div>
+          ${appt.status === 'fatto' ? `<div class="detail-section">
+            <div class="detail-label">PT esecutore</div>
+            <div class="detail-value">${performer ? `${performer.nome} ${performer.cognome}` : 'Non registrato'}</div>
+          </div>` : ''}
           <div class="detail-section">
             <div class="detail-label">Stato</div>
             <div class="detail-value">
@@ -817,7 +841,12 @@ const App = {
     UI.showToast('Partecipante aggiunto', 'success');
     Calendar.render();
     const nextAppt = State.getAppointments().find(a => a.id === apptId);
-    if (nextAppt) App._renderDetailModal(nextAppt);
+    if (nextAppt) {
+      App._consumeClientSessions(nextAppt);
+      SupabaseSync.pushAppointment(nextAppt);
+      if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nextAppt);
+      App._renderDetailModal(nextAppt);
+    }
   },
   _removeParticipant(apptId, clientId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
@@ -826,32 +855,43 @@ const App = {
     UI.showToast('Partecipante rimosso', 'success');
     Calendar.render();
     const nextAppt = State.getAppointments().find(a => a.id === apptId);
-    if (nextAppt) App._renderDetailModal(nextAppt);
+    if (nextAppt) {
+      App._consumeClientSessions({ ...nextAppt, clientIds: [...new Set([...(appt.clientIds || []), ...(nextAppt.clientIds || [])])] });
+      SupabaseSync.pushAppointment(nextAppt);
+      if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nextAppt);
+      App._renderDetailModal(nextAppt);
+    }
   },
   _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const doneAppt = Services.updateAppointment(apptId, { status: 'fatto' });
-    if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
+    if (!App.portalOperatorId() && !before?.performedByOperatorId) {
+      App._renderAppointmentModal(apptId, before?.date);
+      const status = document.getElementById('appt-status');
+      if (status) status.value = 'fatto';
+      App._onStatusChange();
+      UI.showToast('Seleziona il PT che ha eseguito la prestazione', 'info');
+      return;
+    }
+    const update = NeaceaPtDomain.normalizePerformanceTransition(
+      before,
+      { ...before, status: 'fatto' },
+      State.getOperators(),
+      App.portalOperatorId()
+    );
+    if (!update.performedByOperatorId) {
+      UI.showToast('Impossibile attribuire la prestazione: seleziona il PT esecutore', 'error');
+      return;
+    }
+    const doneAppt = Services.updateAppointment(apptId, update);
+    App._consumeClientSessions(doneAppt);
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
     SupabaseSync.pushAppointment(doneAppt);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(doneAppt);
   },
   _consumeClientSessions(appt) {
     if (!appt?.clientIds?.length) return;
-    const clients = State.getClients();
-    const touched = [];
-    appt.clientIds.forEach(id => {
-      const idx = clients.findIndex(c => c.id === id);
-      if (idx < 0) return;
-      const total = Number(clients[idx].sessionsTotal ?? clients[idx].sessions_total ?? 0);
-      const remaining = Number(clients[idx].sessionsRemaining ?? clients[idx].sessions_remaining ?? 0);
-      if (total <= 0 || remaining <= 0) return;
-      clients[idx] = { ...clients[idx], sessionsRemaining: Math.max(0, remaining - 1) };
-      touched.push(clients[idx]);
-    });
-    if (!touched.length) return;
-    State.saveClients(clients);
+    const touched = Services.recalculateClientSessions(appt.clientIds);
     touched.forEach(client => {
       SupabaseSync.pushClient(client);
       if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
@@ -860,7 +900,11 @@ const App = {
   _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const nsAppt = Services.updateAppointment(apptId, { status: 'noshow' });
+    const nsAppt = Services.updateAppointment(apptId, {
+      status: 'noshow',
+      performedByOperatorId: '',
+    });
+    App._consumeClientSessions(nsAppt);
     UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
     SupabaseSync.pushAppointment(nsAppt);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
@@ -870,6 +914,7 @@ const App = {
     if (!App.guardPortalEdit('appointment', appt)) return;
     if (!confirm('Eliminare questo appuntamento?')) return;
     Services.deleteAppointment(apptId);
+    App._consumeClientSessions(appt);
     SupabaseSync.deleteAppointment(apptId);
     UI.closeModal(); UI.showToast('Appuntamento eliminato', 'success'); Calendar.render();
   },
@@ -897,7 +942,15 @@ const App = {
     App._renderClientModal(cid, true);
   },
 
-  _renderClientModal(clientId, packageOnly = false) {
+  openRenewPackage(cid) {
+    if (!App.guardPortalEdit('client', cid)) {
+      App.openPackageOverview(cid);
+      return;
+    }
+    App._renderClientModal(cid, true, true);
+  },
+
+  _renderClientModal(clientId, packageOnly = false, renewal = false) {
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
     const isEdit = !!client;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
@@ -920,6 +973,10 @@ const App = {
     ).join('');
     const curDays = Array.isArray(client?.giorniSettimana) ? client.giorniSettimana : [];
     const currentMetrics = client ? Services.getClientSessionMetrics(client) : null;
+    const responsiblePtOptions = State.getOperators()
+      .filter(operator => operator.active !== false && App._isPtOperator(operator))
+      .map(operator => `<option value="${operator.id}" ${client?.ptAssegnato === operator.id ? 'selected' : ''}>${operator.nome} ${operator.cognome}</option>`)
+      .join('');
     const dayOptions = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label">
         <input type="checkbox" name="client-day" value="${g}" ${curDays.includes(g)?'checked':''} onchange="App._limitClientDays(this)">
@@ -928,7 +985,7 @@ const App = {
 
     const html = `
       <div class="modal-header">
-        <h3>${packageOnly ? 'Modifica pacchetto e giorni' : (isEdit?'Modifica Cliente':'Nuovo Cliente')}</h3>
+        <h3>${renewal ? 'Rinnova pacchetto' : (packageOnly ? 'Modifica pacchetto e giorni' : (isEdit?'Modifica Cliente':'Nuovo Cliente'))}</h3>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body">
@@ -977,6 +1034,27 @@ const App = {
           <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}">
         </div>
 
+        <div class="form-section-label">Gestione percorso</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>PT responsabile</label>
+            <select id="cl-responsible-pt" class="form-input">
+              <option value="">— Non assegnato —</option>
+              ${responsiblePtOptions}
+            </select>
+            <div class="form-hint">Assegnazione stabile del cliente. Non cambia quando una singola seduta viene affidata a un sostituto.</div>
+          </div>
+          <div class="form-group">
+            <label>Stato abbonamento</label>
+            <input id="cl-subscription-status" class="form-input" list="subscription-statuses" value="${client?.statoAbbonamento || 'Attivo'}">
+            <datalist id="subscription-statuses"><option value="Attivo"><option value="Sospeso"><option value="Scaduto"></datalist>
+          </div>
+          <div class="form-group">
+            <label>Inizio pacchetto attivo</label>
+            <input type="date" id="cl-package-start" class="form-input" value="${renewal ? App._dateStr(new Date()) : (client?.packageStart || '')}">
+          </div>
+        </div>
+
         <div class="form-section-label">Pacchetti acquistati</div>
         ${packageOnly ? '<div class="form-hint" style="margin-bottom:8px">Qui modifichi pacchetto, frequenza, sessioni totali e giorni acquistati. Le sedute gia in calendario restano sotto controllo nel Quadro pacchetto.</div>' : ''}
         <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
@@ -995,12 +1073,12 @@ const App = {
           </div>
           <div class="form-group">
             <label>Sessioni totali</label>
-            <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${client?.sessionsTotal||''}" onchange="App._limitClientDays()">
+            <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${renewal ? '' : (client?.sessionsTotal||'')}" onchange="App._limitClientDays()">
           </div>
           <div class="form-group">
             <label>Sessioni residue automatiche</label>
             <div class="computed-field">
-              ${client ? (currentMetrics?.total ? `${currentMetrics.remaining} residue · ${currentMetrics.completed} fatte` : 'Imposta le sessioni totali') : 'Calcolate dopo il salvataggio'}
+              ${renewal ? 'Ripartono dal nuovo totale e dalla nuova data di inizio' : (client ? (currentMetrics?.total ? `${currentMetrics.remaining} residue · ${currentMetrics.completed} fatte` : 'Imposta le sessioni totali') : 'Calcolate dopo il salvataggio')}
             </div>
             <div class="form-hint">Si aggiornano segnando le sedute come fatto.</div>
           </div>
@@ -1018,8 +1096,8 @@ const App = {
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
-        <button class="btn-primary" onclick="App._saveClient('${clientId||''}')">
-          ${isEdit?'Salva modifiche':'Salva cliente'}
+        <button class="btn-primary" onclick="App._saveClient('${clientId||''}', '${renewal ? 'renewal' : ''}')">
+          ${renewal ? 'Conferma rinnovo' : (isEdit?'Salva modifiche':'Salva cliente')}
         </button>
       </div>
     `;
@@ -1061,7 +1139,7 @@ const App = {
     </div>`;
   },
 
-  _saveClient(clientId) {
+  _saveClient(clientId, mode = '') {
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
       UI.showToast('Modalita PT: puoi salvare solo i tuoi clienti assegnati', 'error');
       return;
@@ -1079,14 +1157,21 @@ const App = {
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
     const notes     = document.getElementById('cl-notes')?.value.trim();
+    const ptAssegnato = document.getElementById('cl-responsible-pt')?.value || null;
+    const statoAbbonamento = document.getElementById('cl-subscription-status')?.value.trim() || 'Attivo';
+    const packageStart = document.getElementById('cl-package-start')?.value || null;
     if (!App._limitClientDays()) return;
     const giorniSettimana = [...document.querySelectorAll('input[name="client-day"]:checked')].map(el=>el.value);
 
     if (!nome||!cognome) { UI.showToast('Nome e cognome obbligatori','error'); return; }
+    if (mode === 'renewal' && (!sessTotal || !packageStart)) {
+      UI.showToast('Per il rinnovo indica data di inizio e sessioni totali', 'error');
+      return;
+    }
 
     const clients = State.getClients();
     const currentClient = clientId ? clients.find(c => c.id === clientId) : null;
-    const completedSessions = currentClient ? Services.getClientSessionMetrics({ ...currentClient, sessionsTotal: sessTotal }).completed : 0;
+    const completedSessions = currentClient ? Services.getClientSessionMetrics({ ...currentClient, sessionsTotal: sessTotal, packageStart }).completed : 0;
     const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
     const data = {
       nome, cognome, email, telefono, nascita, codiceFiscale, documento, indirizzo, contattoEmergenza,
@@ -1094,6 +1179,7 @@ const App = {
       packageFrequency: frequency,
       giorniSettimana,
       sessionsTotal: sessTotal, sessionsRemaining: sessRem,
+      ptAssegnato, statoAbbonamento, packageStart,
       notes, active: true,
     };
 
@@ -1102,7 +1188,7 @@ const App = {
       const idx = clients.findIndex(c=>c.id===clientId);
       if (idx!==-1) { clients[idx] = { ...clients[idx], ...data }; saved = clients[idx]; }
     } else {
-      const newC = { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
+      const newC = { id: State.genId('c'), ...data, packageStart: data.packageStart || App._dateStr(new Date()) };
       clients.push(newC); saved = newC;
     }
     State.saveClients(clients);
@@ -1111,7 +1197,7 @@ const App = {
 
     UI.closeModal();
     if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
-    UI.showToast(clientId?'Cliente aggiornato':'Cliente salvato','success');
+    UI.showToast(mode === 'renewal' ? 'Pacchetto rinnovato' : (clientId?'Cliente aggiornato':'Cliente salvato'),'success');
   },
 
   // ── QUADRO PACCHETTO CLIENTE ─────────────────────────
@@ -1273,7 +1359,10 @@ const App = {
               ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
             </div>
           </div>
-          ${canEdit ? `<button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>` : '<span class="form-hint">Modalita PT: cliente in sola lettura.</span>'}
+          ${canEdit ? `<div class="package-row-actions">
+            <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
+            <button class="btn-primary" onclick="UI.closeModal();App.openRenewPackage('${client.id}')">Rinnova pacchetto</button>
+          </div>` : '<span class="form-hint">Modalita PT: cliente in sola lettura.</span>'}
         </div>
 
         <div class="package-overview-kpis">
@@ -1545,7 +1634,6 @@ const App = {
     );
     const fallbackOperator = selectedOperator ||
       futureToReplace[0]?.operatorId ||
-      [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
       currentClient.ptAssegnato ||
       null;
     const fallbackOperatorData = fallbackOperator ? Services.getOperator(fallbackOperator) : null;
@@ -1650,8 +1738,18 @@ const App = {
       return;
     }
 
-    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus });
-    if (appt.status !== saved.status) App._consumeClientSessions(saved);
+    const normalized = NeaceaPtDomain.normalizePerformanceTransition(
+      appt,
+      { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus },
+      State.getOperators(),
+      App.portalOperatorId()
+    );
+    if (nextStatus === 'fatto' && !normalized.performedByOperatorId) {
+      UI.showToast('Seleziona un PT prima di segnare la seduta come fatta', 'error');
+      return;
+    }
+    const saved = Services.updateAppointment(apptId, normalized);
+    App._consumeClientSessions(saved);
     await SupabaseSync.pushAppointment(saved);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
     Calendar.render();
