@@ -907,6 +907,7 @@
 
   <div class="toast" id="toast">Salvato</div>
 
+  <script src="../shared/pt-domain.js?v=1"></script>
   <script>
     const SUPABASE_URL = "https://cdywqyqqmjhgkzwrrixc.supabase.co";
     const SUPABASE_KEY = "sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24";
@@ -1237,22 +1238,16 @@
     }
 
     function operatorFromAny(value) {
-      const raw = String(value || "").trim();
-      if (!raw) return null;
-      const key = raw.toLowerCase();
-      return appState.operators.find(op =>
-        String(op.id || "").toLowerCase() === key ||
-        String(op.email || "").toLowerCase() === key ||
-        fullName(op).toLowerCase() === key
-      ) || null;
+      const id = NeaceaPtDomain.strictOperatorId(value, appState.operators);
+      return id ? appState.operators.find(op => op.id === id) || null : null;
     }
 
     function operatorIdFromAny(value) {
-      return operatorFromAny(value)?.id || String(value || "").trim();
+      return operatorFromAny(value)?.id || "";
     }
 
     function clientTrainerId(client) {
-      return operatorIdFromAny(client?.trainer_id || client?.pt_assegnato || client?.operator_id);
+      return NeaceaPtDomain.responsibleTrainerId(client, appState.operators);
     }
 
     function sessionTrainerId(session) {
@@ -1429,18 +1424,6 @@
         roles: operatorRoles(op),
         active: op.active !== false
       })).filter(isPersonalTrainer);
-      const inferredTrainerByClient = (sessions || []).reduce((acc, session) => {
-        const trainerId = sessionTrainerId(session);
-        if (!trainerId) return acc;
-        sessionClientIds(session).forEach(clientId => {
-          acc[clientId] = acc[clientId] || {};
-          acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
-        });
-        return acc;
-      }, {});
-      const inferredTrainerId = clientId => Object.entries(inferredTrainerByClient[clientId] || {})
-        .sort((a, b) => b[1] - a[1])
-        .map(([trainerId]) => trainerId)[0] || "";
       appState.clients = (clients || []).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -1450,7 +1433,7 @@
         return {
           ...client,
           client_id: client.id,
-          trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || client.operator_id || inferredTrainerId(client.id)),
+          trainer_id: operatorIdFromAny(client.pt_assegnato),
           obiettivo: client.obiettivo || acq?.obiettivo || "",
           note_operative: acq?.impressioni || client.notes || ""
         };

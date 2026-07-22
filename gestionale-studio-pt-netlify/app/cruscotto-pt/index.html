@@ -777,6 +777,7 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
+  <script src="../shared/pt-domain.js?v=1"></script>
   <script>
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
@@ -820,7 +821,7 @@
       return res.json();
     }
     async function supabaseWrite(table, query, body, method = 'PATCH') {
-      const res = await fetch(endpoint(table, query), {
+      const send = async payload => fetch(endpoint(table, query), {
         method,
         headers: {
           apikey: SUPABASE_KEY,
@@ -828,11 +829,30 @@
           'Content-Type': 'application/json',
           Prefer: 'return=representation'
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(payload)
       });
+      let res = await send(body);
+      if (!res.ok && table === 'appointments' && 'performed_by_operator_id' in body) {
+        const errorText = await res.text();
+        if (errorText.includes('performed_')) {
+          const legacyBody = { ...body };
+          delete legacyBody.performed_by_operator_id;
+          res = await send(legacyBody);
+        } else {
+          throw new Error(errorText);
+        }
+      }
       if (!res.ok) throw new Error(await res.text());
       const text = await res.text();
       return text ? JSON.parse(text) : null;
+    }
+    async function loadAppointments() {
+      try {
+        return await supabase('appointments', '?select=id,service_id,client_ids,operator_id,performed_by_operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc');
+      } catch (error) {
+        if (!String(error?.message || error).includes('performed_')) throw error;
+        return supabase('appointments', '?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc');
+      }
     }
     function escapeAttr(value) {
       return String(value ?? '').replace(/"/g, '&quot;');
@@ -874,27 +894,21 @@
       const operator = operatorFromAny(id);
       return operator ? fullName(operator) : 'PT non assegnato';
     }
-    function operatorKey(op) {
-      return String(op?.id || op?.email || fullName(op) || '').trim().toLowerCase();
-    }
     function operatorFromAny(value) {
-      const raw = String(value || '').trim();
-      if (!raw) return null;
-      const normalized = raw.toLowerCase();
-      return state.operators.find(op =>
-        String(op.id || '').toLowerCase() === normalized ||
-        String(op.email || '').toLowerCase() === normalized ||
-        fullName(op).toLowerCase() === normalized
-      ) || null;
+      const id = NeaceaPtDomain.strictOperatorId(value, state.operators);
+      return id ? state.operators.find(op => op.id === id) || null : null;
     }
     function operatorIdFromAny(value) {
-      return operatorFromAny(value)?.id || (value || '');
+      return operatorFromAny(value)?.id || '';
     }
     function clientOperatorId(client) {
       return operatorIdFromAny(client?.pt_assegnato);
     }
     function appointmentOperatorId(appt) {
       return operatorIdFromAny(appt?.operator_id);
+    }
+    function appointmentPerformerId(appt) {
+      return NeaceaPtDomain.performedTrainerId(appt, state.operators);
     }
     function money(value) {
       return Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -942,7 +956,7 @@
     function filteredAllAppointments() {
       const opId = document.getElementById('operatorSelect')?.value || '';
       return state.appointments
-        .filter(a => !opId || appointmentOperatorId(a) === opId)
+        .filter(a => !opId || (a.status === 'fatto' ? appointmentPerformerId(a) === opId : appointmentOperatorId(a) === opId))
         .filter(a => a.status !== 'annullato');
     }
     function percent(value, total) {
@@ -973,24 +987,12 @@
       return `<div class="anamnesis-field ${cls}"><div class="field-label">${label}</div><div class="field-value">${display}</div></div>`;
     }
     function normalizeClientAssignments() {
-      const byClient = new Map();
-      state.appointments
-        .filter(appt => appt.operator_id && Array.isArray(appt.client_ids))
-        .forEach(appt => {
-          appt.client_ids.forEach(id => {
-            if (!byClient.has(id)) byClient.set(id, new Map());
-            const ops = byClient.get(id);
-            const opId = appointmentOperatorId(appt);
-            if (opId) ops.set(opId, (ops.get(opId) || 0) + 1);
-          });
-        });
-      state.clients = state.clients.map(client => {
-        const normalized = clientOperatorId(client);
-        if (normalized && normalized !== client.pt_assegnato) return { ...client, pt_assegnato: normalized };
-        if (normalized || !byClient.has(client.id)) return client;
-        const best = [...byClient.get(client.id).entries()].sort((a, b) => b[1] - a[1])[0];
-        return best ? { ...client, pt_assegnato: best[0] } : client;
-      });
+      // Fonte autorevole: clients.pt_assegnato. Gli appuntamenti non possono
+      // promuovere automaticamente un PT di seduta a responsabile del cliente.
+      state.clients = state.clients.map(client => ({
+        ...client,
+        pt_assegnato: clientOperatorId(client) || null,
+      }));
     }
     function renderOperatorSelect() {
       const select = document.getElementById('operatorSelect');
@@ -1213,6 +1215,7 @@
       if (!appt) return;
       const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
       const statusOptions = Object.entries(STATUS_LABELS).map(([key, label]) => `<option value="${key}" ${appt.status === key ? 'selected' : ''}>${label}</option>`).join('');
+      const performer = appt.performed_by_operator_id || '';
       modal(`
         <div class="modal-head">
           <div>
@@ -1226,7 +1229,8 @@
             <div class="field"><label>Data</label><input id="appt-date-edit" class="input" type="date" value="${appt.date || ''}"></div>
             <div class="field"><label>Ora</label><input id="appt-time-edit" class="input" type="time" value="${String(appt.start_time || '').slice(0, 5)}"></div>
             <div class="field"><label>Stato</label><select id="appt-status-edit" class="input">${statusOptions}</select></div>
-            <div class="field"><label>PT</label><select id="appt-operator-edit" class="input">${operatorOptions(appt.operator_id || '')}</select></div>
+            <div class="field"><label>PT della seduta</label><select id="appt-operator-edit" class="input">${operatorOptions(appt.operator_id || '')}</select></div>
+            <div class="field"><label>PT esecutore</label><select id="appt-performer-edit" class="input">${operatorOptions(performer)}</select></div>
           </div>
           <div class="field"><label>Note</label><input id="appt-notes-edit" class="input" value="${escapeAttr(appt.notes || '')}"></div>
         </div>
@@ -1269,17 +1273,54 @@
       await loadData();
     }
     async function saveAppointmentAdmin(apptId) {
-      const body = {
+      const previous = state.appointments.find(item => item.id === apptId) || {};
+      const next = NeaceaPtDomain.normalizePerformanceTransition(previous, {
+        ...previous,
         date: document.getElementById('appt-date-edit')?.value,
         start_time: document.getElementById('appt-time-edit')?.value,
         status: document.getElementById('appt-status-edit')?.value || 'prenotato',
         operator_id: document.getElementById('appt-operator-edit')?.value || null,
+        performed_by_operator_id: document.getElementById('appt-performer-edit')?.value || null,
         notes: document.getElementById('appt-notes-edit')?.value || '',
+      }, state.operators);
+      if (next.status === 'fatto' && !next.performedByOperatorId && !next.performed_by_operator_id) {
+        alert('Seleziona il PT esecutore della prestazione.');
+        return;
+      }
+      const body = {
+        date: next.date,
+        start_time: next.start_time,
+        status: next.status,
+        operator_id: next.operator_id || null,
+        performed_by_operator_id: next.performedByOperatorId || next.performed_by_operator_id || null,
+        notes: next.notes,
         updated_at: new Date().toISOString()
       };
       await supabaseWrite('appointments', '?id=eq.' + encodeURIComponent(apptId), body);
+      const index = state.appointments.findIndex(item => item.id === apptId);
+      if (index >= 0) state.appointments[index] = { ...state.appointments[index], ...body };
+      await recalculateAppointmentClients(state.appointments[index] || previous);
       closeModal();
       await loadData();
+    }
+    async function recalculateAppointmentClients(appt) {
+      const clientIds = Array.isArray(appt?.client_ids) ? appt.client_ids : [];
+      await Promise.all(clientIds.map(async clientId => {
+        const client = state.clients.find(item => item.id === clientId);
+        if (!client || Number(client.sessions_total || 0) <= 0) return;
+        const metrics = NeaceaPtDomain.calculatePackageSessions({
+          clientId,
+          total: client.sessions_total,
+          appointments: state.appointments,
+          packageStart: client.package_start || '',
+          serviceUsesPackageSessions: serviceId => ['pt11', 'pt12', 'circuit'].includes(serviceId),
+          today: todayStr(),
+        });
+        await supabaseWrite('clients', '?id=eq.' + encodeURIComponent(clientId), {
+          sessions_remaining: metrics.remaining,
+          updated_at: new Date().toISOString(),
+        });
+      }));
     }
     function renderAnamnesis(clients) {
       const list = document.getElementById('anamnesisList');
@@ -1343,14 +1384,19 @@
         if (paymentStatus(client) === 'Pagato') row.revenue += Number(client.importo || 0);
       });
       appointments.forEach(appt => {
-        const id = appointmentOperatorId(appt) || 'none';
-        if (!byPt.has(id)) byPt.set(id, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
-        const row = byPt.get(id);
-        row.appts += 1;
-        if (appt.status === 'fatto') row.done += 1;
-        if (appt.status === 'noshow') row.noshow += 1;
+        const scheduledId = appointmentOperatorId(appt) || 'none';
+        if (!byPt.has(scheduledId)) byPt.set(scheduledId, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
+        const scheduledRow = byPt.get(scheduledId);
+        scheduledRow.appts += 1;
+        if (appt.status === 'noshow') scheduledRow.noshow += 1;
+
+        if (appt.status === 'fatto') {
+          const performerId = appointmentPerformerId(appt) || 'performer-missing';
+          if (!byPt.has(performerId)) byPt.set(performerId, { name: 'Esecutore non registrato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
+          byPt.get(performerId).done += 1;
+        }
       });
-      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.revenue).sort((a, b) => b.done - a.done || b.revenue - a.revenue || b.clients - a.clients);
+      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.done || r.noshow || r.revenue).sort((a, b) => b.done - a.done || b.revenue - a.revenue || b.clients - a.clients);
       const maxDone = Math.max(1, ...rows.map(r => r.done));
       if (!rows.length) {
         list.innerHTML = '<div class="empty">Nessun dato PT disponibile.</div>';
@@ -1442,7 +1488,7 @@
         const [operators, clients, appointments, acquisitions] = await Promise.all([
           supabase('operators', '?select=id,nome,cognome,email,roles,color,active&active=eq.true&order=cognome.asc,nome.asc'),
           supabase('clients', '?select=id,nome,cognome,email,telefono,package_types,package_frequency,sessions_total,sessions_remaining,giorni_settimana,package_start,notes,active,pt_assegnato,obiettivo,professione,tipo_servizio,tipo_abbonamento,stato_pagamento,importo,data_inizio,stato_abbonamento&active=eq.true&order=cognome.asc,nome.asc'),
-          supabase('appointments', '?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc'),
+          loadAppointments(),
           supabase('acquisizioni', '?select=*&order=data_acquisizione.desc')
         ]);
         state.operators = operators || [];

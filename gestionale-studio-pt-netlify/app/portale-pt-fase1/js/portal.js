@@ -146,22 +146,16 @@ function isPersonalTrainer(op) {
 }
 
 function operatorFromAny(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-  const key = raw.toLowerCase();
-  return state.operators.find((op) =>
-    String(op.id || '').toLowerCase() === key ||
-    String(op.email || '').toLowerCase() === key ||
-    fullName(op).toLowerCase() === key
-  ) || null;
+  const id = NeaceaPtDomain.strictOperatorId(value, state.operators);
+  return id ? state.operators.find((op) => op.id === id) || null : null;
 }
 
 function operatorIdFromAny(value) {
-  return operatorFromAny(value)?.id || String(value || '').trim();
+  return operatorFromAny(value)?.id || '';
 }
 
 function clientTrainerId(client) {
-  return operatorIdFromAny(client?.trainer_id || client?.pt_assegnato || client?.operator_id);
+  return NeaceaPtDomain.responsibleTrainerId(client, state.operators);
 }
 
 function sessionTrainerId(session) {
@@ -490,27 +484,6 @@ function clearError() {
   els.errorBox.classList.add('hidden');
 }
 
-function inferTrainerByClient(sessions) {
-  const byClient = {};
-  (sessions || []).forEach((session) => {
-    const trainerId = sessionTrainerId(session);
-    if (!trainerId) return;
-    const clientIds = Array.isArray(session.client_ids)
-      ? session.client_ids
-      : (session.client_id ? [session.client_id] : []);
-    clientIds.forEach((clientId) => {
-      byClient[clientId] = byClient[clientId] || {};
-      byClient[clientId][trainerId] = (byClient[clientId][trainerId] || 0) + 1;
-    });
-  });
-  return Object.fromEntries(Object.entries(byClient).map(([clientId, counts]) => {
-    const trainerId = Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => id)[0] || '';
-    return [clientId, trainerId];
-  }));
-}
-
 function clientsFromCanonical(canonicalClients, overviewClients, sessions) {
   const overviewByClient = (overviewClients || []).reduce((acc, row) => {
     const clientId = row.client_id || row.id;
@@ -519,8 +492,6 @@ function clientsFromCanonical(canonicalClients, overviewClients, sessions) {
     acc[clientId].push(row);
     return acc;
   }, {});
-  const inferred = inferTrainerByClient(sessions);
-
   return (canonicalClients || []).map((client) => {
     const rows = overviewByClient[client.id] || [];
     const overview = rows[0] || {};
@@ -528,7 +499,8 @@ function clientsFromCanonical(canonicalClients, overviewClients, sessions) {
     return {
       ...overview,
       assignment_id: overview.assignment_id || `client_${client.id}`,
-      trainer_id: operatorIdFromAny(client.pt_assegnato || overview.trainer_id || inferred[client.id]),
+      pt_assegnato: operatorIdFromAny(client.pt_assegnato),
+      trainer_id: operatorIdFromAny(client.pt_assegnato),
       client_id: client.id,
       nome: client.nome || overview.nome || '',
       cognome: client.cognome || overview.cognome || '',
@@ -606,24 +578,6 @@ async function loadFallback() {
     .filter((op) => Array.isArray(op.roles) && op.roles.includes('PT'))
     .map((op) => ({ ...op, roles: op.roles || [] }));
 
-  const inferredTrainerByClient = appointments.reduce((acc, appt) => {
-    const trainerId = operatorIdFromAny(appt.operator_id);
-    if (!trainerId) return acc;
-    const clientIds = Array.isArray(appt.client_ids) ? appt.client_ids : [];
-    clientIds.forEach((clientId) => {
-      acc[clientId] = acc[clientId] || {};
-      acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
-    });
-    return acc;
-  }, {});
-
-  function inferredTrainerId(clientId) {
-    const counts = inferredTrainerByClient[clientId] || {};
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([trainerId]) => trainerId)[0] || '';
-  }
-
   state.clients = clients.map((client) => {
     const acq = acquisitions.find((item) => {
       const emailMatch = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -634,7 +588,8 @@ async function loadFallback() {
 
     return {
       assignment_id: `legacy_${client.id}`,
-      trainer_id: operatorIdFromAny(client.pt_assegnato || inferredTrainerId(client.id)),
+      pt_assegnato: operatorIdFromAny(client.pt_assegnato),
+      trainer_id: operatorIdFromAny(client.pt_assegnato),
       client_id: client.id,
       nome: client.nome,
       cognome: client.cognome,
@@ -2046,25 +2001,6 @@ async function assignClient() {
   const trainerId = els.assignTrainer.value;
   const clientId = els.assignClient.value;
   if (!trainerId || !clientId) return;
-
-  if (state.mode === 'phase1') {
-    try {
-      await sb('trainer_client_assignments', '?on_conflict=trainer_id,client_id', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: {
-          id: `tca_manual_${trainerId}_${clientId}`.replace(/[^a-zA-Z0-9_]/g, '_'),
-          trainer_id: trainerId,
-          client_id: clientId,
-          assignment_source: 'manual',
-          active: true,
-          notes: 'Assegnazione manuale da Portale PT Fase 1',
-        },
-      });
-    } catch (error) {
-      console.warn('Assegnazione avanzata non salvata, aggiorno clients.pt_assegnato.', error);
-    }
-  }
 
   await sb('clients', `?id=eq.${encodeURIComponent(clientId)}`, {
     method: 'PATCH',
