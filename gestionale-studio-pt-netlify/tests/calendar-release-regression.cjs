@@ -17,6 +17,7 @@ const appSource = read('app/calendario-studio/js/app.js');
 const servicesSource = read('app/calendario-studio/js/services.js');
 const clientsSource = read('app/calendario-studio/js/clients.js');
 const accessFunctionSource = read('netlify/functions/pt-access-email.js');
+const appleFunctionSource = read('netlify/functions/apple-calendar.js');
 
 [
   ['Apple Calendar CSS', indexSource.includes('css/apple-calendar.css')],
@@ -30,6 +31,7 @@ const accessFunctionSource = read('netlify/functions/pt-access-email.js');
   ['Riattivazione cliente', clientsSource.includes('reactivate(clientId)')],
   ['Filtro PT firmato', appSource.includes("action: 'verify_token'")],
   ['Token PT firmato', accessFunctionSource.includes('function signAccessToken')],
+  ['Funzione Apple Calendar', appleFunctionSource.includes('exports.handler') && appleFunctionSource.includes('BEGIN:VCALENDAR')],
 ].forEach(([label, condition]) => assert(label, condition));
 
 assert('App completa non troncata', Buffer.byteLength(appSource) > 100000);
@@ -121,6 +123,9 @@ process.env.PT_ACCESS_SECRET = 'calendar-release-regression-secret';
 const accessFunctionPath = path.join(root, 'netlify/functions/pt-access-email.js');
 delete require.cache[require.resolve(accessFunctionPath)];
 const accessFunction = require(accessFunctionPath);
+const appleFunctionPath = path.join(root, 'netlify/functions/apple-calendar.js');
+delete require.cache[require.resolve(appleFunctionPath)];
+const appleFunction = require(appleFunctionPath);
 const digest = crypto.createHmac('sha256', process.env.PT_ACCESS_SECRET).update('paolo@qa.test|pt-own').digest('hex');
 const code = String(parseInt(digest.slice(0, 12), 16) % 1000000).padStart(6, '0');
 
@@ -144,6 +149,9 @@ const code = String(parseInt(digest.slice(0, 12), 16) % 1000000).padStart(6, '0'
     body: JSON.stringify({ action: 'verify_token', token: `${verified.token}x` }),
   });
   assert('Sessione alterata rifiutata', tampered.statusCode === 401);
+
+  const calendar = appleFunction._test.buildCalendar([], [], []);
+  assert('Feed Apple Calendar valido', calendar.body.includes('BEGIN:VCALENDAR') && calendar.body.includes('END:VCALENDAR'));
 
   assert('Cartella Calendario completa', fs.readdirSync(path.join(calendarRoot, 'js')).includes('apple-calendar.js'));
 })().catch(error => {
