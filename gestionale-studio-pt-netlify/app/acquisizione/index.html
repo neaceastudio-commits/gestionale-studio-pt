@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Acquisizione — Neacea</title>
+<title>Lead e acquisizione — Neacea</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -22,6 +22,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-height:100vh}
 .topbar{position:fixed;top:0;left:0;right:0;height:60px;background:var(--blue);z-index:100;display:flex;align-items:center;padding:0 28px;gap:16px;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.topbar-logo{width:36px;height:36px;object-fit:contain;opacity:.94;flex:0 0 auto}
 .topbar-brand{font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}
 .topbar-sub{font-size:12px;color:rgba(255,255,255,.5);font-weight:600}
 .topbar-divider{width:1px;height:22px;background:rgba(255,255,255,.2)}
@@ -74,7 +75,9 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .badge-pt{background:var(--blue-pale);color:var(--blue)}
 .badge-nut{background:var(--green-pale);color:var(--green)}
+.badge-coach{background:#f3e8ff;color:#7e22ce}
 .badge-new{background:var(--amber-pale);color:var(--amber)}
+.badge-anamnesi{background:#e8f5ee;color:var(--green);border:1px solid rgba(45,106,79,.2)}
 .badge-pronto{background:var(--green-pale);color:var(--green)}
 .badge-int{background:var(--blue-pale);color:var(--blue-mid)}
 .badge-val{background:#f0f0f0;color:#888}
@@ -85,6 +88,17 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .empty-icon{font-size:40px;margin-bottom:12px}
 .empty-text{font-size:15px;font-weight:700;color:var(--text2)}
 .empty-sub{font-size:13px;margin-top:4px}
+.dash-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;margin-bottom:24px}
+.dash-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.dash-head{padding:13px 16px;background:var(--blue-xpale);border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.dash-body{padding:12px 16px;display:flex;flex-direction:column;gap:10px;min-height:112px}
+.dash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:9px}
+.dash-row:last-child{border-bottom:none;padding-bottom:0}
+.dash-name{font-size:13px;font-weight:800;color:var(--text)}
+.dash-meta{font-size:11px;color:var(--text3);font-weight:700;margin-top:2px}
+.dash-action{font-size:11px;font-weight:800;color:var(--blue);background:var(--blue-pale);border:1px solid var(--border2);border-radius:20px;padding:4px 9px;white-space:nowrap}
+.dash-empty{font-size:13px;color:var(--text3);font-weight:700;padding:10px 0}
+.kpi-sub.warn{color:var(--red);font-weight:800}
 .spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -105,12 +119,19 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .fg{display:flex;flex-direction:column;gap:0}
 .form-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.field-help{font-size:11px;color:var(--text3);line-height:1.4}
+.optional-block{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--blue-xpale);overflow:hidden;margin-top:16px}
+.optional-block summary{cursor:pointer;padding:13px 16px;font-size:12px;font-weight:800;color:var(--blue);list-style:none;display:flex;align-items:center;justify-content:space-between}
+.optional-block summary::after{content:'+';font-size:18px;line-height:1}
+.optional-block[open] summary::after{content:'−'}
+.optional-body{padding:4px 16px 16px;border-top:1px solid var(--border)}
 
 /* SERVIZI */
-.srv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.srv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .srv-card{background:var(--bg);border:2px solid var(--border2);border-radius:var(--radius-sm);padding:16px;cursor:pointer;transition:all .15s;text-align:center}
 .srv-card.sel-pt{background:var(--blue-pale);border-color:var(--blue)}
 .srv-card.sel-nut{background:var(--green-pale);border-color:var(--green)}
+.srv-card.sel-coach{background:#f3e8ff;border-color:#9333ea}
 .srv-icon{font-size:28px;display:block;margin-bottom:8px}
 .srv-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
 .srv-desc{font-size:11px;color:var(--text2);line-height:1.4}
@@ -146,12 +167,76 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .sb-val{font-size:13px;font-weight:700;color:var(--text);max-width:55%;text-align:right}
 .sch-quote{font-size:15px;font-style:italic;color:var(--text2);line-height:1.6;padding:8px 0}
 .sch-nota{font-size:13px;color:var(--text2);line-height:1.7;padding:4px 0}
+.coaching-details{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+.coaching-details summary{cursor:pointer;color:#7e22ce;font-size:12px;font-weight:800;list-style-position:inside}
+.coaching-details[open] summary{margin-bottom:8px}
 .sch-footer{font-size:11px;color:var(--text3);font-weight:600;margin-top:8px;text-align:right}
+.sch-data{margin-top:20px;display:flex;flex-direction:column;gap:16px}
+.data-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.data-tab{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif}
+.data-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.data-pane{display:none}.data-pane.active{display:block}
+.data-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.data-title{font-size:22px;font-weight:800;color:var(--text)}
+.data-sub{font-size:12px;color:var(--text3);margin-top:3px}
+.misure-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.mis-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;text-align:center}
+.mis-val{font-size:28px;font-weight:800;color:var(--blue);line-height:1}
+.mis-unit{font-size:11px;font-weight:800;color:var(--text3);margin-top:8px;min-height:15px}
+.mis-label{font-size:11px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
+.data-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mini-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.mini-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;background:var(--blue-xpale);border-bottom:1px solid var(--border)}
+.mini-title{font-size:12px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.mini-body{padding:16px}
+.dati-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dati-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.dati-label{font-size:10px;font-weight:900;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.dati-val{font-size:15px;font-weight:900;color:var(--text)}
+.dati-val.empty{color:var(--text3);font-style:italic}
+.composition-bars{display:grid;gap:8px;margin-top:14px}
+.comp-row{display:grid;grid-template-columns:118px 1fr 52px;gap:8px;align-items:center;font-size:11px;font-weight:800;color:var(--text2)}
+.comp-track{height:9px;border-radius:999px;background:var(--blue-pale);overflow:hidden}
+.comp-fill{height:100%;border-radius:999px;background:var(--blue)}
+.upload-area{border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:28px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg)}
+.upload-area:hover,.upload-area.drag{border-color:var(--blue);background:var(--blue-xpale)}
+.upload-area input[type=file]{display:none}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-text{font-size:13px;font-weight:800;color:var(--text2)}
+.upload-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.upload-progress{height:4px;background:var(--border);border-radius:2px;margin-top:8px;display:none;overflow:hidden}
+.upload-progress.show{display:block}
+.upload-bar{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;width:0}
+.file-list{display:grid;gap:8px;margin-top:12px}
+.file-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:700;color:var(--text2)}
+.file-row strong{color:var(--green);font-size:11px;text-transform:uppercase}
+.file-row a{margin-left:auto;color:var(--blue);font-size:11px;font-weight:900;text-decoration:none}
+.foto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.foto-item{position:relative;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);cursor:pointer;aspect-ratio:3/4;background:var(--bg)}
+.foto-item img{width:100%;height:100%;object-fit:cover;display:block}
+.foto-meta{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:4px 8px;font-weight:700}
+.foto-del{position:absolute;top:6px;right:6px;background:rgba(192,57,43,.85);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;align-items:center;justify-content:center}
+.lightbox.open{display:flex}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:var(--radius-sm)}
+.lightbox-close{position:absolute;top:20px;right:24px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.mo{display:none;position:fixed;inset:0;z-index:240;padding:24px;background:rgba(12,24,36,.5);align-items:center;justify-content:center}
+.mo.open{display:flex}
+.mo .modal{width:min(560px,100%);max-height:92vh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg2);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.mo .modal.wide{width:min(980px,100%)}
+.mhead{padding:16px 20px;background:var(--blue);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mtitle{font-size:15px;font-weight:900}
+.mclose{border:0;background:transparent;color:#fff;font-size:20px;cursor:pointer}
+.mbody{padding:20px;overflow:auto}
+.mfoot{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.sec-title{margin:18px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--blue-pale);color:var(--blue);font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
 
 /* CONFERMA MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:var(--bg2);border-radius:var(--radius);width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#mo-conferma .modal{width:min(780px,96vw)}
 .modal-head{background:var(--blue);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1}
 .modal-title{font-size:16px;font-weight:800;color:#fff}
 .modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer}
@@ -159,7 +244,27 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .modal-body{padding:24px}
 .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:var(--bg2);position:sticky;bottom:0}
 .confirm-banner{background:var(--green-pale);border:1px solid var(--green);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:700;color:var(--green);margin-bottom:16px}
+.confirm-banner.checking{background:var(--blue-xpale);border-color:var(--border2);color:var(--blue)}
+.confirm-banner.error{background:var(--red-pale);border-color:var(--red);color:var(--red)}
 .conf-note{background:var(--gold-pale);border-left:3px solid var(--gold);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.5;margin-top:12px}
+.pt-mirror{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);box-shadow:var(--shadow);margin:14px 0 16px;overflow:hidden}
+.pt-mirror-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:13px 15px;background:var(--blue-xpale);border-bottom:1px solid var(--border)}
+.pt-mirror-title{font-size:12px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.08em}
+.pt-mirror-sub{font-size:11px;color:var(--text3);font-weight:800;margin-top:3px}
+.pt-mirror-refresh{border:1px solid var(--border2);background:var(--bg2);color:var(--blue);border-radius:var(--radius-sm);padding:6px 10px;font-size:11px;font-weight:900;cursor:pointer;font-family:'Nunito',sans-serif}
+.pt-mirror-body{padding:12px 14px;display:grid;gap:10px}
+.pt-mirror-empty{padding:16px;text-align:center;color:var(--text3);font-size:12px;font-weight:800}
+.pt-mirror-row{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);padding:10px;display:grid;gap:8px}
+.pt-mirror-row.best{border-color:rgba(45,106,79,.35);background:var(--green-pale)}
+.pt-mirror-op{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pt-mirror-op strong{font-size:13px;color:var(--text)}
+.pt-mirror-op span{font-size:11px;font-weight:900;color:var(--text3)}
+.pt-slots{display:flex;flex-wrap:wrap;gap:6px}
+.pt-slot{border:1px solid var(--border2);border-radius:999px;padding:5px 9px;background:var(--bg2);color:var(--text2);font-size:11px;font-weight:900;cursor:pointer;font-family:'Nunito',sans-serif}
+.pt-slot.free{border-color:rgba(45,106,79,.35);color:var(--green);background:#f7fffb}
+.pt-slot.busy{border-color:rgba(192,57,43,.22);color:var(--red);background:var(--red-pale);cursor:default}
+.pt-slot.selected{background:var(--green);border-color:var(--green);color:#fff}
+.pt-slot small{display:block;font-size:9px;font-weight:800;opacity:.72}
 
 /* BUTTONS */
 .btn-primary{background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s}
@@ -177,19 +282,20 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .toast.error{background:var(--red)}
 .toast.success{background:var(--green)}
 
-@media(max-width:768px){.kpi-strip{grid-template-columns:repeat(2,1fr)};.sch-grid{grid-template-columns:1fr};.main{padding:16px};.grid-2{grid-template-columns:1fr}}
+@media(max-width:980px){.dash-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.kpi-strip{grid-template-columns:repeat(2,1fr)};.sch-grid{grid-template-columns:1fr};.main{padding:16px};.grid-2,.data-two,.g3,.srv-grid{grid-template-columns:1fr}.misure-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 
 <div class="topbar">
+  <img class="topbar-logo" src="assets/neacea-logo.svg" alt="Logo Neacea">
   <span class="topbar-brand">Neacea</span>
   <div class="topbar-divider"></div>
-  <span class="topbar-sub">Acquisizione</span>
+  <span class="topbar-sub">Lead e acquisizione</span>
   <div class="topbar-right">
-    <button class="topbar-btn" onclick="window.open('../calendario-studio/','_blank')">Studio →</button>
     <button class="topbar-btn" onclick="carica()">↻</button>
-    <button class="topbar-btn primary" id="btn-nuova" onclick="apriForm()">+ Nuova anamnesi</button>
+    <button class="topbar-btn primary" id="btn-nuova" onclick="apriForm()">+ Nuovo lead</button>
   </div>
 </div>
 
@@ -198,17 +304,19 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 <!-- MODAL CONFERMA -->
 <div class="modal-overlay" id="mo-conferma">
   <div class="modal">
-    <div class="modal-head"><div class="modal-title">Conferma cliente</div><button class="modal-close" onclick="closeMo('mo-conferma')">✕</button></div>
+    <div class="modal-head"><div class="modal-title">Attiva cliente</div><button class="modal-close" onclick="closeMo('mo-conferma')">✕</button></div>
     <div class="modal-body">
-      <div class="confirm-banner">✓ <strong id="conf-nome">—</strong> passa allo studio. I dati anamnesi verranno trasferiti automaticamente.</div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">Vuoi aggiungere subito l'abbonamento? Puoi farlo anche dopo dallo studio.</p>
+      <div class="confirm-banner checking" id="conf-banner">⌛ Controllo se <strong id="conf-nome">—</strong> è già presente nello studio…</div>
+      <p id="conf-intro" style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">Attendi il controllo dell’anagrafica prima di continuare.</p>
+      <div id="conf-new-client-fields" style="display:none">
       <div class="grid-2">
         <div class="field"><label>Pacchetto servizio</label>
-          <select id="conf-package">
+          <select id="conf-package" onchange="toggleConfSess();refreshPtMirror()">
             <option>PT 1:1</option>
             <option>PT 1:2</option>
             <option>Circuit</option>
             <option>Nutrizione</option>
+            <option>Coaching online</option>
             <option>Valutazioni</option>
           </select>
         </div>
@@ -218,28 +326,40 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       </div>
       <div class="grid-2">
         <div class="field"><label>Tipo abbonamento</label>
-          <select id="conf-tipo" onchange="toggleConfSess()">
+          <select id="conf-tipo" onchange="toggleConfSess();refreshPtMirror()">
             <option value="">— aggiungi dopo —</option>
             <option>Mensile</option><option>Trimestrale</option><option>Semestrale</option>
             <option>Annuale</option><option>Pacchetto 2</option><option>Pacchetto 10</option><option>Pacchetto 20</option><option>A sessione</option>
           </select>
         </div>
-        <div class="field"><label>Data inizio</label><input type="date" id="conf-data"></div>
+        <div class="field"><label>Data inizio</label><input type="date" id="conf-data" onchange="refreshPtMirror()"></div>
       </div>
       <div class="grid-2" id="conf-sess-row" style="display:none">
-        <div class="field"><label>Sessioni totali</label><input type="number" id="conf-sess-tot" min="1" onchange="limitConfDays()"></div>
+        <div class="field"><label>Sessioni totali</label><input type="number" id="conf-sess-tot" min="1" onchange="limitConfDays();refreshPtMirror()"></div>
         <div class="field"><label>Sessioni usate</label><input type="number" id="conf-sess-used" value="0" min="0"></div>
       </div>
       <div class="field" id="conf-days-row" style="display:none">
         <label>Giorni del pacchetto</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="conf-days">
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Lunedì" onchange="limitConfDays(this)"> Lun</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Martedì" onchange="limitConfDays(this)"> Mar</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Mercoledì" onchange="limitConfDays(this)"> Mer</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Giovedì" onchange="limitConfDays(this)"> Gio</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Venerdì" onchange="limitConfDays(this)"> Ven</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Sabato" onchange="limitConfDays(this)"> Sab</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Domenica" onchange="limitConfDays(this)"> Dom</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Lunedì" onchange="limitConfDays(this);refreshPtMirror()"> Lun</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Martedì" onchange="limitConfDays(this);refreshPtMirror()"> Mar</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Mercoledì" onchange="limitConfDays(this);refreshPtMirror()"> Mer</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Giovedì" onchange="limitConfDays(this);refreshPtMirror()"> Gio</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Venerdì" onchange="limitConfDays(this);refreshPtMirror()"> Ven</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Sabato" onchange="limitConfDays(this);refreshPtMirror()"> Sab</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="Domenica" onchange="limitConfDays(this);refreshPtMirror()"> Dom</label>
+        </div>
+      </div>
+      <div class="pt-mirror" id="pt-mirror" style="display:none">
+        <div class="pt-mirror-head">
+          <div>
+            <div class="pt-mirror-title">Specchio disponibilità PT</div>
+            <div class="pt-mirror-sub" id="pt-mirror-sub">Seleziona giorni e data inizio per vedere gli slot liberi</div>
+          </div>
+          <button class="pt-mirror-refresh" onclick="refreshPtMirror(true)">Aggiorna</button>
+        </div>
+        <div class="pt-mirror-body" id="pt-mirror-body">
+          <div class="pt-mirror-empty">Nessun dato ancora.</div>
         </div>
       </div>
       <div class="grid-2" id="conf-abb-row" style="display:none">
@@ -248,34 +368,52 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
           <select id="conf-pagamento"><option>Da pagare</option><option>Pagato</option><option>Parziale</option></select>
         </div>
       </div>
-      <div class="conf-note">💡 Dopo la conferma il prospect sparirà dall'acquisizione e apparirà nello studio con tutti i dati precompilati.</div>
+      <div class="conf-note">Dopo la conferma l'acquisizione resta archiviata e modificabile. Il cliente apparira anche nello studio; le lezioni si programmano da Calendario → Clienti → Quadro pacchetto.</div>
+      </div>
+      <div class="conf-note" id="conf-existing-note" style="display:none">Il sistema aggiornerà soltanto l’obiettivo e i dati commerciali compilati nel lead. Pacchetto, sessioni, pagamenti, PT assegnato e appuntamenti esistenti resteranno invariati.</div>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost" onclick="closeMo('mo-conferma')">Annulla</button>
-      <button class="btn-confirm" id="btn-conf" onclick="eseguiConferma()">Conferma e trasferisci →</button>
+      <button class="btn-confirm" id="btn-conf" onclick="eseguiConferma()">Attiva e trasferisci →</button>
     </div>
   </div>
 </div>
 
 <!-- LISTA -->
 <div class="view active main" id="view-lista">
-  <div class="eyebrow">Gestione prospect</div>
-  <div class="page-title">Anamnesi <em>acquisizione</em></div>
+  <div class="eyebrow">Pipeline commerciale</div>
+  <div class="page-title">Lead e <em>acquisizione</em></div>
   <div class="page-sub" id="lista-sub">Caricamento…</div>
 
   <div class="kpi-strip">
-    <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Totale prospect</div><div class="kpi-value" id="st-tot">—</div><div class="kpi-sub">in acquisizione</div></div>
+    <div class="kpi" style="--kpi-color:var(--blue)"><div class="kpi-label">Prospect attivi</div><div class="kpi-value" id="st-tot">—</div><div class="kpi-sub">da seguire</div></div>
     <div class="kpi" style="--kpi-color:var(--green)"><div class="kpi-label">Pronti</div><div class="kpi-value" id="st-pronti">—</div><div class="kpi-sub">da confermare</div></div>
     <div class="kpi" style="--kpi-color:var(--gold)"><div class="kpi-label">Interessati</div><div class="kpi-value" id="st-int">—</div><div class="kpi-sub">in trattativa</div></div>
-    <div class="kpi" style="--kpi-color:var(--text2)"><div class="kpi-label">Questo mese</div><div class="kpi-value" id="st-mese">—</div><div class="kpi-sub">nuove acquisizioni</div></div>
+    <div class="kpi" style="--kpi-color:var(--red)"><div class="kpi-label">Da richiamare</div><div class="kpi-value" id="st-follow">—</div><div class="kpi-sub" id="st-follow-sub">follow-up scaduti/oggi</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-panel">
+      <div class="dash-head">Follow-up da fare</div>
+      <div class="dash-body" id="dash-follow"></div>
+    </div>
+    <div class="dash-panel">
+      <div class="dash-head">Pronti da confermare</div>
+      <div class="dash-body" id="dash-pronti"></div>
+    </div>
+    <div class="dash-panel">
+      <div class="dash-head">Ultimi inseriti</div>
+      <div class="dash-body" id="dash-recenti"></div>
+    </div>
   </div>
 
   <div class="toolbar">
     <input class="toolbar-search" id="search" type="text" placeholder="Cerca per nome, email, telefono…" oninput="renderLista()">
-    <button class="filter-btn active" onclick="setFiltro('tutti',this)">Tutti</button>
+    <button class="filter-btn active" onclick="setFiltro('attivi',this)">Attivi</button>
     <button class="filter-btn" onclick="setFiltro('pronti',this)">Pronti</button>
     <button class="filter-btn" onclick="setFiltro('interessati',this)">Interessati</button>
     <button class="filter-btn" onclick="setFiltro('valutazione',this)">In valutazione</button>
+    <button class="filter-btn" onclick="setFiltro('convertiti',this)">Archivio convertiti</button>
   </div>
 
   <div class="cards-grid" id="grid"></div>
@@ -284,22 +422,19 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 <!-- FORM -->
 <div class="view main" id="view-form">
   <div class="form-wrap">
-    <div class="eyebrow" id="form-eyebrow">Nuovo prospect</div>
-    <div class="page-title" id="form-title" style="margin-bottom:4px">Anamnesi acquisizione</div>
-    <div class="page-sub">Compila durante il primo colloquio in studio</div>
+    <div class="eyebrow" id="form-eyebrow">Nuovo lead</div>
+    <div class="page-title" id="form-title" style="margin-bottom:4px">Primo contatto</div>
+    <div class="page-sub">Registra soltanto le informazioni utili per ricontattare e qualificare il prospect.</div>
 
-    <!-- 1 · DATI PERSONALI -->
+    <!-- 1 · CONTATTO -->
     <div class="section">
-      <div class="sec-head"><div class="sec-num">1</div><div class="sec-label">Dati personali</div></div>
+      <div class="sec-head"><div class="sec-num">1</div><div class="sec-label">Contatto</div></div>
       <div class="sec-body">
         <div class="grid-2">
           <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="f-nome" autocomplete="off"></div>
           <div class="field"><label>Cognome <span class="req">*</span></label><input type="text" id="f-cognome" autocomplete="off"></div>
-          <div class="field"><label>Data di nascita</label><input type="date" id="f-nascita"></div>
-          <div class="field"><label>Sesso</label><select id="f-sesso"><option value="">— seleziona —</option><option>Maschio</option><option>Femmina</option><option>Altro</option></select></div>
-          <div class="field"><label>Telefono</label><input type="tel" id="f-telefono"></div>
-          <div class="field"><label>Email</label><input type="email" id="f-email"></div>
-          <div class="field"><label>Professione</label><input type="text" id="f-professione"></div>
+          <div class="field"><label>Telefono <span class="req">*</span></label><input type="tel" id="f-telefono" autocomplete="tel"><div class="field-help">È sufficiente telefono oppure email.</div></div>
+          <div class="field"><label>Email <span class="req">*</span></label><input type="email" id="f-email" autocomplete="email"><div class="field-help">È sufficiente telefono oppure email.</div></div>
           <div class="field"><label>Come ci ha trovato</label>
             <select id="f-come"><option value="">— seleziona —</option><option>Passaparola</option><option>Instagram</option><option>Google</option><option>Facebook</option><option>Sito web</option><option>Altro</option></select>
           </div>
@@ -307,10 +442,11 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       </div>
     </div>
 
-    <!-- 2 · SERVIZI -->
+    <!-- 2 · INTERESSE -->
     <div class="section">
-      <div class="sec-head"><div class="sec-num">2</div><div class="sec-label">Servizi di interesse</div></div>
+      <div class="sec-head"><div class="sec-num">2</div><div class="sec-label">Interesse</div></div>
       <div class="sec-body">
+        <div class="field"><label>Servizi di interesse</label>
         <div class="srv-grid">
           <div class="srv-card sel-pt" id="srv-pt" onclick="togSrv('pt')">
             <span class="srv-icon">🏋️</span>
@@ -322,14 +458,13 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
             <div class="srv-name">Nutrizione</div>
             <div class="srv-desc">Piano alimentare personalizzato con nutrizionista</div>
           </div>
+          <div class="srv-card" id="srv-coach" onclick="togSrv('coach')">
+            <span class="srv-icon">💻</span>
+            <div class="srv-name">Coaching online</div>
+            <div class="srv-desc">Allenamento seguito a distanza con supporto dedicato</div>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 3 · OBIETTIVI -->
-    <div class="section">
-      <div class="sec-head"><div class="sec-num">3</div><div class="sec-label">Obiettivi</div></div>
-      <div class="sec-body">
+        </div>
         <div class="field"><label>Obiettivo principale <span class="req">*</span></label>
           <div class="chips" id="chips-ob">
             <div class="chip" onclick="selChip(this,'ob')">Dimagrimento</div>
@@ -344,78 +479,14 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
         <div class="field"><label>Obiettivo con le sue parole</label>
           <textarea id="f-ob-libero" placeholder="Descrivi con le sue stesse parole cosa vuole ottenere…"></textarea>
         </div>
-        <div class="grid-2">
-          <div class="field"><label>Tempistica desiderata</label>
-            <select id="f-tempistica"><option value="">— seleziona —</option><option>1–2 mesi</option><option>3–6 mesi</option><option>6–12 mesi</option><option>Lungo termine</option><option>Senza scadenza</option></select>
-          </div>
-          <div class="field"><label>Livello di motivazione</label>
-            <div class="scala-wrap"><input type="range" min="1" max="10" value="7" id="f-motiv" oninput="document.getElementById('motiv-val').textContent=this.value"><div class="scala-val" id="motiv-val">7</div></div>
-            <div class="scala-labels"><span>Bassa</span><span>Massima</span></div>
-          </div>
-        </div>
       </div>
     </div>
 
-    <!-- 4 · STORIA FITNESS -->
+    <!-- 3 · FOLLOW-UP -->
     <div class="section">
-      <div class="sec-head"><div class="sec-num">4</div><div class="sec-label">Storia fitness</div></div>
+      <div class="sec-head"><div class="sec-num">3</div><div class="sec-label">Follow-up</div></div>
       <div class="sec-body">
-        <div class="field"><label>Esperienza pregressa</label>
-          <div class="chips" id="chips-esp">
-            <div class="chip" onclick="selChip(this,'esp')">Nessuna</div>
-            <div class="chip" onclick="selChip(this,'esp')">Palestra in passato</div>
-            <div class="chip" onclick="selChip(this,'esp')">Attività sportiva</div>
-            <div class="chip" onclick="selChip(this,'esp')">Già con un PT</div>
-            <div class="chip" onclick="selChip(this,'esp')">Allenamento autonomo</div>
-          </div>
-        </div>
         <div class="grid-2">
-          <div class="field"><label>Periodo di inattività</label>
-            <select id="f-inattivo"><option value="">— seleziona —</option><option>È ancora attivo/a</option><option>Meno di 3 mesi</option><option>3–12 mesi</option><option>1–3 anni</option><option>Più di 3 anni</option><option>Mai praticato</option></select>
-          </div>
-          <div class="field"><label>Sport / attività praticate</label><input type="text" id="f-sport" placeholder="Es. calcio, nuoto, corsa…"></div>
-        </div>
-        <div class="field"><label>Cosa non ha funzionato in passato</label>
-          <textarea id="f-non-funz" placeholder="Motivi di abbandono, ostacoli, esperienze negative…"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5 · DISPONIBILITÀ -->
-    <div class="section">
-      <div class="sec-head"><div class="sec-num">5</div><div class="sec-label">Disponibilità</div></div>
-      <div class="sec-body">
-        <div class="field"><label>Sessioni a settimana desiderate</label>
-          <div class="chips" id="chips-sess">
-            <div class="chip" onclick="selChip(this,'sess')">1×</div>
-            <div class="chip" onclick="selChip(this,'sess')">2×</div>
-            <div class="chip" onclick="selChip(this,'sess')">3×</div>
-            <div class="chip" onclick="selChip(this,'sess')">4×+</div>
-          </div>
-        </div>
-        <div class="field"><label>Orari preferiti <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0">(selezione multipla)</span></label>
-          <div class="chips" id="chips-orari">
-            <div class="chip" onclick="togChipM(this,'orari')">Mattina 6–9</div>
-            <div class="chip" onclick="togChipM(this,'orari')">Mattina 9–12</div>
-            <div class="chip" onclick="togChipM(this,'orari')">Pausa pranzo</div>
-            <div class="chip" onclick="togChipM(this,'orari')">Pomeriggio</div>
-            <div class="chip" onclick="togChipM(this,'orari')">Sera 18–20</div>
-            <div class="chip" onclick="togChipM(this,'orari')">Sera 20+</div>
-            <div class="chip" onclick="togChipM(this,'orari')">Weekend</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 6 · NOTE PT -->
-    <div class="section">
-      <div class="sec-head"><div class="sec-num">6</div><div class="sec-label">Note del PT</div></div>
-      <div class="sec-body">
-        <div class="field"><label>Impressioni dal colloquio</label>
-          <textarea id="f-impressioni" style="min-height:90px" placeholder="Carattere, atteggiamento, aspettative, punti di forza o criticità…"></textarea>
-        </div>
-        <div class="grid-2">
-          <div class="field"><label>Proposta commerciale</label><input type="text" id="f-proposta" placeholder="Es. 3× sett., pacchetto 12 sessioni…"></div>
           <div class="field"><label>Follow-up previsto</label><input type="date" id="f-followup"></div>
         </div>
         <div class="field"><label>Stato acquisizione</label>
@@ -426,12 +497,39 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
             <div class="chip" onclick="selChip(this,'stato')">Non convinto</div>
           </div>
         </div>
+        <div class="field"><label>Nota interna</label>
+          <textarea id="f-impressioni" style="min-height:90px" placeholder="Prossima azione, dubbi, richieste o informazioni utili al ricontatto…"></textarea>
+        </div>
+        <details class="optional-block">
+          <summary>Disponibilità indicativa (facoltativa)</summary>
+          <div class="optional-body">
+            <div class="field"><label>Sessioni a settimana desiderate</label>
+              <div class="chips" id="chips-sess">
+                <div class="chip" onclick="selChip(this,'sess')">1×</div>
+                <div class="chip" onclick="selChip(this,'sess')">2×</div>
+                <div class="chip" onclick="selChip(this,'sess')">3×</div>
+                <div class="chip" onclick="selChip(this,'sess')">4×+</div>
+              </div>
+            </div>
+            <div class="field"><label>Orari preferiti <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0">(selezione multipla)</span></label>
+              <div class="chips" id="chips-orari">
+                <div class="chip" onclick="togChipM(this,'orari')">Mattina 6–9</div>
+                <div class="chip" onclick="togChipM(this,'orari')">Mattina 9–12</div>
+                <div class="chip" onclick="togChipM(this,'orari')">Pausa pranzo</div>
+                <div class="chip" onclick="togChipM(this,'orari')">Pomeriggio</div>
+                <div class="chip" onclick="togChipM(this,'orari')">Sera 18–20</div>
+                <div class="chip" onclick="togChipM(this,'orari')">Sera 20+</div>
+                <div class="chip" onclick="togChipM(this,'orari')">Weekend</div>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
 
     <div class="form-actions">
       <button class="btn-ghost" onclick="showView('lista')">Annulla</button>
-      <button class="btn-primary" id="btn-salva" onclick="salva()">Salva anamnesi</button>
+      <button class="btn-primary" id="btn-salva" onclick="salva()">Salva lead</button>
     </div>
   </div>
 </div>
@@ -440,14 +538,15 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 <div class="view main" id="view-scheda">
   <div class="scheda-wrap">
     <div class="scheda-hero">
-      <div class="sch-eyebrow">Prospect · Acquisizione PT</div>
+      <div class="sch-eyebrow">Lead · Acquisizione</div>
       <div class="sch-nome" id="sch-nome">—</div>
       <div class="sch-meta" id="sch-meta"></div>
       <div class="sch-badges" id="sch-badges"></div>
       <div class="sch-actions">
         <button class="btn-ghost" onclick="showView('lista')" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">← Lista</button>
         <button class="btn-ghost" onclick="apriModifica()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">✏ Modifica</button>
-        <button class="btn-confirm" onclick="apriConferma()">Conferma cliente →</button>
+        <button class="btn-primary" id="btn-anamnesi-scheda" onclick="inviaAnamnesi()" style="font-size:11px;background:#fff;color:var(--blue)">↗ Invia anamnesi</button>
+        <button class="btn-confirm" id="btn-conferma-scheda" onclick="apriConferma()">Attiva cliente →</button>
         <button class="btn-danger" onclick="confElimina()">Elimina</button>
       </div>
     </div>
@@ -459,7 +558,10 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 <script>
 const SUPABASE_URL='https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY='sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
-let acquisizioni=[],staffAll=[],filtro='tutti',chips={stato:'Interessato'},servizi={pt:true,nut:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,toastTimer=null;
+const ANAMNESI_PT_URL='https://neacea-anamnesi-cliente.netlify.app/';
+const ANAMNESI_NUTRIZIONE_URL='https://anamnesi-nutrizione.netlify.app/';
+const ANAMNESI_COACHING_URL='https://anamensi-coaching.netlify.app/';
+let acquisizioni=[],staffAll=[],confAppointments=[],filtro='attivi',chips={stato:'Interessato'},servizi={pt:true,nut:false,coach:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,clienteEsistenteConferma=null,confermaLookupToken=0,toastTimer=null;
 
 function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
 async function sb(table,{method='GET',query='',body=null,headers={}}={}){
@@ -467,70 +569,233 @@ async function sb(table,{method='GET',query='',body=null,headers={}}={}){
   if(!r.ok)return{error:await r.text()};if(r.status===204)return null;const text=await r.text();return text?JSON.parse(text):null;
 }
 function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
-function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
-function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
-const DAY_INDEX={Domenica:0,Lunedì:1,Martedì:2,Mercoledì:3,Giovedì:4,Venerdì:5,Sabato:6};
-function dateFromYmd(v){const [y,m,d]=String(v||'').split('-').map(Number);return new Date(y||new Date().getFullYear(),(m||1)-1,d||1)}
-function ymd(d){const z=new Date(d);z.setMinutes(z.getMinutes()-z.getTimezoneOffset());return z.toISOString().slice(0,10)}
-function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
-function serviceFromPackage(pkg){if(pkg==='PT 1:2')return'pt12';if(pkg==='Nutrizione')return'nutrizione';if(pkg==='Circuit')return'circuit';return'pt11'}
-function buildAppointmentsForClient(clientId,p,totalToPlan){
-  const days=(p.giorniSettimana||[]).filter(Boolean);
-  const ptId=p.ptId||null;
-  const start=dateFromYmd(p.dataInizio||ymd(new Date()));
-  const serviceId=serviceFromPackage(p.packageType||'PT 1:1');
-  const count=Math.max(0,parseInt(totalToPlan)||0);
-  if(!days.length||!count)return[];
-  const out=[];let cursor=new Date(start);let guard=0;
-  while(out.length<count&&guard<370){
-    const label=Object.keys(DAY_INDEX).find(k=>DAY_INDEX[k]===cursor.getDay());
-    if(days.includes(label)){
-      out.push({
-        id:genId('a'),
-        service_id:serviceId,
-        client_ids:[clientId],
-        operator_id:ptId,
-        date:ymd(cursor),
-        start_time:'09:00',
-        duration_min:60,
-        buffer_min:10,
-        status:'prenotato',
-        notes:'Programmazione generata da acquisizione',
-        updated_at:new Date().toISOString()
-      });
-    }
-    cursor=addDays(cursor,1);guard++;
+function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,codiceFiscale:r.codice_fiscale,documento:r.documento,indirizzo:r.indirizzo,cap:r.cap,comune:r.comune,provincia:r.provincia,contattoEmergenza:r.contatto_emergenza,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
+function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',codice_fiscale:p.codiceFiscale||'',documento:p.documento||'',indirizzo:p.indirizzoFattura||p.indirizzo||'',cap:p.cap||'',comune:p.comune||'',provincia:p.provincia||'',contatto_emergenza:p.contattoEmergenza||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
+function stripMissingConsentColumns(body){
+  const fallback={...body};
+  ['codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'].forEach(k=>delete fallback[k]);
+  return fallback;
+}
+function normEmail(value){return String(value||'').trim().toLowerCase()}
+function normPhone(value){return String(value||'').replace(/\D/g,'')}
+function phoneCandidates(value){
+  const raw=String(value||'').trim();
+  const digits=normPhone(raw);
+  const national=digits.startsWith('0039')?digits.slice(4):digits.startsWith('39')&&digits.length>10?digits.slice(2):digits;
+  return[raw,digits,digits?`+${digits}`:'',national,national?`+39${national}`:'',national?`39${national}`:''].filter((v,i,a)=>v&&a.indexOf(v)===i);
+}
+async function findClientForAcquisition(acq){
+  const email=normEmail(acq?.email);
+  if(email){
+    const rows=await sb('clients',{query:'?select=id,nome,cognome,email,active&email=ilike.'+encodeURIComponent(email)+'&order=active.desc,created_at.asc&limit=1'});
+    if(rows?.error)throw new Error('Controllo cliente non riuscito: '+rows.error);
+    if(Array.isArray(rows)&&rows.length)return rows[0];
+  }
+  for(const phone of phoneCandidates(acq?.telefono)){
+    const rows=await sb('clients',{query:'?select=id,nome,cognome,email,active&telefono=eq.'+encodeURIComponent(phone)+'&order=active.desc,created_at.asc&limit=1'});
+    if(rows?.error)throw new Error('Controllo cliente non riuscito: '+rows.error);
+    if(Array.isArray(rows)&&rows.length)return rows[0];
+  }
+  return null;
+}
+function existingClientPatch(acq){
+  const patch={updated_at:new Date().toISOString()};
+  const obiettivo=String(acq?.obiettivoLibero||acq?.obiettivo||'').trim();
+  const professione=String(acq?.professione||'').trim();
+  const come=String(acq?.come||'').trim();
+  if(obiettivo)patch.obiettivo=obiettivo;
+  if(professione)patch.professione=professione;
+  if(come)patch.come=come;
+  const motivazione=parseInt(acq?.motivazione);
+  if(Number.isFinite(motivazione))patch.motivazione=motivazione;
+  return patch;
+}
+const CONF_DAY_INDEX={'Domenica':0,'Lunedì':1,'Martedì':2,'Mercoledì':3,'Giovedì':4,'Venerdì':5,'Sabato':6};
+const CONF_SERVICE_META={
+  'PT 1:1':{id:'pt11',duration:60,buffer:10,roles:['PT']},
+  'PT 1:2':{id:'pt12',duration:60,buffer:10,roles:['PT']},
+  'Circuit':{id:'circuit',duration:60,buffer:10,roles:['Circuit','PT']},
+  'Nutrizione':{id:'nutrizione',duration:60,buffer:10,roles:['Nutrizionista']},
+  'Coaching online':{id:'coaching',duration:60,buffer:10,roles:['Coach','PT']},
+  'Valutazioni':{id:'visbody',duration:30,buffer:10,roles:['Valutazioni']},
+};
+function confTimeToMin(time){const[h,m]=String(time||'00:00').split(':').map(Number);return(h||0)*60+(m||0)}
+function confMinToTime(total){return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0')}
+function confApptStart(appt){return String(appt.start_time||appt.startTime||'00:00').slice(0,5)}
+function confApptEnd(appt,includeBuffer=true){return confTimeToMin(confApptStart(appt))+Number(appt.duration_min||appt.durationMin||60)+(includeBuffer?Number(appt.buffer_min||appt.bufferMin||0):0)}
+function confOverlaps(a,b,includeBuffer=true){const aStart=confTimeToMin(a.startTime||a.start_time),aEnd=aStart+Number(a.durationMin||a.duration_min||60)+(includeBuffer?Number(a.bufferMin||a.buffer_min||0):0);const bStart=confTimeToMin(b.startTime||b.start_time),bEnd=confApptEnd(b,includeBuffer);return aStart<bEnd&&bStart<aEnd}
+function staffRoles(op){return Array.isArray(op.roles)?op.roles:String(op.roles||'').split(',').map(r=>r.trim()).filter(Boolean)}
+function staffCompatible(op,meta){const roles=staffRoles(op);return !meta?.roles?.length||meta.roles.some(r=>roles.includes(r))}
+function confStartTime(acq){
+  const raw=String(acq?.orari||'');
+  if(raw.includes('6–9'))return'07:00';
+  if(raw.includes('9–12'))return'09:00';
+  if(raw.includes('Pausa'))return'13:00';
+  if(raw.includes('Pomeriggio'))return'16:00';
+  if(raw.includes('18–20'))return'18:00';
+  if(raw.includes('20+'))return'20:00';
+  return'09:00';
+}
+function confNextPackageDates(start,days,total){
+  const wanted=new Set((days||[]).map(d=>CONF_DAY_INDEX[d]).filter(v=>v!==undefined));
+  if(!wanted.size||!total)return[];
+  const startStr=start||new Date().toISOString().slice(0,10);
+  const parts=startStr.split('-').map(Number);
+  const d=new Date(parts[0],(parts[1]||1)-1,parts[2]||1);
+  const out=[];
+  for(let guard=0;out.length<total&&guard<370;guard++){
+    if(wanted.has(d.getDay()))out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate()+1);
   }
   return out;
 }
-async function apiGet(a){
+function confAddDays(dateStr,days){
+  const parts=String(dateStr||oggi()).split('-').map(Number);
+  const d=new Date(parts[0],(parts[1]||1)-1,parts[2]||1);
+  d.setDate(d.getDate()+days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function confPreferredTimes(acq){
+  const raw=String(acq?.orari||'');
+  const times=[];
+  if(raw.includes('6–9'))times.push('07:00','08:00');
+  if(raw.includes('9–12'))times.push('09:00','10:00','11:00');
+  if(raw.includes('Pausa'))times.push('12:00','13:00');
+  if(raw.includes('Pomeriggio'))times.push('15:00','16:00','17:00');
+  if(raw.includes('18–20'))times.push('18:00','19:00');
+  if(raw.includes('20+'))times.push('20:00');
+  if(!times.length)times.push(confStartTime(acq));
+  return [...new Set(times)].sort();
+}
+function confSelectedDays(){return[...document.querySelectorAll('#conf-days input:checked')].map(c=>c.value)}
+function confMirrorDates(){
+  const packageType=document.getElementById('conf-package')?.value||'PT 1:1';
+  const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(packageType);
+  const start=document.getElementById('conf-data')?.value||oggi();
+  const days=confSelectedDays();
+  if(needsPlan&&days.length)return confNextPackageDates(start,days,6);
+  return Array.from({length:6},(_,i)=>confAddDays(start,i));
+}
+function confSlotLabel(date,time){
+  try{return new Date(date+'T00:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'})+' '+time}catch{return date+' '+time}
+}
+function confMirrorSlotsForOperator(op,dates,times,meta){
+  return dates.flatMap(date=>times.map(time=>{
+    const draft={date,startTime:time,durationMin:meta.duration,bufferMin:meta.buffer};
+    const conflicts=confAppointments.filter(a=>a.operator_id===op.id&&a.date===date&&a.status!=='annullato'&&confOverlaps(draft,a,true));
+    return{date,time,free:conflicts.length===0,conflicts};
+  }));
+}
+async function refreshPtMirror(force=false){
+  const box=document.getElementById('pt-mirror'),body=document.getElementById('pt-mirror-body'),sub=document.getElementById('pt-mirror-sub');
+  if(!box||!body||!sub||!idConferma)return;
+  const acq=acquisizioni.find(x=>x.id===idConferma);
+  const packageType=document.getElementById('conf-package')?.value||'PT 1:1';
+  const meta=CONF_SERVICE_META[packageType]||CONF_SERVICE_META['PT 1:1'];
+  const compatibleStaff=staffAll.filter(op=>staffCompatible(op,meta));
+  const dates=confMirrorDates();
+  const times=confPreferredTimes(acq);
+  const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(packageType);
+  const days=confSelectedDays();
+  box.style.display=compatibleStaff.length?'block':'none';
+  if(!compatibleStaff.length)return;
+  if(needsPlan&&!days.length){
+    sub.textContent='Seleziona i giorni del pacchetto per vedere le disponibilità reali';
+    body.innerHTML='<div class="pt-mirror-empty">Seleziona almeno un giorno del pacchetto.</div>';
+    return;
+  }
+  sub.textContent=`${dates.length} giornate · preferenza oraria: ${times.join(', ')}`;
+  body.innerHTML='<div class="pt-mirror-empty"><span class="spin"></span> Calcolo disponibilità…</div>';
+  try{
+    const from=dates[0],to=dates[dates.length-1]||from;
+    const res=await apiGet('getAppointments',{from,to});
+    if(res.error)throw new Error(res.error);
+    confAppointments=res.appointments||[];
+    const selected=document.getElementById('conf-pt')?.value||'';
+    const rows=compatibleStaff.map(op=>{
+      const slots=confMirrorSlotsForOperator(op,dates,times,meta);
+      const free=slots.filter(s=>s.free);
+      return{op,slots,freeCount:free.length,firstFree:free[0]||null};
+    }).sort((a,b)=>b.freeCount-a.freeCount||`${a.op.cognome||''} ${a.op.nome||''}`.localeCompare(`${b.op.cognome||''} ${b.op.nome||''}`));
+    body.innerHTML=rows.map((row,idx)=>`
+      <div class="pt-mirror-row ${idx===0&&row.freeCount?'best':''}">
+        <div class="pt-mirror-op">
+          <strong>${escapeHtml((row.op.nome||'')+' '+(row.op.cognome||''))}</strong>
+          <span>${row.freeCount}/${row.slots.length} liberi${idx===0&&row.freeCount?' · migliore':''}</span>
+        </div>
+        <div class="pt-slots">
+          ${row.slots.slice(0,12).map(slot=>{
+            const title=slot.free?'Libero':'Occupato: '+slot.conflicts.map(a=>confApptStart(a)).join(', ');
+            return `<button type="button" title="${escapeAttr(title)}" class="pt-slot ${slot.free?'free':'busy'} ${selected===row.op.id&&slot.free?'selected':''}" ${slot.free?`onclick="selectPtFromMirror('${escapeJs(row.op.id)}','${escapeJs(slot.date)}','${escapeJs(slot.time)}')"`:'disabled'}>${confSlotLabel(slot.date,slot.time)}${slot.free?'<small>libero</small>':'<small>occupato</small>'}</button>`;
+          }).join('')}
+        </div>
+      </div>`).join('');
+  }catch(e){
+    body.innerHTML='<div class="pt-mirror-empty">Non riesco a leggere il calendario: '+escapeHtml(String(e.message||e).slice(0,120))+'</div>';
+    if(force)showToast('Errore disponibilità PT','error');
+  }
+}
+function selectPtFromMirror(ptId,date,time){
+  const sel=document.getElementById('conf-pt');if(sel)sel.value=ptId;
+  document.querySelectorAll('.pt-slot.selected').forEach(el=>el.classList.remove('selected'));
+  const op=staffAll.find(s=>s.id===ptId);
+  showToast(`PT assegnato: ${op?`${op.nome||''} ${op.cognome||''}`.trim():'selezionato'} · slot libero ${date} ${time}`,'success');
+  refreshPtMirror();
+}
+function servizioDaPacchetto(packageType){
+  if(packageType==='Nutrizione')return'Nutrizione';
+  if(packageType==='Valutazioni')return'Valutazioni';
+  if(packageType==='Circuit')return'Circuit';
+  return packageType||'PT 1:1';
+}
+async function apiGet(a,params={}){
   if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
   if(a==='getStaff'){const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
+  if(a==='getAppointments'){const from=encodeURIComponent(params.from||oggi()),to=encodeURIComponent(params.to||params.from||oggi());const rows=await sb('appointments',{query:'?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status&date=gte.'+from+'&date=lte.'+to+'&status=neq.annullato&order=date.asc,start_time.asc'});if(rows.error)return rows;return{appointments:rows||[]}}
   return{error:'Azione non supportata'}
 }
 async function apiFetch(p){
-  if(p.action==='saveAcquisizione'){const body=acqToDb(p);const res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body});return res?.error?res:{success:true,id:body.id}}
+  if(p.action==='saveAcquisizione'){
+    const body=acqToDb(p);
+    let res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body});
+    if(res?.error&&String(res.error).toLowerCase().includes('column')){
+      res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:stripMissingConsentColumns(body)});
+    }
+    return res?.error?res:{success:true,id:body.id}
+  }
   if(p.action==='deleteAcquisizione'){const res=await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});return res?.error?res:{success:true}}
   if(p.action==='confermaCliente'){
     const acq=acquisizioni.find(x=>x.id===p.id);if(!acq)return{error:'Prospect non trovato'};
-    const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
     const sessionsTotal=parseInt(p.sessioni_totali)||0;
-    const sessionsUsed=parseInt(p.sessioni_usate)||0;
     const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
-    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',email:acq.email||'',telefono:acq.telefono||'',package_types:[p.packageType||'PT 1:1'],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-sessionsUsed),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:acq.servizi||'',tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
-    const ins=await sb('clients',{method:'POST',headers:{Prefer:'return=minimal'},body});if(ins?.error)return ins;
-    const appointments=buildAppointmentsForClient(clientId,p,Math.max(0,sessionsTotal-sessionsUsed));
-    if(appointments.length){
-      const appRes=await sb('appointments',{method:'POST',headers:{Prefer:'return=minimal'},body:appointments});
-      if(appRes?.error)return appRes;
+    const packageType=p.packageType||'PT 1:1';
+    const existingClient=await findClientForAcquisition(acq);
+    if(existingClient){
+      const update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:existingClientPatch(acq)});
+      if(update?.error)return update;
+      const archived=await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
+      if(archived?.error)return archived;
+      return{success:true,clientId:existingClient.id,existingClient:true,appuntamentiCreati:0};
     }
-    await sb('acquisizioni',{
-      method:'PATCH',
-      query:'?id=eq.'+encodeURIComponent(p.id),
-      headers:{Prefer:'return=minimal'},
-      body:{stato:'Convertito',updated_at:new Date().toISOString()}
-    });
-    return{success:true,clientId};
+    const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
+    let ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body});
+    if(ins?.error&&String(ins.error).toLowerCase().includes('column')){
+      const fallback={...body};
+      delete fallback.nascita;
+      delete fallback.sesso;
+      delete fallback.codice_fiscale;
+      delete fallback.documento;
+      delete fallback.indirizzo;
+      delete fallback.cap;
+      delete fallback.comune;
+      delete fallback.provincia;
+      delete fallback.contatto_emergenza;
+      ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
+    }
+    if(ins?.error)return ins;
+    await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
+    return{success:true,clientId,appuntamentiCreati:0};
   }
   return{error:'Azione non supportata'}
 }
@@ -539,46 +804,76 @@ async function carica(){
   if(!initialized)document.getElementById('grid').innerHTML='<div class="empty-state"><div class="spin"></div></div>';
   showToast('Aggiornamento…','loading');
   try{
-    const [d,ops]=await Promise.all([apiGet('getAcquisizioni'),apiGet('getStaff')]);acquisizioni=d.acquisizioni||[];staffAll=ops.staff||[];initialized=true;
+    const [d,ops]=await Promise.all([apiGet('getAcquisizioni'),apiGet('getStaff')]);
+    if(d.error)throw new Error(d.error);
+    if(ops.error)throw new Error(ops.error);
+    acquisizioni=d.acquisizioni||[];staffAll=ops.staff||[];initialized=true;
     renderStats();renderLista();
-    const t=acquisizioni.filter(c=>c.stato!=='Convertito').length;
-    document.getElementById('lista-sub').textContent=t===0?'Nessun prospect registrato — aggiungi la prima anamnesi':t+' prospect registrat'+(t===1?'o':'i');
+    const attive=acquisizioni.filter(c=>c.stato!=='Convertito').length;
+    const archiviate=acquisizioni.filter(c=>c.stato==='Convertito').length;
+    document.getElementById('lista-sub').textContent=acquisizioni.length===0?'Nessun lead registrato — aggiungi il primo contatto':attive+' attiv'+(attive===1?'o':'i')+' · '+archiviate+' archiviat'+(archiviate===1?'o':'i');
     showToast('Aggiornato ✓','success');
-  }catch(e){document.getElementById('grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">Errore connessione — riprova</div></div>';showToast('Errore connessione','error')}
+  }catch(e){document.getElementById('grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">Errore connessione Supabase</div><div class="empty-sub">'+String(e.message||e).slice(0,180)+'</div></div>';showToast('Errore Supabase','error')}
 }
 
 function renderStats(){
   const attive=acquisizioni.filter(c=>c.stato!=='Convertito');
   const t=attive.length;const pronti=attive.filter(c=>c.stato==='Pronto a iniziare').length;const int=attive.filter(c=>c.stato==='Interessato').length;
-  const oggi=new Date();const mese=attive.filter(c=>{const d=new Date(c.dataAcquisizione);return d.getMonth()===oggi.getMonth()&&d.getFullYear()===oggi.getFullYear()}).length;
-  document.getElementById('st-tot').textContent=t;document.getElementById('st-pronti').textContent=pronti;document.getElementById('st-int').textContent=int;document.getElementById('st-mese').textContent=mese;
+  const oggi=new Date();oggi.setHours(23,59,59,999);
+  const follow=attive.filter(c=>c.followup&&new Date(c.followup+'T00:00:00')<=oggi&&c.stato!=='Pronto a iniziare');
+  document.getElementById('st-tot').textContent=t;document.getElementById('st-pronti').textContent=pronti;document.getElementById('st-int').textContent=int;document.getElementById('st-follow').textContent=follow.length;
+  document.getElementById('st-follow-sub').className='kpi-sub'+(follow.length?' warn':'');
+  renderDashPanels(follow);
+}
+
+function renderDashPanels(follow){
+  const byDate=(a,b)=>String(a.followup||'9999').localeCompare(String(b.followup||'9999'));
+  const recenti=acquisizioni.filter(c=>c.stato!=='Convertito').sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
+  const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').slice(0,4);
+  fillDash('dash-follow',[...follow].sort(byDate).slice(0,4),'Nessun follow-up urgente',c=>fmtData(c.followup));
+  fillDash('dash-pronti',pronti,'Nessun cliente pronto',c=>c.sessioni_pref||'da definire');
+  fillDash('dash-recenti',recenti,'Nessun prospect ancora',c=>fmtData(c.dataAcquisizione));
+}
+
+function fillDash(id,items,empty,metaFn){
+  const el=document.getElementById(id);if(!el)return;
+  if(!items.length){el.innerHTML='<div class="dash-empty">'+empty+'</div>';return}
+  el.innerHTML=items.map(c=>`<div class="dash-row" onclick="apriScheda('${c.id}')" style="cursor:pointer">
+    <div><div class="dash-name">${c.nome||''} ${c.cognome||''}</div><div class="dash-meta">${metaFn(c)||'—'} · ${c.stato||'—'}</div></div>
+    <span class="dash-action">Apri</span>
+  </div>`).join('');
 }
 
 function renderLista(){
   const q=document.getElementById('search').value.toLowerCase();
   const f=acquisizioni.filter(c=>{
-    if(c.stato==='Convertito')return false;
     const m=((c.nome||'')+(c.cognome||'')+(c.email||'')+(c.telefono||'')).toLowerCase().includes(q);if(!m)return false;
+    if(filtro==='convertiti')return c.stato==='Convertito';
+    if(c.stato==='Convertito')return false;
     if(filtro==='pronti')return c.stato==='Pronto a iniziare';if(filtro==='interessati')return c.stato==='Interessato';if(filtro==='valutazione')return c.stato==='In valutazione';return true;
   });
   const grid=document.getElementById('grid');
-  const attive=acquisizioni.filter(c=>c.stato!=='Convertito');
-  if(!f.length){grid.innerHTML=`<div class="empty-state"><div class="empty-icon">${attive.length===0?'📋':'🔍'}</div><div class="empty-text">${attive.length===0?'Nessun prospect ancora':'Nessun risultato'}</div><div class="empty-sub">${attive.length===0?'Usa il pulsante in alto per la prima anamnesi':'Prova a cambiare i filtri'}</div></div>`;return}
-  const sm={'Pronto a iniziare':'badge-pronto','Interessato':'badge-int','In valutazione':'badge-val','Non convinto':'badge-non'};
+  if(!f.length){
+    const isArchive=filtro==='convertiti';
+    const emptyTitle=q?'Nessun risultato':isArchive?'Archivio vuoto':'Nessun prospect attivo';
+    const emptySub=q?'Prova a cambiare la ricerca':isArchive?'I clienti convertiti appariranno qui':'Usa “Nuovo lead” per registrare il primo contatto';
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">${isArchive?'✓':'📋'}</div><div class="empty-text">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;return
+  }
+  const sm={'Pronto a iniziare':'badge-pronto','Interessato':'badge-int','In valutazione':'badge-val','Non convinto':'badge-non','Convertito':'badge-pronto'};
   grid.innerHTML=f.map(c=>{
     const ini=((c.nome||'')[0]||'').toUpperCase()+((c.cognome||'')[0]||'').toUpperCase();
-    const eta=c.nascita?calcEta(c.nascita)+' anni':'';const srv=normSrv(c.servizi);
-    const srvB=srv.map(s=>s==='PT'?'<span class="badge badge-pt">🏋️ PT</span>':'<span class="badge badge-nut">🥗 Nutrizione</span>').join('');
+    const contatto=c.telefono||c.email||'';const srv=normSrv(c.servizi);const receipts=anamnesiReceipts(c.impressioni);
+    const srvB=srv.map(s=>s==='PT'?'<span class="badge badge-pt">🏋️ PT</span>':s.toLowerCase().includes('coach')?'<span class="badge badge-coach">💻 Coaching</span>':'<span class="badge badge-nut">🥗 Nutrizione</span>').join('');
     const isNew=isNuovo(c.dataAcquisizione);const sc=sm[c.stato]||'badge-val';const isPronto=c.stato==='Pronto a iniziare';
     return`<div class="prospect-card" onclick="apriScheda('${c.id}')">
-      <div class="card-top"><div class="avatar">${ini}</div><div class="card-badges">${srvB}${isNew?'<span class="badge badge-new">Nuovo</span>':''}</div></div>
-      <div class="card-name">${c.nome||''} ${c.cognome||''}</div>
-      <div class="card-info">${[eta,c.professione].filter(Boolean).join(' · ')}</div>
+      <div class="card-top"><div class="avatar">${escapeHtml(ini)}</div><div class="card-badges">${srvB}${receipts.length?'<span class="badge badge-anamnesi">✓ Anamnesi</span>':''}${isNew?'<span class="badge badge-new">Nuovo</span>':''}</div></div>
+      <div class="card-name">${escapeHtml(c.nome||'')} ${escapeHtml(c.cognome||'')}</div>
+      <div class="card-info">${escapeHtml(contatto)}</div>
       ${isPronto?`<button class="card-confirm-btn" onclick="event.stopPropagation();apriConfermaById('${c.id}')">Conferma cliente →</button>`:''}
       <div class="card-meta">
-        <span>🎯 ${c.obiettivo||'—'}</span>
-        <span>📅 ${c.sessioni_pref||'—'}</span>
-        <span><span class="badge ${sc}">${c.stato||'—'}</span></span>
+        <span>🎯 ${escapeHtml(c.obiettivo||'—')}</span>
+        <span>📞 ${c.followup?'Follow-up '+fmtData(c.followup):'Nessun follow-up'}</span>
+        <span><span class="badge ${sc}">${escapeHtml(c.stato||'—')}</span></span>
       </div>
     </div>`;
   }).join('');
@@ -593,12 +888,11 @@ function showView(n){
   if(n==='lista')carica();
 }
 
-function apriForm(){isEdit=false;idCorrente=null;resetForm();document.getElementById('form-eyebrow').textContent='Nuovo prospect';document.getElementById('form-title').textContent='Anamnesi acquisizione';showView('form')}
+function apriForm(){isEdit=false;idCorrente=null;resetForm();document.getElementById('form-eyebrow').textContent='Nuovo lead';document.getElementById('form-title').textContent='Primo contatto';showView('form')}
 
 function resetForm(){
-  ['f-nome','f-cognome','f-nascita','f-sesso','f-telefono','f-email','f-professione','f-come','f-ob-libero','f-tempistica','f-inattivo','f-sport','f-non-funz','f-impressioni','f-proposta','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
-  document.getElementById('f-motiv').value=7;document.getElementById('motiv-val').textContent='7';
-  servizi={pt:true,nut:false};document.getElementById('srv-pt').className='srv-card sel-pt';document.getElementById('srv-nut').className='srv-card';
+  ['f-nome','f-cognome','f-telefono','f-email','f-come','f-ob-libero','f-impressioni','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  servizi={pt:true,nut:false,coach:false};document.getElementById('srv-pt').className='srv-card sel-pt';document.getElementById('srv-nut').className='srv-card';document.getElementById('srv-coach').className='srv-card';
   chips={stato:'Interessato'};document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
   const sc=document.querySelectorAll('#chips-stato .chip');if(sc[1])sc[1].classList.add('sel');
 }
@@ -610,64 +904,84 @@ function togChipM(el,g){el.classList.toggle('sel');if(!chips[g])chips[g]=[];cons
 async function salva(){
   const nome=document.getElementById('f-nome').value.trim(),cognome=document.getElementById('f-cognome').value.trim();
   if(!nome||!cognome){showToast('Inserisci nome e cognome','error');return}
+  const telefono=document.getElementById('f-telefono').value.trim(),email=document.getElementById('f-email').value.trim();
+  if(!telefono&&!email){showToast('Inserisci almeno telefono oppure email','error');return}
+  if(!servizi.pt&&!servizi.nut&&!servizi.coach){showToast('Seleziona almeno un servizio','error');return}
   if(!chips['ob']){showToast('Seleziona almeno un obiettivo','error');return}
   const btn=document.getElementById('btn-salva');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  const srv=[];if(servizi.pt)srv.push('PT');if(servizi.nut)srv.push('Nutrizione');const orari=chips['orari']||[];
+  const srv=[];if(servizi.pt)srv.push('PT');if(servizi.nut)srv.push('Nutrizione');if(servizi.coach)srv.push('Coaching online');const orari=chips['orari']||[];
+  const existing=isEdit?acquisizioni.find(x=>x.id===idCorrente):null;
   const payload={action:'saveAcquisizione',id:isEdit?idCorrente:undefined,nome,cognome,
-    nascita:document.getElementById('f-nascita').value,sesso:document.getElementById('f-sesso').value,
-    telefono:document.getElementById('f-telefono').value,email:document.getElementById('f-email').value,
-    professione:document.getElementById('f-professione').value,come:document.getElementById('f-come').value,
+    nascita:existing?.nascita||'',sesso:existing?.sesso||'',telefono,email,
+    codiceFiscale:existing?.codiceFiscale||'',documento:existing?.documento||'',
+    indirizzo:existing?.indirizzo||'',cap:existing?.cap||'',comune:existing?.comune||'',provincia:existing?.provincia||'',contattoEmergenza:existing?.contattoEmergenza||'',
+    professione:existing?.professione||'',come:document.getElementById('f-come').value,
     servizi:srv.join(','),obiettivo:chips['ob']||'',obiettivoLibero:document.getElementById('f-ob-libero').value,
-    tempistica:document.getElementById('f-tempistica').value,motivazione:document.getElementById('f-motiv').value,
-    esperienza:chips['esp']||'',inattivo:document.getElementById('f-inattivo').value,sport:document.getElementById('f-sport').value,
-    nonFunzionato:document.getElementById('f-non-funz').value,sessioni_pref:chips['sess']||'',
-    orari:Array.isArray(orari)?orari.join(', '):orari,impressioni:document.getElementById('f-impressioni').value,
-    proposta:document.getElementById('f-proposta').value,followup:document.getElementById('f-followup').value,
+    tempistica:existing?.tempistica||'',motivazione:existing?.motivazione||null,
+    esperienza:existing?.esperienza||'',inattivo:existing?.inattivo||'',sport:existing?.sport||'',
+    nonFunzionato:existing?.nonFunzionato||'',sessioni_pref:chips['sess']||'',
+    orari:Array.isArray(orari)?orari.join(', '):orari,impressioni:[document.getElementById('f-impressioni').value.trim(),legacyLeadTail(existing?.impressioni)].filter(Boolean).join('\n\n'),
+    proposta:existing?.proposta||'',followup:document.getElementById('f-followup').value,
     stato:chips['stato']||'Interessato'};
   try{
     const res=await apiFetch(payload);
-    if(res.success){showToast(isEdit?'Anamnesi aggiornata!':'Anamnesi salvata!','success');
+    if(res.success){showToast(isEdit?'Lead aggiornato!':'Lead salvato!','success');
       if(isEdit){const idx=acquisizioni.findIndex(x=>x.id===idCorrente);if(idx>=0)acquisizioni[idx]={...acquisizioni[idx],...payload,id:idCorrente}}
       else acquisizioni.unshift({...payload,id:res.id,dataAcquisizione:new Date().toISOString()});
       idCorrente=res.id||idCorrente;apriScheda(idCorrente);
-    }else showToast('Errore: '+(res.error||''),'error');
-  }catch(e){showToast('Errore connessione — riprova','error')}
-  btn.innerHTML='Salva anamnesi';btn.disabled=false;
+    }else showToast('Errore salvataggio: '+(res.error||''),'error');
+  }catch(e){showToast('Errore salvataggio Supabase: '+String(e.message||e).slice(0,120),'error')}
+  btn.innerHTML='Salva lead';btn.disabled=false;
 }
 
 function apriScheda(id){
   const c=acquisizioni.find(x=>x.id===id);if(!c){carica();return}
   idCorrente=id;document.getElementById('sch-nome').textContent=`${c.nome||''} ${c.cognome||''}`;
-  const meta=[];if(c.nascita)meta.push(calcEta(c.nascita)+' anni');if(c.sesso)meta.push(c.sesso);if(c.professione)meta.push(c.professione);if(c.telefono)meta.push(c.telefono);if(c.email)meta.push(c.email);
+  const meta=[];if(c.telefono)meta.push(c.telefono);if(c.email)meta.push(c.email);
   document.getElementById('sch-meta').innerHTML=meta.join(' · ');
   const srv=normSrv(c.servizi);
-  let badges=srv.map(s=>s==='PT'?'<span class="sch-badge" style="background:var(--blue-pale);color:var(--blue)">🏋️ PT</span>':'<span class="sch-badge" style="background:var(--green-pale);color:var(--green)">🥗 Nutrizione</span>').join('');
-  const ss={'Pronto a iniziare':'background:var(--green-pale);color:var(--green)','Interessato':'background:var(--blue-pale);color:var(--blue)','Non convinto':'background:var(--red-pale);color:var(--red)','In valutazione':'background:#f0f0f0;color:#888'};
-  badges+=`<span class="sch-badge" style="${ss[c.stato]||ss['In valutazione']}">${c.stato||'—'}</span>`;
+  let badges=srv.map(s=>s==='PT'?'<span class="sch-badge" style="background:var(--blue-pale);color:var(--blue)">🏋️ PT</span>':s.toLowerCase().includes('coach')?'<span class="sch-badge" style="background:#f3e8ff;color:#7e22ce">💻 Coaching online</span>':'<span class="sch-badge" style="background:var(--green-pale);color:var(--green)">🥗 Nutrizione</span>').join('');
+  const receipts=anamnesiReceipts(c.impressioni);receipts.forEach(receipt=>{badges+=`<span class="sch-badge" style="background:var(--green-pale);color:var(--green)">✓ Anamnesi ${escapeHtml(receipt.service)}</span>`});
+  const ss={'Pronto a iniziare':'background:var(--green-pale);color:var(--green)','Interessato':'background:var(--blue-pale);color:var(--blue)','Non convinto':'background:var(--red-pale);color:var(--red)','In valutazione':'background:#f0f0f0;color:#888','Convertito':'background:var(--green-pale);color:var(--green)'};
+  badges+=`<span class="sch-badge" style="${ss[c.stato]||ss['In valutazione']}">${escapeHtml(c.stato||'—')}</span>`;
   document.getElementById('sch-badges').innerHTML=badges;
   let h='';
-  if(c.obiettivoLibero)h+=`<div class="sch-block full"><div class="sb-title">Obiettivo</div><div class="sch-quote">"${c.obiettivoLibero}"</div></div>`;
-  h+=`<div class="sch-block"><div class="sb-title">Profilo</div>${sr('Obiettivo',c.obiettivo)}${sr('Tempistica',c.tempistica)}${sr('Motivazione',c.motivazione?c.motivazione+'/10':'')}${sr('Come ci ha trovato',c.come)}</div>`;
-  h+=`<div class="sch-block"><div class="sb-title">Disponibilità</div>${sr('Sessioni/sett.',c.sessioni_pref)}${sr('Orari',c.orari)}</div>`;
-  h+=`<div class="sch-block"><div class="sb-title">Storia fitness</div>${sr('Esperienza',c.esperienza)}${sr('Inattività',c.inattivo)}${sr('Sport',c.sport)}</div>`;
-  h+=`<div class="sch-block"><div class="sb-title">Note PT</div>${sr('Proposta',c.proposta)}${sr('Follow-up',c.followup?fmtData(c.followup):'')}</div>`;
-  if(c.nonFunzionato)h+=`<div class="sch-block full"><div class="sb-title">Cosa non ha funzionato</div><div class="sch-nota">${c.nonFunzionato}</div></div>`;
-  if(c.impressioni)h+=`<div class="sch-block full"><div class="sb-title">Impressioni del PT</div><div class="sch-nota">${c.impressioni}</div></div>`;
+  if(c.obiettivoLibero)h+=`<div class="sch-block full"><div class="sb-title">Obiettivo nelle sue parole</div><div class="sch-quote">"${escapeHtml(c.obiettivoLibero)}"</div></div>`;
+  h+=`<div class="sch-block"><div class="sb-title">Interesse</div>${sr('Obiettivo',c.obiettivo)}${sr('Come ci ha trovato',c.come)}</div>`;
+  h+=`<div class="sch-block"><div class="sb-title">Follow-up</div>${sr('Stato',c.stato)}${sr('Prossimo contatto',c.followup?fmtData(c.followup):'Da programmare')}</div>`;
+  if(receipts.length)h+=`<div class="sch-block full"><div class="sb-title">Anamnesi ricevute</div>${receipts.map(receipt=>sr(receipt.service,fmtDataOra(receipt.at))).join('')}</div>`;
+  const coaching=coachingAnamnesi(c.impressioni);if(coaching)h+=renderCoachingAnamnesi(coaching);
+  if(c.sessioni_pref||c.orari)h+=`<div class="sch-block full"><div class="sb-title">Disponibilità indicativa</div>${sr('Sessioni/sett.',c.sessioni_pref)}${sr('Orari',c.orari)}</div>`;
+  if(visibleLeadNote(c.impressioni))h+=`<div class="sch-block full"><div class="sb-title">Nota interna</div><div class="sch-nota">${escapeHtml(visibleLeadNote(c.impressioni)).replaceAll('\n','<br>')}</div></div>`;
   document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione);
+  const confirmBtn=document.getElementById('btn-conferma-scheda');if(confirmBtn)confirmBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
+  const anamnesiBtn=document.getElementById('btn-anamnesi-scheda');if(anamnesiBtn)anamnesiBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
   showView('scheda');
 }
 
-function sr(l,v){if(!v)return'';return`<div class="sb-row"><span class="sb-label">${l}</span><span class="sb-val">${v}</span></div>`}
+function sr(l,v){if(!v)return'';return`<div class="sb-row"><span class="sb-label">${escapeHtml(l)}</span><span class="sb-val">${escapeHtml(v)}</span></div>`}
+
+function linkAnamnesi(base,c){const url=new URL(base);url.searchParams.set('id',c.id);return url.toString()}
+function linksAnamnesi(c){const srv=normSrv(c?.servizi);const links=[];if(srv.includes('PT')||!srv.length)links.push({label:'Personal training',url:linkAnamnesi(ANAMNESI_PT_URL,c)});if(srv.includes('Nutrizione'))links.push({label:'Nutrizione',url:linkAnamnesi(ANAMNESI_NUTRIZIONE_URL,c)});if(srv.some(s=>s.toLowerCase().includes('coach')))links.push({label:'Coaching online',url:linkAnamnesi(ANAMNESI_COACHING_URL,c)});return links}
+async function inviaAnamnesi(){
+  const c=acquisizioni.find(x=>x.id===idCorrente);if(!c)return;
+  const links=linksAnamnesi(c);const nome=String(c.nome||'').trim();
+  const elenco=links.map(item=>`${item.label}: ${item.url}`).join('\n');
+  const messaggio=`Ciao${nome?' '+nome:''}, compila ${links.length>1?'le anamnesi iniziali':'l’anamnesi iniziale'} NEACEA per il tuo percorso:\n${elenco}`;
+  try{
+    if(navigator.share){await navigator.share({title:'Anamnesi iniziale NEACEA',text:messaggio});showToast('Condivisione aperta','success');return}
+    await navigator.clipboard.writeText(messaggio);showToast('Messaggio con link copiato','success');
+  }catch(e){if(e?.name==='AbortError')return;window.prompt('Copia e invia questo messaggio',messaggio)}
+}
 
 function apriModifica(){
   const c=acquisizioni.find(x=>x.id===idCorrente);if(!c)return;isEdit=true;
-  const fields={'f-nome':c.nome,'f-cognome':c.cognome,'f-nascita':c.nascita,'f-sesso':c.sesso,'f-telefono':c.telefono,'f-email':c.email,'f-professione':c.professione,'f-come':c.come,'f-ob-libero':c.obiettivoLibero,'f-tempistica':c.tempistica,'f-inattivo':c.inattivo,'f-sport':c.sport,'f-non-funz':c.nonFunzionato,'f-impressioni':c.impressioni,'f-proposta':c.proposta,'f-followup':c.followup};
+  const fields={'f-nome':c.nome,'f-cognome':c.cognome,'f-telefono':c.telefono,'f-email':c.email,'f-come':c.come,'f-ob-libero':c.obiettivoLibero,'f-impressioni':visibleLeadNote(c.impressioni),'f-followup':c.followup};
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el&&val)el.value=val});
-  document.getElementById('f-motiv').value=c.motivazione||7;document.getElementById('motiv-val').textContent=c.motivazione||7;
-  const srv=normSrv(c.servizi);servizi={pt:srv.includes('PT'),nut:srv.includes('Nutrizione')};
-  document.getElementById('srv-pt').className='srv-card'+(servizi.pt?' sel-pt':'');document.getElementById('srv-nut').className='srv-card'+(servizi.nut?' sel-nut':'');
+  const srv=normSrv(c.servizi);servizi={pt:srv.includes('PT'),nut:srv.includes('Nutrizione'),coach:srv.some(s=>s.toLowerCase().includes('coach'))};
+  document.getElementById('srv-pt').className='srv-card'+(servizi.pt?' sel-pt':'');document.getElementById('srv-nut').className='srv-card'+(servizi.nut?' sel-nut':'');document.getElementById('srv-coach').className='srv-card'+(servizi.coach?' sel-coach':'');
   chips={};document.querySelectorAll('.chip').forEach(ch=>ch.classList.remove('sel'));
-  const chipMap={ob:c.obiettivo,esp:c.esperienza,sess:c.sessioni_pref,stato:c.stato};
+  const chipMap={ob:c.obiettivo,sess:c.sessioni_pref,stato:c.stato};
   Object.entries(chipMap).forEach(([g,val])=>{if(!val)return;const el=[...document.querySelectorAll('#chips-'+g+' .chip')].find(x=>x.textContent.trim()===val);if(el){el.classList.add('sel');chips[g]=val}});
   if(c.orari){const orariArr=c.orari.split(',').map(x=>x.trim());chips['orari']=orariArr;document.querySelectorAll('#chips-orari .chip').forEach(ch=>{if(orariArr.includes(ch.textContent.trim()))ch.classList.add('sel')})}
   document.getElementById('form-eyebrow').textContent='Modifica prospect';document.getElementById('form-title').textContent=`${c.nome||''} ${c.cognome||''}`;showView('form');
@@ -676,34 +990,87 @@ function apriModifica(){
 function apriConferma(){apriConfermaById(idCorrente)}
 function apriConfermaById(id){
   const c=acquisizioni.find(x=>x.id===id);if(!c)return;idConferma=id;
-  document.getElementById('conf-nome').textContent=`${c.nome||''} ${c.cognome||''}`;
-  const srv=normSrv(c.servizi);document.getElementById('conf-package').value=srv.includes('Nutrizione')&&!srv.includes('PT')?'Nutrizione':'PT 1:1';
+  const confNome=document.getElementById('conf-nome');if(confNome)confNome.textContent=`${c.nome||''} ${c.cognome||''}`;
+  const srv=normSrv(c.servizi);document.getElementById('conf-package').value=srv.some(s=>s.toLowerCase().includes('coach'))&&!srv.includes('PT')?'Coaching online':srv.includes('Nutrizione')&&!srv.includes('PT')?'Nutrizione':'PT 1:1';
   document.getElementById('conf-pt').innerHTML='<option value="">— seleziona dopo —</option>'+staffAll.map(s=>`<option value="${s.id}">${s.nome||''} ${s.cognome||''}</option>`).join('');
   document.getElementById('conf-tipo').value='';document.getElementById('conf-data').value=new Date().toISOString().split('T')[0];
   document.getElementById('conf-importo').value='';document.getElementById('conf-pagamento').value='Da pagare';
   document.getElementById('conf-sess-row').style.display='none';document.getElementById('conf-abb-row').style.display='none';document.getElementById('conf-days-row').style.display='none';document.querySelectorAll('#conf-days input').forEach(c=>{c.checked=false});
   openMo('mo-conferma');
+  preparaConfermaCliente(c);
 }
-function maxConfDays(){const t=document.getElementById('conf-tipo').value;const tot=parseInt(document.getElementById('conf-sess-tot').value)||0;if(t==='Pacchetto 2'||tot===2)return 1;const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
+function confermaButtonLabel(){return clienteEsistenteConferma?'Aggiorna e archivia →':'Attiva e trasferisci →'}
+async function preparaConfermaCliente(c){
+  const token=++confermaLookupToken;
+  clienteEsistenteConferma=null;
+  const banner=document.getElementById('conf-banner'),intro=document.getElementById('conf-intro'),newFields=document.getElementById('conf-new-client-fields'),existingNote=document.getElementById('conf-existing-note'),btn=document.getElementById('btn-conf');
+  banner.className='confirm-banner checking';banner.innerHTML='⌛ Controllo se <strong id="conf-nome">'+escapeHtml(`${c.nome||''} ${c.cognome||''}`.trim())+'</strong> è già presente nello studio…';
+  intro.textContent='Attendi il controllo dell’anagrafica prima di continuare.';
+  newFields.style.display='none';existingNote.style.display='none';btn.disabled=true;btn.textContent='Controllo in corso…';
+  try{
+    const existing=await findClientForAcquisition(c);
+    if(token!==confermaLookupToken||idConferma!==c.id)return;
+    clienteEsistenteConferma=existing;
+    btn.disabled=false;btn.textContent=confermaButtonLabel();
+    if(existing){
+      banner.className='confirm-banner';
+      banner.innerHTML='✓ <strong>'+escapeHtml(`${c.nome||''} ${c.cognome||''}`.trim())+'</strong> è già cliente. Non verrà creata una seconda anagrafica.';
+      intro.textContent='Conferma per aggiornare l’obiettivo sull’anagrafica esistente e archiviare questo lead.';
+      existingNote.style.display='block';
+      return;
+    }
+    banner.className='confirm-banner';
+    banner.innerHTML='✓ <strong>'+escapeHtml(`${c.nome||''} ${c.cognome||''}`.trim())+'</strong> è un nuovo cliente.';
+    intro.textContent='Puoi configurare il servizio e trasferire il lead nello studio.';
+    newFields.style.display='block';
+    setTimeout(()=>refreshPtMirror(),0);
+  }catch(e){
+    if(token!==confermaLookupToken||idConferma!==c.id)return;
+    banner.className='confirm-banner error';banner.textContent='Impossibile verificare se il cliente esiste già.';
+    intro.textContent='Operazione bloccata per evitare la creazione accidentale di un doppione.';
+    btn.disabled=true;btn.textContent='Controllo non riuscito';
+  }
+}
+function maxConfDays(){const acq=acquisizioni.find(x=>x.id===idConferma);const raw=String(acq?.sessioni_pref||'');const n=parseInt((raw.match(/\d+/)||['0'])[0]);return Number.isFinite(n)&&n>0?n:null}
 function limitConfDays(changed){const max=maxConfDays();if(!max)return true;const checked=[...document.querySelectorAll('#conf-days input:checked')];if(checked.length<=max)return true;if(changed)changed.checked=false;else checked.slice(max).forEach(c=>{c.checked=false});showToast('Il pacchetto prevede massimo '+max+' giorni a settimana','error');return false}
-function toggleConfSess(){const t=document.getElementById('conf-tipo').value;document.getElementById('conf-sess-row').style.display=t.startsWith('Pacchetto')?'grid':'none';document.getElementById('conf-abb-row').style.display=t?'grid':'none';document.getElementById('conf-days-row').style.display=t?'block':'none';if(t==='Pacchetto 2')document.getElementById('conf-sess-tot').value=2;if(t==='Pacchetto 10')document.getElementById('conf-sess-tot').value=10;if(t==='Pacchetto 20')document.getElementById('conf-sess-tot').value=20;limitConfDays()}
+function toggleConfSess(){const t=document.getElementById('conf-tipo').value;const p=document.getElementById('conf-package').value;const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(p);document.getElementById('conf-sess-row').style.display=t&&needsPlan?'grid':'none';document.getElementById('conf-abb-row').style.display=t?'grid':'none';document.getElementById('conf-days-row').style.display=t&&needsPlan?'block':'none';if(t==='Pacchetto 2')document.getElementById('conf-sess-tot').value=2;if(t==='Pacchetto 10')document.getElementById('conf-sess-tot').value=10;if(t==='Pacchetto 20')document.getElementById('conf-sess-tot').value=20;limitConfDays()}
 async function eseguiConferma(){
   const btn=document.getElementById('btn-conf');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
-  if(!limitConfDays()){btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;return}
+  if(!clienteEsistenteConferma&&!limitConfDays()){btn.innerHTML=confermaButtonLabel();btn.disabled=false;return}
+  const packageType=document.getElementById('conf-package').value;
+  const tipoAbbonamento=document.getElementById('conf-tipo').value;
+  const needsPlan=['PT 1:1','PT 1:2','Circuit'].includes(packageType);
   const giorniSettimana=[...document.querySelectorAll('#conf-days input:checked')].map(c=>c.value);
-  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType:document.getElementById('conf-package').value,ptId:document.getElementById('conf-pt').value,tipoAbbonamento:document.getElementById('conf-tipo').value,dataInizio:document.getElementById('conf-data').value,sessioni_totali:document.getElementById('conf-sess-tot').value||0,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
-  if(res.success){showToast('Cliente confermato e trasferito allo studio!','success');closeMo('mo-conferma');acquisizioni=acquisizioni.filter(x=>x.id!==idConferma);renderStats();showView('lista')}
+  const sessioniTotali=parseInt(document.getElementById('conf-sess-tot').value)||0;
+  if(!clienteEsistenteConferma&&needsPlan&&!tipoAbbonamento){showToast('Seleziona il tipo di abbonamento','error');btn.innerHTML=confermaButtonLabel();btn.disabled=false;return}
+  if(!clienteEsistenteConferma&&needsPlan&&sessioniTotali<=0){showToast('Inserisci le sessioni totali acquistate','error');btn.innerHTML=confermaButtonLabel();btn.disabled=false;return}
+  if(!clienteEsistenteConferma&&needsPlan&&!giorniSettimana.length){showToast('Seleziona almeno un giorno del pacchetto','error');btn.innerHTML=confermaButtonLabel();btn.disabled=false;return}
+  try{const res=await apiFetch({action:'confermaCliente',id:idConferma,packageType,ptId:document.getElementById('conf-pt').value,tipoAbbonamento,dataInizio:document.getElementById('conf-data').value,sessioni_totali:sessioniTotali,sessioni_usate:document.getElementById('conf-sess-used').value||0,giorniSettimana,importo:document.getElementById('conf-importo').value||0,statoPagamento:document.getElementById('conf-pagamento').value});
+  if(res.success){showToast(res.existingClient?'Cliente esistente aggiornato · lead archiviato':'Cliente trasferito e acquisizione archiviata','success');closeMo('mo-conferma');const idx=acquisizioni.findIndex(x=>x.id===idConferma);if(idx>=0)acquisizioni[idx]={...acquisizioni[idx],stato:'Convertito'};renderStats();apriScheda(idConferma)}
   else showToast('Errore: '+(res.error||''),'error')}catch(e){showToast('Errore connessione — riprova','error')}
-  btn.innerHTML='Conferma e trasferisci →';btn.disabled=false;
+  btn.innerHTML=confermaButtonLabel();btn.disabled=false;
 }
 function confElimina(){
   const c=acquisizioni.find(x=>x.id===idCorrente);if(!confirm(`Eliminare ${c?.nome||''} ${c?.cognome||''}?`))return;
   apiFetch({action:'deleteAcquisizione',id:idCorrente}).then(res=>{if(res.success){showToast('Prospect eliminato');acquisizioni=acquisizioni.filter(x=>x.id!==idCorrente);renderStats();showView('lista')}else showToast('Errore','error')}).catch(()=>showToast('Errore connessione','error'));
 }
 function normSrv(s){if(!s)return[];if(Array.isArray(s))return s;return s.split(',').map(x=>x.trim()).filter(Boolean)}
+function anamnesiReceipts(value){const matches=[...String(value||'').matchAll(/^\[ANAMNESI_RICEVUTA\]\s+([^|\n]+?)(?:\s*\|\s*(.*))?$/gm)];const byService=new Map();matches.forEach(m=>{const at=m[1].trim(),services=normSrv(String(m[2]||''));services.forEach(service=>{const low=service.toLowerCase();const label=low.includes('nutri')?'Nutrizione':low.includes('coach')?'Coaching online':'PT';byService.set(label,{at,service:label})})});return[...byService.values()]}
+const COACHING_LABELS={timestamp:'Data invio',obiettivo_primario:'Obiettivo primario',obiettivo_secondario:'Obiettivo secondario',tempo_obiettivo:'Tempo obiettivo',motivazione:'Motivazione',patologie:'Patologie',condizioni:'Condizioni',farmaci:'Farmaci',allergie:'Allergie',infortuni:'Infortuni',zone_critiche:'Zone critiche',esperienza:'Esperienza',frequenza:'Frequenza',tipologia_allenamento:'Tipologia allenamento',livello:'Livello',massimali:'Massimali',max_sedute:'Sedute massime',tempo_allenamento:'Tempo allenamento',luogo:'Luogo',split:'Split',energia:'Energia',sonno:'Sonno',stress:'Stress',note:'Note'};
+function coachingAnamnesi(value){const matches=[...String(value||'').matchAll(/\[ANAMNESI_COACHING\]\s*([\s\S]*?)\s*\[\/ANAMNESI_COACHING\]/g)];if(!matches.length)return null;try{return JSON.parse(matches.at(-1)[1])}catch{return null}}
+function coachingLabel(key){return COACHING_LABELS[key]||String(key).replaceAll('_',' ').replace(/^./,c=>c.toUpperCase())}
+function renderCoachingAnamnesi(data){const skip=new Set(['nome','cognome','email','telefono','codice_fiscale','indirizzo','cap','comune','provincia','data_nascita','sesso','privacy','tipo']);const entries=Object.entries(data||{}).filter(([key,value])=>!skip.has(key)&&value!==null&&value!==undefined&&String(value).trim()!=='');const highlights=['obiettivo_primario','patologie','infortuni','livello','frequenza','luogo','note'].filter(key=>data[key]&&String(data[key]).trim());const summary=highlights.map(key=>sr(coachingLabel(key),data[key])).join('');const all=entries.map(([key,value])=>sr(coachingLabel(key),Array.isArray(value)?value.join(', '):value)).join('');return`<div class="sch-block full"><div class="sb-title">Anamnesi Coaching</div>${summary}<details class="coaching-details"><summary>Apri la scheda completa (${entries.length} risposte)</summary>${all}</details></div>`}
+function stripAnamnesiData(value){return String(value||'').replace(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]\s*/g,'').replace(/\[ANAMNESI_COACHING\][\s\S]*?\[\/ANAMNESI_COACHING\]\s*/g,'').replace(/^\[ANAMNESI_RICEVUTA\].*$/gm,'').trim()}
+function visibleLeadNote(value){const raw=stripAnamnesiData(value);const i=raw.indexOf('Dati minore/tutore:');return(i>=0?raw.slice(0,i):raw).trim()}
+function legacyLeadTail(value){const raw=String(value||'');const hidden=[...raw.matchAll(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]/g)].map(m=>m[0]);const coaching=[...raw.matchAll(/\[ANAMNESI_COACHING\][\s\S]*?\[\/ANAMNESI_COACHING\]/g)].map(m=>m[0]);const receipts=[...raw.matchAll(/^\[ANAMNESI_RICEVUTA\].*$/gm)].map(m=>m[0]);const clean=stripAnamnesiData(raw);const i=clean.indexOf('Dati minore/tutore:');const legacy=i>=0?clean.slice(i).trim():'';return[legacy,...hidden,...coaching,...receipts].filter(Boolean).join('\n\n')}
 function calcEta(n){const o=new Date(),d=new Date(n);let e=o.getFullYear()-d.getFullYear();const m=o.getMonth()-d.getMonth();if(m<0||(m===0&&o.getDate()<d.getDate()))e--;return e}
 function fmtData(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}catch{return d}}
+function fmtDataOra(d){if(!d)return'—';try{return new Date(d).toLocaleString('it-IT',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return d}}
 function isNuovo(iso){return iso&&(Date.now()-new Date(iso).getTime())<7*24*60*60*1000}
+function oggi(){return new Date().toISOString().slice(0,10)}
+function escapeHtml(value){return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function escapeAttr(value){return escapeHtml(value)}
+function escapeJs(value){return String(value??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ')}
 function openMo(id){document.getElementById(id).classList.add('open')}
 function closeMo(id){document.getElementById(id).classList.remove('open')}
 function showToast(msg,type){const t=document.getElementById('toast');t.innerHTML=(type==='loading'?'<span class="spin"></span> ':type==='success'?'✓  ':type==='error'?'✕  ':'')+msg;t.className='toast show'+(type?' '+type:'');if(toastTimer)clearTimeout(toastTimer);if(type!=='loading')toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
