@@ -2,39 +2,30 @@
 (function () {
   if (!window.App || !window.Services || !window.State) return;
 
-  App._consumeClientSessions = function (appt) {
-    if (!appt?.clientIds?.length) return;
-    if (!Services.serviceUsesPackageSessions(appt.serviceId)) return;
-
+  App._recalculateClientSessions = async function (clientIds) {
     const clients = State.getClients();
-    const appointments = State.getAppointments();
     const touched = [];
-
-    appt.clientIds.forEach(id => {
+    [...new Set(clientIds || [])].forEach(id => {
       const idx = clients.findIndex(c => c.id === id);
       if (idx < 0) return;
-
-      const total = Number(clients[idx].sessionsTotal ?? clients[idx].sessions_total ?? 0);
-      if (total <= 0) return;
-
-      const completed = appointments.filter(a =>
-        a.status === 'fatto' &&
-        Array.isArray(a.clientIds) &&
-        a.clientIds.includes(id) &&
-        Services.serviceUsesPackageSessions(a.serviceId)
-      ).length;
-
-      const remaining = Math.max(0, total - completed);
-      clients[idx] = { ...clients[idx], sessionsRemaining: remaining };
+      const metrics = Services.getClientSessionMetrics(clients[idx]);
+      if (metrics.total <= 0) return;
+      if (Number(clients[idx].sessionsRemaining ?? 0) === Number(metrics.remaining)) return;
+      clients[idx] = { ...clients[idx], sessionsRemaining: metrics.remaining };
       touched.push(clients[idx]);
     });
 
-    if (!touched.length) return;
+    if (!touched.length) return { ok: true, touched: [] };
     State.saveClients(clients);
-    touched.forEach(client => {
-      SupabaseSync.pushClient(client);
-      if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
-    });
+    const results = await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
+    if (CONFIG.SHEETS.enabled) touched.forEach(client => Sheets.pushClient(client));
+    return { ok: !results.some(result => result?.error), touched };
+  };
+
+  App._consumeClientSessions = function (appt) {
+    if (!appt?.clientIds?.length) return Promise.resolve({ ok: true, touched: [] });
+    if (!Services.serviceUsesPackageSessions(appt.serviceId)) return Promise.resolve({ ok: true, touched: [] });
+    return App._recalculateClientSessions(appt.clientIds);
   };
 
   const recalcIfPackageSession = function (appt) {
@@ -59,17 +50,6 @@
       const result = originalMarkNoShow(apptId);
       const after = State.getAppointments().find(a => a.id === apptId);
       if (before?.status === 'fatto') recalcIfPackageSession(after || before);
-      return result;
-    };
-  }
-
-  const originalDeleteAppt = App._deleteAppt?.bind(App);
-  if (originalDeleteAppt) {
-    App._deleteAppt = function (apptId) {
-      const before = State.getAppointments().find(a => a.id === apptId);
-      const result = originalDeleteAppt(apptId);
-      const after = State.getAppointments().find(a => a.id === apptId);
-      if (before?.status === 'fatto' && !after) recalcIfPackageSession(before);
       return result;
     };
   }

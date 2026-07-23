@@ -16,6 +16,11 @@ const Calendar = (() => {
 
   function todayStr() { return fmt(new Date()); }
 
+  function forcedOverlapBadge(appt, compact = false) {
+    if (!Services.hasForcedPt11Overlap(appt)) return '';
+    return `<span class="forced-overlap-badge${compact ? ' is-compact' : ''}" title="Doppio PT 1:1 autorizzato e tracciato">⚠ ${compact ? '2x PT' : 'Doppio PT'}</span>`;
+  }
+
   function italianDate(d) {
     return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   }
@@ -72,15 +77,12 @@ const Calendar = (() => {
     if (!panel) return;
 
     const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-    const dashboardName = typeof App !== 'undefined' && App.isPortalPtMode?.()
-      ? (App._operatorLabel?.(App.currentPortalOperator?.()) || 'PT')
-      : 'Gianluca';
 
     panel.innerHTML = `
       <div class="view-header">
         <div>
           <div class="eyebrow">Neacea · Calendario</div>
-          <div class="page-title">Buongiorno, <em>${dashboardName}</em></div>
+          <div class="page-title">Buongiorno, <em>Gianluca</em></div>
           <div class="page-sub">${italianDate(new Date())}</div>
         </div>
         <button class="btn-primary" onclick="App.openNewAppointment()">+ Appuntamento</button>
@@ -144,6 +146,7 @@ const Calendar = (() => {
                   </div>
                   <div class="appt-op">${Services.operatorFullName(a.operatorId)}</div>
                   <div class="appt-status">
+                    ${forcedOverlapBadge(a)}
                     <span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>
                     ${svc?.isGroup ? `<span class="circuit-badge">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>
@@ -184,41 +187,58 @@ const Calendar = (() => {
       return `top:${top}px;height:${height}px`;
     }
 
-    function assignColumns(appts) {
-      const cols = [];
-      appts.forEach(a => {
-        let placed = false;
-        for (let c = 0; c < cols.length; c++) {
-          const last = cols[c][cols[c].length - 1];
-          if (Services.timeToMin(a.startTime) >= Services.timeToMin(last.startTime) + last.durationMin) {
-            cols[c].push(a); placed = true; break;
-          }
-        }
-        if (!placed) cols.push([a]);
-      });
-      return cols;
-    }
-
     const sorted = [...appts].sort((a, b) => a.startTime.localeCompare(b.startTime));
-    const columns = assignColumns(sorted);
-    const totalCols = Math.max(1, columns.length);
+    const clusters = [];
+    let currentCluster = [];
+    let clusterEnd = -1;
+    sorted.forEach(appt => {
+      const start = Services.timeToMin(appt.startTime);
+      const end = start + Number(appt.durationMin || 60);
+      if (currentCluster.length && start >= clusterEnd) {
+        clusters.push(currentCluster);
+        currentCluster = [];
+        clusterEnd = -1;
+      }
+      currentCluster.push(appt);
+      clusterEnd = Math.max(clusterEnd, end);
+    });
+    if (currentCluster.length) clusters.push(currentCluster);
+
+    const layouts = [];
+    clusters.forEach(cluster => {
+      const columnEnds = [];
+      const placed = cluster.map(appt => {
+        const start = Services.timeToMin(appt.startTime);
+        const end = start + Number(appt.durationMin || 60);
+        let columnIndex = columnEnds.findIndex(columnEnd => start >= columnEnd);
+        if (columnIndex < 0) columnIndex = columnEnds.length;
+        columnEnds[columnIndex] = end;
+        return { appt, columnIndex };
+      });
+      const totalColumns = Math.max(1, columnEnds.length);
+      placed.forEach(item => layouts.push({ ...item, totalColumns }));
+    });
 
     let eventsHtml = '';
-    columns.forEach((col, ci) => {
-      const w = Math.floor(90 / totalCols);
-      const left = 70 + ci * (w + 2);
-      col.forEach(a => {
-        const svc = Services.getService(a.serviceId);
-        eventsHtml += `
-          <div class="cal-event" style="${posStyle(a)};left:${left}px;width:${w}%;background:${svc?.colorLight};border-left:3px solid ${svc?.color};cursor:pointer"
-               onclick="App.openDetail('${a.id}')">
-            <div class="event-time">${a.startTime}</div>
-            <div class="event-svc" style="color:${svc?.color}">${svc?.label}</div>
-            <div class="event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</div>
-            <div class="event-op">${Services.operatorFullName(a.operatorId)}</div>
-            ${svc?.isGroup ? `<div class="event-circuit">${a.clientIds.length}/${svc.maxClients} posti</div>` : ''}
-          </div>`;
-      });
+    layouts.forEach(({ appt: a, columnIndex, totalColumns }) => {
+      const gap = 4;
+      const edge = 8;
+      const fixedSpace = edge * 2 + (totalColumns - 1) * gap;
+      const width = `calc((100% - ${fixedSpace}px) / ${totalColumns})`;
+      const leftPercent = columnIndex * 100 / totalColumns;
+      const leftPixels = edge + columnIndex * gap - columnIndex * fixedSpace / totalColumns;
+      const left = `calc(${leftPercent}% + ${leftPixels}px)`;
+      const svc = Services.getService(a.serviceId);
+      eventsHtml += `
+        <div class="cal-event" style="${posStyle(a)};left:${left};width:${width};background:${svc?.colorLight};border-left:3px solid ${svc?.color};cursor:pointer"
+             onclick="App.openDetail('${a.id}')">
+          <div class="event-time">${a.startTime}</div>
+          <div class="event-svc" style="color:${svc?.color}">${svc?.label}</div>
+          <div class="event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</div>
+          <div class="event-op">${Services.operatorFullName(a.operatorId)}</div>
+          ${forcedOverlapBadge(a, true)}
+          ${svc?.isGroup ? `<div class="event-circuit">${a.clientIds.length}/${svc.maxClients} posti</div>` : ''}
+        </div>`;
     });
 
     const hoursHtml = Array.from({ length: endH - startH }, (_, i) => {
@@ -302,6 +322,7 @@ const Calendar = (() => {
                     <span class="week-event-time">${a.startTime}</span>
                     <span class="week-event-svc" style="color:${svc?.color}">${svc?.label}</span>
                     <span class="week-event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</span>
+                    ${forcedOverlapBadge(a, true)}
                     ${svc?.isGroup ? `<span class="circuit-mini">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>`;
               }).join('')}
@@ -361,6 +382,7 @@ const Calendar = (() => {
               return `<span class="room-svc-tag" style="background:${svc?.colorLight};color:${svc?.color};border:1px solid ${svc?.color}44"
                            onclick="App.openDetail('${a.id}')" title="${a.clientIds.map(id=>Services.clientFullName(id)).join(', ')}">
                 ${svc?.label}${svc?.isGroup ? ` ${a.clientIds.length}/${svc.maxClients}` : ''}
+                ${Services.hasForcedPt11Overlap(a) ? ' ⚠ 2x PT' : ''}
               </span>`;
             }).join('')}
           </div>

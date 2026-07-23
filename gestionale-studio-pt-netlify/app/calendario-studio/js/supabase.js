@@ -44,6 +44,8 @@ const SupabaseSync = (() => {
       sessionsRemaining: r.sessions_remaining || 0,
       giorniSettimana: Array.isArray(r.giorni_settimana) ? r.giorni_settimana : [],
       packageStart: r.package_start || r.data_inizio || '',
+      packageCycleStart: r.data_conferma || '',
+      acquisitionStart: r.data_inizio || '',
       notes: r.notes || '',
       ptAssegnato: r.pt_assegnato || null,
       tipoServizio: r.tipo_servizio || '',
@@ -78,6 +80,7 @@ const SupabaseSync = (() => {
       sessions_remaining: parseInt(c.sessionsRemaining) || 0,
       giorni_settimana: Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [],
       package_start: c.packageStart || null,
+      data_conferma: c.packageCycleStart || c.package_cycle_start || null,
       notes: c.notes || '',
       tipo_servizio: c.tipoServizio || c.tipo_servizio || '',
       tipo_abbonamento: c.tipoAbbonamento || c.tipo_abbonamento || '',
@@ -160,6 +163,7 @@ const SupabaseSync = (() => {
     const created = [];
 
     clients.forEach(client => {
+      if (client.active === false) return;
       const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
       const total = Number(client.sessionsTotal || 0);
       const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
