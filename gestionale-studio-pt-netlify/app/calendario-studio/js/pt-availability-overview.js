@@ -237,7 +237,12 @@
     const rows = new Map();
     operators.forEach(op => rows.set(operatorKey(op), { op, totalMin: 0, services: new Map() }));
     State.getAppointments()
-      .filter(a => a.status !== 'annullato' && String(a.date || '').slice(0, 7) === month && a.operatorId)
+      .filter(a =>
+        a.status !== 'annullato' &&
+        String(a.date || '').slice(0, 7) === month &&
+        a.operatorId &&
+        (typeof Services === 'undefined' || !Services.isAppointmentVisible || Services.isAppointmentVisible(a))
+      )
       .forEach(a => {
         const opKey = appointmentOperatorKey(a);
         if (!rows.has(opKey)) {
@@ -451,6 +456,7 @@
     const end = start + duration + buffer;
     return !State.getAppointments().some(a => {
       if (a.status === 'annullato' || a.date !== date || String(a.operatorId) !== String(operator.id)) return false;
+      if (typeof Services !== 'undefined' && Services.isAppointmentVisible && !Services.isAppointmentVisible(a)) return false;
       const svc = typeof Services !== 'undefined' && Services.getService ? Services.getService(a.serviceId) : null;
       const aStart = timeToMin(a.startTime);
       const aEnd = aStart + Number(a.durationMin || svc?.durationMin || 60);
@@ -572,8 +578,8 @@
     const explicit = client.packageEnd || client.package_end || client.dataFine || client.data_fine || '';
     if (explicit) return explicit;
     if (metrics?.projectedEnd) return metrics.projectedEnd;
-    const start = parseDate(packageStart(client));
-    const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
+    const start = parseDate(metrics?.cycleStart || packageStart(client));
+    const total = Number(metrics?.total ?? client.sessionsTotal ?? client.sessions_total ?? 0);
     if (!start || !total) return '';
     return dateStr(addDays(start, Math.max(1, Math.ceil(total / frequencyPerWeek(client.packageFrequency || client.package_frequency))) * 7));
   }
@@ -602,7 +608,7 @@
     return clients.map(client => {
       const op = operatorForClient(client, operators);
       const metrics = metricsFor(client);
-      const start = packageStart(client);
+      const start = metrics.cycleStart || packageStart(client);
       const end = packageEnd(client, metrics);
       const status = renewalStatus(client, metrics, end);
       const total = Number(metrics.total ?? client.sessionsTotal ?? 0) || '-';
@@ -610,7 +616,7 @@
       const remaining = metrics.remaining ?? client.sessionsRemaining ?? '-';
       const toSchedule = Number(metrics.toSchedule ?? 0);
       const name = `${client.nome || ''} ${client.cognome || ''}`.trim() || client.id;
-      return `<tr><td><strong>${esc(name)}</strong><small>${esc(client.email || '')}</small></td><td>${esc(operatorLabel(op))}<small>${esc(op?.email || client.ptAssegnato || '-')}</small></td><td>${esc(fmtDate(start))}</td><td>${esc(fmtDate(end))}</td><td>${esc(packageTypes(client).join(', ') || '-')}</td><td>${esc(completed)}/${esc(total)} fatte<br><small>${esc(remaining)} residue · ${esc(toSchedule)} da pianificare</small></td><td><span class="pt-status ${status.key}">${status.label}</span></td><td>${status.key === 'danger' ? '<span class="pt-status danger">Cliente da contattare</span>' : '<span class="pt-status read">Monitorare</span>'}</td></tr>`;
+      return `<tr><td><strong>${esc(name)}</strong><small>${esc(client.email || '')}</small></td><td>${esc(operatorLabel(op))}<small>${esc(op?.email || client.ptAssegnato || '-')}</small></td><td>${esc(fmtDate(start))}</td><td>${esc(fmtDate(end))}</td><td>${esc(packageTypes(client).join(', ') || '-')}</td><td>${esc(completed)}/${esc(total)} fatte nel ciclo<br><small>${esc(remaining)} residue · ${esc(toSchedule)} da pianificare · ${esc(metrics.lifetimeCompleted ?? completed)} complessive</small></td><td><span class="pt-status ${status.key}">${status.label}</span></td><td>${status.key === 'danger' ? '<span class="pt-status danger">Cliente da contattare</span>' : '<span class="pt-status read">Monitorare</span>'}</td></tr>`;
     }).join('');
   }
 
@@ -619,13 +625,17 @@
     const offset = base.getDay() === 0 ? 6 : base.getDay() - 1;
     const monday = addDays(base, -offset);
     const days = Array.from({ length: 6 }, (_, i) => addDays(monday, i));
-    const appointments = State.getAppointments().filter(a => a.status !== 'annullato');
+    const appointments = State.getAppointments().filter(a =>
+      a.status !== 'annullato' &&
+      (typeof Services === 'undefined' || !Services.isAppointmentVisible || Services.isAppointmentVisible(a))
+    );
     return days.map(day => {
       const ds = dateStr(day);
       const items = appointments.filter(a => a.date === ds).sort((a, b) => String(a.startTime).localeCompare(String(b.startTime))).map(a => {
         const op = Services.getOperator(a.operatorId);
         const svc = Services.getService(a.serviceId);
-        const clients = (a.clientIds || []).map(Services.clientFullName).join(', ') || 'Blocco agenda';
+        const clients = (Services.getActiveClientIds ? Services.getActiveClientIds(a) : (a.clientIds || []))
+          .map(Services.clientFullName).join(', ') || 'Blocco agenda';
         const end = minToTime(timeToMin(a.startTime) + Number(a.durationMin || svc?.durationMin || 60));
         return `<div class="pt-event" style="border-left-color:${esc(svc?.color || '#1f6848')}"><strong>${esc(String(a.startTime || '').slice(0, 5))}-${esc(end)}</strong><span>${esc(operatorLabel(op))}</span><em>${esc(clients)}</em></div>`;
       }).join('') || '<div class="pt-empty">Nessun impegno</div>';

@@ -40,6 +40,32 @@ function accessCode(email, operatorId = '') {
   return String(numeric).padStart(6, '0');
 }
 
+function signAccessToken(email, operatorId = '') {
+  const payload = Buffer.from(JSON.stringify({
+    email: String(email || '').trim().toLowerCase(),
+    operatorId: String(operatorId || '').trim(),
+    exp: Date.now() + (12 * 60 * 60 * 1000),
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function verifyAccessToken(token) {
+  const [payload, signature] = String(token || '').split('.');
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.email || !data.operatorId || Number(data.exp || 0) <= Date.now()) return null;
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
+
 function buildEmail(payload) {
   const email = String(payload.email || '').trim().toLowerCase();
   const operatorId = String(payload.operatorId || payload.operator_id || '').trim();
@@ -159,6 +185,16 @@ exports.handler = async (event) => {
   try {
     const input = JSON.parse(event.body || '{}');
     const action = String(input.action || 'send').toLowerCase();
+    if (action === 'verify_token') {
+      const data = verifyAccessToken(input.token);
+      return {
+        statusCode: data ? 200 : 401,
+        headers,
+        body: JSON.stringify(data
+          ? { success: true, email: data.email, operatorId: data.operatorId, expiresAt: data.exp }
+          : { success: false, error: 'Sessione PT non valida o scaduta.' }),
+      };
+    }
     if (action === 'verify') {
       const email = String(input.email || '').trim().toLowerCase();
       const operatorId = String(input.operatorId || input.operator_id || '').trim();
@@ -174,7 +210,7 @@ exports.handler = async (event) => {
         statusCode: valid ? 200 : 401,
         headers,
         body: JSON.stringify(valid
-          ? { success: true, email }
+          ? { success: true, email, operatorId, token: signAccessToken(email, operatorId) }
           : { success: false, error: 'Codice accesso non valido.' }),
       };
     }

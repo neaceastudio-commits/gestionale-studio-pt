@@ -1213,6 +1213,83 @@
   line-height: 1.25;
 }
 
+.operator-overlap-override {
+  margin: 2px 0 12px;
+  border: 2px solid rgba(220, 38, 38, .32);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: #fff7f7;
+}
+.operator-overlap-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.operator-overlap-toggle input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--red);
+  flex: 0 0 18px;
+}
+.operator-overlap-copy {
+  margin: 7px 0 0 28px;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 800;
+}
+.val-forced {
+  border: 1px solid rgba(220, 38, 38, .28);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  background: #fff7f7;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 900;
+}
+.forced-overlap-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(220, 38, 38, .28);
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+.forced-overlap-badge.is-compact {
+  width: max-content;
+  margin-top: 3px;
+  padding: 2px 5px;
+  font-size: 9px;
+}
+.forced-overlap-alert {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  border: 2px solid rgba(220, 38, 38, .3);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  background: #fff7f7;
+  color: #991b1b;
+}
+.forced-overlap-alert strong {
+  font-size: 13px;
+}
+.forced-overlap-alert span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
 @media (max-width: 720px) {
   .conflict-summary,
   .conflict-appt,
