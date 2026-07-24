@@ -38,13 +38,21 @@ function setAcquisition(overrides = {}) {
     cognome: 'Laconi',
     email: 'EMA.LACONI@example.com ',
     telefono: '',
+    nascita: '1988-04-12',
+    sesso: 'F',
+    codiceFiscale: 'LCNMNL88D52B354R',
+    indirizzo: 'Via Roma 10',
+    cap: '09100',
+    comune: 'Cagliari',
+    provincia: 'CA',
+    contattoEmergenza: 'Mario 3330000000',
     obiettivo: 'Dimagrimento',
     obiettivoLibero: 'Migliorare la composizione corporea',
     professione: 'Impiegata',
     come: 'Passaparola',
     motivazione: 8,
     sessioni_pref: '2×',
-    impressioni: 'Nota commerciale',
+    impressioni: 'Patologie: ipertensione\nFarmaci: terapia prescritta',
     ...overrides,
   };
   context.recordForTest = record;
@@ -98,6 +106,11 @@ test('un cliente già presente viene aggiornato e non duplicato', async () => {
   assert.equal(patch.professione, 'Impiegata');
   assert.equal(patch.come, 'Passaparola');
   assert.equal(patch.motivazione, 8);
+  assert.equal(patch.nascita, '1988-04-12');
+  assert.equal(patch.codice_fiscale, 'LCNMNL88D52B354R');
+  assert.equal(patch.contatto_emergenza, 'Mario 3330000000');
+  assert.match(patch.notes, /Patologie: ipertensione/);
+  assert.match(patch.notes, /Indirizzo: Via Roma 10, 09100 Cagliari CA/);
   assert.equal('package_types' in patch, false);
   assert.equal('sessions_total' in patch, false);
   assert.equal('pt_assegnato' in patch, false);
@@ -156,6 +169,8 @@ test('un cliente nuovo continua a essere creato normalmente', async () => {
   const inserted = JSON.parse(clientInsert.options.body);
   assert.equal(inserted.email, 'nuova@example.com');
   assert.equal(inserted.package_types[0], 'Nutrizione');
+  assert.equal(inserted.codice_fiscale, 'LCNMNL88D52B354R');
+  assert.match(inserted.notes, /Farmaci: terapia prescritta/);
 });
 
 test('il nome uguale da solo non unisce due persone diverse', async () => {

@@ -571,10 +571,47 @@ async function sb(table,{method='GET',query='',body=null,headers={}}={}){
 function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
 function acqFromDb(r){return{id:r.id,nome:r.nome,cognome:r.cognome,nascita:r.nascita,sesso:r.sesso,telefono:r.telefono,email:r.email,codiceFiscale:r.codice_fiscale,documento:r.documento,indirizzo:r.indirizzo,cap:r.cap,comune:r.comune,provincia:r.provincia,contattoEmergenza:r.contatto_emergenza,professione:r.professione,come:r.come,servizi:r.servizi,obiettivo:r.obiettivo,obiettivoLibero:r.obiettivo_libero,tempistica:r.tempistica,motivazione:r.motivazione,esperienza:r.esperienza,inattivo:r.inattivo,sport:r.sport,nonFunzionato:r.non_funzionato,sessioni_pref:r.sessioni_pref,orari:r.orari,impressioni:r.impressioni,proposta:r.proposta,followup:r.followup,stato:r.stato,dataAcquisizione:r.data_acquisizione}}
 function acqToDb(p){return{id:p.id||genId('acq'),nome:p.nome||'',cognome:p.cognome||'',nascita:p.nascita||null,sesso:p.sesso||'',telefono:p.telefono||'',email:p.email||'',codice_fiscale:p.codiceFiscale||'',documento:p.documento||'',indirizzo:p.indirizzoFattura||p.indirizzo||'',cap:p.cap||'',comune:p.comune||'',provincia:p.provincia||'',contatto_emergenza:p.contattoEmergenza||'',professione:p.professione||'',come:p.come||'',servizi:p.servizi||'',obiettivo:p.obiettivo||'',obiettivo_libero:p.obiettivoLibero||'',tempistica:p.tempistica||'',motivazione:p.motivazione?parseInt(p.motivazione):null,esperienza:p.esperienza||'',inattivo:p.inattivo||'',sport:p.sport||'',non_funzionato:p.nonFunzionato||'',sessioni_pref:p.sessioni_pref||'',orari:p.orari||'',impressioni:p.impressioni||'',proposta:p.proposta||'',followup:p.followup||null,stato:p.stato||'Interessato',updated_at:new Date().toISOString()}}
+function cleanAnamnesisText(value){return String(value||'').replace(/\\n/g,'\n').trim()}
+function acquisitionAddress(acq){
+  const locality=[acq?.cap,acq?.comune,acq?.provincia].filter(Boolean).join(' ');
+  return[acq?.indirizzo,locality].filter(Boolean).join(', ')
+}
+function buildClientAnamnesisNotes(acq){
+  return[
+    acq?.codiceFiscale&&'Codice fiscale: '+acq.codiceFiscale,
+    acq?.documento&&'Documento: '+acq.documento,
+    acquisitionAddress(acq)&&'Indirizzo: '+acquisitionAddress(acq),
+    acq?.contattoEmergenza&&'Contatto emergenza: '+acq.contattoEmergenza,
+    acq?.servizi&&'Servizi richiesti: '+acq.servizi,
+    acq?.obiettivo&&'Obiettivo: '+acq.obiettivo,
+    acq?.obiettivoLibero&&'Obiettivo libero: '+acq.obiettivoLibero,
+    acq?.tempistica&&'Tempistica: '+acq.tempistica,
+    acq?.motivazione&&'Motivazione: '+acq.motivazione+'/10',
+    acq?.esperienza&&'Esperienza: '+acq.esperienza,
+    acq?.inattivo&&'Attività / inattività: '+acq.inattivo,
+    acq?.sport&&'Sport: '+acq.sport,
+    acq?.sessioni_pref&&'Frequenza desiderata: '+acq.sessioni_pref,
+    acq?.orari&&'Disponibilità: '+acq.orari,
+    acq?.nonFunzionato&&'Cosa non ha funzionato: '+acq.nonFunzionato,
+    cleanAnamnesisText(acq?.impressioni),
+    acq?.proposta&&'Proposta: '+acq.proposta,
+    acq?.followup&&'Follow-up: '+acq.followup,
+  ].filter(Boolean).join('\n')
+}
+function mergeAnamnesisNotes(current, incoming){
+  const before=cleanAnamnesisText(current),after=cleanAnamnesisText(incoming);
+  if(!after||before.includes(after))return before;
+  return[before,after].filter(Boolean).join('\n\n')
+}
 function stripMissingConsentColumns(body){
   const fallback={...body};
   ['codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'].forEach(k=>delete fallback[k]);
   return fallback;
+}
+function stripMissingClientColumns(body){
+  const fallback={...body};
+  ['nascita','sesso','codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'].forEach(k=>delete fallback[k]);
+  return fallback
 }
 function normEmail(value){return String(value||'').trim().toLowerCase()}
 function normPhone(value){return String(value||'').replace(/\D/g,'')}
@@ -587,12 +624,12 @@ function phoneCandidates(value){
 async function findClientForAcquisition(acq){
   const email=normEmail(acq?.email);
   if(email){
-    const rows=await sb('clients',{query:'?select=id,nome,cognome,email,active&email=ilike.'+encodeURIComponent(email)+'&order=active.desc,created_at.asc&limit=1'});
+    const rows=await sb('clients',{query:'?select=*&email=ilike.'+encodeURIComponent(email)+'&order=active.desc,created_at.asc&limit=1'});
     if(rows?.error)throw new Error('Controllo cliente non riuscito: '+rows.error);
     if(Array.isArray(rows)&&rows.length)return rows[0];
   }
   for(const phone of phoneCandidates(acq?.telefono)){
-    const rows=await sb('clients',{query:'?select=id,nome,cognome,email,active&telefono=eq.'+encodeURIComponent(phone)+'&order=active.desc,created_at.asc&limit=1'});
+    const rows=await sb('clients',{query:'?select=*&telefono=eq.'+encodeURIComponent(phone)+'&order=active.desc,created_at.asc&limit=1'});
     if(rows?.error)throw new Error('Controllo cliente non riuscito: '+rows.error);
     if(Array.isArray(rows)&&rows.length)return rows[0];
   }
@@ -608,6 +645,18 @@ function existingClientPatch(acq){
   if(come)patch.come=come;
   const motivazione=parseInt(acq?.motivazione);
   if(Number.isFinite(motivazione))patch.motivazione=motivazione;
+  [
+    ['nascita',acq?.nascita],
+    ['sesso',acq?.sesso],
+    ['codice_fiscale',acq?.codiceFiscale],
+    ['documento',acq?.documento],
+    ['indirizzo',acq?.indirizzo],
+    ['cap',acq?.cap],
+    ['comune',acq?.comune],
+    ['provincia',acq?.provincia],
+    ['contatto_emergenza',acq?.contattoEmergenza],
+  ].forEach(([key,value])=>{if(String(value||'').trim())patch[key]=value});
+  patch.notes=buildClientAnamnesisNotes(acq);
   return patch;
 }
 const CONF_DAY_INDEX={'Domenica':0,'Lunedì':1,'Martedì':2,'Mercoledì':3,'Giovedì':4,'Venerdì':5,'Sabato':6};
@@ -771,26 +820,22 @@ async function apiFetch(p){
     const packageType=p.packageType||'PT 1:1';
     const existingClient=await findClientForAcquisition(acq);
     if(existingClient){
-      const update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:existingClientPatch(acq)});
+      const patch=existingClientPatch(acq);
+      patch.notes=mergeAnamnesisNotes(existingClient.notes,patch.notes);
+      let update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:patch});
+      if(update?.error&&String(update.error).toLowerCase().includes('column')){
+        update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:stripMissingClientColumns(patch)});
+      }
       if(update?.error)return update;
       const archived=await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
       if(archived?.error)return archived;
       return{success:true,clientId:existingClient.id,existingClient:true,appuntamentiCreati:0};
     }
     const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:acq.impressioni||'',active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
+    const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:buildClientAnamnesisNotes(acq),active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
     let ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body});
     if(ins?.error&&String(ins.error).toLowerCase().includes('column')){
-      const fallback={...body};
-      delete fallback.nascita;
-      delete fallback.sesso;
-      delete fallback.codice_fiscale;
-      delete fallback.documento;
-      delete fallback.indirizzo;
-      delete fallback.cap;
-      delete fallback.comune;
-      delete fallback.provincia;
-      delete fallback.contatto_emergenza;
+      const fallback=stripMissingClientColumns(body);
       ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
     }
     if(ins?.error)return ins;
