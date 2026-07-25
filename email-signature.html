@@ -249,14 +249,26 @@
       }, 2600);
     }
 
-    function fallbackCopy() {
+    function fallbackCopy(htmlFragment) {
       const selection = window.getSelection();
       const range = document.createRange();
       range.selectNode(signature);
       selection.removeAllRanges();
       selection.addRange(range);
 
+      const setClipboardFormats = (event) => {
+        if (!event.clipboardData) {
+          return;
+        }
+
+        event.preventDefault();
+        event.clipboardData.setData('text/html', htmlFragment);
+        event.clipboardData.setData('text/plain', plainTextSignature);
+      };
+
+      document.addEventListener('copy', setClipboardFormats, { once: true });
       const copied = document.execCommand('copy');
+      document.removeEventListener('copy', setClipboardFormats);
       selection.removeAllRanges();
 
       if (!copied) {
@@ -275,13 +287,13 @@
           });
           await navigator.clipboard.write([clipboardItem]);
         } else {
-          fallbackCopy();
+          fallbackCopy(htmlFragment);
         }
 
         showCopiedState();
       } catch (error) {
         try {
-          fallbackCopy();
+          fallbackCopy(htmlFragment);
           showCopiedState();
         } catch (fallbackError) {
           copyStatus.textContent = 'La copia automatica è stata bloccata. Seleziona la firma nell’anteprima e copiala manualmente.';
