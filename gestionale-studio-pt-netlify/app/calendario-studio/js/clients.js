@@ -337,6 +337,7 @@ const Clients = (() => {
   }
 
   async function moveToHistory(clientId, options) {
+    if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
     if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
@@ -413,6 +414,7 @@ const Clients = (() => {
   }
 
   async function reactivate(clientId) {
+    if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
     if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
@@ -441,6 +443,7 @@ const Clients = (() => {
   }
 
   async function confirmDelete(clientId) {
+    if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
     if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
     return moveToHistory(clientId, {
       question: 'Eliminare dal calendario',
@@ -450,6 +453,7 @@ const Clients = (() => {
   }
 
   function alignResidual(clientId) {
+    if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
     if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);

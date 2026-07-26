@@ -115,7 +115,7 @@ const App = {
 
   _applyPortalPtNavigation() {
     if (!App.isPortalPtMode()) return;
-    document.querySelectorAll('[data-view="room"], [data-view="availability"], [data-view="operators"]').forEach(button => {
+    document.querySelectorAll('[data-view="room"], [data-view="availability"], [data-view="clients"], [data-view="operators"]').forEach(button => {
       button.hidden = true;
     });
   },
@@ -166,7 +166,7 @@ const App = {
     if (!App.portalPt.authorized || !appt) return false;
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
     if (clientIds.length) return clientIds.every(clientId => App.canEditClient(clientId));
-    return App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
+    return false;
   },
 
   canViewAppointment(appt) {
@@ -185,6 +185,16 @@ const App = {
     if (kind === 'client' && App.canEditClient(item)) return true;
     if (kind === 'appointment' && App.canEditAppointment(item)) return true;
     UI.showToast('Modalità PT: puoi modificare solo clienti e appuntamenti assegnati al tuo profilo', 'error');
+    return false;
+  },
+
+  canManageStudioData() {
+    return !App.isPortalPtMode();
+  },
+
+  guardStudioManagement() {
+    if (App.canManageStudioData()) return true;
+    UI.showToast('Modalità PT: anagrafica, pacchetti, pagamenti e archiviazione restano alla Direzione', 'error');
     return false;
   },
 
@@ -221,7 +231,9 @@ const App = {
     const svc = Services.getService(curSvcId);
 
     // Servizi dropdown
-    const svcsHtml = Object.values(CONFIG.SERVICES).map(s =>
+    const svcsHtml = Object.values(CONFIG.SERVICES)
+      .filter(s => !App.isPortalPtMode() || !s.isBlock)
+      .map(s =>
       `<option value="${s.id}" ${curSvcId===s.id?'selected':''}>${s.label}${s.isBlock?' 🚫':''}</option>`
     ).join('');
 
@@ -260,7 +272,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Stato</label>
-            <select id="appt-status" class="form-input">${statusHtml}</select>
+            <select id="appt-status" class="form-input" ${App.isPortalPtMode() ? 'disabled' : ''}>${statusHtml}</select>
           </div>
         </div>
 
@@ -289,7 +301,7 @@ const App = {
           ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||defaultStartTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
         </div>
 
-        <div id="operator-overlap-override" class="operator-overlap-override" hidden>
+        ${App.isPortalPtMode() ? '' : `<div id="operator-overlap-override" class="operator-overlap-override" hidden>
           <label class="operator-overlap-toggle">
             <input id="appt-force-operator-overlap" type="checkbox"
                    ${Services.hasForcedPt11Overlap(appt) ? 'checked' : ''}
@@ -297,7 +309,7 @@ const App = {
             <span><strong>Forza doppio PT 1:1</strong> — richiesta specifica cliente autorizzata da PT/gestionale</span>
           </label>
           <div id="operator-overlap-copy" class="operator-overlap-copy"></div>
-        </div>
+        </div>`}
 
         <div id="slot-validation" class="slot-validation" style="margin-bottom:8px"></div>
 
@@ -494,7 +506,7 @@ const App = {
     const overrideBox = document.getElementById('operator-overlap-override');
     const overrideInput = document.getElementById('appt-force-operator-overlap');
     const overrideCopy = document.getElementById('operator-overlap-copy');
-    const overrideEligible = baseValidation.operatorOverrideEligible;
+    const overrideEligible = !App.isPortalPtMode() && baseValidation.operatorOverrideEligible;
 
     if (overrideBox) overrideBox.hidden = !overrideEligible;
     if (!overrideEligible && overrideInput) overrideInput.checked = false;
@@ -572,6 +584,14 @@ const App = {
       .map(Services.clientConflictLabel)
       .join(', ') || 'cliente non indicato';
     return `[FORZA-PT11] ${when} · Doppio PT 1:1 autorizzato da PT/gestionale · ${Services.operatorFullName(apptData.operatorId)} · sovrapposto a ${otherClients}`;
+  },
+
+  _withPtAudit(notes, action) {
+    const current = String(notes || '').trim();
+    if (!App.isPortalPtMode() || !App.portalPt.authorized) return current;
+    const actor = App.portalPt.emailParam || App._operatorLabel(App.portalPt.operator) || App.portalOperatorId() || 'PT';
+    const line = `[PT-AUDIT] ${new Date().toISOString()} · ${action} · ${actor}`;
+    return [current, line].filter(Boolean).join('\n');
   },
 
   _apptTimeRange(appt, includeBuffer = false) {
@@ -761,7 +781,7 @@ const App = {
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
-    const opId    = document.getElementById('appt-operator')?.value || null;
+    let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
     let notes     = document.getElementById('appt-notes')?.value || '';
     const svc     = Services.getService(svcId);
@@ -780,6 +800,8 @@ const App = {
     if (!App.guardPortalEdit('appointment', { ...apptData, id: apptId || null })) return;
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    notes = App._withPtAudit(notes, before ? 'appuntamento modificato' : 'appuntamento creato');
+    apptData.notes = notes;
     const sameClients = before
       ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
       : false;
@@ -938,10 +960,11 @@ const App = {
       </div>
       <div class="modal-footer">
         ${!canEdit ? '<span class="form-hint">Modalità PT: appuntamento in sola lettura.</span>' : ''}
-        ${canEdit ? `<button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>` : ''}
+        ${canEdit && !App.isPortalPtMode() ? `<button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>` : ''}
         ${canEdit && !isBlock?`
           <button class="act-btn primary" onclick="App._markDone('${appt.id}')">✓ Fatto</button>
           <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">No-show</button>
+          ${App.isPortalPtMode() && appt.status !== 'annullato' ? `<button class="act-btn del" onclick="App._markCancelled('${appt.id}')">Annulla</button>` : ''}
         `:''}
         ${canEdit ? `<button class="btn-primary" onclick="App._renderAppointmentModal('${appt.id}','${appt.date}')">Modifica</button>` : '<button class="btn-primary" onclick="UI.closeModal()">Chiudi</button>'}
       </div>
@@ -973,7 +996,7 @@ const App = {
   _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const doneAppt = Services.updateAppointment(apptId, { status: 'fatto' });
+    const doneAppt = Services.updateAppointment(apptId, { status: 'fatto', notes: App._withPtAudit(before?.notes, 'segnato come fatto') });
     if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
     SupabaseSync.pushAppointment(doneAppt);
@@ -999,15 +1022,39 @@ const App = {
       if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
     });
   },
-  _markNoShow(apptId) {
+  async _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const nsAppt = Services.updateAppointment(apptId, { status: 'noshow' });
-    UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
-    SupabaseSync.pushAppointment(nsAppt);
+    const nsAppt = Services.updateAppointment(apptId, { status: 'noshow', notes: App._withPtAudit(before?.notes, 'segnato come no-show') });
+    await SupabaseSync.pushAppointment(nsAppt);
+    if (before?.status === 'fatto' && App._recalculateClientSessions) {
+      await App._recalculateClientSessions(before.clientIds || []);
+    }
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
+    UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
+  },
+  async _markCancelled(apptId) {
+    const before = State.getAppointments().find(a => a.id === apptId);
+    if (!App.guardPortalEdit('appointment', before)) return;
+    if (!confirm('Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
+    const cancelled = Services.updateAppointment(apptId, {
+      status: 'annullato',
+      notes: App._withPtAudit(before?.notes, 'appuntamento annullato'),
+    });
+    await SupabaseSync.pushAppointment(cancelled);
+    if (before?.status === 'fatto' && App._recalculateClientSessions) {
+      await App._recalculateClientSessions(before.clientIds || []);
+    }
+    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);
+    UI.closeModal();
+    UI.showToast('Appuntamento annullato e conservato nello storico', 'success');
+    Calendar.render();
   },
   async _deleteAppt(apptId) {
+    if (App.isPortalPtMode()) {
+      UI.showToast('Modalità PT: annulla l’appuntamento senza eliminarne lo storico', 'error');
+      return;
+    }
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (!appt) return;
     if (!App.guardPortalEdit('appointment', appt)) return;
@@ -1043,6 +1090,7 @@ const App = {
     App._renderClientModal(null);
   },
   openEditClient(cid) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', cid)) {
       App.openPackageOverview(cid);
       return;
@@ -1050,6 +1098,7 @@ const App = {
     App._renderClientModal(cid);
   },
   openEditPackage(cid) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', cid)) {
       App.openPackageOverview(cid);
       return;
@@ -1058,6 +1107,7 @@ const App = {
   },
 
   _renderClientModal(clientId, packageOnly = false) {
+    if (!App.guardStudioManagement()) return;
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
     const isEdit = !!client;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
@@ -1222,6 +1272,7 @@ const App = {
   },
 
   _saveClient(clientId) {
+    if (!App.guardStudioManagement()) return;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
       UI.showToast('Modalità PT: puoi salvare solo i tuoi clienti assegnati', 'error');
       return;
@@ -1362,6 +1413,7 @@ const App = {
   },
 
   openPackageOverview(clientId) {
+    if (!App.guardStudioManagement()) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
 
@@ -1596,6 +1648,7 @@ const App = {
   },
 
   _updateClientPackagePlan(clientId, { days = null, packageStart = '' } = {}) {
+    if (!App.guardStudioManagement()) return null;
     if (!App.guardPortalEdit('client', clientId)) return null;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
@@ -1611,6 +1664,7 @@ const App = {
   },
 
   async _confirmCurrentPackageCycle(clientId) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
@@ -1720,6 +1774,7 @@ const App = {
   },
 
   _savePackageSchedule(clientId) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
@@ -1767,6 +1822,7 @@ const App = {
   },
 
   async _regenerateFuturePackageAppointments(clientId) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
@@ -1891,6 +1947,7 @@ const App = {
   },
 
   async _renewPackageAppointments(clientId) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
@@ -2074,6 +2131,10 @@ const App = {
   },
 
   async _deletePackageAppointment(apptId) {
+    if (App.isPortalPtMode()) {
+      UI.showToast('Modalità PT: le sedute si annullano, non si eliminano', 'error');
+      return;
+    }
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (!appt) return;
     if (!App.guardPortalEdit('appointment', appt)) return;
@@ -2099,6 +2160,7 @@ const App = {
   },
 
   async _generateMissingPackageAppointments(clientId) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;

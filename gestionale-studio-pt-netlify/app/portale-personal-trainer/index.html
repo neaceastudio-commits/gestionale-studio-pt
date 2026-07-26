@@ -1849,14 +1849,15 @@
         rowId: row.id,
         client_id: row.cliente_id || data.client_id || data.cliente_id || "",
         data,
+        archived: data.archived === true,
         period: normalizePeriodKey(data.period || savedState.meta?.period, row.updated_at || row.created_at),
         updated_at: row.updated_at || row.created_at || ""
       };
     }
 
-    function programsForClient(clientId = appState.selectedClientId) {
+    function programsForClient(clientId = appState.selectedClientId, includeArchived = false) {
       return appState.programs
-        .filter(program => program.client_id === clientId)
+        .filter(program => program.client_id === clientId && (includeArchived || !program.archived))
         .sort((a, b) => String(b.period || "").localeCompare(String(a.period || "")) || String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
     }
 
@@ -2608,24 +2609,40 @@
         const sheetCount = programState?.sheetOrder?.length || 0;
         const exercises = stateExerciseCount(programState);
         const hasLocalChanges = isActive && state.localDirty;
+        const lastAudit = Array.isArray(program.data?.audit_log) ? program.data.audit_log.at(-1) : null;
         return `
           <article class="program-card ${isActive ? "active" : ""}">
             <div>
               <span class="program-state ${hasLocalChanges ? "local" : ""}">${hasLocalChanges ? "Sincronizzazione..." : "Salvato automaticamente"}</span>
               <h3>${escapeHtml(periodLabel(isActive ? programState?.meta?.period : program.period))}</h3>
-              <p>${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}</p>
+              <p>${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}${lastAudit ? ` · da ${escapeHtml(lastAudit.email || lastAudit.by || "PT")}` : ""}</p>
             </div>
             <div class="actions">
               <button class="btn primary" type="button" data-open-program="${escapeAttr(program.id)}">Crea / modifica</button>
               <button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Usa scheda</button>
               <button class="btn" type="button" data-duplicate-program="${escapeAttr(program.id)}">Duplica</button>
-              <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Elimina</button>
+              <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Archivia</button>
             </div>
           </article>`;
       }).join("");
-      container.innerHTML = draftCard || savedCards
-        ? `${draftCard}${savedCards}`
-        : `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`;
+      const archivedCards = programsForClient(appState.selectedClientId, true)
+        .filter(program => program.archived)
+        .map(program => `
+          <article class="program-card">
+            <div>
+              <span class="program-state">Archiviata · recuperabile</span>
+              <h3>${escapeHtml(periodLabel(program.period))}</h3>
+              <p>Archiviata ${escapeHtml(new Date(program.data.archived_at || program.updated_at || Date.now()).toLocaleString("it-IT"))}</p>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" data-restore-program="${escapeAttr(program.id)}">Ripristina</button>
+            </div>
+          </article>`).join("");
+      const emptyState = `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`;
+      const archiveSection = archivedCards
+        ? `<details class="archive-panel"><summary>Schede archiviate (${programsForClient(appState.selectedClientId, true).filter(program => program.archived).length})</summary><div class="program-list">${archivedCards}</div></details>`
+        : "";
+      container.innerHTML = `${draftCard}${savedCards || (!draftCard ? emptyState : "")}${archiveSection}`;
       container.querySelectorAll("[data-open-program]").forEach(button => {
         button.addEventListener("click", () => {
           selectProgram(button.dataset.openProgram);
@@ -2647,6 +2664,9 @@
       });
       container.querySelectorAll("[data-delete-program]").forEach(button => {
         button.addEventListener("click", () => deleteProgram(button.dataset.deleteProgram));
+      });
+      container.querySelectorAll("[data-restore-program]").forEach(button => {
+        button.addEventListener("click", () => restoreProgram(button.dataset.restoreProgram));
       });
     }
 
@@ -2870,6 +2890,25 @@
       };
     }
 
+    function nextProgramAudit(programId, savedAt, trainer) {
+      const existing = appState.programs.find(program => program.id === programId);
+      const previous = Array.isArray(existing?.data?.audit_log) ? clone(existing.data.audit_log) : [];
+      const entry = {
+        action: existing ? "modifica" : "creazione",
+        at: savedAt,
+        by: trainer?.id || "",
+        email: trainer?.email || ""
+      };
+      const last = previous.at(-1);
+      const sameEditingSession = last?.action === "modifica" &&
+        entry.action === "modifica" &&
+        String(last.by || "") === String(entry.by || "") &&
+        Math.abs(new Date(entry.at).getTime() - new Date(last.at || 0).getTime()) < 10 * 60 * 1000;
+      if (sameEditingSession) previous[previous.length - 1] = entry;
+      else previous.push(entry);
+      return previous.slice(-60);
+    }
+
     function programPayload(programId, savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt, clientId = appState.selectedClientId) {
       const studioState = normalizeState(sourceState);
       studioState.lastSavedAt = savedAt;
@@ -2888,6 +2927,7 @@
         frequency: studioState.meta.frequency || "",
         warmup: studioState.meta.warmup || "",
         status: "bozza",
+        archived: false,
         schema_version: SCHEMA_VERSION,
         pt_studio_state: studioState,
         sessions: buildStandardSessions(studioState),
@@ -2896,7 +2936,8 @@
           saved_at: savedAt,
           saved_by: trainer?.id || "",
           source: "supabase"
-        }
+        },
+        audit_log: nextProgramAudit(programId, savedAt, trainer)
       };
     }
 
@@ -4049,10 +4090,31 @@
 
     async function deleteProgram(programId) {
       const program = appState.programs.find(item => item.id === programId);
-      if (!program || !confirmAction(`Eliminare definitivamente la bozza di ${periodLabel(program.period)}?`)) return;
+      if (!program || !confirmAction(`Archiviare la scheda di ${periodLabel(program.period)}? Potrai ripristinarla in qualsiasi momento.`)) return;
       try {
-        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(programId)}`, { method: "DELETE" });
-        appState.programs = appState.programs.filter(item => item.id !== programId);
+        const archivedAt = new Date().toISOString();
+        const audit = Array.isArray(program.data?.audit_log) ? clone(program.data.audit_log) : [];
+        audit.push({ action: "archiviazione", at: archivedAt, by: appState.currentPt?.id || "", email: appState.currentPt?.email || "" });
+        const archivedData = {
+          ...program.data,
+          archived: true,
+          archived_at: archivedAt,
+          archived_by: appState.currentPt?.id || "",
+          audit_log: audit.slice(-60)
+        };
+        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(program.rowId || programId)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { data: archivedData, updated_at: archivedAt }
+        });
+        const normalized = normalizeProgram({
+          id: program.rowId || programId,
+          cliente_id: program.client_id,
+          data: archivedData,
+          updated_at: archivedAt
+        });
+        const index = appState.programs.findIndex(item => item.id === programId);
+        if (index >= 0) appState.programs.splice(index, 1, normalized);
         localStorage.removeItem(storageKeyFor(appState.selectedClientId, programId));
         if (appState.selectedProgramId === programId) {
           const nextProgram = programsForClient()[0];
@@ -4068,10 +4130,47 @@
         renderClientList();
         renderProgramHistory();
         renderProgramManager();
-        showToast("Bozza eliminata dall'archivio");
+        showToast("Scheda archiviata: resta recuperabile");
       } catch (error) {
         console.error(error);
-        showToast("Non riesco a eliminare la bozza. Riprova.");
+        showToast("Non riesco ad archiviare la scheda. Riprova.");
+      }
+    }
+
+    async function restoreProgram(programId) {
+      const program = appState.programs.find(item => item.id === programId);
+      if (!program?.archived || !confirmAction(`Ripristinare la scheda di ${periodLabel(program.period)}?`)) return;
+      try {
+        const restoredAt = new Date().toISOString();
+        const audit = Array.isArray(program.data?.audit_log) ? clone(program.data.audit_log) : [];
+        audit.push({ action: "ripristino", at: restoredAt, by: appState.currentPt?.id || "", email: appState.currentPt?.email || "" });
+        const restoredData = {
+          ...program.data,
+          archived: false,
+          restored_at: restoredAt,
+          restored_by: appState.currentPt?.id || "",
+          audit_log: audit.slice(-60)
+        };
+        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(program.rowId || programId)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { data: restoredData, updated_at: restoredAt }
+        });
+        const normalized = normalizeProgram({
+          id: program.rowId || programId,
+          cliente_id: program.client_id,
+          data: restoredData,
+          updated_at: restoredAt
+        });
+        const index = appState.programs.findIndex(item => item.id === programId);
+        if (index >= 0) appState.programs.splice(index, 1, normalized);
+        renderClientList();
+        renderProgramHistory();
+        renderProgramManager();
+        showToast("Scheda ripristinata");
+      } catch (error) {
+        console.error(error);
+        showToast("Non riesco a ripristinare la scheda. Riprova.");
       }
     }
 

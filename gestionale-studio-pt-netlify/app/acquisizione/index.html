@@ -281,6 +281,14 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .toast.show{transform:translateY(0);opacity:1}
 .toast.error{background:var(--red)}
 .toast.success{background:var(--green)}
+.access-gate{position:fixed;inset:0;z-index:1000;background:linear-gradient(145deg,#e8eef4,#f8fafc);display:flex;align-items:center;justify-content:center;padding:24px}
+.access-gate.hidden{display:none}
+.access-card{width:min(460px,100%);background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 24px 70px rgba(28,49,68,.18);padding:30px;text-align:center}
+.access-mark{width:54px;height:54px;border-radius:16px;background:var(--blue);color:#fff;display:grid;place-items:center;margin:0 auto 18px;font-size:24px;font-weight:900}
+.access-card h1{font-size:24px;margin-bottom:8px}
+.access-card p{color:var(--text2);font-size:14px;line-height:1.55;margin-bottom:20px}
+.access-card a{display:inline-flex;text-decoration:none}
+.access-session{font-size:11px;font-weight:800;color:rgba(255,255,255,.78);padding:5px 10px;border:1px solid rgba(255,255,255,.18);border-radius:999px}
 
 @media(max-width:980px){.dash-grid{grid-template-columns:1fr}}
 @media(max-width:768px){.kpi-strip{grid-template-columns:repeat(2,1fr)};.sch-grid{grid-template-columns:1fr};.main{padding:16px};.grid-2,.data-two,.g3,.srv-grid{grid-template-columns:1fr}.misure-grid{grid-template-columns:repeat(2,1fr)}}
@@ -288,11 +296,21 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 </head>
 <body>
 
+<div class="access-gate" id="access-gate">
+  <div class="access-card">
+    <div class="access-mark">N</div>
+    <h1 id="access-title">Verifico l’accesso</h1>
+    <p id="access-message">Controllo la sessione ricevuta dalla Dashboard Personal Trainer.</p>
+    <a class="btn-primary" id="access-back" href="https://dashboard-pt.netlify.app/" style="display:none">Torna alla Dashboard</a>
+  </div>
+</div>
+
 <div class="topbar">
   <img class="topbar-logo" src="assets/neacea-logo.svg" alt="Logo Neacea">
   <span class="topbar-brand">Neacea</span>
   <div class="topbar-divider"></div>
   <span class="topbar-sub">Lead e acquisizione</span>
+  <span class="access-session" id="access-session">Accesso verificato</span>
   <div class="topbar-right">
     <button class="topbar-btn" onclick="carica()">↻</button>
     <button class="topbar-btn primary" id="btn-nuova" onclick="apriForm()">+ Nuovo lead</button>
@@ -544,10 +562,10 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
       <div class="sch-badges" id="sch-badges"></div>
       <div class="sch-actions">
         <button class="btn-ghost" onclick="showView('lista')" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">← Lista</button>
-        <button class="btn-ghost" onclick="apriModifica()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">✏ Modifica</button>
+        <button class="btn-ghost" id="btn-modifica-scheda" onclick="apriModifica()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">✏ Modifica</button>
         <button class="btn-primary" id="btn-anamnesi-scheda" onclick="inviaAnamnesi()" style="font-size:11px;background:#fff;color:var(--blue)">↗ Invia anamnesi</button>
         <button class="btn-confirm" id="btn-conferma-scheda" onclick="apriConferma()">Attiva cliente →</button>
-        <button class="btn-danger" onclick="confElimina()">Elimina</button>
+        <button class="btn-danger" id="btn-elimina-scheda" onclick="confElimina()">Elimina</button>
       </div>
     </div>
     <div class="sch-grid" id="sch-content"></div>
@@ -561,7 +579,74 @@ const SUPABASE_KEY='sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 const ANAMNESI_PT_URL='https://neacea-anamnesi-cliente.netlify.app/';
 const ANAMNESI_NUTRIZIONE_URL='https://anamnesi-nutrizione.netlify.app/';
 const ANAMNESI_COACHING_URL='https://anamensi-coaching.netlify.app/';
+const ACCESS_URL='https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email';
+const ACQUISITION_SESSION_KEY='neacea-acquisition-session-v1';
 let acquisizioni=[],staffAll=[],confAppointments=[],filtro='attivi',chips={stato:'Interessato'},servizi={pt:true,nut:false,coach:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,clienteEsistenteConferma=null,confermaLookupToken=0,toastTimer=null;
+let accessState={authorized:false,mode:'pt',operatorId:'',email:'',accessLevel:'pt',expiresAt:0};
+
+function isPtRestricted(){return accessState.authorized&&accessState.mode==='pt'}
+function acquisitionOwnerId(acq){
+  const match=String(acq?.impressioni||'').match(/^\[PT_OWNER\]\s+([^|\n]+)(?:\|\s*([^\n]+))?$/m);
+  return match?{operatorId:String(match[1]||'').trim(),email:String(match[2]||'').trim().toLowerCase()}:null
+}
+function isOwnPtAcquisition(acq){
+  const owner=acquisitionOwnerId(acq);
+  if(!owner)return false;
+  return owner.operatorId===String(accessState.operatorId||'')||owner.email===String(accessState.email||'').toLowerCase()
+}
+function stripPtTracking(value){
+  return String(value||'').replace(/^\[(?:PT_OWNER|PT_AUDIT)\].*$/gm,'').replace(/\n{3,}/g,'\n\n').trim()
+}
+function withPtAudit(value,action,existingValue=''){
+  const existing=String(existingValue||'');
+  const previousOwner=existing.match(/^\[PT_OWNER\].*$/m)?.[0];
+  const owner=previousOwner||`[PT_OWNER] ${accessState.operatorId} | ${accessState.email}`;
+  const previousAudit=[...existing.matchAll(/^\[PT_AUDIT\].*$/gm)].map(match=>match[0]).slice(-39);
+  const audit=`[PT_AUDIT] ${action} | ${accessState.operatorId} | ${accessState.email} | ${new Date().toISOString()}`;
+  return[stripPtTracking(value),owner,...previousAudit,audit].filter(Boolean).join('\n')
+}
+function denyPtOperation(message='Operazione riservata alla Direzione'){
+  if(!isPtRestricted())return false;
+  showToast(message,'error');
+  return true
+}
+async function verifyAcquisitionAccess(){
+  const params=new URLSearchParams(location.search);
+  let stored={};
+  try{stored=JSON.parse(sessionStorage.getItem(ACQUISITION_SESSION_KEY)||'{}')}catch(_){}
+  const token=params.get('access')||stored.token||'';
+  const requestedMode=params.get('mode')||stored.mode||'pt';
+  const expectedOperator=params.get('op')||stored.operatorId||'';
+  if(!token)throw new Error('Apri Acquisizione dalla Dashboard Personal Trainer.');
+  const response=await fetch(ACCESS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify_token',token})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.success)throw new Error(result.error||'Sessione non valida o scaduta.');
+  if(expectedOperator&&String(result.operatorId)!==String(expectedOperator))throw new Error('La sessione non corrisponde al profilo selezionato.');
+  const ownerMode=requestedMode==='owner'&&result.accessLevel==='owner';
+  accessState={
+    authorized:true,
+    mode:ownerMode?'owner':'pt',
+    operatorId:String(result.operatorId||''),
+    email:String(result.email||'').toLowerCase(),
+    accessLevel:result.accessLevel==='owner'?'owner':'pt',
+    expiresAt:Number(result.expiresAt||0)
+  };
+  sessionStorage.setItem(ACQUISITION_SESSION_KEY,JSON.stringify({...accessState,token}));
+  document.getElementById('access-session').textContent=ownerMode?'Direzione · accesso completo':`PT · ${accessState.email}`;
+  document.getElementById('access-gate').classList.add('hidden');
+  if(isPtRestricted()){
+    document.getElementById('lista-sub').textContent='I tuoi lead: puoi registrarli e aggiornarli; l’attivazione cliente resta alla Direzione.';
+    const readyHead=document.querySelector('#dash-pronti')?.previousElementSibling;
+    if(readyHead)readyHead.textContent='Pronti per la Direzione';
+  }
+  history.replaceState(null,'',location.pathname);
+  await carica();
+}
+function showAccessError(error){
+  document.getElementById('access-title').textContent='Accesso non disponibile';
+  document.getElementById('access-message').textContent=error?.message||'Rientra dalla Dashboard Personal Trainer.';
+  document.getElementById('access-back').style.display='inline-flex';
+}
 
 function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
 async function sb(table,{method='GET',query='',body=null,headers={}}={}){
@@ -798,13 +883,18 @@ function servizioDaPacchetto(packageType){
   return packageType||'PT 1:1';
 }
 async function apiGet(a,params={}){
-  if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;return{acquisizioni:(rows||[]).map(acqFromDb)}}
-  if(a==='getStaff'){const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
-  if(a==='getAppointments'){const from=encodeURIComponent(params.from||oggi()),to=encodeURIComponent(params.to||params.from||oggi());const rows=await sb('appointments',{query:'?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status&date=gte.'+from+'&date=lte.'+to+'&status=neq.annullato&order=date.asc,start_time.asc'});if(rows.error)return rows;return{appointments:rows||[]}}
+  if(a==='getAcquisizioni'){const rows=await sb('acquisizioni',{query:'?select=*&order=data_acquisizione.desc'});if(rows.error)return rows;const mapped=(rows||[]).map(acqFromDb);return{acquisizioni:isPtRestricted()?mapped.filter(isOwnPtAcquisition):mapped}}
+  if(a==='getStaff'){if(isPtRestricted())return{staff:[]};const rows=await sb('operators',{query:'?select=*&active=eq.true&order=cognome.asc,nome.asc'});if(rows.error)return rows;return{staff:rows||[]}}
+  if(a==='getAppointments'){if(isPtRestricted())return{error:'Disponibilità e assegnazioni sono riservate alla Direzione'};const from=encodeURIComponent(params.from||oggi()),to=encodeURIComponent(params.to||params.from||oggi());const rows=await sb('appointments',{query:'?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status&date=gte.'+from+'&date=lte.'+to+'&status=neq.annullato&order=date.asc,start_time.asc'});if(rows.error)return rows;return{appointments:rows||[]}}
   return{error:'Azione non supportata'}
 }
 async function apiFetch(p){
   if(p.action==='saveAcquisizione'){
+    if(isPtRestricted()){
+      const existing=p.id?acquisizioni.find(item=>item.id===p.id):null;
+      if(p.id&&(!existing||!isOwnPtAcquisition(existing)))return{error:'Puoi aggiornare soltanto i lead creati dal tuo profilo'};
+      p.impressioni=withPtAudit(p.impressioni,p.id?'AGGIORNATO':'CREATO',existing?.impressioni||'');
+    }
     const body=acqToDb(p);
     let res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body});
     if(res?.error&&String(res.error).toLowerCase().includes('column')){
@@ -812,8 +902,9 @@ async function apiFetch(p){
     }
     return res?.error?res:{success:true,id:body.id}
   }
-  if(p.action==='deleteAcquisizione'){const res=await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});return res?.error?res:{success:true}}
+  if(p.action==='deleteAcquisizione'){if(isPtRestricted())return{error:'Eliminazione riservata alla Direzione'};const res=await sb('acquisizioni',{method:'DELETE',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'}});return res?.error?res:{success:true}}
   if(p.action==='confermaCliente'){
+    if(isPtRestricted())return{error:'Attivazione cliente riservata alla Direzione'};
     const acq=acquisizioni.find(x=>x.id===p.id);if(!acq)return{error:'Prospect non trovato'};
     const sessionsTotal=parseInt(p.sessioni_totali)||0;
     const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
@@ -916,10 +1007,11 @@ function renderLista(){
       <div class="card-top"><div class="avatar">${escapeHtml(ini)}</div><div class="card-badges">${srvB}${receipts.length?'<span class="badge badge-anamnesi">✓ Anamnesi</span>':''}${isNew?'<span class="badge badge-new">Nuovo</span>':''}</div></div>
       <div class="card-name">${escapeHtml(c.nome||'')} ${escapeHtml(c.cognome||'')}</div>
       <div class="card-info">${escapeHtml(contatto)}</div>
-      ${isPronto?`<button class="card-confirm-btn" onclick="event.stopPropagation();apriConfermaById('${c.id}')">Conferma cliente →</button>`:''}
+      ${isPronto&&!isPtRestricted()?`<button class="card-confirm-btn" onclick="event.stopPropagation();apriConfermaById('${c.id}')">Conferma cliente →</button>`:''}
       <div class="card-meta">
         <span>🎯 ${escapeHtml(c.obiettivo||'—')}</span>
         <span>📞 ${c.followup?'Follow-up '+fmtData(c.followup):'Nessun follow-up'}</span>
+        ${!isPtRestricted()&&acquisitionOwnerId(c)?`<span>👤 Inserito da ${escapeHtml(acquisitionOwnerId(c).email||acquisitionOwnerId(c).operatorId)}</span>`:''}
         <span><span class="badge ${sc}">${escapeHtml(c.stato||'—')}</span></span>
       </div>
     </div>`;
@@ -1000,9 +1092,12 @@ function apriScheda(id){
   const coaching=coachingAnamnesi(c.impressioni);if(coaching)h+=renderCoachingAnamnesi(coaching);
   if(c.sessioni_pref||c.orari)h+=`<div class="sch-block full"><div class="sb-title">Disponibilità indicativa</div>${sr('Sessioni/sett.',c.sessioni_pref)}${sr('Orari',c.orari)}</div>`;
   if(visibleLeadNote(c.impressioni))h+=`<div class="sch-block full"><div class="sb-title">Nota interna</div><div class="sch-nota">${escapeHtml(visibleLeadNote(c.impressioni)).replaceAll('\n','<br>')}</div></div>`;
-  document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione);
+  const leadOwner=acquisitionOwnerId(c);
+  document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione)+(leadOwner?' · Inserito da '+(leadOwner.email||leadOwner.operatorId):'');
   const confirmBtn=document.getElementById('btn-conferma-scheda');if(confirmBtn)confirmBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
   const anamnesiBtn=document.getElementById('btn-anamnesi-scheda');if(anamnesiBtn)anamnesiBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
+  if(confirmBtn&&isPtRestricted())confirmBtn.style.display='none';
+  const deleteBtn=document.getElementById('btn-elimina-scheda');if(deleteBtn)deleteBtn.style.display=isPtRestricted()?'none':'inline-block';
   showView('scheda');
 }
 
@@ -1023,6 +1118,7 @@ async function inviaAnamnesi(){
 
 function apriModifica(){
   const c=acquisizioni.find(x=>x.id===idCorrente);if(!c)return;isEdit=true;
+  if(isPtRestricted()&&!isOwnPtAcquisition(c)){showToast('Puoi modificare soltanto i lead creati dal tuo profilo','error');return}
   const fields={'f-nome':c.nome,'f-cognome':c.cognome,'f-telefono':c.telefono,'f-email':c.email,'f-come':c.come,'f-ob-libero':c.obiettivoLibero,'f-impressioni':visibleLeadNote(c.impressioni),'f-followup':c.followup};
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el&&val)el.value=val});
   const srv=normSrv(c.servizi);servizi={pt:srv.includes('PT'),nut:srv.includes('Nutrizione'),coach:srv.some(s=>s.toLowerCase().includes('coach'))};
@@ -1036,6 +1132,7 @@ function apriModifica(){
 
 function apriConferma(){apriConfermaById(idCorrente)}
 function apriConfermaById(id){
+  if(denyPtOperation('Il PT prepara il lead; l’attivazione cliente resta alla Direzione'))return;
   const c=acquisizioni.find(x=>x.id===id);if(!c)return;idConferma=id;
   const confNome=document.getElementById('conf-nome');if(confNome)confNome.textContent=`${c.nome||''} ${c.cognome||''}`;
   const srv=normSrv(c.servizi);document.getElementById('conf-package').value=srv.some(s=>s.toLowerCase().includes('coach'))&&!srv.includes('PT')?'Coaching online':srv.includes('Nutrizione')&&!srv.includes('PT')?'Nutrizione':'PT 1:1';
@@ -1098,6 +1195,7 @@ async function eseguiConferma(){
   btn.innerHTML=confermaButtonLabel();btn.disabled=false;
 }
 function confElimina(){
+  if(denyPtOperation('I lead non possono essere eliminati dal profilo PT'))return;
   const c=acquisizioni.find(x=>x.id===idCorrente);if(!confirm(`Eliminare ${c?.nome||''} ${c?.cognome||''}?`))return;
   apiFetch({action:'deleteAcquisizione',id:idCorrente}).then(res=>{if(res.success){showToast('Prospect eliminato');acquisizioni=acquisizioni.filter(x=>x.id!==idCorrente);renderStats();showView('lista')}else showToast('Errore','error')}).catch(()=>showToast('Errore connessione','error'));
 }
@@ -1108,7 +1206,7 @@ function coachingAnamnesi(value){const matches=[...String(value||'').matchAll(/\
 function coachingLabel(key){return COACHING_LABELS[key]||String(key).replaceAll('_',' ').replace(/^./,c=>c.toUpperCase())}
 function renderCoachingAnamnesi(data){const skip=new Set(['nome','cognome','email','telefono','codice_fiscale','indirizzo','cap','comune','provincia','data_nascita','sesso','privacy','tipo']);const entries=Object.entries(data||{}).filter(([key,value])=>!skip.has(key)&&value!==null&&value!==undefined&&String(value).trim()!=='');const highlights=['obiettivo_primario','patologie','infortuni','livello','frequenza','luogo','note'].filter(key=>data[key]&&String(data[key]).trim());const summary=highlights.map(key=>sr(coachingLabel(key),data[key])).join('');const all=entries.map(([key,value])=>sr(coachingLabel(key),Array.isArray(value)?value.join(', '):value)).join('');return`<div class="sch-block full"><div class="sb-title">Anamnesi Coaching</div>${summary}<details class="coaching-details"><summary>Apri la scheda completa (${entries.length} risposte)</summary>${all}</details></div>`}
 function stripAnamnesiData(value){return String(value||'').replace(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]\s*/g,'').replace(/\[ANAMNESI_COACHING\][\s\S]*?\[\/ANAMNESI_COACHING\]\s*/g,'').replace(/^\[ANAMNESI_RICEVUTA\].*$/gm,'').trim()}
-function visibleLeadNote(value){const raw=stripAnamnesiData(value);const i=raw.indexOf('Dati minore/tutore:');return(i>=0?raw.slice(0,i):raw).trim()}
+function visibleLeadNote(value){const raw=stripAnamnesiData(stripPtTracking(value));const i=raw.indexOf('Dati minore/tutore:');return(i>=0?raw.slice(0,i):raw).trim()}
 function legacyLeadTail(value){const raw=String(value||'');const hidden=[...raw.matchAll(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]/g)].map(m=>m[0]);const coaching=[...raw.matchAll(/\[ANAMNESI_COACHING\][\s\S]*?\[\/ANAMNESI_COACHING\]/g)].map(m=>m[0]);const receipts=[...raw.matchAll(/^\[ANAMNESI_RICEVUTA\].*$/gm)].map(m=>m[0]);const clean=stripAnamnesiData(raw);const i=clean.indexOf('Dati minore/tutore:');const legacy=i>=0?clean.slice(i).trim():'';return[legacy,...hidden,...coaching,...receipts].filter(Boolean).join('\n\n')}
 function calcEta(n){const o=new Date(),d=new Date(n);let e=o.getFullYear()-d.getFullYear();const m=o.getMonth()-d.getMonth();if(m<0||(m===0&&o.getDate()<d.getDate()))e--;return e}
 function fmtData(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}catch{return d}}
@@ -1122,7 +1220,7 @@ function openMo(id){document.getElementById(id).classList.add('open')}
 function closeMo(id){document.getElementById(id).classList.remove('open')}
 function showToast(msg,type){const t=document.getElementById('toast');t.innerHTML=(type==='loading'?'<span class="spin"></span> ':type==='success'?'✓  ':type==='error'?'✕  ':'')+msg;t.className='toast show'+(type?' '+type:'');if(toastTimer)clearTimeout(toastTimer);if(type!=='loading')toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
 
-carica();
+verifyAcquisitionAccess().catch(showAccessError);
 </script>
 </body>
 </html>

@@ -43,12 +43,26 @@ function isPersonalTrainer(operator) {
   return operatorRoles(operator).some((role) => ['pt', 'personal_trainer', 'personal trainer'].includes(role));
 }
 
+function accessLevelFor(operator) {
+  const ownerRoles = new Set([
+    'admin',
+    'administrator',
+    'amministratore',
+    'owner',
+    'titolare',
+    'super_admin',
+    'direzione',
+  ]);
+  return operatorRoles(operator).some((role) => ownerRoles.has(role)) ? 'owner' : 'pt';
+}
+
 function publicOperator(operator) {
   return {
     id: String(operator?.operator_id || operator?.id || '').trim(),
     email: String(operator?.email || '').trim().toLowerCase(),
     nome: String(operator?.nome || '').trim(),
     cognome: String(operator?.cognome || '').trim(),
+    accessLevel: accessLevelFor(operator),
   };
 }
 
@@ -99,10 +113,11 @@ function accessCode(email, operatorId = '') {
   return String(numeric).padStart(6, '0');
 }
 
-function signAccessToken(email, operatorId = '') {
+function signAccessToken(email, operatorId = '', accessLevel = 'pt') {
   const payload = Buffer.from(JSON.stringify({
     email: String(email || '').trim().toLowerCase(),
     operatorId: String(operatorId || '').trim(),
+    accessLevel: accessLevel === 'owner' ? 'owner' : 'pt',
     exp: Date.now() + (12 * 60 * 60 * 1000),
   })).toString('base64url');
   const signature = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
@@ -119,6 +134,7 @@ function verifyAccessToken(token) {
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     if (!data.email || !data.operatorId || Number(data.exp || 0) <= Date.now()) return null;
+    data.accessLevel = data.accessLevel === 'owner' ? 'owner' : 'pt';
     return data;
   } catch (_) {
     return null;
@@ -261,11 +277,13 @@ exports.handler = async (event) => {
     }
     if (action === 'verify_token') {
       const data = verifyAccessToken(input.token);
+      const operator = data ? await findPersonalTrainer(data.email, data.operatorId) : null;
+      const valid = data && operator;
       return {
-        statusCode: data ? 200 : 401,
+        statusCode: valid ? 200 : 401,
         headers,
-        body: JSON.stringify(data
-          ? { success: true, email: data.email, operatorId: data.operatorId, expiresAt: data.exp }
+        body: JSON.stringify(valid
+          ? { success: true, email: operator.email, operatorId: operator.id, accessLevel: operator.accessLevel, expiresAt: data.exp }
           : { success: false, error: 'Sessione PT non valida o scaduta.' }),
       };
     }
@@ -276,8 +294,12 @@ exports.handler = async (event) => {
       if (!email || !email.includes('@') || !code) {
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email e codice sono obbligatori.' }) };
       }
+      const operator = await findPersonalTrainer(email, operatorId);
+      if (!operator) {
+        return { statusCode: 404, headers, body: JSON.stringify({ success: false, error: 'Profilo Personal Trainer non trovato o non attivo.' }) };
+      }
       const valid = crypto.timingSafeEqual(
-        Buffer.from(accessCode(email, operatorId)),
+        Buffer.from(accessCode(operator.email, operator.id)),
         Buffer.from(code.padStart(6, '0').slice(-6))
       );
       return {
@@ -286,9 +308,10 @@ exports.handler = async (event) => {
         body: JSON.stringify(valid
           ? {
               success: true,
-              email,
-              operatorId,
-              token: signAccessToken(email, operatorId),
+              email: operator.email,
+              operatorId: operator.id,
+              accessLevel: operator.accessLevel,
+              token: signAccessToken(operator.email, operator.id, operator.accessLevel),
               expiresAt: Date.now() + (12 * 60 * 60 * 1000),
             }
           : { success: false, error: 'Codice accesso non valido.' }),
