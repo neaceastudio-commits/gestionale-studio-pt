@@ -1519,11 +1519,12 @@ const App = {
                 <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
               </div>
               <div class="form-group">
-                <label>PT</label>
+                <label>PT delle sedute</label>
                 <select id="pkg-plan-operator" class="form-input">
                   <option value="">Mantieni/auto</option>
                   ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
                 </select>
+                <div class="form-hint">Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</div>
               </div>
               <div class="form-group">
                 <label>Data partenza pacchetto</label>
@@ -1594,7 +1595,7 @@ const App = {
     return App._updateClientPackagePlan(clientId, { days });
   },
 
-  _updateClientPackagePlan(clientId, { days = null, packageStart = '', ptAssegnato = undefined } = {}) {
+  _updateClientPackagePlan(clientId, { days = null, packageStart = '' } = {}) {
     if (!App.guardPortalEdit('client', clientId)) return null;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
@@ -1602,7 +1603,6 @@ const App = {
     const patch = {};
     if (Array.isArray(days)) patch.giorniSettimana = days;
     if (packageStart) patch.packageStart = packageStart;
-    if (ptAssegnato !== undefined) patch.ptAssegnato = ptAssegnato || clients[idx].ptAssegnato || null;
     clients[idx] = { ...clients[idx], ...patch };
     State.saveClients(clients);
     SupabaseSync.pushClient(clients[idx]);
@@ -1753,8 +1753,7 @@ const App = {
 
     const saved = App._updateClientPackagePlan(clientId, {
       days,
-      packageStart: fromDate,
-      ...(operatorId ? { ptAssegnato: operatorId } : {})
+      packageStart: fromDate
     });
     if (!saved) return;
     const touched = changes
@@ -1819,8 +1818,7 @@ const App = {
     const backupClients = State.getClients();
     const updatedClient = App._updateClientPackagePlan(clientId, {
       days,
-      packageStart: fromDate,
-      ptAssegnato: fallbackOperator
+      packageStart: fromDate
     });
     if (!updatedClient) return;
     const backupAppointments = State.getAppointments();
@@ -1955,7 +1953,6 @@ const App = {
       giorniSettimana: days,
       packageStart: fromDate,
       packageCycleStart: fromDate,
-      ptAssegnato: selectedOperator,
       sessionsTotal: renewCount,
       sessionsRemaining: renewCount,
       active: true,

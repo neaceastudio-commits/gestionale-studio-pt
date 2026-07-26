@@ -14,8 +14,11 @@ function assert(label, condition) {
 
 const indexSource = read('app/calendario-studio/index.html');
 const appSource = read('app/calendario-studio/js/app.js');
+const supabaseSource = read('app/calendario-studio/js/supabase.js');
 const servicesSource = read('app/calendario-studio/js/services.js');
 const clientsSource = read('app/calendario-studio/js/clients.js');
+const portalSource = read('app/portale-personal-trainer/index.html');
+const acquisitionSource = read('app/acquisizione/index.html');
 const accessFunctionSource = read('netlify/functions/pt-access-email.js');
 const appleFunctionSource = read('netlify/functions/apple-calendar.js');
 
@@ -30,6 +33,10 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Flusso non rinnovo', clientsSource.includes('markNotRenewing(clientId)')],
   ['Riattivazione cliente', clientsSource.includes('reactivate(clientId)')],
   ['Filtro PT firmato', appSource.includes("action: 'verify_token'")],
+  ['PT cliente separato dal PT delle sedute', appSource.includes('Modifica il PT degli appuntamenti, non il PT assegnato al cliente.')],
+  ['Assegnazione PT conservata negli aggiornamenti cliente', supabaseSource.includes('? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }')],
+  ['Portale usa solo assegnazione esplicita', !portalSource.includes('inferredTrainerId(client.id)')],
+  ['Acquisizione assegna solo clienti ancora senza PT', acquisitionSource.includes('if(!currentPt&&p.ptId)patch.pt_assegnato=p.ptId;')],
   ['Token PT firmato', accessFunctionSource.includes('function signAccessToken')],
   ['Funzione Apple Calendar', appleFunctionSource.includes('exports.handler') && appleFunctionSource.includes('BEGIN:VCALENDAR')],
 ].forEach(([label, condition]) => assert(label, condition));
@@ -56,6 +63,7 @@ const State = {
   getClients: () => clients,
   getAppointments: () => appointments,
   getOperators: () => operators,
+  saveClients() {},
 };
 const toastArea = { appendChild() {} };
 const document = {
@@ -79,6 +87,9 @@ const context = {
   window: { location: { search: '' }, addEventListener() {} },
   location: { search: '' },
   URLSearchParams,
+  CONFIG: { SHEETS: { enabled: false } },
+  SupabaseSync: { pushClient() {} },
+  Sheets: { pushClient() {} },
   console,
   fetch,
   setTimeout,
@@ -102,6 +113,12 @@ assert('PT vede appuntamento assegnato come operatore', App.canViewAppointment(a
 assert('PT vede appuntamento del proprio cliente', App.canViewAppointment(appointments[1]));
 assert('PT non vede appuntamenti estranei', !App.canViewAppointment(appointments[2]));
 assert('Elenco PT contiene solo clienti assegnati', App.visibleClients().length === 1 && App.visibleClients()[0].id === 'client-own');
+App._updateClientPackagePlan('client-own', {
+  days: ['Lunedì'],
+  packageStart: '2099-07-01',
+  ptAssegnato: 'pt-other',
+});
+assert('Ripianificazione pacchetto non cambia il PT del cliente', clients[0].ptAssegnato === 'pt-own');
 
 const serviceContext = {
   State,

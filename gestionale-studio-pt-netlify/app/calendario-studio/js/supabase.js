@@ -82,6 +82,9 @@ const SupabaseSync = (() => {
       package_start: c.packageStart || null,
       data_conferma: c.packageCycleStart || c.package_cycle_start || null,
       notes: c.notes || '',
+      ...(c.ptAssegnato !== undefined || c.pt_assegnato !== undefined
+        ? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }
+        : {}),
       tipo_servizio: c.tipoServizio || c.tipo_servizio || '',
       tipo_abbonamento: c.tipoAbbonamento || c.tipo_abbonamento || '',
       stato_abbonamento: c.statoAbbonamento || c.stato_abbonamento || '',

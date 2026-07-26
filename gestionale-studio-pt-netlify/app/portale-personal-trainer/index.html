@@ -2063,18 +2063,6 @@
         sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
         sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
       ]);
-      const inferredTrainerByClient = (sessions || []).reduce((acc, session) => {
-        const trainerId = sessionTrainerId(session);
-        if (!trainerId) return acc;
-        sessionClientIds(session).forEach(clientId => {
-          acc[clientId] = acc[clientId] || {};
-          acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
-        });
-        return acc;
-      }, {});
-      const inferredTrainerId = clientId => Object.entries(inferredTrainerByClient[clientId] || {})
-        .sort((a, b) => b[1] - a[1])
-        .map(([trainerId]) => trainerId)[0] || "";
       appState.clients = (clients || []).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -2084,7 +2072,7 @@
         return {
           ...client,
           client_id: client.id,
-          trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || client.operator_id || inferredTrainerId(client.id)),
+          trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || client.operator_id),
           obiettivo: client.obiettivo || acq?.obiettivo || "",
           note_operative: acq?.impressioni || client.notes || ""
         };
