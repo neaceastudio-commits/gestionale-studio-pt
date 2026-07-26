@@ -115,7 +115,7 @@ const App = {
 
   _applyPortalPtNavigation() {
     if (!App.isPortalPtMode()) return;
-    document.querySelectorAll('[data-view="room"], [data-view="availability"], [data-view="clients"], [data-view="operators"]').forEach(button => {
+    document.querySelectorAll('[data-view="availability"], [data-view="operators"]').forEach(button => {
       button.hidden = true;
     });
   },
@@ -165,16 +165,14 @@ const App = {
     if (!App.isPortalPtMode()) return true;
     if (!App.portalPt.authorized || !appt) return false;
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
-    if (clientIds.length) return clientIds.every(clientId => App.canEditClient(clientId));
+    const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
+    if (clientIds.length) return isOwnAppointment && clientIds.every(clientId => App.canEditClient(clientId));
     return false;
   },
 
   canViewAppointment(appt) {
     if (!App.isPortalPtMode()) return true;
-    if (!App.portalPt.authorized || !appt) return false;
-    const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
-    const hasOwnClient = (appt.clientIds || []).some(clientId => App.canEditClient(clientId));
-    return isOwnAppointment || hasOwnClient;
+    return !!(App.portalPt.authorized && appt);
   },
 
   visibleClients(clients = State.getClients()) {
@@ -192,9 +190,20 @@ const App = {
     return !App.isPortalPtMode();
   },
 
+  canManagePackage(clientOrId) {
+    if (!App.isPortalPtMode()) return true;
+    return App.canEditClient(clientOrId);
+  },
+
+  guardPackageManagement(clientOrId) {
+    if (App.canManagePackage(clientOrId)) return true;
+    UI.showToast('Modalità PT: puoi gestire i pacchetti solo dei tuoi clienti assegnati', 'error');
+    return false;
+  },
+
   guardStudioManagement() {
     if (App.canManageStudioData()) return true;
-    UI.showToast('Modalità PT: anagrafica, pacchetti, pagamenti e archiviazione restano alla Direzione', 'error');
+    UI.showToast('Modalità PT: anagrafica, pagamenti, cambio PT e archiviazione restano alla Direzione', 'error');
     return false;
   },
 
@@ -1098,8 +1107,7 @@ const App = {
     App._renderClientModal(cid);
   },
   openEditPackage(cid) {
-    if (!App.guardStudioManagement()) return;
-    if (!App.guardPortalEdit('client', cid)) {
+    if (!App.guardPackageManagement(cid)) {
       App.openPackageOverview(cid);
       return;
     }
@@ -1107,7 +1115,9 @@ const App = {
   },
 
   _renderClientModal(clientId, packageOnly = false) {
-    if (!App.guardStudioManagement()) return;
+    if (packageOnly) {
+      if (!App.guardPackageManagement(clientId)) return;
+    } else if (!App.guardStudioManagement()) return;
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
     const isEdit = !!client;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
@@ -1130,6 +1140,7 @@ const App = {
     ).join('');
     const curDays = Array.isArray(client?.giorniSettimana) ? client.giorniSettimana : [];
     const currentMetrics = client ? Services.getClientSessionMetrics(client) : null;
+    const personalReadOnlyAttr = packageOnly ? 'disabled' : '';
     const dayOptions = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label">
         <input type="checkbox" name="client-day" value="${g}" ${curDays.includes(g)?'checked':''} onchange="App._limitClientDays(this)">
@@ -1145,46 +1156,46 @@ const App = {
         <div class="form-row">
           <div class="form-group">
             <label>Nome *</label>
-            <input type="text" id="cl-nome" class="form-input" value="${client?.nome||''}">
+            <input type="text" id="cl-nome" class="form-input" value="${client?.nome||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Cognome *</label>
-            <input type="text" id="cl-cognome" class="form-input" value="${client?.cognome||''}">
+            <input type="text" id="cl-cognome" class="form-input" value="${client?.cognome||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Email</label>
-            <input type="email" id="cl-email" class="form-input" value="${client?.email||''}">
+            <input type="email" id="cl-email" class="form-input" value="${client?.email||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Telefono</label>
-            <input type="text" id="cl-telefono" class="form-input" value="${client?.telefono||''}">
+            <input type="text" id="cl-telefono" class="form-input" value="${client?.telefono||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Data di nascita</label>
-            <input type="date" id="cl-nascita" class="form-input" value="${client?.nascita||''}">
+            <input type="date" id="cl-nascita" class="form-input" value="${client?.nascita||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Codice fiscale</label>
-            <input type="text" id="cl-codice-fiscale" class="form-input" value="${client?.codiceFiscale||''}">
+            <input type="text" id="cl-codice-fiscale" class="form-input" value="${client?.codiceFiscale||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Documento</label>
-            <input type="text" id="cl-documento" class="form-input" value="${client?.documento||''}">
+            <input type="text" id="cl-documento" class="form-input" value="${client?.documento||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Contatto emergenza</label>
-            <input type="text" id="cl-contatto-emergenza" class="form-input" value="${client?.contattoEmergenza||''}">
+            <input type="text" id="cl-contatto-emergenza" class="form-input" value="${client?.contattoEmergenza||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-group">
           <label>Indirizzo</label>
-          <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}">
+          <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}" ${personalReadOnlyAttr}>
         </div>
 
         <div class="form-section-label">Pacchetti acquistati</div>
@@ -1223,12 +1234,12 @@ const App = {
 
         <div class="form-group">
           <label>Note</label>
-          <textarea id="cl-notes" class="form-input" rows="2">${client?.notes||''}</textarea>
+          <textarea id="cl-notes" class="form-input" rows="2" ${personalReadOnlyAttr}>${client?.notes||''}</textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
-        <button class="btn-primary" onclick="App._saveClient('${clientId||''}')">
+        <button class="btn-primary" onclick="App._saveClient('${clientId||''}', ${packageOnly ? 'true' : 'false'})">
           ${isEdit?'Salva modifiche':'Salva cliente'}
         </button>
       </div>
@@ -1271,8 +1282,10 @@ const App = {
     </div>`;
   },
 
-  _saveClient(clientId) {
-    if (!App.guardStudioManagement()) return;
+  _saveClient(clientId, packageOnly = false) {
+    if (packageOnly) {
+      if (!App.guardPackageManagement(clientId)) return;
+    } else if (!App.guardStudioManagement()) return;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
       UI.showToast('Modalità PT: puoi salvare solo i tuoi clienti assegnati', 'error');
       return;
@@ -1289,7 +1302,6 @@ const App = {
     const pkgs      = [...document.querySelectorAll('input[name="pkg"]:checked')].map(el=>el.value);
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
-    const notes     = document.getElementById('cl-notes')?.value.trim();
     if (!App._limitClientDays()) return;
     const giorniSettimana = [...document.querySelectorAll('input[name="client-day"]:checked')].map(el=>el.value);
 
@@ -1300,6 +1312,12 @@ const App = {
     const currentMetrics = currentClient ? Services.getClientSessionMetrics(currentClient) : null;
     const completedSessions = currentMetrics?.completed || 0;
     const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
+    const rawNotes = packageOnly
+      ? String(currentClient?.notes || '')
+      : String(document.getElementById('cl-notes')?.value || '').trim();
+    const notes = packageOnly
+      ? App._withPtAudit(rawNotes, 'pacchetto aggiornato')
+      : rawNotes;
     const data = {
       nome, cognome, email, telefono, nascita, codiceFiscale, documento, indirizzo, contattoEmergenza,
       packageTypes: pkgs,
@@ -1309,7 +1327,7 @@ const App = {
       packageCycleStart: currentClient
         ? (currentClient.packageCycleStart || currentMetrics?.cycleStart || currentClient.packageStart || App._dateStr(new Date()))
         : App._dateStr(new Date()),
-      notes, active: true,
+      notes, active: currentClient ? currentClient.active !== false : true,
     };
 
     let saved;
@@ -1413,7 +1431,7 @@ const App = {
   },
 
   openPackageOverview(clientId) {
-    if (!App.guardStudioManagement()) return;
+    if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
 
@@ -1422,7 +1440,6 @@ const App = {
     const archivedStatus = !storedArchivedStatus || (isArchived && storedArchivedStatus.toLowerCase() === 'attivo')
       ? 'Archiviato'
       : storedArchivedStatus;
-    const readOnlyAttr = isArchived ? 'disabled' : '';
     const metrics = Services.getClientSessionMetrics(client);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
     const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
@@ -1432,7 +1449,9 @@ const App = {
     const displayAppointments = [...appointments].sort((a, b) =>
       `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`)
     );
-    const operators = State.getOperators().filter(o => o.active !== false);
+    const operators = State.getOperators()
+      .filter(o => o.active !== false)
+      .filter(o => !App.isPortalPtMode() || App._operatorKeys(o).some(key => App._operatorKeys(App.currentPortalOperator()).includes(key)));
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
     const today = App._dateStr(new Date());
@@ -1447,8 +1466,9 @@ const App = {
       const usesPackage = Services.serviceUsesPackageSessions(a.serviceId);
       const isCurrentCycle = usesPackage && Services.appointmentInCurrentPackageCycle(a, client);
       const cycleLabel = usesPackage ? (isCurrentCycle ? 'Ciclo corrente' : 'Storico') : 'Servizio extra';
-      const operatorOptions = State.getOperators()
-        .filter(op => op.active !== false)
+      const canEditRow = !isArchived && App.canEditAppointment(a);
+      const rowReadOnlyAttr = canEditRow ? '' : 'disabled';
+      const operatorOptions = operators
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
       const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
@@ -1457,31 +1477,31 @@ const App = {
       return `
         <tr>
           <td>
-            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}" ${readOnlyAttr}>
+            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}" ${rowReadOnlyAttr}>
           </td>
           <td>
             <div class="time-edit-cell">
-              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900" ${readOnlyAttr}>
+              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900" ${rowReadOnlyAttr}>
             </div>
           </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>
-            <select id="pkg-operator-${a.id}" class="form-input package-operator-input" ${readOnlyAttr}>
+            ${canEditRow ? `<select id="pkg-operator-${a.id}" class="form-input package-operator-input">
               <option value="">—</option>
               ${operatorOptions}
-            </select>
+            </select>` : `<span class="text-muted">${Services.operatorFullName(a.operatorId) || '—'}</span>`}
           </td>
           <td>
-            <select id="pkg-status-${a.id}" class="form-input package-status-input" ${readOnlyAttr}>
+            ${canEditRow ? `<select id="pkg-status-${a.id}" class="form-input package-status-input">
               ${statusOptions}
-            </select>
+            </select>` : `<span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>`}
           </td>
           <td><span class="role-tag">${cycleLabel}</span></td>
           <td>
-            ${isArchived ? '<span class="client-history-readonly">Solo storico</span>' : `<div class="package-row-actions">
+            ${!canEditRow ? '<span class="client-history-readonly">Solo lettura</span>' : `<div class="package-row-actions">
               <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
               <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
-              <button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>
+              ${App.isPortalPtMode() ? '' : `<button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>`}
             </div>`}
           </td>
         </tr>`;
@@ -1518,7 +1538,7 @@ const App = {
           <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
           <div><span>Fatte complessive</span><strong>${metrics.lifetimeCompleted}</strong></div>
           <div><span>Storico precedente</span><strong>${metrics.previousCompleted}</strong></div>
-          <div class="${String(client.statoPagamento || '').toLowerCase().includes('pagato') ? '' : 'warn'}"><span>Pagamento</span><strong>${client.statoPagamento || 'Da verificare'}</strong></div>
+          ${App.isPortalPtMode() ? '' : `<div class="${String(client.statoPagamento || '').toLowerCase().includes('pagato') ? '' : 'warn'}"><span>Pagamento</span><strong>${client.statoPagamento || 'Da verificare'}</strong></div>`}
         </div>
 
         ${!isArchived && metrics.needsCycleSetup ? `
@@ -1588,11 +1608,13 @@ const App = {
               </div>
               <div class="form-group">
                 <label>Pagamento rinnovo</label>
-                <select id="pkg-renew-payment" class="form-input">
-                  <option value="Pagato" ${client.statoPagamento === 'Pagato' ? 'selected' : ''}>Pagato</option>
-                  <option value="Da pagare" ${client.statoPagamento === 'Da pagare' || !client.statoPagamento ? 'selected' : ''}>Da pagare</option>
-                  <option value="Acconto" ${client.statoPagamento === 'Acconto' ? 'selected' : ''}>Acconto</option>
-                </select>
+                ${App.isPortalPtMode()
+                  ? '<div class="computed-field">Gestito dalla Direzione</div>'
+                  : `<select id="pkg-renew-payment" class="form-input">
+                      <option value="Pagato" ${client.statoPagamento === 'Pagato' ? 'selected' : ''}>Pagato</option>
+                      <option value="Da pagare" ${client.statoPagamento === 'Da pagare' || !client.statoPagamento ? 'selected' : ''}>Da pagare</option>
+                      <option value="Acconto" ${client.statoPagamento === 'Acconto' ? 'selected' : ''}>Acconto</option>
+                    </select>`}
               </div>
             </div>
           </div>
@@ -1615,10 +1637,10 @@ const App = {
       <div class="modal-footer">
         ${isArchived ? `
           <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
-          <button class="btn-primary" onclick="Clients.reactivate('${client.id}')">Riattiva cliente</button>
+          ${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="Clients.reactivate('${client.id}')">Riattiva cliente</button>`}
         ` : `
           <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
-          <button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>
+          ${App.isPortalPtMode() ? '' : `<button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>`}
           <button class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')">Rinnova pacchetto</button>
           <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
         `}
@@ -1648,14 +1670,14 @@ const App = {
   },
 
   _updateClientPackagePlan(clientId, { days = null, packageStart = '' } = {}) {
-    if (!App.guardStudioManagement()) return null;
-    if (!App.guardPortalEdit('client', clientId)) return null;
+    if (!App.guardPackageManagement(clientId)) return null;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx < 0) return null;
     const patch = {};
     if (Array.isArray(days)) patch.giorniSettimana = days;
     if (packageStart) patch.packageStart = packageStart;
+    if (App.isPortalPtMode()) patch.notes = App._withPtAudit(clients[idx].notes, 'pianificazione pacchetto aggiornata');
     clients[idx] = { ...clients[idx], ...patch };
     State.saveClients(clients);
     SupabaseSync.pushClient(clients[idx]);
@@ -1664,8 +1686,7 @@ const App = {
   },
 
   async _confirmCurrentPackageCycle(clientId) {
-    if (!App.guardStudioManagement()) return;
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx < 0) return;
@@ -1686,6 +1707,7 @@ const App = {
       packageCycleStart: cycleStart,
       sessionsTotal: metrics.total,
       sessionsRemaining: metrics.remaining,
+      notes: App._withPtAudit(client.notes, 'ciclo pacchetto confermato'),
     };
     const result = await SupabaseSync.pushClient(updated);
     if (result?.error) {
@@ -1762,7 +1784,8 @@ const App = {
         a.date >= fromDate &&
         a.serviceId === serviceId &&
         Array.isArray(a.clientIds) &&
-        a.clientIds.includes(clientId)
+        a.clientIds.includes(clientId) &&
+        (!App.isPortalPtMode() || App.canEditAppointment(a))
       )
       .map(appt => {
         const patch = {};
@@ -1774,16 +1797,15 @@ const App = {
   },
 
   _savePackageSchedule(clientId) {
-    if (!App.guardStudioManagement()) return;
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '';
-    const operatorId = App.isPortalPtMode() && App.portalOperatorId()
-      ? App.portalOperatorId()
+    const operatorId = App.isPortalPtMode()
+      ? ''
       : (document.getElementById('pkg-plan-operator')?.value || '');
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
@@ -1812,7 +1834,10 @@ const App = {
     });
     if (!saved) return;
     const touched = changes
-      .map(change => Services.updateAppointment(change.appt.id, change.patch))
+      .map(change => Services.updateAppointment(change.appt.id, {
+        ...change.patch,
+        notes: App._withPtAudit(change.appt.notes, 'orario pacchetto aggiornato'),
+      }))
       .filter(Boolean);
     touched.forEach(appt => SupabaseSync.pushAppointment(appt));
     if (CONFIG.SHEETS.enabled) touched.forEach(appt => Sheets.pushAppointment(appt));
@@ -1822,8 +1847,7 @@ const App = {
   },
 
   async _regenerateFuturePackageAppointments(clientId) {
-    if (!App.guardStudioManagement()) return;
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
@@ -1853,7 +1877,8 @@ const App = {
       a.date >= fromDate &&
       a.serviceId === serviceId &&
       Array.isArray(a.clientIds) &&
-      a.clientIds.includes(clientId)
+      a.clientIds.includes(clientId) &&
+      (!App.isPortalPtMode() || App.canEditAppointment(a))
     );
     const fallbackOperator = selectedOperator ||
       futureToReplace[0]?.operatorId ||
@@ -1871,22 +1896,37 @@ const App = {
     );
     if (!confirmed) return;
 
-    const backupClients = State.getClients();
+    const backupClients = State.getClients().map(client => ({ ...client }));
     const updatedClient = App._updateClientPackagePlan(clientId, {
       days,
       packageStart: fromDate
     });
     if (!updatedClient) return;
-    const backupAppointments = State.getAppointments();
+    const backupAppointments = State.getAppointments().map(appt => ({
+      ...appt,
+      clientIds: [...(appt.clientIds || [])],
+    }));
     const futureIds = new Set(futureToReplace.map(a => a.id));
-    State.saveAppointments(backupAppointments.filter(a => !futureIds.has(a.id)));
+    const cancelledReplacements = futureToReplace.map(appt => ({
+      ...appt,
+      status: 'annullato',
+      notes: App._withPtAudit(appt.notes, 'seduta sostituita dalla rigenerazione pacchetto'),
+      updatedAt: Date.now(),
+    }));
+    const cancelledById = new Map(cancelledReplacements.map(appt => [appt.id, appt]));
+    State.saveAppointments(App.isPortalPtMode()
+      ? backupAppointments.map(appt => cancelledById.get(appt.id) || appt)
+      : backupAppointments.filter(appt => !futureIds.has(appt.id)));
+    const syncReplacedAppointments = () => App.isPortalPtMode()
+      ? cancelledReplacements.map(appt => SupabaseSync.pushAppointment(appt))
+      : futureToReplace.map(appt => SupabaseSync.deleteAppointment(appt.id));
 
     const metricsAfterRemoval = Services.getClientSessionMetrics(updatedClient);
     const missing = metricsAfterRemoval.toSchedule;
     if (missing <= 0) {
-      await Promise.all(futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)));
+      await Promise.all(syncReplacedAppointments());
       Calendar.render();
-      UI.showToast('Pianificazione aggiornata: nessuna seduta futura da creare', 'success');
+      UI.showToast('Pianificazione aggiornata: le precedenti sedute restano nello storico', 'success');
       App.openPackageOverview(clientId);
       return;
     }
@@ -1906,9 +1946,12 @@ const App = {
         durationMin: service.durationMin || 60,
         bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
         status: 'prenotato',
-        notes: App._withPackageCycle(
-          `Rigenerata per cambio giorni da ${fromDate}`,
-          Services.getPackageCycleContext(updatedClient).start
+        notes: App._withPtAudit(
+          App._withPackageCycle(
+            `Rigenerata per cambio giorni da ${fromDate}`,
+            Services.getPackageCycleContext(updatedClient).start
+          ),
+          'seduta rigenerata dal pacchetto'
         ),
       };
       const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
@@ -1931,7 +1974,7 @@ const App = {
     }
 
     await Promise.all([
-      ...futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)),
+      ...syncReplacedAppointments(),
       ...created.map(a => SupabaseSync.pushAppointment(a)),
     ]);
     if (CONFIG.SHEETS.enabled) created.forEach(a => Sheets.pushAppointment(a));
@@ -1947,8 +1990,7 @@ const App = {
   },
 
   async _renewPackageAppointments(clientId) {
-    if (!App.guardStudioManagement()) return;
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
@@ -1960,7 +2002,9 @@ const App = {
       ? App.portalOperatorId()
       : (document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null);
     const renewCount = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
-    const paymentStatus = document.getElementById('pkg-renew-payment')?.value || currentClient.statoPagamento || 'Da pagare';
+    const paymentStatus = App.isPortalPtMode()
+      ? (currentClient.statoPagamento || 'Da pagare')
+      : (document.getElementById('pkg-renew-payment')?.value || currentClient.statoPagamento || 'Da pagare');
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
@@ -1983,7 +2027,8 @@ const App = {
       a.date >= fromDate &&
       a.serviceId === serviceId &&
       Array.isArray(a.clientIds) &&
-      a.clientIds.includes(clientId)
+      a.clientIds.includes(clientId) &&
+      (!App.isPortalPtMode() || App.canEditAppointment(a))
     );
     const operatorData = selectedOperator ? Services.getOperator(selectedOperator) : null;
     const operatorLabel = operatorData ? `${operatorData.nome} ${operatorData.cognome}` : 'senza PT assegnato';
@@ -1991,16 +2036,19 @@ const App = {
       `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n` +
       `Apro un nuovo ciclo di ${renewCount} sedute dal ${fromDate}: ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
       `${futureToCarry.length} sedute già programmate da quella data saranno assegnate al nuovo ciclo; creerò solo quelle mancanti.\n` +
-      `Pagamento rinnovo: ${paymentStatus}.\n` +
+      `${App.isPortalPtMode() ? 'Il pagamento resta invariato e gestito dalla Direzione.' : `Pagamento rinnovo: ${paymentStatus}.`}\n` +
       `Il ciclo precedente (${metrics.completed} fatte su ${metrics.total}) resterà nello storico e non verrà sommato.`
     );
     if (!confirmed) return;
 
-    const backupClients = State.getClients();
-    const backupAppointments = State.getAppointments();
+    const backupClients = State.getClients().map(client => ({ ...client }));
+    const backupAppointments = State.getAppointments().map(appt => ({
+      ...appt,
+      clientIds: [...(appt.clientIds || [])],
+    }));
     const carriedAppointments = futureToCarry.map(appt => ({
       ...appt,
-      notes: App._withPackageCycle(appt.notes, fromDate),
+      notes: App._withPtAudit(App._withPackageCycle(appt.notes, fromDate), 'seduta collegata al rinnovo pacchetto'),
       updatedAt: Date.now(),
     }));
     const carriedById = new Map(carriedAppointments.map(appt => [appt.id, appt]));
@@ -2015,6 +2063,7 @@ const App = {
       active: true,
       statoAbbonamento: currentClient.statoAbbonamento || 'Attivo',
       statoPagamento: paymentStatus,
+      notes: App._withPtAudit(currentClient.notes, 'pacchetto rinnovato'),
     };
     State.saveClients(backupClients.map(c => c.id === clientId ? updatedClient : c));
 
@@ -2052,7 +2101,15 @@ const App = {
         durationMin: service.durationMin || 60,
         bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
         status: 'prenotato',
-        notes: App._withPackageCycle(`Rinnovo pacchetto da ${fromDate} · Pagamento: ${paymentStatus}`, fromDate),
+        notes: App._withPtAudit(
+          App._withPackageCycle(
+            App.isPortalPtMode()
+              ? `Rinnovo pacchetto da ${fromDate}`
+              : `Rinnovo pacchetto da ${fromDate} · Pagamento: ${paymentStatus}`,
+            fromDate
+          ),
+          'seduta creata dal rinnovo pacchetto'
+        ),
       };
       const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
       if (!validation.ok) {
@@ -2120,9 +2177,18 @@ const App = {
       return;
     }
 
-    const saved = Services.updateAppointment(apptId, { date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus });
-    if (appt.status !== saved.status) App._consumeClientSessions(saved);
+    const saved = Services.updateAppointment(apptId, {
+      date: nextDate,
+      startTime: nextTime,
+      operatorId: nextOperatorId,
+      status: nextStatus,
+      notes: App._withPtAudit(appt.notes, 'seduta aggiornata dal quadro pacchetto'),
+    });
+    if (appt.status !== 'fatto' && saved.status === 'fatto') App._consumeClientSessions(saved);
     await SupabaseSync.pushAppointment(saved);
+    if (appt.status === 'fatto' && saved.status !== 'fatto' && App._recalculateClientSessions) {
+      await App._recalculateClientSessions(saved.clientIds || []);
+    }
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
     Calendar.render();
     UI.showToast('Appuntamento aggiornato', 'success');
@@ -2160,8 +2226,7 @@ const App = {
   },
 
   async _generateMissingPackageAppointments(clientId) {
-    if (!App.guardStudioManagement()) return;
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
 
@@ -2201,9 +2266,12 @@ const App = {
         durationMin: service.durationMin || 60,
         bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
         status: 'prenotato',
-        notes: App._withPackageCycle(
-          'Programmazione generata dal quadro pacchetto',
-          Services.getPackageCycleContext(client).start
+        notes: App._withPtAudit(
+          App._withPackageCycle(
+            'Programmazione generata dal quadro pacchetto',
+            Services.getPackageCycleContext(client).start
+          ),
+          'seduta generata dal pacchetto'
         ),
       };
       const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
@@ -2402,7 +2470,7 @@ const App = {
 
     const params = new URLSearchParams(window.location.search);
     const allowedViews = App.isPortalPtMode()
-      ? ['dashboard', 'day', 'week', 'clients']
+      ? ['dashboard', 'day', 'week', 'room', 'clients']
       : ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'operators'];
     const initialView = allowedViews.includes(params.get('view'))
       ? params.get('view')

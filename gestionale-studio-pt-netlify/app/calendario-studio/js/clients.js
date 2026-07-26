@@ -208,6 +208,7 @@ const Clients = (() => {
   function render() {
     const panel = document.getElementById('view-clients');
     if (!panel) return;
+    const ptMode = typeof App !== 'undefined' && App.isPortalPtMode?.();
     const allClients = typeof App !== 'undefined' && App.visibleClients
       ? App.visibleClients(State.getClients())
       : State.getClients();
@@ -219,8 +220,8 @@ const Clients = (() => {
     panel.innerHTML = `
       <div class="view-header">
         <div>
-          <div class="eyebrow">Anagrafica</div>
-          <div class="page-title">${showingHistory ? 'Storico <em>clienti</em>' : 'Clienti <em>attivi</em>'}</div>
+          <div class="eyebrow">${ptMode ? 'Pacchetti assegnati' : 'Anagrafica'}</div>
+          <div class="page-title">${showingHistory ? 'Storico <em>clienti</em>' : (ptMode ? 'I miei <em>clienti</em>' : 'Clienti <em>attivi</em>')}</div>
         </div>
         <div class="client-view-tabs" role="group" aria-label="Vista clienti">
           <button class="client-view-tab ${showingHistory ? '' : 'active'}" onclick="Clients.setView('active')">Attivi <span>${activeClients.length}</span></button>
@@ -251,7 +252,7 @@ const Clients = (() => {
               const metrics = getPackageMetrics(c);
               const remainingPct = metrics.total ? Math.round((metrics.remaining / metrics.total) * 100) : 0;
               return `
-              <tr class="${showingHistory ? 'row-inactive row-history' : ''}" onclick="${showingHistory ? `App.openPackageOverview('${c.id}')` : `App.openEditClient('${c.id}')`}">
+              <tr class="${showingHistory ? 'row-inactive row-history' : ''}" onclick="${showingHistory || ptMode ? `App.openPackageOverview('${c.id}')` : `App.openEditClient('${c.id}')`}">
                 <td>
                   <div class="op-name-cell">
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
@@ -319,12 +320,14 @@ const Clients = (() => {
                     <button class="btn-icon-sm" title="Quadro pacchetto" onclick="event.stopPropagation();App.openPackageOverview('${c.id}')">📊</button>
                     <button class="btn-icon-sm" title="Consenso informato" onclick="event.stopPropagation();window.open('consenso/?cliente=${encodeURIComponent(c.id)}','_blank')">📄</button>
                     ${showingHistory ? `
-                      <button class="btn-icon-sm" title="Riattiva cliente" onclick="event.stopPropagation();Clients.reactivate('${c.id}')">🟢</button>
+                      ${ptMode ? '' : `<button class="btn-icon-sm" title="Riattiva cliente" onclick="event.stopPropagation();Clients.reactivate('${c.id}')">🟢</button>`}
                     ` : `
-                      <button class="btn-icon-sm" title="Modifica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>
+                      ${ptMode ? '' : `<button class="btn-icon-sm" title="Modifica anagrafica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>`}
                       <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
-                      <button class="btn-icon-sm archive" title="Non rinnova: sposta nello storico" onclick="event.stopPropagation();Clients.markNotRenewing('${c.id}')">📥</button>
-                      <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
+                      ${ptMode ? '' : `
+                        <button class="btn-icon-sm archive" title="Non rinnova: sposta nello storico" onclick="event.stopPropagation();Clients.markNotRenewing('${c.id}')">📥</button>
+                        <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
+                      `}
                     `}
                   </div>
                 </td>
@@ -453,8 +456,7 @@ const Clients = (() => {
   }
 
   function alignResidual(clientId) {
-    if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
-    if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
+    if (typeof App !== 'undefined' && App.guardPackageManagement && !App.guardPackageManagement(clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx === -1) return;
@@ -464,6 +466,9 @@ const Clients = (() => {
       ...clients[idx],
       sessionsRemaining: metrics.computedRemaining,
       sessions_remaining: metrics.computedRemaining,
+      notes: typeof App !== 'undefined' && App._withPtAudit
+        ? App._withPtAudit(clients[idx].notes, 'residuo pacchetto allineato')
+        : clients[idx].notes,
     };
     State.saveClients(clients);
     SupabaseSync.pushClient(clients[idx]);
