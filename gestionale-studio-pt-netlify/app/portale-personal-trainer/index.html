@@ -2097,6 +2097,36 @@
       return result;
     }
 
+    async function verifyAccessToken(token) {
+      const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify_token", token })
+      });
+      const text = await response.text();
+      let result = {};
+      try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error || result.raw || "Sessione PT non valida o scaduta.");
+      }
+      return result;
+    }
+
+    async function activatePtSession(pt, token) {
+      appState.currentPt = pt;
+      appState.accessToken = token || "";
+      document.getElementById("loginButton").textContent = "Carico la tua area...";
+      await loadPortalData();
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("appShell").classList.remove("hidden");
+      document.getElementById("currentPtName").textContent = fullName(pt);
+      document.getElementById("avatar").textContent = initials(fullName(pt));
+      renderClientList();
+      const firstClient = myClients()[0];
+      selectClient(firstClient?.client_id || "");
+      showView("clientsView");
+    }
+
     async function sendAccessCode() {
       const email = document.getElementById("loginEmail").value.trim().toLowerCase();
       if (!email || !email.includes("@")) {
@@ -2156,18 +2186,7 @@
         document.getElementById("sendCodeButton").disabled = true;
         document.getElementById("loginButton").textContent = "Verifica accesso...";
         const access = await verifyAccess(email, code, pt.id);
-        appState.currentPt = pt;
-        appState.accessToken = access.token || "";
-        document.getElementById("loginButton").textContent = "Carico la tua area...";
-        await loadPortalData();
-        document.getElementById("loginScreen").classList.add("hidden");
-        document.getElementById("appShell").classList.remove("hidden");
-        document.getElementById("currentPtName").textContent = fullName(pt);
-        document.getElementById("avatar").textContent = initials(fullName(pt));
-        renderClientList();
-        const firstClient = myClients()[0];
-        selectClient(firstClient?.client_id || "");
-        showView("clientsView");
+        await activatePtSession(pt, access.token);
       } catch (error) {
         setLoginMessage(error.message || "Accesso non riuscito.");
       } finally {
@@ -4117,6 +4136,7 @@
     async function init() {
       const params = new URLSearchParams(window.location.search);
       const email = params.get("email") || "";
+      const accessToken = params.get("access") || "";
       appState.loginOperatorId = params.get("op") || "";
       if (email) document.getElementById("loginEmail").value = email;
       const loginButton = document.getElementById("loginButton");
@@ -4128,10 +4148,21 @@
         await loadOperators();
         if (!appState.operators.length) {
           setLoginMessage("Nessun Personal Trainer configurato nel database.");
+        } else if (accessToken) {
+          loginButton.textContent = "Verifico la sessione...";
+          const verified = await verifyAccessToken(accessToken);
+          const pt = appState.operators.find(operator =>
+            String(operator.id || "") === String(verified.operatorId || "") &&
+            String(operator.email || "").toLowerCase() === String(verified.email || "").toLowerCase()
+          );
+          if (!pt) throw new Error("Il profilo PT collegato alla sessione non e' piu attivo.");
+          await activatePtSession(pt, accessToken);
+          window.history.replaceState(null, "", window.location.pathname);
+          return;
         }
       } catch (error) {
         console.error(error);
-        setLoginMessage("Non riesco a caricare i dati del portale. Riprova tra poco.");
+        setLoginMessage(error.message || "Non riesco a caricare i dati del portale. Riprova tra poco.");
       } finally {
         loginButton.disabled = false;
         sendCodeButton.disabled = false;

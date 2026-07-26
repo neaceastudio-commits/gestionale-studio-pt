@@ -33,6 +33,8 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Flusso non rinnovo', clientsSource.includes('markNotRenewing(clientId)')],
   ['Riattivazione cliente', clientsSource.includes('reactivate(clientId)')],
   ['Filtro PT firmato', appSource.includes("action: 'verify_token'")],
+  ['Portale accetta la sessione Dashboard', portalSource.includes('const accessToken = params.get("access")') && portalSource.includes('activatePtSession(pt, accessToken)')],
+  ['Directory PT per la Dashboard', accessFunctionSource.includes("action === 'resolve'") && accessFunctionSource.includes('findPersonalTrainer')],
   ['PT cliente separato dal PT delle sedute', appSource.includes('Modifica il PT degli appuntamenti, non il PT assegnato al cliente.')],
   ['Assegnazione PT conservata negli aggiornamenti cliente', supabaseSource.includes('? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }')],
   ['Portale usa solo assegnazione esplicita', !portalSource.includes('inferredTrainerId(client.id)')],
