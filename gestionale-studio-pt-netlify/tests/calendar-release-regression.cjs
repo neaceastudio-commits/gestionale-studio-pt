@@ -39,6 +39,10 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Assegnazione PT conservata negli aggiornamenti cliente', supabaseSource.includes('? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }')],
   ['Portale usa solo assegnazione esplicita', !portalSource.includes('inferredTrainerId(client.id)')],
   ['Acquisizione assegna solo clienti ancora senza PT', acquisitionSource.includes('if(!currentPt&&p.ptId)patch.pt_assegnato=p.ptId;')],
+  ['Trasferimento cliente riservato alla Direzione', appSource.includes('openTransferClient(clientId)') && appSource.includes('if (!App.guardStudioManagement()) return;')],
+  ['Trasferimento aggiorna proprietà e sedute future', appSource.includes('ptAssegnato: newOperator.id') && appSource.includes('SupabaseSync.pushAppointment(change.after)')],
+  ['Sedute condivise protette dal trasferimento', appSource.includes('appointments.filter(appt => appt.clientIds.length > 1)')],
+  ['Comando trasferimento nascosto ai PT', clientsSource.includes("ptMode ? '' : `<button class=\"btn-icon-sm\" title=\"Trasferisci cliente a un altro PT\"")],
   ['Token PT firmato', accessFunctionSource.includes('function signAccessToken')],
   ['Funzione Apple Calendar', appleFunctionSource.includes('exports.handler') && appleFunctionSource.includes('BEGIN:VCALENDAR')],
 ].forEach(([label, condition]) => assert(label, condition));

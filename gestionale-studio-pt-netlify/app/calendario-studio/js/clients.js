@@ -323,6 +323,7 @@ const Clients = (() => {
                       ${ptMode ? '' : `<button class="btn-icon-sm" title="Riattiva cliente" onclick="event.stopPropagation();Clients.reactivate('${c.id}')">🟢</button>`}
                     ` : `
                       ${ptMode ? '' : `<button class="btn-icon-sm" title="Modifica anagrafica" onclick="event.stopPropagation();App.openEditClient('${c.id}')">✏️</button>`}
+                      ${ptMode ? '' : `<button class="btn-icon-sm" title="Trasferisci cliente a un altro PT" onclick="event.stopPropagation();App.openTransferClient('${c.id}')">⇄</button>`}
                       <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
                       ${ptMode ? '' : `
                         <button class="btn-icon-sm archive" title="Non rinnova: sposta nello storico" onclick="event.stopPropagation();Clients.markNotRenewing('${c.id}')">📥</button>

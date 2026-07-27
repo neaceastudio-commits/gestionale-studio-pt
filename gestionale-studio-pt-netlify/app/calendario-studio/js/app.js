@@ -1347,6 +1347,231 @@ const App = {
     UI.showToast(clientId?'Cliente aggiornato':'Cliente salvato','success');
   },
 
+  // ── TRASFERIMENTO CLIENTE TRA PT ─────────────────────
+  _assignedTrainer(client) {
+    const trainerKeys = App._clientTrainerKeys(client);
+    if (!trainerKeys.length) return null;
+    return State.getOperators().find(operator =>
+      App._operatorKeys(operator).some(key => trainerKeys.includes(key))
+    ) || null;
+  },
+
+  _isPtAppointment(appt) {
+    const service = Services.getService(appt?.serviceId);
+    return !!service?.requiredRoles?.includes('PT');
+  },
+
+  _clientTransferPlan(clientId, fromDate) {
+    const appointments = State.getAppointments().filter(appt =>
+      appt.date >= fromDate &&
+      !['fatto', 'annullato', 'noshow'].includes(appt.status) &&
+      Array.isArray(appt.clientIds) &&
+      appt.clientIds.includes(clientId) &&
+      App._isPtAppointment(appt)
+    );
+    return {
+      individual: appointments.filter(appt => appt.clientIds.length === 1),
+      shared: appointments.filter(appt => appt.clientIds.length > 1),
+    };
+  },
+
+  _refreshClientTransferSummary(clientId) {
+    const summary = document.getElementById('transfer-client-summary');
+    if (!summary) return;
+    const fromDate = document.getElementById('transfer-effective-date')?.value || App._dateStr(new Date());
+    const plan = App._clientTransferPlan(clientId, fromDate);
+    summary.innerHTML = `
+      <strong>${plan.individual.length}</strong> sedute future individuali saranno assegnate al nuovo PT.
+      ${plan.shared.length
+        ? `<br><strong>${plan.shared.length}</strong> sedute condivise resteranno invariate e andranno verificate manualmente.`
+        : '<br>Nessuna seduta condivisa da verificare.'}
+      <br>Le sedute già svolte e lo storico non verranno modificati.
+    `;
+  },
+
+  openTransferClient(clientId) {
+    if (!App.guardStudioManagement()) return;
+    const client = State.getClients().find(item => item.id === clientId);
+    if (!client || client.active === false) {
+      UI.showToast('Puoi trasferire solo un cliente attivo', 'error');
+      return;
+    }
+
+    const currentTrainer = App._assignedTrainer(client);
+    const trainers = State.getOperators()
+      .filter(operator => operator.active !== false)
+      .filter(operator => Array.isArray(operator.roles) && operator.roles.includes('PT'));
+    const availableTrainers = trainers.filter(operator => operator.id !== currentTrainer?.id);
+    if (!availableTrainers.length) {
+      UI.showToast('Non ci sono altri PT attivi disponibili', 'error');
+      return;
+    }
+
+    const today = App._dateStr(new Date());
+    const clientName = App._escapeHtml(`${client.nome || ''} ${client.cognome || ''}`.trim());
+    const currentTrainerName = currentTrainer
+      ? App._escapeHtml(App._operatorLabel(currentTrainer))
+      : 'Non assegnato';
+    const options = availableTrainers.map(operator =>
+      `<option value="${App._escapeHtml(operator.id)}">${App._escapeHtml(App._operatorLabel(operator))}</option>`
+    ).join('');
+
+    const html = `
+      <div class="modal-header">
+        <div>
+          <h3>Trasferisci cliente</h3>
+          <p class="modal-subtitle">${clientName}</p>
+        </div>
+        <button class="modal-close" onclick="UI.closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>PT attuale</label>
+            <div class="computed-field">${currentTrainerName}</div>
+          </div>
+          <div class="form-group">
+            <label>Nuovo PT *</label>
+            <select id="transfer-new-operator" class="form-input">
+              <option value="">— seleziona —</option>
+              ${options}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Decorrenza del trasferimento</label>
+          <input id="transfer-effective-date" class="form-input" type="date" value="${today}" min="${today}"
+                 onchange="App._refreshClientTransferSummary('${client.id}')">
+        </div>
+        <div id="transfer-client-summary" class="computed-field" style="line-height:1.6"></div>
+        <div class="form-hint" style="margin-top:10px">
+          Dopo il trasferimento il cliente sarà visibile al nuovo PT e non più al precedente.
+          L'operazione resta riservata alla Direzione.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
+        <button class="btn-primary" onclick="App._transferClient('${client.id}')">Conferma trasferimento</button>
+      </div>
+    `;
+    UI.openModal(html);
+    App._refreshClientTransferSummary(client.id);
+  },
+
+  async _transferClient(clientId) {
+    if (!App.guardStudioManagement()) return;
+    const clients = State.getClients();
+    const clientIndex = clients.findIndex(item => item.id === clientId);
+    const currentClient = clients[clientIndex];
+    if (clientIndex < 0 || !currentClient || currentClient.active === false) {
+      UI.showToast('Cliente non disponibile per il trasferimento', 'error');
+      return;
+    }
+
+    const newOperatorId = document.getElementById('transfer-new-operator')?.value || '';
+    const fromDate = document.getElementById('transfer-effective-date')?.value || App._dateStr(new Date());
+    const newOperator = State.getOperators().find(operator =>
+      operator.id === newOperatorId &&
+      operator.active !== false &&
+      Array.isArray(operator.roles) &&
+      operator.roles.includes('PT')
+    );
+    if (!newOperator) {
+      UI.showToast('Seleziona un nuovo PT attivo', 'error');
+      return;
+    }
+
+    const currentTrainer = App._assignedTrainer(currentClient);
+    if (currentTrainer?.id === newOperator.id) {
+      UI.showToast('Il cliente è già assegnato a questo PT', 'error');
+      return;
+    }
+
+    const plan = App._clientTransferPlan(clientId, fromDate);
+    const changes = plan.individual.map(appt => ({
+      before: appt,
+      after: { ...appt, operatorId: newOperator.id, updatedAt: Date.now() },
+    }));
+    const conflicts = changes
+      .map(change => ({
+        ...change,
+        validation: Services.canBookAppointment(change.after, { strictPackageDays: false }),
+      }))
+      .filter(change => !change.validation.ok);
+
+    if (conflicts.length) {
+      const detail = conflicts.slice(0, 10).map(change =>
+        `${App._fmtLongDate(change.after.date)} ${change.after.startTime}: ${change.validation.errors.join(' · ')}`
+      ).join('\n');
+      UI.showToast('Trasferimento non eseguito: il nuovo PT ha dei conflitti', 'error');
+      alert(`Risolvi prima questi conflitti:\n\n${detail}`);
+      return;
+    }
+
+    const oldTrainerName = currentTrainer ? App._operatorLabel(currentTrainer) : 'Non assegnato';
+    const newTrainerName = App._operatorLabel(newOperator);
+    const sharedWarning = plan.shared.length
+      ? `\n${plan.shared.length} sedute condivise resteranno con il PT attuale e dovranno essere verificate.`
+      : '';
+    const confirmed = confirm(
+      `Trasferire ${currentClient.nome} ${currentClient.cognome} da ${oldTrainerName} a ${newTrainerName} dal ${fromDate}?\n\n` +
+      `${changes.length} sedute future individuali saranno aggiornate.${sharedWarning}\n` +
+      'Le sedute già svolte e lo storico resteranno invariati.'
+    );
+    if (!confirmed) return;
+
+    const auditLine = `[TRASFERIMENTO PT ${App._dateStr(new Date())}] ${oldTrainerName} → ${newTrainerName} · decorrenza ${fromDate}`;
+    const updatedClient = {
+      ...currentClient,
+      ptAssegnato: newOperator.id,
+      pt_assegnato: newOperator.id,
+      notes: [String(currentClient.notes || '').trim(), auditLine].filter(Boolean).join('\n'),
+    };
+
+    try {
+      const appointmentResults = await Promise.all(changes.map(change =>
+        SupabaseSync.pushAppointment(change.after)
+      ));
+      if (appointmentResults.some(result => result?.error)) {
+        throw new Error('salvataggio sedute non riuscito');
+      }
+
+      const clientResult = await SupabaseSync.pushClient(updatedClient);
+      if (clientResult?.error) throw new Error('salvataggio cliente non riuscito');
+    } catch (error) {
+      await Promise.all([
+        ...changes.map(change =>
+          Promise.resolve(SupabaseSync.pushAppointment(change.before)).catch(() => null)
+        ),
+        Promise.resolve(SupabaseSync.pushClient(currentClient)).catch(() => null),
+      ]);
+      console.warn('[Trasferimento PT]', error);
+      UI.showToast('Trasferimento non completato: i dati precedenti sono stati ripristinati', 'error');
+      return;
+    }
+
+    const changesById = new Map(changes.map(change => [change.after.id, change.after]));
+    State.saveAppointments(State.getAppointments().map(appt => changesById.get(appt.id) || appt));
+    clients[clientIndex] = updatedClient;
+    State.saveClients(clients);
+    if (CONFIG.SHEETS.enabled) {
+      Sheets.pushClient(updatedClient);
+      changes.forEach(change => Sheets.pushAppointment(change.after));
+    }
+
+    UI.closeModal();
+    Calendar.render();
+    if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
+    UI.showToast(`Cliente trasferito a ${newTrainerName} · ${changes.length} sedute aggiornate`, 'success');
+    if (plan.shared.length) {
+      alert(
+        `Trasferimento completato.\n\n` +
+        `${plan.shared.length} sedute condivise non sono state modificate per non spostare anche gli altri clienti. ` +
+        'Apri il Quadro pacchetto per verificarle.'
+      );
+    }
+  },
+
   // ── QUADRO PACCHETTO CLIENTE ─────────────────────────
   _packageServiceId(client) {
     const pkgs = Array.isArray(client?.packageTypes) ? client.packageTypes : [];
@@ -1527,7 +1752,10 @@ const App = {
           </div>
           ${isArchived
             ? '<span class="client-history-badge">Storico in sola lettura</span>'
-            : `<button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>`}
+            : `<div class="action-btns">
+                ${App.isPortalPtMode() ? '' : `<button class="btn" onclick="App.openTransferClient('${client.id}')">Trasferisci PT</button>`}
+                <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
+              </div>`}
         </div>
 
         <div class="package-overview-kpis">
