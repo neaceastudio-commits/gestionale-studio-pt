@@ -168,6 +168,16 @@
     .crumbs, .save-state { color: var(--muted); font-size: 14px; }
     .save-state strong { color: var(--ok); }
     .user-chip { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
+    .access-role {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eaf2f9;
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
     .avatar {
       width: 36px;
       height: 36px;
@@ -180,6 +190,16 @@
     }
 
     .content { min-width: 0; padding: 26px 28px 44px; }
+    .readonly-banner {
+      margin-bottom: 18px;
+      padding: 13px 15px;
+      border: 1px solid #9cc2e4;
+      border-radius: 9px;
+      background: #edf6ff;
+      color: #174f7d;
+      line-height: 1.45;
+    }
+    .readonly-banner strong { color: var(--brand); }
     .app-view { display: none; min-width: 0; }
     .app-view.active { display: grid; gap: 18px; }
     .view-kicker {
@@ -308,8 +328,13 @@
 
     .client-list, .exercise-library { padding: 14px; display: grid; gap: 10px; }
     .client-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-    .client-search { padding: 10px 10px 0; }
-    .client-search input { background: #fbfdff; }
+    .client-search {
+      padding: 10px 10px 0;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(190px, .45fr);
+      gap: 10px;
+    }
+    .client-search input, .client-search select { background: #fbfdff; }
     .client-card, .library-card {
       border: 1px solid transparent;
       background: #f7fafc;
@@ -989,6 +1014,7 @@
       .sheet-meta .field-wide { grid-column: span 1; }
       .client-focus { grid-template-columns: 1fr; }
       .client-focus .actions { justify-content: flex-start; }
+      .client-search { grid-template-columns: 1fr; }
       .sheet-toolbar { grid-template-columns: 1fr; }
       .exercise-modal-body { grid-template-columns: 1fr; }
       .exercise-modal-body > .form-grid,
@@ -1062,10 +1088,15 @@
           <div class="crumbs" id="crumbs">Clienti / - / Scheda interna</div>
           <div class="save-state" id="saveState" role="status" aria-live="polite">Bozza pronta</div>
         </div>
-        <div class="user-chip"><div class="avatar" id="avatar">PT</div><span id="currentPtName">Personal Trainer</span></div>
+        <div class="user-chip">
+          <div class="avatar" id="avatar">PT</div>
+          <span id="currentPtName">Personal Trainer</span>
+          <span class="access-role" id="currentAccessRole">PT</span>
+        </div>
       </header>
 
       <section class="content">
+        <div class="readonly-banner hidden" id="readonlyBanner" role="status" aria-live="polite"></div>
         <section class="app-view active" id="summaryView" aria-labelledby="summaryTitle">
           <div class="hero">
             <div>
@@ -1089,9 +1120,9 @@
         <section class="app-view" id="clientsView" aria-labelledby="clientsTitle">
           <div class="hero">
             <div>
-              <p class="view-kicker">Anagrafica assegnata</p>
+              <p class="view-kicker" id="clientsKicker">Anagrafica assegnata</p>
               <h1 id="clientsTitle">Clienti</h1>
-              <p class="subtitle">Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.</p>
+              <p class="subtitle" id="clientsSubtitle">Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.</p>
             </div>
             <div class="actions">
               <button class="btn primary" id="openSelectedSheetBtn" type="button">Apri programma</button>
@@ -1099,10 +1130,14 @@
             </div>
           </div>
           <div class="panel" id="clientPanel">
-            <div class="panel-head"><h2 class="panel-title">I miei clienti</h2></div>
+            <div class="panel-head"><h2 class="panel-title" id="clientPanelTitle">I miei clienti</h2></div>
             <div class="client-search">
-              <label for="clientSearch">Cerca cliente</label>
-              <input id="clientSearch" type="search" autocomplete="off" placeholder="Nome, email o obiettivo">
+              <label for="clientSearch">Cerca cliente
+                <input id="clientSearch" type="search" autocomplete="off" placeholder="Nome, email, obiettivo o PT">
+              </label>
+              <label class="hidden" id="trainerFilterField" for="trainerFilter">Filtra per Personal Trainer
+                <select id="trainerFilter"><option value="">Tutti i Personal Trainer</option></select>
+              </label>
             </div>
             <div class="client-list" id="clientList"></div>
           </div>
@@ -1127,7 +1162,7 @@
               <button class="btn good" id="openSheetBtn" type="button">Crea o modifica programma</button>
             </div>
           </div>
-          <div class="panel requires-client">
+          <div class="panel requires-client" id="programActionsPanel">
             <div class="panel-head"><h2 class="panel-title">Azioni programma</h2></div>
             <div class="program-actions">
               <button class="btn" id="resetBtn"><span class="icon">+</span>Nuovo programma</button>
@@ -1433,6 +1468,7 @@
       selectedProgramId: "",
       loginOperatorId: "",
       clientFilter: "",
+      trainerFilter: "",
       activeView: "clientsView",
       accessToken: "",
       manualPlan: [],
@@ -1787,7 +1823,8 @@
     }
 
     function isAdministrator(op) {
-      return operatorRoles(op).some(role => ["admin", "administrator", "amministratore", "owner", "titolare", "super_admin"].includes(String(role).toLowerCase()));
+      if (String(op?.accessLevel || "").toLowerCase() === "owner") return true;
+      return operatorRoles(op).some(role => ["admin", "administrator", "amministratore", "owner", "titolare", "super_admin", "direzione"].includes(String(role).toLowerCase()));
     }
 
     function operatorFromAny(value) {
@@ -1807,6 +1844,40 @@
 
     function clientTrainerId(client) {
       return operatorIdFromAny(client?.trainer_id || client?.pt_assegnato || client?.operator_id);
+    }
+
+    function trainerForClient(client) {
+      return operatorFromAny(clientTrainerId(client));
+    }
+
+    function programTrainer(program) {
+      const data = program?.data || {};
+      const audit = Array.isArray(data.audit_log) ? data.audit_log : [];
+      return operatorFromAny(
+        data.trainer_id ||
+        data.created_by ||
+        data.save_meta?.saved_by ||
+        data.matrix?.trainer?.id ||
+        audit.at(-1)?.by
+      );
+    }
+
+    function canEditClient(client = selectedClient()) {
+      return !!(
+        appState.currentPt &&
+        client &&
+        String(clientTrainerId(client)) === String(appState.currentPt.id)
+      );
+    }
+
+    function isReadOnlySelection() {
+      return !!selectedClient() && isAdministrator(appState.currentPt) && !canEditClient();
+    }
+
+    function requireEditableClient() {
+      if (canEditClient()) return true;
+      showToast("Modalità Proprietario: le schede degli altri PT sono disponibili solo in lettura");
+      return false;
     }
 
     function sessionTrainerId(session) {
@@ -2122,6 +2193,7 @@
       document.getElementById("appShell").classList.remove("hidden");
       document.getElementById("currentPtName").textContent = fullName(pt);
       document.getElementById("avatar").textContent = initials(fullName(pt));
+      renderAccessScope();
       renderClientList();
       const firstClient = myClients()[0];
       selectClient(firstClient?.client_id || "");
@@ -2247,17 +2319,21 @@
     }
 
     function writeLocalState(savedAt = new Date().toISOString()) {
+      if (!canEditClient()) return false;
       state.lastSavedAt = savedAt;
       state.draftProgramId = appState.selectedProgramId || "";
       state.draftClientId = appState.selectedClientId || "";
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
     }
 
     function saveState(silent = true) {
+      if (!canEditClient()) return false;
       state.localDirty = true;
       writeLocalState();
       renderSaveState("local");
       if (!silent) showToast("Bozza locale salvata");
+      return true;
     }
 
     function stateVersion(targetState = state) {
@@ -2276,6 +2352,7 @@
     }
 
     function queueCloudSave(exerciseId = "") {
+      if (!canEditClient()) return;
       if (exerciseId) {
         pendingExerciseIds.add(String(exerciseId));
         markExerciseSaveState(exerciseId, "saving", "Salvataggio...");
@@ -2288,7 +2365,7 @@
     async function flushCloudSave() {
       clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
-      if (!appState.currentPt || !selectedClient()) return false;
+      if (!canEditClient()) return false;
       if (cloudSaveRunning) {
         cloudSaveQueued = true;
         return false;
@@ -2321,11 +2398,13 @@
     }
 
     function autosave(exerciseId = "") {
+      if (!canEditClient()) return false;
       state.localDirty = true;
       stateVersions.set(state, stateVersion(state) + 1);
       writeLocalState();
       renderSaveState("autosave");
       queueCloudSave(exerciseId);
+      return true;
     }
 
     function stateFromProgram(program) {
@@ -2411,101 +2490,169 @@
     function renderClientList() {
       const term = appState.clientFilter.trim().toLowerCase();
       const assignedClients = myClients();
-      const clients = assignedClients.filter(client => !term || [
-        fullName(client),
-        client.email,
-        client.obiettivo
-      ].some(value => String(value || "").toLowerCase().includes(term)));
+      const clients = assignedClients.filter(client => {
+        const trainer = trainerForClient(client);
+        const matchesTrainer = !appState.trainerFilter || String(clientTrainerId(client)) === String(appState.trainerFilter);
+        const matchesTerm = !term || [
+          fullName(client),
+          client.email,
+          client.obiettivo,
+          fullName(trainer)
+        ].some(value => String(value || "").toLowerCase().includes(term));
+        return matchesTrainer && matchesTerm;
+      });
       document.getElementById("clientList").innerHTML = clients.length ? clients.map(client => `
         <button class="client-card ${client.client_id === appState.selectedClientId ? "active" : ""}" data-client-id="${escapeAttr(client.client_id)}" aria-pressed="${client.client_id === appState.selectedClientId}">
           <strong>${escapeHtml(fullName(client))}</strong>
           <span>${escapeHtml(client.obiettivo || client.email || "Cliente PT")}</span>
+          ${isAdministrator(appState.currentPt) ? `<span>PT: ${escapeHtml(fullName(trainerForClient(client)) || "Non assegnato")}</span>` : ""}
           <span>${programsForClient(client.client_id).length} programmi salvati${client.client_id === appState.selectedClientId ? " · Selezionato" : ""}</span>
         </button>
-      `).join("") : `<div class="client-card"><strong>${assignedClients.length ? "Nessun risultato" : "Nessun cliente"}</strong><span>${assignedClients.length ? "Prova con un altro nome o obiettivo." : "Nessun cliente assegnato a questo PT."}</span></div>`;
+      `).join("") : `<div class="client-card"><strong>${assignedClients.length ? "Nessun risultato" : "Nessun cliente"}</strong><span>${assignedClients.length ? "Prova con un altro nome, obiettivo o PT." : "Nessun cliente assegnato a questo PT."}</span></div>`;
       document.querySelectorAll("[data-client-id]").forEach(button => {
         button.addEventListener("click", () => {
           selectClient(button.dataset.clientId);
-          showView("builderView");
+          showView(isReadOnlySelection() ? "programsView" : "builderView");
         });
       });
+    }
+
+    function renderAccessScope() {
+      const owner = isAdministrator(appState.currentPt);
+      const trainerFilterField = document.getElementById("trainerFilterField");
+      const trainerFilter = document.getElementById("trainerFilter");
+      trainerFilterField?.classList.toggle("hidden", !owner);
+      if (trainerFilter && owner) {
+        const selectedValue = appState.trainerFilter;
+        trainerFilter.innerHTML = `
+          <option value="">Tutti i Personal Trainer</option>
+          ${appState.operators.map(operator => `<option value="${escapeAttr(operator.id)}">${escapeHtml(fullName(operator))}</option>`).join("")}
+        `;
+        trainerFilter.value = selectedValue;
+      }
+      document.getElementById("currentAccessRole").textContent = owner ? "Proprietario" : "PT";
+      document.getElementById("clientsKicker").textContent = owner ? "Controllo attività Personal Trainer" : "Anagrafica assegnata";
+      document.getElementById("clientsSubtitle").textContent = owner
+        ? "Seleziona un cliente per consultare, senza modificarle, le schede preparate dal Personal Trainer assegnato."
+        : "Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.";
+      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti";
     }
 
     function setEditorAvailability() {
       const hasClient = !!selectedClient();
       const hasPt = !!appState.currentPt;
-      ["saveBtn", "resetBtn", "newMonthBtn", "openSheetBtn", "openSelectedSheetBtn", "openSelectedProgramsBtn", "addSheetBtn", "removeSheetBtn", "addExerciseBtn", "duplicateSheetBtn", "addSessionBtn", "removeSessionBtn", "compactBtn", "inlineAddExerciseBtn", "createNewProgramBtn"].forEach(id => {
+      const canEdit = canEditClient();
+      const readOnly = isReadOnlySelection();
+      ["openSheetBtn", "openSelectedSheetBtn", "openSelectedProgramsBtn", "compactBtn"].forEach(id => {
         const button = document.getElementById(id);
         if (button) button.disabled = !hasClient;
+      });
+      ["saveBtn", "resetBtn", "newMonthBtn", "addSheetBtn", "removeSheetBtn", "addExerciseBtn", "duplicateSheetBtn", "addSessionBtn", "removeSessionBtn", "inlineAddExerciseBtn", "createNewProgramBtn"].forEach(id => {
+        const button = document.getElementById(id);
+        if (button) button.disabled = !canEdit;
       });
       const calendarButton = document.getElementById("calendarBtn");
       if (calendarButton) calendarButton.disabled = !hasPt;
       const historySelect = document.getElementById("programHistory");
       if (historySelect) historySelect.disabled = !hasClient;
-      ["inlineLine", "inlineExerciseSearch", "inlineGroup", "inlineProgression", "inlineRecovery", "inlineNotes"].forEach(id => {
+      ["period", "goal", "level", "frequency", "warmup", "generalNotes", "inlineLine", "inlineExerciseSearch", "inlineGroup", "inlineProgression", "inlineRecovery", "inlineNotes"].forEach(id => {
         const field = document.getElementById(id);
-        if (field) field.disabled = !hasClient;
+        if (field) field.disabled = !canEdit;
       });
       ["saveCustomExerciseBtn", "customExerciseName", "customExerciseLine", "customExerciseGroup", "customExerciseRecovery", "customExerciseTags", "customExerciseNotes"].forEach(id => {
         const field = document.getElementById(id);
         if (field) field.disabled = !hasPt;
       });
+      document.querySelectorAll("#exerciseStack input, #exerciseStack select, #exerciseStack textarea, #exerciseStack button, #sheetPreviewStack input, #sheetPreviewStack select, #sheetPreviewStack textarea, #sheetPreviewStack button, #sessionRow button").forEach(field => {
+        field.disabled = !canEdit;
+      });
+      const saveButton = document.getElementById("saveBtn");
+      if (saveButton) saveButton.classList.toggle("hidden", readOnly);
+      const programActions = document.getElementById("programActionsPanel");
+      if (programActions) programActions.classList.toggle("hidden", readOnly);
+      const openSheetButton = document.getElementById("openSheetBtn");
+      if (openSheetButton) openSheetButton.textContent = readOnly ? "Visualizza struttura" : "Crea o modifica programma";
+      document.querySelectorAll('.nav-btn[data-view="builderView"]').forEach(button => {
+        button.textContent = readOnly ? (button.closest(".mobile-nav") ? "Visualizza" : "Visualizza struttura") : (button.closest(".mobile-nav") ? "Crea" : "Crea programma");
+      });
+      const banner = document.getElementById("readonlyBanner");
+      if (banner) {
+        banner.classList.toggle("hidden", !readOnly);
+        if (readOnly) {
+          banner.innerHTML = `<strong>Modalità Proprietario · sola lettura.</strong> Stai consultando la scheda gestita da ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Nessun dato può essere modificato o salvato dal tuo accesso.`;
+        } else {
+          banner.textContent = "";
+        }
+      }
       document.querySelectorAll(".requires-client").forEach(element => {
         element.style.opacity = hasClient ? "1" : ".5";
       });
     }
 
     function selectClient(clientId) {
-      if (state.localDirty && selectedClient()) flushCloudSave();
+      if (state.localDirty && canEditClient()) flushCloudSave();
       appState.selectedClientId = clientId || "";
       const client = selectedClient();
       const program = latestClientProgram(clientId);
       const savedFromProgram = stateFromProgram(program);
       const newDraftKey = storageKeyFor(clientId, "");
-      const newDraft = readLocalState(newDraftKey);
       const programKey = storageKeyFor(clientId, program?.id || "");
-      const programDraft = readLocalState(programKey) || readLocalState(legacyStorageKeyFor(clientId));
-
-      if (newDraft && localIsNewer(newDraft, program)) {
-        appState.selectedProgramId = "";
-        STORAGE_KEY = newDraftKey;
-        state = newDraft;
-        appState.saveMode = "local";
-      } else if (programDraft && localIsNewer(programDraft, program)) {
-        appState.selectedProgramId = program?.id || programDraft.draftProgramId || "";
-        STORAGE_KEY = storageKeyFor(clientId, appState.selectedProgramId);
-        state = programDraft;
-        appState.saveMode = "local";
-      } else if (savedFromProgram) {
-        appState.selectedProgramId = program.id;
+      if (!canEditClient(client)) {
+        appState.selectedProgramId = program?.id || "";
         STORAGE_KEY = programKey;
-        state = savedFromProgram;
-        appState.saveMode = "supabase";
+        state = savedFromProgram || clientDefaultState(client);
+        state.localDirty = false;
+        appState.saveMode = program ? "readonly" : "readonly-empty";
       } else {
-        appState.selectedProgramId = "";
-        STORAGE_KEY = newDraftKey;
-        state = newDraft || clientDefaultState(client);
-        appState.saveMode = newDraft ? "local" : "draft";
+        const newDraft = readLocalState(newDraftKey);
+        const programDraft = readLocalState(programKey) || readLocalState(legacyStorageKeyFor(clientId));
+        if (newDraft && localIsNewer(newDraft, program)) {
+          appState.selectedProgramId = "";
+          STORAGE_KEY = newDraftKey;
+          state = newDraft;
+          appState.saveMode = "local";
+        } else if (programDraft && localIsNewer(programDraft, program)) {
+          appState.selectedProgramId = program?.id || programDraft.draftProgramId || "";
+          STORAGE_KEY = storageKeyFor(clientId, appState.selectedProgramId);
+          state = programDraft;
+          appState.saveMode = "local";
+        } else if (savedFromProgram) {
+          appState.selectedProgramId = program.id;
+          STORAGE_KEY = programKey;
+          state = savedFromProgram;
+          appState.saveMode = "supabase";
+        } else {
+          appState.selectedProgramId = "";
+          STORAGE_KEY = newDraftKey;
+          state = newDraft || clientDefaultState(client);
+          appState.saveMode = newDraft ? "local" : "draft";
+        }
       }
       renderClientList();
       renderAll();
     }
 
     function selectProgram(programId) {
-      if (state.localDirty && selectedClient()) flushCloudSave();
+      if (state.localDirty && canEditClient()) flushCloudSave();
       const program = appState.programs.find(item => item.id === programId && item.client_id === appState.selectedClientId) || null;
       appState.selectedProgramId = program?.id || "";
       STORAGE_KEY = storageKeyFor(appState.selectedClientId, appState.selectedProgramId);
-      const localDraft = readLocalState(STORAGE_KEY);
-      if (localDraft && localIsNewer(localDraft, program)) {
-        state = localDraft;
-        appState.saveMode = "local";
-      } else if (program) {
+      if (!canEditClient()) {
         state = stateFromProgram(program) || clientDefaultState(selectedClient());
-        appState.saveMode = "supabase";
+        state.localDirty = false;
+        appState.saveMode = program ? "readonly" : "readonly-empty";
       } else {
-        state = localDraft || clientDefaultState(selectedClient());
-        appState.saveMode = localDraft ? "local" : "draft";
+        const localDraft = readLocalState(STORAGE_KEY);
+        if (localDraft && localIsNewer(localDraft, program)) {
+          state = localDraft;
+          appState.saveMode = "local";
+        } else if (program) {
+          state = stateFromProgram(program) || clientDefaultState(selectedClient());
+          appState.saveMode = "supabase";
+        } else {
+          state = localDraft || clientDefaultState(selectedClient());
+          appState.saveMode = localDraft ? "local" : "draft";
+        }
       }
       renderAll();
     }
@@ -2589,7 +2736,9 @@
         container.innerHTML = `<div class="empty-focus"><strong>Seleziona un cliente</strong>Apri l'area Clienti per vedere e gestire il suo archivio schede.</div>`;
         return;
       }
-      const draftCard = !appState.selectedProgramId ? `
+      const editable = canEditClient();
+      const assignedTrainer = trainerForClient(selectedClient());
+      const draftCard = editable && !appState.selectedProgramId ? `
         <article class="program-card active">
           <div>
             <span class="program-state local">Sincronizzazione automatica in corso</span>
@@ -2610,18 +2759,24 @@
         const exercises = stateExerciseCount(programState);
         const hasLocalChanges = isActive && state.localDirty;
         const lastAudit = Array.isArray(program.data?.audit_log) ? program.data.audit_log.at(-1) : null;
+        const trainer = programTrainer(program) || assignedTrainer;
         return `
           <article class="program-card ${isActive ? "active" : ""}">
             <div>
-              <span class="program-state ${hasLocalChanges ? "local" : ""}">${hasLocalChanges ? "Sincronizzazione..." : "Salvato automaticamente"}</span>
+              <span class="program-state ${hasLocalChanges ? "local" : ""}">${editable ? (hasLocalChanges ? "Sincronizzazione..." : "Salvato automaticamente") : "Sola lettura"}</span>
               <h3>${escapeHtml(periodLabel(isActive ? programState?.meta?.period : program.period))}</h3>
-              <p>${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}${lastAudit ? ` · da ${escapeHtml(lastAudit.email || lastAudit.by || "PT")}` : ""}</p>
+              <p>PT: ${escapeHtml(fullName(trainer) || "Non identificato")} · ${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}${lastAudit ? ` · ultimo intervento ${escapeHtml(lastAudit.email || fullName(operatorFromAny(lastAudit.by)) || "PT")}` : ""}</p>
             </div>
             <div class="actions">
-              <button class="btn primary" type="button" data-open-program="${escapeAttr(program.id)}">Crea / modifica</button>
-              <button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Usa scheda</button>
-              <button class="btn" type="button" data-duplicate-program="${escapeAttr(program.id)}">Duplica</button>
-              <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Archivia</button>
+              ${editable ? `
+                <button class="btn primary" type="button" data-open-program="${escapeAttr(program.id)}">Crea / modifica</button>
+                <button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Usa scheda</button>
+                <button class="btn" type="button" data-duplicate-program="${escapeAttr(program.id)}">Duplica</button>
+                <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Archivia</button>
+              ` : `
+                <button class="btn primary" type="button" data-preview-program="${escapeAttr(program.id)}">Visualizza scheda</button>
+                <button class="btn" type="button" data-open-program="${escapeAttr(program.id)}">Vedi struttura</button>
+              `}
             </div>
           </article>`;
       }).join("");
@@ -2635,10 +2790,14 @@
               <p>Archiviata ${escapeHtml(new Date(program.data.archived_at || program.updated_at || Date.now()).toLocaleString("it-IT"))}</p>
             </div>
             <div class="actions">
-              <button class="btn" type="button" data-restore-program="${escapeAttr(program.id)}">Ripristina</button>
+              ${editable
+                ? `<button class="btn" type="button" data-restore-program="${escapeAttr(program.id)}">Ripristina</button>`
+                : `<button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Visualizza</button>`}
             </div>
           </article>`).join("");
-      const emptyState = `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`;
+      const emptyState = editable
+        ? `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`
+        : `<div class="empty-focus"><strong>Nessuna scheda salvata</strong>Il Personal Trainer assegnato non ha ancora salvato programmi per questo cliente.</div>`;
       const archiveSection = archivedCards
         ? `<details class="archive-panel"><summary>Schede archiviate (${programsForClient(appState.selectedClientId, true).filter(program => program.archived).length})</summary><div class="program-list">${archivedCards}</div></details>`
         : "";
@@ -2728,15 +2887,28 @@
         autosave: "Bozza locale",
         saving: "Salvataggio...",
         supabase: "Salvata",
-        error: "Da sincronizzare"
+        error: "Da sincronizzare",
+        readonly: "Sola lettura",
+        "readonly-empty": "Nessuna scheda"
       })[appState.saveMode] || "Bozza";
       document.getElementById("clientContext").textContent = client
-        ? `${fullName(client)}${client.obiettivo ? ` · Obiettivo: ${client.obiettivo}` : ""}. Ogni modifica viene salvata subito e sincronizzata automaticamente.`
+        ? isReadOnlySelection()
+          ? `${fullName(client)}${client.obiettivo ? ` · Obiettivo: ${client.obiettivo}` : ""}. Consultazione della scheda di ${fullName(trainerForClient(client)) || "un altro PT"} in sola lettura.`
+          : `${fullName(client)}${client.obiettivo ? ` · Obiettivo: ${client.obiettivo}` : ""}. Ogni modifica viene salvata subito e sincronizzata automaticamente.`
         : "Seleziona un cliente per creare o aggiornare la sua scheda di allenamento.";
     }
 
     function renderSaveState(prefix) {
       const el = document.getElementById("saveState");
+      if (isReadOnlySelection()) {
+        appState.saveMode = appState.selectedProgramId ? "readonly" : "readonly-empty";
+        el.innerHTML = appState.selectedProgramId
+          ? "Modalità Proprietario · <strong>sola lettura</strong>"
+          : "Modalità Proprietario · <strong>nessuna scheda salvata</strong>";
+        const metricStatus = document.getElementById("metricStatus");
+        if (metricStatus) metricStatus.textContent = appState.selectedProgramId ? "Sola lettura" : "Nessuna scheda";
+        return;
+      }
       if (prefix) appState.saveMode = prefix;
       const effectivePrefix = prefix || appState.saveMode;
       const metricStatus = document.getElementById("metricStatus");
@@ -2953,8 +3125,8 @@
         if (!silent) showToast("Seleziona un cliente prima di salvare");
         return false;
       }
-      if (!isAdministrator(appState.currentPt) && String(clientTrainerId(client)) !== String(appState.currentPt.id)) {
-        if (!silent) showToast("Puoi salvare solo i clienti assegnati al tuo profilo");
+      if (!canEditClient(client)) {
+        if (!silent) showToast("Modalità Proprietario: non puoi modificare le schede degli altri PT");
         return false;
       }
       const saveButton = document.getElementById("saveBtn");
@@ -3446,7 +3618,7 @@
 
     function selectOperationalWeek(index) {
       state.activeWeekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(index) || 0));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (canEditClient()) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       renderExercises();
     }
 
@@ -3546,8 +3718,12 @@
       clientName.textContent = client ? fullName(client) : "Nessun cliente selezionato";
       period.textContent = periodLabel(state.meta.period);
       document.getElementById("previewClientMeta").textContent = client?.obiettivo
-        ? `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
-        : "Modifiche e carichi vengono salvati automaticamente.";
+        ? isReadOnlySelection()
+          ? `Obiettivo: ${client.obiettivo} · consultazione in sola lettura`
+          : `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
+        : isReadOnlySelection()
+          ? "Consultazione in sola lettura."
+          : "Modifiche e carichi vengono salvati automaticamente.";
       document.getElementById("sheetPreviewTitle").textContent = `Allenamento ${state.currentSheet}`;
       details.textContent = `${periodLabel(state.meta.period)} · ${state.sessions.length} settimane · ${exercises.length} esercizi`;
       tabs.innerHTML = state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" type="button" data-preview-sheet="${escapeAttr(key)}">Allenamento ${escapeHtml(key)}</button>`).join("");
@@ -4089,6 +4265,7 @@
     }
 
     async function deleteProgram(programId) {
+      if (!requireEditableClient()) return;
       const program = appState.programs.find(item => item.id === programId);
       if (!program || !confirmAction(`Archiviare la scheda di ${periodLabel(program.period)}? Potrai ripristinarla in qualsiasi momento.`)) return;
       try {
@@ -4138,6 +4315,7 @@
     }
 
     async function restoreProgram(programId) {
+      if (!requireEditableClient()) return;
       const program = appState.programs.find(item => item.id === programId);
       if (!program?.archived || !confirmAction(`Ripristinare la scheda di ${periodLabel(program.period)}?`)) return;
       try {
@@ -4195,6 +4373,7 @@
       if (viewId === "sheetView") renderSheetPreview();
       renderMetrics();
       renderClientFocus();
+      setEditorAvailability();
     }
 
     function handleSideNav(button) {
@@ -4283,6 +4462,10 @@
     document.getElementById("exerciseSearch").addEventListener("input", renderLibrary);
     document.getElementById("clientSearch").addEventListener("input", event => {
       appState.clientFilter = event.target.value;
+      renderClientList();
+    });
+    document.getElementById("trainerFilter").addEventListener("change", event => {
+      appState.trainerFilter = event.target.value;
       renderClientList();
     });
     document.getElementById("inlineLine").addEventListener("change", () => {
