@@ -140,8 +140,16 @@ const Services = (() => {
     return renewals.length ? renewals[renewals.length - 1][1] : '';
   }
 
+  function extractAppointmentPackageCycleId(appt) {
+    return typeof PackageLedger !== 'undefined'
+      ? PackageLedger.appointmentCycleId(appt?.notes)
+      : (String(appt?.notes || '').match(/\[CICLO-PACCHETTO-ID\s+([a-zA-Z0-9_-]+)\]/i)?.[1] || '');
+  }
+
   function getPackageCycleContext(client) {
-    if (!client?.id) return { start: '', persisted: false, inferredFromAppointment: false };
+    if (!client?.id) return { start: '', id: '', legacy: true, persisted: false, inferredFromAppointment: false };
+    const ledger = typeof PackageLedger !== 'undefined' ? PackageLedger.parse(client) : null;
+    const currentLedgerCycle = ledger && !ledger.parseError ? PackageLedger.currentCycle(ledger) : null;
     const persistedStart = String(client.packageCycleStart || client.package_cycle_start || '').slice(0, 10);
     const appointmentStarts = State.getAppointments()
       .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
@@ -154,7 +162,9 @@ const Services = (() => {
       client.acquisitionStart || client.dataInizio || client.data_inizio || client.packageStart || ''
     ).slice(0, 10);
     return {
-      start: persistedStart || inferredStart || acquisitionStart,
+      start: currentLedgerCycle?.startDate || persistedStart || inferredStart || acquisitionStart,
+      id: currentLedgerCycle?.id || '',
+      legacy: currentLedgerCycle ? currentLedgerCycle.legacy === true : true,
       persisted: !!persistedStart,
       inferredFromAppointment: !persistedStart && !!inferredStart,
     };
@@ -164,6 +174,11 @@ const Services = (() => {
     if (!appt || !client) return false;
     const context = getPackageCycleContext(client);
     const appointmentCycle = extractAppointmentPackageCycle(appt);
+    const appointmentCycleId = extractAppointmentPackageCycleId(appt);
+    if (context.id && appointmentCycleId) return appointmentCycleId === context.id;
+    // I cicli creati dal nuovo registro usano sempre un ID: una vecchia
+    // seduta senza ID non puo' entrare per errore nel nuovo rinnovo.
+    if (context.id && !context.legacy) return false;
     // Dopo che il ciclo è stato confermato sul cliente, la data di inizio è
     // l'unica fonte di verità: una lezione svolta nello stesso giorno del
     // rinnovo appartiene al nuovo ciclo anche se conserva una vecchia nota.
@@ -480,6 +495,7 @@ const Services = (() => {
     clientCanUseService,
     serviceUsesPackageSessions,
     extractAppointmentPackageCycle,
+    extractAppointmentPackageCycleId,
     getPackageCycleContext,
     appointmentInCurrentPackageCycle,
     getClientPackageAppointments,

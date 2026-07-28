@@ -65,6 +65,15 @@ const Clients = (() => {
     const toSchedule = serviceMetrics.toSchedule;
     const plannedTotal = serviceMetrics.plannedTotal;
     const overPlanned = serviceMetrics.overPlanned;
+    const ledger = typeof PackageLedger !== 'undefined' ? PackageLedger.parse(client) : { cycles: [] };
+    const ledgerCurrent = !ledger.parseError && ledger.cycles.length ? PackageLedger.currentCycle(ledger) : null;
+    const finance = typeof PackageLedger !== 'undefined'
+      ? PackageLedger.cycleFinancial(ledgerCurrent || {
+          amount: client.importo || 0,
+          openingPaidAmount: String(client.statoPagamento || '').toLowerCase() === 'pagato' ? Number(client.importo || 0) : 0,
+          payments: [],
+        })
+      : { total: Number(client.importo || 0), paid: 0, balance: Number(client.importo || 0), status: client.statoPagamento || 'Da pagare' };
     const pctDone = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
     const next = activeAppts.find(a => a.date >= today && a.status === 'prenotato');
     const lastDone = [...activeAppts].reverse().find(a => a.status === 'fatto');
@@ -88,6 +97,9 @@ const Clients = (() => {
     if (overPlanned > 0) alerts.push(`${overPlanned} oltre pacchetto`);
     if (remaining > 0 && !next) alerts.push('Nessun prossimo appuntamento');
     if (total > 0 && completed >= total) alerts.push('Pacchetto completato');
+    if (!(typeof App !== 'undefined' && App.isPortalPtMode?.()) && finance.balance > 0) {
+      alerts.push(`Pagamento aperto: ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(finance.balance)}`);
+    }
 
     return {
       total,
@@ -112,6 +124,7 @@ const Clients = (() => {
       cycleStart: serviceMetrics.cycleStart,
       cyclePersisted: serviceMetrics.cyclePersisted,
       needsCycleSetup: serviceMetrics.needsCycleSetup,
+      finance,
       alerts,
     };
   }
@@ -139,6 +152,15 @@ const Clients = (() => {
     const sessionsLeft = activePackages.reduce((sum, x) => sum + x.metrics.remaining, 0);
     const toSchedule = activePackages.reduce((sum, x) => sum + x.metrics.toSchedule, 0);
     const alerts = metrics.filter(x => x.metrics.alerts.length);
+    const finance = typeof PackageLedger !== 'undefined'
+      ? PackageLedger.summary(clients)
+      : { expected: 0, collected: 0, outstanding: 0 };
+    const money = value => new Intl.NumberFormat('it-IT', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(Number(value || 0));
+    const showFinance = !(typeof App !== 'undefined' && App.isPortalPtMode?.());
 
     return `
       <div class="client-management-grid">
@@ -158,7 +180,85 @@ const Clients = (() => {
           <span>Alert gestione</span>
           <strong>${alerts.length}</strong>
         </div>
+        ${showFinance ? `
+        <div class="client-kpi">
+          <span>Valore cicli</span>
+          <strong>${money(finance.expected)}</strong>
+        </div>
+        <div class="client-kpi">
+          <span>Incassato</span>
+          <strong>${money(finance.collected)}</strong>
+        </div>
+        <div class="client-kpi ${finance.outstanding > 0 ? 'client-kpi-alert' : ''}">
+          <span>Da incassare</span>
+          <strong>${money(finance.outstanding)}</strong>
+        </div>` : ''}
       </div>`;
+  }
+
+  function csvCell(value) {
+    return `"${String(value ?? '').replace(/"/g, '""')}"`;
+  }
+
+  function exportPackagePayments(clientId = '') {
+    if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
+    const clients = State.getClients().filter(client => !clientId || client.id === clientId);
+    const rows = [];
+    clients.forEach(client => {
+      let ledger;
+      try {
+        ledger = PackageLedger.ensure(client, {
+          total: Number(client.sessionsTotal || 0),
+          cycleStart: client.packageCycleStart || client.packageStart || '',
+        });
+      } catch (_) {
+        return;
+      }
+      ledger.cycles.forEach((cycle, cycleIndex) => {
+        const finance = PackageLedger.cycleFinancial(cycle);
+        const payments = Array.isArray(cycle.payments) && cycle.payments.length ? cycle.payments : [null];
+        payments.forEach(payment => rows.push([
+          `${client.nome || ''} ${client.cognome || ''}`.trim(),
+          client.id,
+          cycleIndex + 1,
+          cycle.source === 'renewal' ? 'Rinnovo' : 'Importato',
+          cycle.id,
+          cycle.startDate || '',
+          cycle.createdAt || '',
+          cycle.closedAt || '',
+          Number(cycle.sessionsTotal || 0),
+          cycle.sessionsCompletedAtClose ?? '',
+          finance.total.toFixed(2),
+          finance.paid.toFixed(2),
+          finance.balance.toFixed(2),
+          finance.status,
+          payment?.id || '',
+          payment?.kind || '',
+          payment?.date || '',
+          payment ? (
+            payment.kind === 'storno'
+              ? -Math.abs(Number(payment.amount || 0))
+              : Number(payment.amount || 0)
+          ).toFixed(2) : '',
+          payment?.method || '',
+          payment?.note || cycle.note || '',
+        ]));
+      });
+    });
+    const headers = [
+      'Cliente', 'ID cliente', 'N. ciclo', 'Tipo ciclo', 'ID ciclo', 'Data inizio',
+      'Creato il', 'Chiuso il', 'Sedute acquistate', 'Sedute fatte alla chiusura',
+      'Valore ciclo', 'Incassato ciclo', 'Saldo ciclo', 'Stato pagamento',
+      'ID movimento', 'Tipo movimento', 'Data movimento', 'Importo movimento', 'Metodo', 'Nota',
+    ];
+    const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(csvCell).join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `neacea-rinnovi-pagamenti-${clientId || 'tutti'}-${todayStr()}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    UI.showToast(`${rows.length} righe esportate`, 'success');
   }
 
   function renderHistorySummary(clients) {
@@ -223,9 +323,12 @@ const Clients = (() => {
           <div class="eyebrow">${ptMode ? 'Pacchetti assegnati' : 'Anagrafica'}</div>
           <div class="page-title">${showingHistory ? 'Storico <em>clienti</em>' : (ptMode ? 'I miei <em>clienti</em>' : 'Clienti <em>attivi</em>')}</div>
         </div>
-        <div class="client-view-tabs" role="group" aria-label="Vista clienti">
-          <button class="client-view-tab ${showingHistory ? '' : 'active'}" onclick="Clients.setView('active')">Attivi <span>${activeClients.length}</span></button>
-          <button class="client-view-tab ${showingHistory ? 'active' : ''}" onclick="Clients.setView('history')">Storico <span>${historyClients.length}</span></button>
+        <div class="client-header-actions">
+          ${ptMode ? '' : '<button class="btn" onclick="Clients.exportPackagePayments()">Esporta rinnovi e pagamenti</button>'}
+          <div class="client-view-tabs" role="group" aria-label="Vista clienti">
+            <button class="client-view-tab ${showingHistory ? '' : 'active'}" onclick="Clients.setView('active')">Attivi <span>${activeClients.length}</span></button>
+            <button class="client-view-tab ${showingHistory ? 'active' : ''}" onclick="Clients.setView('history')">Storico <span>${historyClients.length}</span></button>
+          </div>
         </div>
       </div>
       ${showingHistory ? renderHistorySummary(clients) : renderManagementSummary(clients)}
@@ -489,5 +592,6 @@ const Clients = (() => {
     getPackageMetrics,
     historyStatus,
     renderDashboardAlerts,
+    exportPackagePayments,
   };
 })();

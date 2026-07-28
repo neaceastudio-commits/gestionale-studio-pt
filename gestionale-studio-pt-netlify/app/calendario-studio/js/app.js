@@ -172,7 +172,10 @@ const App = {
 
   canViewAppointment(appt) {
     if (!App.isPortalPtMode()) return true;
-    return !!(App.portalPt.authorized && appt);
+    if (!App.portalPt.authorized || !appt) return false;
+    const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
+    const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
+    return isOwnAppointment || clientIds.some(clientId => App.canEditClient(clientId));
   },
 
   visibleClients(clients = State.getClients()) {
@@ -1234,7 +1237,10 @@ const App = {
 
         <div class="form-group">
           <label>Note</label>
-          <textarea id="cl-notes" class="form-input" rows="2" ${personalReadOnlyAttr}>${client?.notes||''}</textarea>
+          <textarea id="cl-notes" class="form-input" rows="2" ${personalReadOnlyAttr}>${App._escapeHtml(typeof PackageLedger !== 'undefined' ? PackageLedger.strip(client?.notes || '') : (client?.notes || ''))}</textarea>
+          ${client && String(client.notes || '').includes(PackageLedger.START)
+            ? '<div class="form-hint">Lo storico economico è protetto e non viene mostrato in questo campo.</div>'
+            : ''}
         </div>
       </div>
       <div class="modal-footer">
@@ -1312,9 +1318,17 @@ const App = {
     const currentMetrics = currentClient ? Services.getClientSessionMetrics(currentClient) : null;
     const completedSessions = currentMetrics?.completed || 0;
     const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
-    const rawNotes = packageOnly
+    let rawNotes = packageOnly
       ? String(currentClient?.notes || '')
       : String(document.getElementById('cl-notes')?.value || '').trim();
+    if (!packageOnly && currentClient && String(currentClient.notes || '').includes(PackageLedger.START)) {
+      const ledger = PackageLedger.parse(currentClient);
+      if (ledger.parseError) {
+        UI.showToast('Cliente non salvato: lo storico pagamenti deve essere prima corretto', 'error');
+        return;
+      }
+      rawNotes = PackageLedger.serialize(rawNotes, ledger);
+    }
     const notes = packageOnly
       ? App._withPtAudit(rawNotes, 'pacchetto aggiornato')
       : rawNotes;
@@ -1583,12 +1597,104 @@ const App = {
     return null;
   },
 
-  _withPackageCycle(notes, cycleStart) {
+  _withPackageCycle(notes, cycleStart, cycleId = '') {
     const clean = String(notes || '')
       .replace(/\n?\[CICLO-PACCHETTO\s+\d{4}-\d{2}-\d{2}\]/gi, '')
+      .replace(/\n?\[CICLO-PACCHETTO-ID\s+[a-zA-Z0-9_-]+\]/gi, '')
       .trim();
     const marker = cycleStart ? `[CICLO-PACCHETTO ${cycleStart}]` : '';
-    return [clean, marker].filter(Boolean).join('\n');
+    const idMarker = cycleId ? `[CICLO-PACCHETTO-ID ${cycleId}]` : '';
+    return [clean, marker, idMarker].filter(Boolean).join('\n');
+  },
+
+  _fmtMoney(value) {
+    return new Intl.NumberFormat('it-IT', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+    }).format(Number(value || 0));
+  },
+
+  _packageLedger(client, metrics = {}) {
+    try {
+      return PackageLedger.ensure(client, metrics);
+    } catch (error) {
+      return { version: 1, cycles: [], parseError: error.message || String(error) };
+    }
+  },
+
+  _packagePaymentStatusClass(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'pagato') return 'paid';
+    if (normalized === 'parziale') return 'partial';
+    if (normalized.includes('riconciliare')) return 'reconcile';
+    return 'open';
+  },
+
+  _updateRenewalPaymentPreview() {
+    const total = Number(document.getElementById('pkg-renew-amount')?.value || 0);
+    const paid = Number(document.getElementById('pkg-renew-paid')?.value || 0);
+    const preview = document.getElementById('pkg-renew-payment-preview');
+    if (!preview) return;
+    const status = PackageLedger.normalizeStatus(total, paid);
+    const balance = Math.max(0, PackageLedger.roundMoney(total - paid));
+    preview.className = `package-payment-preview ${App._packagePaymentStatusClass(status)}`;
+    preview.innerHTML = `<strong>${App._escapeHtml(status)}</strong><span>Incassato ${App._fmtMoney(paid)} · saldo ${App._fmtMoney(balance)}</span>`;
+  },
+
+  _packageHistoryRows(client, ledger) {
+    if (ledger?.parseError) {
+      return `<tr><td colspan="9" class="package-ledger-error">${App._escapeHtml(ledger.parseError)}</td></tr>`;
+    }
+    if (!ledger?.cycles?.length) {
+      return '<tr><td colspan="9" class="text-muted">Nessun ciclo registrato.</td></tr>';
+    }
+    return [...ledger.cycles].reverse().map((cycle, reverseIndex) => {
+      const number = ledger.cycles.length - reverseIndex;
+      const finance = PackageLedger.cycleFinancial(cycle);
+      const payments = Array.isArray(cycle.payments) ? cycle.payments : [];
+      const lastPayment = payments.length ? payments[payments.length - 1] : null;
+      const snapshot = cycle.closedAt
+        ? `${Number(cycle.sessionsCompletedAtClose || 0)}/${Number(cycle.sessionsTotal || 0)} fatte`
+        : `${Number(cycle.sessionsTotal || 0)} acquistate`;
+      return `
+        <tr>
+          <td><strong>#${number}</strong><span class="package-cycle-source">${cycle.source === 'renewal' ? 'Rinnovo' : 'Importato'}</span></td>
+          <td>${App._escapeHtml(App._fmtLongDate(cycle.startDate))}</td>
+          <td>${snapshot}</td>
+          <td>${App._fmtMoney(finance.total)}</td>
+          <td>${App._fmtMoney(finance.paid)}</td>
+          <td><strong>${App._fmtMoney(finance.balance)}</strong></td>
+          <td><span class="package-payment-badge ${App._packagePaymentStatusClass(finance.status)}">${App._escapeHtml(finance.status)}</span></td>
+          <td>${lastPayment ? `${App._escapeHtml(App._fmtLongDate(lastPayment.date))}<br><span class="text-muted">${App._escapeHtml(lastPayment.method || 'Non indicato')}</span>` : '—'}</td>
+          <td>${payments.length}</td>
+        </tr>`;
+    }).join('');
+  },
+
+  _packagePaymentMovementRows(client, cycle) {
+    const payments = Array.isArray(cycle?.payments) ? cycle.payments : [];
+    if (!payments.length) {
+      return '<tr><td colspan="6" class="text-muted">Nessun movimento registrato nel ciclo.</td></tr>';
+    }
+    return [...payments].reverse().map(payment => {
+      const isReversed = payments.some(item => item.kind === 'storno' && item.reversesPaymentId === payment.id);
+      const amount = Number(payment.amount || 0);
+      const signedAmount = payment.kind === 'storno' ? -Math.abs(amount) : amount;
+      const type = payment.kind === 'storno'
+        ? 'Storno'
+        : payment.kind === 'rettifica' ? 'Rettifica' : 'Incasso';
+      const canReverse = payment.kind !== 'storno' && amount > 0 && !isReversed;
+      return `
+        <tr>
+          <td>${App._escapeHtml(App._fmtLongDate(payment.date))}</td>
+          <td><span class="package-movement-kind ${payment.kind || 'incasso'}">${type}</span></td>
+          <td><strong class="${signedAmount < 0 ? 'package-negative-amount' : ''}">${signedAmount < 0 ? '−' : '+'}${App._fmtMoney(Math.abs(signedAmount))}</strong></td>
+          <td>${App._escapeHtml(payment.method || 'Non indicato')}</td>
+          <td>${App._escapeHtml(payment.note || '—')}${isReversed ? '<br><span class="text-muted">Movimento stornato</span>' : ''}</td>
+          <td>${canReverse ? `<button class="btn btn-sm" onclick="App._reversePackagePayment('${client.id}','${App._escapeHtml(payment.id)}')">Storna</button>` : '—'}</td>
+        </tr>`;
+    }).join('');
   },
 
   _packageAppointments(client, includeNutrition = true) {
@@ -1666,6 +1772,14 @@ const App = {
       ? 'Archiviato'
       : storedArchivedStatus;
     const metrics = Services.getClientSessionMetrics(client);
+    const packageLedger = App._packageLedger(client, metrics);
+    const currentPackageCycle = packageLedger.parseError ? null : PackageLedger.currentCycle(packageLedger);
+    const currentFinance = PackageLedger.cycleFinancial(currentPackageCycle || {
+      amount: client.importo || 0,
+      openingPaidAmount: String(client.statoPagamento || '').toLowerCase() === 'pagato' ? Number(client.importo || 0) : 0,
+      payments: [],
+    });
+    const financialSummary = PackageLedger.summary([client]);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
     const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
     const serviceId = App._packageServiceId(client);
@@ -1680,6 +1794,7 @@ const App = {
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
     const today = App._dateStr(new Date());
+    const defaultRenewalStart = today;
     const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label package-plan-day">
         <input type="checkbox" name="pkg-plan-day" value="${g}" ${days.includes(g) ? 'checked' : ''} onchange="App._limitPackagePlanDays('${client.id}', this)">
@@ -1766,8 +1881,17 @@ const App = {
           <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
           <div><span>Fatte complessive</span><strong>${metrics.lifetimeCompleted}</strong></div>
           <div><span>Storico precedente</span><strong>${metrics.previousCompleted}</strong></div>
-          ${App.isPortalPtMode() ? '' : `<div class="${String(client.statoPagamento || '').toLowerCase().includes('pagato') ? '' : 'warn'}"><span>Pagamento</span><strong>${client.statoPagamento || 'Da verificare'}</strong></div>`}
+          ${App.isPortalPtMode() ? '' : `<div class="${currentFinance.balance > 0 ? 'warn' : ''}"><span>Saldo ciclo</span><strong>${App._fmtMoney(currentFinance.balance)}</strong></div>`}
         </div>
+
+        ${App.isPortalPtMode() ? '' : `
+        <div class="package-finance-strip">
+          <div><span>Cicli registrati</span><strong>${financialSummary.cycles}</strong></div>
+          <div><span>Valore storico</span><strong>${App._fmtMoney(financialSummary.expected)}</strong></div>
+          <div><span>Incassato storico</span><strong>${App._fmtMoney(financialSummary.collected)}</strong></div>
+          <div class="${financialSummary.outstanding > 0 ? 'warn' : ''}"><span>Da incassare</span><strong>${App._fmtMoney(financialSummary.outstanding)}</strong></div>
+        </div>
+        ${packageLedger.parseError ? `<div class="package-ledger-error">${App._escapeHtml(packageLedger.parseError)}. I rinnovi sono bloccati finché il registro non viene corretto.</div>` : ''}`}
 
         ${!isArchived && metrics.needsCycleSetup ? `
           <section class="package-panel" style="border-color:#F59E0B;background:#FFFBEB">
@@ -1827,31 +1951,166 @@ const App = {
                 <div class="form-hint">Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</div>
               </div>
               <div class="form-group">
-                <label>Data partenza pacchetto</label>
+                <label>Modifica future dal</label>
                 <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
-              </div>
-              <div class="form-group">
-                <label>Nuove sedute rinnovo</label>
-                <input id="pkg-renew-count" class="form-input" type="number" min="1" step="1" value="${hasTotal ? metrics.total : 8}">
-              </div>
-              <div class="form-group">
-                <label>Pagamento rinnovo</label>
-                ${App.isPortalPtMode()
-                  ? '<div class="computed-field">Gestito dalla Direzione</div>'
-                  : `<select id="pkg-renew-payment" class="form-input">
-                      <option value="Pagato" ${client.statoPagamento === 'Pagato' ? 'selected' : ''}>Pagato</option>
-                      <option value="Da pagare" ${client.statoPagamento === 'Da pagare' || !client.statoPagamento ? 'selected' : ''}>Da pagare</option>
-                      <option value="Acconto" ${client.statoPagamento === 'Acconto' ? 'selected' : ''}>Acconto</option>
-                    </select>`}
               </div>
             </div>
           </div>
           <div class="package-reschedule-actions">
             <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
             <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
-            <button class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')">Rinnova pacchetto</button>
           </div>
-          <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte. Se il pacchetto e finito, usa Rinnova pacchetto per aggiungere nuove sedute e generarle da capo.</p>
+          <p>Questa sezione modifica soltanto il calendario del ciclo attuale. Non crea rinnovi e non tocca importi o pagamenti.</p>
+        </section>`}
+
+        ${App.isPortalPtMode() || isArchived ? '' : `
+        <section class="package-panel package-payment-panel">
+          <div class="package-section-heading">
+            <div>
+              <h4>Pagamento ciclo corrente</h4>
+              <p>Gli incassi vengono aggiunti come movimenti distinti: nessun pagamento precedente viene sovrascritto.</p>
+            </div>
+            <span class="package-payment-badge ${App._packagePaymentStatusClass(currentFinance.status)}">${App._escapeHtml(currentFinance.status)}</span>
+          </div>
+          <div class="package-current-payment-summary">
+            <div><span>Concordato</span><strong>${App._fmtMoney(currentFinance.total)}</strong></div>
+            <div><span>Incassato</span><strong>${App._fmtMoney(currentFinance.paid)}</strong></div>
+            <div><span>Saldo</span><strong>${App._fmtMoney(currentFinance.balance)}</strong></div>
+          </div>
+          <div class="package-payment-form">
+            <div class="form-group">
+              <label>Importo concordato €</label>
+              <input id="pkg-current-amount" class="form-input" type="number" min="0" step="0.01" value="${currentFinance.total.toFixed(2)}">
+            </div>
+            <button class="btn" onclick="App._updatePackageCycleAmount('${client.id}')">Aggiorna importo</button>
+            <div class="form-group">
+              <label>Nuovo incasso €</label>
+              <input id="pkg-payment-amount" class="form-input" type="number" min="0.01" max="${currentFinance.balance.toFixed(2)}" step="0.01" placeholder="${currentFinance.balance.toFixed(2)}" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Data incasso</label>
+              <input id="pkg-payment-date" class="form-input" type="date" value="${today}" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Metodo</label>
+              <select id="pkg-payment-method" class="form-input" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+                <option>Contanti</option>
+                <option>Carta / POS</option>
+                <option>Bonifico</option>
+                <option>Altro</option>
+              </select>
+            </div>
+            <div class="form-group package-payment-note">
+              <label>Nota incasso</label>
+              <input id="pkg-payment-note" class="form-input" type="text" maxlength="160" placeholder="Facoltativa" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+            </div>
+            <button class="btn-primary" onclick="App._recordPackagePayment('${client.id}')" ${currentFinance.balance <= 0 || packageLedger.parseError ? 'disabled' : ''}>Registra incasso</button>
+          </div>
+          <div class="package-movement-area">
+            <h5>Movimenti del ciclo</h5>
+            <div class="package-history-scroll">
+              <table class="package-movement-table">
+                <thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Nota</th><th>Azione</th></tr></thead>
+                <tbody>${App._packagePaymentMovementRows(client, currentPackageCycle)}</tbody>
+              </table>
+            </div>
+          </div>
+          <div class="package-adjustment-box">
+            <div>
+              <h5>Rettifica manuale</h5>
+              <p>Imposta l’incassato reale del ciclo: puoi chiudere il saldo oppure riaprirlo. La differenza viene registrata come movimento di rettifica.</p>
+            </div>
+            <div class="form-group">
+              <label>Incassato totale corretto €</label>
+              <input id="pkg-reconcile-total" class="form-input" type="number" min="0" max="${currentFinance.total.toFixed(2)}" step="0.01" value="${currentFinance.paid.toFixed(2)}">
+            </div>
+            <div class="form-group">
+              <label>Data rettifica</label>
+              <input id="pkg-reconcile-date" class="form-input" type="date" value="${today}">
+            </div>
+            <div class="form-group">
+              <label>Metodo / riferimento</label>
+              <input id="pkg-reconcile-method" class="form-input" type="text" maxlength="80" value="Rettifica Direzione">
+            </div>
+            <div class="form-group package-adjustment-reason">
+              <label>Motivo obbligatorio</label>
+              <input id="pkg-reconcile-reason" class="form-input" type="text" maxlength="180" placeholder="Es. pagamento registrato fuori app / correzione errore">
+            </div>
+            <button class="btn" onclick="App._reconcilePackagePayment('${client.id}')" ${packageLedger.parseError ? 'disabled' : ''}>Applica rettifica</button>
+          </div>
+        </section>
+
+        <section class="package-panel package-renewal-panel">
+          <div class="package-section-heading">
+            <div>
+              <h4>Apri un nuovo rinnovo</h4>
+              <p>Il ciclo attuale viene chiuso nello storico; il nuovo ciclo e il suo pagamento restano separati.</p>
+            </div>
+            <span class="package-renewal-lock">Solo Direzione</span>
+          </div>
+          <div class="package-renewal-grid">
+            <div class="form-group">
+              <label>Data inizio *</label>
+              <input id="pkg-renew-start" class="form-input" type="date" value="${defaultRenewalStart}">
+            </div>
+            <div class="form-group">
+              <label>Nuove sedute *</label>
+              <input id="pkg-renew-count" class="form-input" type="number" min="1" step="1" value="${hasTotal ? metrics.total : 8}">
+            </div>
+            <div class="form-group">
+              <label>Importo concordato € *</label>
+              <input id="pkg-renew-amount" class="form-input" type="number" min="0" step="0.01" value="${currentFinance.total.toFixed(2)}" oninput="App._updateRenewalPaymentPreview()">
+            </div>
+            <div class="form-group">
+              <label>Incassato ora €</label>
+              <input id="pkg-renew-paid" class="form-input" type="number" min="0" step="0.01" value="0.00" oninput="App._updateRenewalPaymentPreview()">
+            </div>
+            <div class="form-group">
+              <label>Data incasso</label>
+              <input id="pkg-renew-payment-date" class="form-input" type="date" value="${today}">
+            </div>
+            <div class="form-group">
+              <label>Scadenza saldo</label>
+              <input id="pkg-renew-due-date" class="form-input" type="date">
+            </div>
+            <div class="form-group">
+              <label>Metodo</label>
+              <select id="pkg-renew-method" class="form-input">
+                <option>Contanti</option>
+                <option>Carta / POS</option>
+                <option>Bonifico</option>
+                <option>Altro</option>
+              </select>
+            </div>
+            <div class="form-group package-renewal-note">
+              <label>Nota rinnovo / pagamento</label>
+              <input id="pkg-renew-note" class="form-input" type="text" maxlength="160" placeholder="Facoltativa">
+            </div>
+          </div>
+          <div class="package-renewal-footer">
+            <div id="pkg-renew-payment-preview" class="package-payment-preview open">
+              <strong>Da pagare</strong><span>Incassato ${App._fmtMoney(0)} · saldo ${App._fmtMoney(currentFinance.total)}</span>
+            </div>
+            <button id="pkg-renew-submit" class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')" ${packageLedger.parseError ? 'disabled' : ''}>Rinnova e genera sedute</button>
+          </div>
+          <p>Giorni, orario e PT saranno quelli impostati nella sezione “Cambio giorni/orari futuri” qui sopra. Se una data è in conflitto, il rinnovo viene annullato interamente: non resteranno salvataggi parziali.</p>
+        </section>`}
+
+        ${App.isPortalPtMode() ? '' : `
+        <section class="package-panel package-history-panel">
+          <div class="package-section-heading">
+            <div>
+              <h4>Storico rinnovi e pagamenti</h4>
+              <p>I cicli importati indicano i dati già presenti; i nuovi rinnovi conserveranno tutti i movimenti.</p>
+            </div>
+            <button class="btn" onclick="Clients.exportPackagePayments('${client.id}')">Esporta CSV cliente</button>
+          </div>
+          <div class="package-history-scroll">
+            <table class="package-history-table">
+              <thead><tr><th>Ciclo</th><th>Inizio</th><th>Sedute</th><th>Valore</th><th>Incassato</th><th>Saldo</th><th>Stato</th><th>Ultimo incasso</th><th>Mov.</th></tr></thead>
+              <tbody>${App._packageHistoryRows(client, packageLedger)}</tbody>
+            </table>
+          </div>
         </section>`}
 
         <section class="package-panel">
@@ -1869,7 +2128,7 @@ const App = {
         ` : `
           <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
           ${App.isPortalPtMode() ? '' : `<button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>`}
-          <button class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')">Rinnova pacchetto</button>
+          ${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="document.getElementById('pkg-renew-start')?.scrollIntoView({behavior:'smooth',block:'center'})">Vai al rinnovo</button>`}
           <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
         `}
       </div>
@@ -2177,7 +2436,8 @@ const App = {
         notes: App._withPtAudit(
           App._withPackageCycle(
             `Rigenerata per cambio giorni da ${fromDate}`,
-            Services.getPackageCycleContext(updatedClient).start
+            Services.getPackageCycleContext(updatedClient).start,
+            Services.getPackageCycleContext(updatedClient).id
           ),
           'seduta rigenerata dal pacchetto'
         ),
@@ -2217,28 +2477,177 @@ const App = {
     App.openPackageOverview(clientId);
   },
 
+  async _recordPackagePayment(clientId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.recordPayment(currentClient, metrics, {
+        amount: document.getElementById('pkg-payment-amount')?.value,
+        date: document.getElementById('pkg-payment-date')?.value,
+        method: document.getElementById('pkg-payment-method')?.value,
+        note: document.getElementById('pkg-payment-note')?.value,
+      });
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(result.client.notes, `incasso pacchetto ${App._fmtMoney(result.finance.paid)} registrato`),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('Il pagamento non è stato sincronizzato');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast(`Incasso registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
+      Clients.render();
+      App.openPackageOverview(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Pagamento non registrato', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _updatePackageCycleAmount(clientId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.updateCurrentAmount(
+        currentClient,
+        metrics,
+        document.getElementById('pkg-current-amount')?.value
+      );
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(result.client.notes, `importo ciclo aggiornato a ${App._fmtMoney(result.finance.total)}`),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('L’importo non è stato sincronizzato');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast('Importo del ciclo aggiornato', 'success');
+      Clients.render();
+      App.openPackageOverview(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Importo non aggiornato', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _reconcilePackagePayment(clientId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.reconcilePaidTotal(currentClient, metrics, {
+        targetPaid: document.getElementById('pkg-reconcile-total')?.value,
+        date: document.getElementById('pkg-reconcile-date')?.value,
+        method: document.getElementById('pkg-reconcile-method')?.value,
+        reason: document.getElementById('pkg-reconcile-reason')?.value,
+      });
+      const action = result.adjustment > 0 ? 'aumento' : 'riduzione';
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(
+          result.client.notes,
+          `rettifica incassato (${action} ${App._fmtMoney(Math.abs(result.adjustment))})`
+        ),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('La rettifica non è stata sincronizzata');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast(`Rettifica registrata · incassato ${App._fmtMoney(result.finance.paid)} · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
+      Clients.render();
+      App.openPackageOverview(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Rettifica non registrata', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _reversePackagePayment(clientId, paymentId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const date = prompt('Data dello storno (AAAA-MM-GG)', App._dateStr(new Date()));
+    if (date === null) return;
+    const reason = prompt('Motivo dello storno (obbligatorio)', '');
+    if (reason === null) return;
+    if (!confirm('Confermi lo storno? Il movimento originale resterà visibile e verrà aggiunta una riga negativa.')) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.reversePayment(currentClient, metrics, paymentId, {
+        date,
+        reason,
+        method: 'Storno Direzione',
+      });
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(
+          result.client.notes,
+          `incasso ${App._fmtMoney(result.reversedPayment.amount)} stornato`
+        ),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('Lo storno non è stato sincronizzato');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast(`Storno registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
+      Clients.render();
+      App.openPackageOverview(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Storno non registrato', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _rollbackPackageRenewalRemote(originalAppointments, createdAppointments) {
+    try {
+      const results = await Promise.all([
+        ...originalAppointments.map(appt => SupabaseSync.pushAppointment(appt)),
+        ...createdAppointments.map(appt => SupabaseSync.deleteAppointment(appt.id)),
+      ]);
+      return !results.some(result => result?.error);
+    } catch (_) {
+      return false;
+    }
+  },
+
   async _renewPackageAppointments(clientId) {
-    if (!App.guardPackageManagement(clientId)) return;
+    if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
     if (!App._limitPackagePlanDays(clientId)) return;
-    const currentClient = State.getClients().find(c => c.id === clientId);
+    const currentClient = State.getClients().find(client => client.id === clientId);
     if (!currentClient) return;
 
     const days = App._selectedPackagePlanDays();
-    const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
+    const fromDate = document.getElementById('pkg-renew-start')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '09:00';
-    const selectedOperator = App.isPortalPtMode() && App.portalOperatorId()
-      ? App.portalOperatorId()
-      : (document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null);
+    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null;
     const renewCount = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
-    const paymentStatus = App.isPortalPtMode()
-      ? (currentClient.statoPagamento || 'Da pagare')
-      : (document.getElementById('pkg-renew-payment')?.value || currentClient.statoPagamento || 'Da pagare');
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
-      return;
-    }
-    if (!Number.isFinite(renewCount) || renewCount <= 0) {
-      UI.showToast('Inserisci il numero di nuove sedute del rinnovo', 'error');
       return;
     }
 
@@ -2250,39 +2659,66 @@ const App = {
     }
 
     const metrics = Services.getClientSessionMetrics(currentClient);
-    const futureToCarry = State.getAppointments().filter(a =>
-      a.status === 'prenotato' &&
-      a.date >= fromDate &&
-      a.serviceId === serviceId &&
-      Array.isArray(a.clientIds) &&
-      a.clientIds.includes(clientId) &&
-      (!App.isPortalPtMode() || App.canEditAppointment(a))
+    let renewal;
+    let validationError = null;
+    try {
+      renewal = PackageLedger.renew(currentClient, metrics, {
+        sessions: renewCount,
+        startDate: fromDate,
+        amount: document.getElementById('pkg-renew-amount')?.value,
+        paidNow: document.getElementById('pkg-renew-paid')?.value,
+        paymentDate: document.getElementById('pkg-renew-payment-date')?.value,
+        dueDate: document.getElementById('pkg-renew-due-date')?.value,
+        paymentMethod: document.getElementById('pkg-renew-method')?.value,
+        paymentNote: document.getElementById('pkg-renew-note')?.value,
+        renewalNote: document.getElementById('pkg-renew-note')?.value,
+        days,
+        time,
+        operatorId: selectedOperator,
+      });
+    } catch (error) {
+      UI.showToast(error.message || 'Dati del rinnovo non validi', 'error');
+      return;
+    }
+
+    const futureToCarry = State.getAppointments().filter(appt =>
+      appt.status === 'prenotato' &&
+      appt.date >= fromDate &&
+      appt.serviceId === serviceId &&
+      Array.isArray(appt.clientIds) &&
+      appt.clientIds.includes(clientId) &&
+      Services.appointmentInCurrentPackageCycle(appt, currentClient)
     );
-    const operatorData = selectedOperator ? Services.getOperator(selectedOperator) : null;
-    const operatorLabel = operatorData ? `${operatorData.nome} ${operatorData.cognome}` : 'senza PT assegnato';
+    if (futureToCarry.length > renewCount) {
+      UI.showToast(`Ci sono ${futureToCarry.length} sedute future ma il rinnovo ne prevede ${renewCount}`, 'error');
+      return;
+    }
+
+    const operator = selectedOperator ? Services.getOperator(selectedOperator) : null;
+    const operatorLabel = operator ? `${operator.nome} ${operator.cognome}` : 'senza PT assegnato';
     const confirmed = confirm(
-      `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n` +
-      `Apro un nuovo ciclo di ${renewCount} sedute dal ${fromDate}: ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
-      `${futureToCarry.length} sedute già programmate da quella data saranno assegnate al nuovo ciclo; creerò solo quelle mancanti.\n` +
-      `${App.isPortalPtMode() ? 'Il pagamento resta invariato e gestito dalla Direzione.' : `Pagamento rinnovo: ${paymentStatus}.`}\n` +
-      `Il ciclo precedente (${metrics.completed} fatte su ${metrics.total}) resterà nello storico e non verrà sommato.`
+      `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n\n` +
+      `Nuovo ciclo: ${renewCount} sedute dal ${fromDate}, ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
+      `Valore: ${App._fmtMoney(renewal.finance.total)} · incassato ora: ${App._fmtMoney(renewal.finance.paid)} · saldo: ${App._fmtMoney(renewal.finance.balance)} (${renewal.finance.status}).\n` +
+      `${futureToCarry.length} sedute future saranno trasferite al nuovo ciclo e verranno create esattamente ${renewCount - futureToCarry.length} sedute mancanti.\n\n` +
+      `Il ciclo precedente (${metrics.completed}/${metrics.total || 0} fatte) sarà chiuso nello storico.`
     );
     if (!confirmed) return;
+
+    App._packageRenewalBusy = true;
+    const submitButton = document.getElementById('pkg-renew-submit');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Verifica e salvataggio…';
+    }
 
     const backupClients = State.getClients().map(client => ({ ...client }));
     const backupAppointments = State.getAppointments().map(appt => ({
       ...appt,
       clientIds: [...(appt.clientIds || [])],
     }));
-    const carriedAppointments = futureToCarry.map(appt => ({
-      ...appt,
-      notes: App._withPtAudit(App._withPackageCycle(appt.notes, fromDate), 'seduta collegata al rinnovo pacchetto'),
-      updatedAt: Date.now(),
-    }));
-    const carriedById = new Map(carriedAppointments.map(appt => [appt.id, appt]));
-    State.saveAppointments(backupAppointments.map(appt => carriedById.get(appt.id) || appt));
     const updatedClient = {
-      ...currentClient,
+      ...renewal.client,
       giorniSettimana: days,
       packageStart: fromDate,
       packageCycleStart: fromDate,
@@ -2290,95 +2726,134 @@ const App = {
       sessionsRemaining: renewCount,
       active: true,
       statoAbbonamento: currentClient.statoAbbonamento || 'Attivo',
-      statoPagamento: paymentStatus,
-      notes: App._withPtAudit(currentClient.notes, 'pacchetto rinnovato'),
+      notes: App._withPtAudit(renewal.client.notes, `pacchetto rinnovato · ciclo ${renewal.cycle.id}`),
     };
-    State.saveClients(backupClients.map(c => c.id === clientId ? updatedClient : c));
-
-    const updatedMetrics = Services.getClientSessionMetrics(updatedClient);
-    const missing = Math.max(0, updatedMetrics.toSchedule);
-    if (!missing) {
-      const syncResults = await Promise.all([
-        SupabaseSync.pushClient(updatedClient),
-        ...carriedAppointments.map(appt => SupabaseSync.pushAppointment(appt)),
-      ]);
-      if (syncResults.some(result => result?.error)) {
-        State.saveClients(backupClients);
-        State.saveAppointments(backupAppointments);
-        UI.showToast('Rinnovo non salvato: errore di sincronizzazione', 'error');
-        return;
-      }
-      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updatedClient);
-      UI.showToast('Nuovo ciclo salvato: le sedute erano già programmate', 'success');
-      App.openPackageOverview(clientId);
-      return;
-    }
-
-    const dates = App._suggestPackageDates(updatedClient, missing * 8, { days, fromDate, includeStart: true });
+    const carriedAppointments = futureToCarry.map(appt => ({
+      ...appt,
+      notes: App._withPtAudit(
+        App._withPackageCycle(appt.notes, fromDate, renewal.cycle.id),
+        'seduta collegata al nuovo ciclo'
+      ),
+      updatedAt: Date.now(),
+    }));
+    const carriedById = new Map(carriedAppointments.map(appt => [appt.id, appt]));
+    const plannedAppointments = backupAppointments.map(appt => carriedById.get(appt.id) || appt);
     const created = [];
     const skipped = [];
+    const missing = renewCount - carriedAppointments.length;
 
-    dates.some(date => {
-      if (created.length >= missing) return true;
-      const draft = {
-        serviceId,
-        clientIds: [clientId],
-        operatorId: selectedOperator,
-        date,
-        startTime: time,
-        durationMin: service.durationMin || 60,
-        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
-        status: 'prenotato',
-        notes: App._withPtAudit(
-          App._withPackageCycle(
-            App.isPortalPtMode()
-              ? `Rinnovo pacchetto da ${fromDate}`
-              : `Rinnovo pacchetto da ${fromDate} · Pagamento: ${paymentStatus}`,
-            fromDate
+    try {
+      // Stato temporaneo usato solo per validare capienza, disponibilita',
+      // giorni acquistati e numero esatto di sedute del nuovo ciclo.
+      State.saveClients(backupClients.map(client => client.id === clientId ? updatedClient : client));
+      State.saveAppointments(plannedAppointments);
+      const dates = App._suggestPackageDates(updatedClient, Math.max(missing * 10, missing), {
+        days,
+        fromDate,
+        includeStart: true,
+      });
+      dates.some(date => {
+        if (created.length >= missing) return true;
+        const now = Date.now();
+        const draft = {
+          id: State.genId('a'),
+          serviceId,
+          clientIds: [clientId],
+          operatorId: selectedOperator,
+          date,
+          startTime: time,
+          durationMin: service.durationMin || 60,
+          bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+          status: 'prenotato',
+          notes: App._withPtAudit(
+            App._withPackageCycle(`Rinnovo pacchetto da ${fromDate}`, fromDate, renewal.cycle.id),
+            'seduta creata dal rinnovo pacchetto'
           ),
-          'seduta creata dal rinnovo pacchetto'
-        ),
-      };
-      const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
-      if (!validation.ok) {
-        skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+          createdAt: now,
+          updatedAt: now,
+        };
+        const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
+        if (!validation.ok) {
+          skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+          return false;
+        }
+        created.push(draft);
+        State.saveAppointments([...State.getAppointments(), draft]);
         return false;
-      }
-      created.push(Services.addAppointment(draft));
-      return false;
-    });
-
-    if (!created.length && !carriedAppointments.length) {
+      });
+    } catch (error) {
+      validationError = error;
+    } finally {
       State.saveClients(backupClients);
       State.saveAppointments(backupAppointments);
-      UI.showToast('Rinnovo non applicato: tutte le date sono in conflitto', 'error');
-      alert('Rinnovo non applicato per conflitti:\n' + skipped.slice(0, 12).join('\n'));
+    }
+
+    if (validationError) {
+      App._packageRenewalBusy = false;
+      UI.showToast(validationError.message || 'Verifica del rinnovo non riuscita', 'error');
       App.openPackageOverview(clientId);
       return;
     }
 
-    const renewSyncResults = await Promise.all([
-      SupabaseSync.pushClient(updatedClient),
-      ...carriedAppointments.map(appt => SupabaseSync.pushAppointment(appt)),
-      ...created.map(appt => SupabaseSync.pushAppointment(appt)),
-    ]);
-    if (renewSyncResults.some(result => result?.error)) {
-      UI.showToast('Rinnovo salvato solo in parte: verifica la sincronizzazione', 'error');
+    if (created.length !== missing) {
+      App._packageRenewalBusy = false;
+      UI.showToast(`Rinnovo annullato: trovate ${created.length} date valide su ${missing} necessarie`, 'error');
+      alert('Nessun dato è stato salvato. Risolvi i conflitti o cambia giorni/orario:\n' + skipped.slice(0, 12).join('\n'));
+      App.openPackageOverview(clientId);
       return;
     }
-    App._lastRenewedPackage = { clientId, appointmentIds: [...carriedAppointments, ...created].map(appt => appt.id) };
+
+    const changedAppointments = [...carriedAppointments, ...created];
+    let appointmentSync;
+    try {
+      appointmentSync = await Promise.all(changedAppointments.map(appt => SupabaseSync.pushAppointment(appt)));
+    } catch (error) {
+      appointmentSync = [{ error: error.message || String(error) }];
+    }
+    if (appointmentSync.some(result => result?.error)) {
+      const rollbackOk = await App._rollbackPackageRenewalRemote(futureToCarry, created);
+      App._packageRenewalBusy = false;
+      UI.showToast(rollbackOk
+        ? 'Rinnovo annullato: sincronizzazione fallita, nessun dato parziale conservato'
+        : 'Rinnovo annullato: verifica la connessione prima di riprovare', 'error');
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    let clientSync;
+    try {
+      clientSync = await SupabaseSync.pushClient(updatedClient);
+    } catch (error) {
+      clientSync = { error: error.message || String(error) };
+    }
+    if (clientSync?.error) {
+      const rollbackOk = await App._rollbackPackageRenewalRemote(futureToCarry, created);
+      App._packageRenewalBusy = false;
+      UI.showToast(rollbackOk
+        ? 'Rinnovo annullato: il cliente non è stato aggiornato e le sedute sono state ripristinate'
+        : 'Rinnovo non completato: verifica la sincronizzazione prima di riprovare', 'error');
+      App.openPackageOverview(clientId);
+      return;
+    }
+
+    const finalById = new Map(carriedAppointments.map(appt => [appt.id, appt]));
+    State.saveClients(backupClients.map(client => client.id === clientId ? updatedClient : client));
+    State.saveAppointments([
+      ...backupAppointments.map(appt => finalById.get(appt.id) || appt),
+      ...created,
+    ].sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)));
+    App._lastRenewedPackage = { clientId, cycleId: renewal.cycle.id, appointmentIds: changedAppointments.map(appt => appt.id) };
     if (CONFIG.SHEETS.enabled) {
-      Sheets.pushClient(updatedClient);
+      await Sheets.pushClient(updatedClient);
       created.forEach(appt => Sheets.pushAppointment(appt));
     }
+    App._packageRenewalBusy = false;
     Calendar.render();
-
-    if (skipped.length) {
-      UI.showToast(`Nuovo ciclo: ${carriedAppointments.length} mantenute, ${created.length} create, ${skipped.length} date saltate`, 'info');
-      alert('Date non generate per conflitto:\n' + skipped.slice(0, 12).join('\n'));
-    } else {
-      UI.showToast(`Nuovo ciclo salvato: ${carriedAppointments.length} mantenute, ${created.length} create`, 'success');
-    }
+    Clients.render();
+    UI.showToast(
+      `Rinnovo completo · ${carriedAppointments.length} sedute mantenute, ${created.length} create · saldo ${App._fmtMoney(renewal.finance.balance)}`,
+      'success'
+    );
     App.openPackageOverview(clientId);
   },
 
@@ -2497,7 +2972,8 @@ const App = {
         notes: App._withPtAudit(
           App._withPackageCycle(
             'Programmazione generata dal quadro pacchetto',
-            Services.getPackageCycleContext(client).start
+            Services.getPackageCycleContext(client).start,
+            Services.getPackageCycleContext(client).id
           ),
           'seduta generata dal pacchetto'
         ),

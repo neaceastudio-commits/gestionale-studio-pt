@@ -16,6 +16,7 @@ const indexSource = read('app/calendario-studio/index.html');
 const appSource = read('app/calendario-studio/js/app.js');
 const supabaseSource = read('app/calendario-studio/js/supabase.js');
 const servicesSource = read('app/calendario-studio/js/services.js');
+const packageLedgerSource = read('app/calendario-studio/js/package-ledger.js');
 const clientsSource = read('app/calendario-studio/js/clients.js');
 const portalSource = read('app/portale-personal-trainer/index.html');
 const acquisitionSource = read('app/acquisizione/index.html');
@@ -26,7 +27,14 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Apple Calendar CSS', indexSource.includes('css/apple-calendar.css')],
   ['Apple Calendar pulsante', indexSource.includes('App.openAppleCalendar()')],
   ['Apple Calendar script', indexSource.includes('js/apple-calendar.js')],
+  ['Registro rinnovi caricato', indexSource.includes('js/package-ledger.js')],
   ['Rinnovo pacchetto', appSource.includes('_renewPackageAppointments(clientId)')],
+  ['Rinnovo con registro economico', appSource.includes('PackageLedger.renew(currentClient, metrics')],
+  ['Incassi separati dal rinnovo', appSource.includes('_recordPackagePayment(clientId)')],
+  ['Rettifica saldo tracciata', appSource.includes('_reconcilePackagePayment(clientId)') && packageLedgerSource.includes('function reconcilePaidTotal')],
+  ['Storno incasso tracciato', appSource.includes('_reversePackagePayment(clientId, paymentId)') && packageLedgerSource.includes('function reversePayment')],
+  ['Rollback rinnovo parziale', appSource.includes('_rollbackPackageRenewalRemote')],
+  ['Export pagamenti CSV', clientsSource.includes('exportPackagePayments(clientId')],
   ['Separazione cicli', appSource.includes('_confirmCurrentPackageCycle(clientId)')],
   ['Doppio PT controllato', appSource.includes('_buildForcedAudit(validation, apptData)')],
   ['Storico clienti', clientsSource.includes('renderHistorySummary(clients)')],
@@ -50,6 +58,7 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
 assert('App completa non troncata', Buffer.byteLength(appSource) > 100000);
 assert('Servizi completi non troncati', Buffer.byteLength(servicesSource) > 20000);
 assert('Clienti completi non troncati', Buffer.byteLength(clientsSource) > 22000);
+assert('Registro pacchetti completo', Buffer.byteLength(packageLedgerSource) > 9000);
 
 const clients = [
   { id: 'client-own', ptAssegnato: 'pt-own', active: true },
@@ -143,6 +152,22 @@ const visibleAppointments = serviceContext.TestServices.getAppointmentsForDate('
 assert('Vista calendario PT filtra gli appuntamenti estranei', visibleAppointments.length === 2 && !visibleAppointments.some(item => item.id === 'unrelated'));
 
 process.env.PT_ACCESS_SECRET = 'calendar-release-regression-secret';
+const realFetch = global.fetch;
+global.fetch = async (url, options) => {
+  const value = String(url);
+  if (value.includes('/rest/v1/operator_effective_roles') || value.includes('/rest/v1/operators')) {
+    return new Response(JSON.stringify([{
+      id: 'pt-own',
+      operator_id: 'pt-own',
+      email: 'paolo@qa.test',
+      nome: 'Paolo',
+      cognome: 'Proprio',
+      roles: ['PT'],
+      active: true,
+    }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  return realFetch(url, options);
+};
 const accessFunctionPath = path.join(root, 'netlify/functions/pt-access-email.js');
 delete require.cache[require.resolve(accessFunctionPath)];
 const accessFunction = require(accessFunctionPath);
@@ -177,7 +202,9 @@ const code = String(parseInt(digest.slice(0, 12), 16) % 1000000).padStart(6, '0'
   assert('Feed Apple Calendar valido', calendar.body.includes('BEGIN:VCALENDAR') && calendar.body.includes('END:VCALENDAR'));
 
   assert('Cartella Calendario completa', fs.readdirSync(path.join(calendarRoot, 'js')).includes('apple-calendar.js'));
+  global.fetch = realFetch;
 })().catch(error => {
+  global.fetch = realFetch;
   process.stderr.write(`${error.stack || error}\n`);
   process.exitCode = 1;
 });
