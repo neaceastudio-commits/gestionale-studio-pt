@@ -31,6 +31,7 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Rinnovo pacchetto', appSource.includes('_renewPackageAppointments(clientId)')],
   ['Rinnovo con registro economico', appSource.includes('PackageLedger.renew(currentClient, metrics')],
   ['Incassi separati dal rinnovo', appSource.includes('_recordPackagePayment(clientId)')],
+  ['Pagamenti separati dalla vista lezioni', appSource.includes("_setPackageWorkspace(mode = 'lessons')") && appSource.includes('package-finance-only" hidden')],
   ['Rettifica saldo tracciata', appSource.includes('_reconcilePackagePayment(clientId)') && packageLedgerSource.includes('function reconcilePaidTotal')],
   ['Storno incasso tracciato', appSource.includes('_reversePackagePayment(clientId, paymentId)') && packageLedgerSource.includes('function reversePayment')],
   ['Rollback rinnovo parziale', appSource.includes('_rollbackPackageRenewalRemote')],

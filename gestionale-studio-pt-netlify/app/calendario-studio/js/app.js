@@ -1761,6 +1761,36 @@ const App = {
     return out;
   },
 
+  _setPackageWorkspace(mode = 'lessons') {
+    const showFinance = mode === 'finance';
+    document.querySelectorAll('.package-lessons-only').forEach(element => {
+      element.hidden = showFinance;
+    });
+    document.querySelectorAll('.package-finance-only').forEach(element => {
+      element.hidden = !showFinance;
+    });
+
+    const lessonsButton = document.getElementById('pkg-workspace-lessons');
+    const financeButton = document.getElementById('pkg-workspace-finance');
+    lessonsButton?.classList.toggle('active', !showFinance);
+    financeButton?.classList.toggle('active', showFinance);
+    lessonsButton?.setAttribute('aria-pressed', String(!showFinance));
+    financeButton?.setAttribute('aria-pressed', String(showFinance));
+
+    const lessonsFooter = document.getElementById('pkg-footer-lessons');
+    const financeFooter = document.getElementById('pkg-footer-finance');
+    if (lessonsFooter) lessonsFooter.hidden = !showFinance;
+    if (financeFooter) financeFooter.hidden = showFinance;
+
+    const body = document.querySelector('.package-overview');
+    if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  _openPackageFinance(clientId) {
+    App.openPackageOverview(clientId);
+    if (!App.isPortalPtMode()) App._setPackageWorkspace('finance');
+  },
+
   openPackageOverview(clientId) {
     if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
@@ -1873,7 +1903,19 @@ const App = {
               </div>`}
         </div>
 
-        <div class="package-overview-kpis">
+        ${App.isPortalPtMode() ? '' : `
+        <div class="package-workspace-switch" role="group" aria-label="Sezione quadro pacchetto">
+          <button id="pkg-workspace-lessons" class="package-workspace-button active" type="button" aria-pressed="true" onclick="App._setPackageWorkspace('lessons')">
+            <span>📅</span>
+            <span><strong>Lezioni</strong><small>Calendario e sedute</small></span>
+          </button>
+          <button id="pkg-workspace-finance" class="package-workspace-button package-workspace-payment" type="button" aria-pressed="false" onclick="App._setPackageWorkspace('finance')">
+            <span>💳</span>
+            <span><strong>Pagamenti</strong><small>${App._escapeHtml(currentFinance.status)} · saldo ${App._fmtMoney(currentFinance.balance)}</small></span>
+          </button>
+        </div>`}
+
+        <div class="package-overview-kpis package-lessons-only">
           <div class="${hasTotal ? '' : 'warn'}"><span>Acquistate nel ciclo</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
           <div><span>Fatte nel ciclo</span><strong>${metrics.completed}</strong></div>
           <div><span>Future del ciclo</span><strong>${metrics.scheduled}</strong></div>
@@ -1885,22 +1927,22 @@ const App = {
         </div>
 
         ${App.isPortalPtMode() ? '' : `
-        <div class="package-finance-strip">
+        <div class="package-finance-strip package-finance-only" hidden>
           <div><span>Cicli registrati</span><strong>${financialSummary.cycles}</strong></div>
           <div><span>Valore storico</span><strong>${App._fmtMoney(financialSummary.expected)}</strong></div>
           <div><span>Incassato storico</span><strong>${App._fmtMoney(financialSummary.collected)}</strong></div>
           <div class="${financialSummary.outstanding > 0 ? 'warn' : ''}"><span>Da incassare</span><strong>${App._fmtMoney(financialSummary.outstanding)}</strong></div>
         </div>
-        ${packageLedger.parseError ? `<div class="package-ledger-error">${App._escapeHtml(packageLedger.parseError)}. I rinnovi sono bloccati finché il registro non viene corretto.</div>` : ''}`}
+        ${packageLedger.parseError ? `<div class="package-ledger-error package-finance-only" hidden>${App._escapeHtml(packageLedger.parseError)}. I rinnovi sono bloccati finché il registro non viene corretto.</div>` : ''}`}
 
         ${!isArchived && metrics.needsCycleSetup ? `
-          <section class="package-panel" style="border-color:#F59E0B;background:#FFFBEB">
+          <section class="package-panel package-lessons-only" style="border-color:#F59E0B;background:#FFFBEB">
             <h4>Ciclo corrente rilevato</h4>
             <p>Il vecchio sistema sommava i rinnovi. Ho separato ${metrics.total} lezioni del ciclo corrente dalle ${metrics.previousCompleted} già svolte in precedenza.</p>
             <button class="btn-primary" onclick="App._confirmCurrentPackageCycle('${client.id}')">Conferma separazione</button>
           </section>` : ''}
 
-        <div class="package-overview-grid">
+        <div class="package-overview-grid package-lessons-only">
           <section class="package-panel">
             <h4>Giornate acquistate</h4>
             <div class="day-chip-row">
@@ -1925,10 +1967,10 @@ const App = {
         </div>
 
         ${isArchived ? `
-        <section class="package-panel client-history-notice">
+        <section class="package-panel client-history-notice package-lessons-only">
           <h4>Cliente nello storico</h4>
           <p>Anagrafica, lezioni e conteggi sono conservati. Non è possibile programmare o modificare sedute finché il cliente non viene riattivato.</p>
-        </section>` : `<section class="package-panel package-reschedule-panel">
+        </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
           <h4>Cambio giorni/orari futuri</h4>
           <div class="package-reschedule-grid">
             <div>
@@ -1964,7 +2006,7 @@ const App = {
         </section>`}
 
         ${App.isPortalPtMode() || isArchived ? '' : `
-        <section class="package-panel package-payment-panel">
+        <section class="package-panel package-payment-panel package-finance-only" hidden>
           <div class="package-section-heading">
             <div>
               <h4>Pagamento ciclo corrente</h4>
@@ -2040,13 +2082,17 @@ const App = {
           </div>
         </section>
 
-        <section class="package-panel package-renewal-panel">
+        <section class="package-panel package-renewal-panel package-finance-only" hidden>
           <div class="package-section-heading">
             <div>
               <h4>Apri un nuovo rinnovo</h4>
-              <p>Il ciclo attuale viene chiuso nello storico; il nuovo ciclo e il suo pagamento restano separati.</p>
+              <p>Il ciclo attuale viene chiuso nello storico; il nuovo ciclo e il suo pagamento restano separati. Giorni, orario e PT si impostano nella sezione Lezioni.</p>
             </div>
             <span class="package-renewal-lock">Solo Direzione</span>
+          </div>
+          <div class="package-renewal-plan-link">
+            <span>Vuoi cambiare giorni, orario o PT prima del rinnovo?</span>
+            <button class="btn" type="button" onclick="App._setPackageWorkspace('lessons')">Apri programmazione lezioni</button>
           </div>
           <div class="package-renewal-grid">
             <div class="form-group">
@@ -2093,11 +2139,11 @@ const App = {
             </div>
             <button id="pkg-renew-submit" class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')" ${packageLedger.parseError ? 'disabled' : ''}>Rinnova e genera sedute</button>
           </div>
-          <p>Giorni, orario e PT saranno quelli impostati nella sezione “Cambio giorni/orari futuri” qui sopra. Se una data è in conflitto, il rinnovo viene annullato interamente: non resteranno salvataggi parziali.</p>
+          <p>Giorni, orario e PT saranno quelli impostati nella sezione Lezioni. Se una data è in conflitto, il rinnovo viene annullato interamente: non resteranno salvataggi parziali.</p>
         </section>`}
 
         ${App.isPortalPtMode() ? '' : `
-        <section class="package-panel package-history-panel">
+        <section class="package-panel package-history-panel package-finance-only" hidden>
           <div class="package-section-heading">
             <div>
               <h4>Storico rinnovi e pagamenti</h4>
@@ -2113,7 +2159,7 @@ const App = {
           </div>
         </section>`}
 
-        <section class="package-panel">
+        <section class="package-panel package-lessons-only">
           <h4>Appuntamenti collegati</h4>
           <table class="package-timeline-table">
             <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Ciclo</th><th>Azioni</th></tr></thead>
@@ -2128,7 +2174,8 @@ const App = {
         ` : `
           <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
           ${App.isPortalPtMode() ? '' : `<button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>`}
-          ${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="document.getElementById('pkg-renew-start')?.scrollIntoView({behavior:'smooth',block:'center'})">Vai al rinnovo</button>`}
+          ${App.isPortalPtMode() ? '' : `<button id="pkg-footer-lessons" class="btn" hidden onclick="App._setPackageWorkspace('lessons')">Torna alle lezioni</button>`}
+          ${App.isPortalPtMode() ? '' : `<button id="pkg-footer-finance" class="btn-primary" onclick="App._setPackageWorkspace('finance')">Pagamenti e rinnovo</button>`}
           <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
         `}
       </div>
@@ -2503,7 +2550,7 @@ const App = {
       if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
       UI.showToast(`Incasso registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
       Clients.render();
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
     } catch (error) {
       UI.showToast(error.message || 'Pagamento non registrato', 'error');
     } finally {
@@ -2536,7 +2583,7 @@ const App = {
       if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
       UI.showToast('Importo del ciclo aggiornato', 'success');
       Clients.render();
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
     } catch (error) {
       UI.showToast(error.message || 'Importo non aggiornato', 'error');
     } finally {
@@ -2574,7 +2621,7 @@ const App = {
       if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
       UI.showToast(`Rettifica registrata · incassato ${App._fmtMoney(result.finance.paid)} · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
       Clients.render();
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
     } catch (error) {
       UI.showToast(error.message || 'Rettifica non registrata', 'error');
     } finally {
@@ -2615,7 +2662,7 @@ const App = {
       if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
       UI.showToast(`Storno registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
       Clients.render();
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
     } catch (error) {
       UI.showToast(error.message || 'Storno non registrato', 'error');
     } finally {
@@ -2791,7 +2838,7 @@ const App = {
     if (validationError) {
       App._packageRenewalBusy = false;
       UI.showToast(validationError.message || 'Verifica del rinnovo non riuscita', 'error');
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
       return;
     }
 
@@ -2799,7 +2846,7 @@ const App = {
       App._packageRenewalBusy = false;
       UI.showToast(`Rinnovo annullato: trovate ${created.length} date valide su ${missing} necessarie`, 'error');
       alert('Nessun dato è stato salvato. Risolvi i conflitti o cambia giorni/orario:\n' + skipped.slice(0, 12).join('\n'));
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
       return;
     }
 
@@ -2816,7 +2863,7 @@ const App = {
       UI.showToast(rollbackOk
         ? 'Rinnovo annullato: sincronizzazione fallita, nessun dato parziale conservato'
         : 'Rinnovo annullato: verifica la connessione prima di riprovare', 'error');
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
       return;
     }
 
@@ -2832,7 +2879,7 @@ const App = {
       UI.showToast(rollbackOk
         ? 'Rinnovo annullato: il cliente non è stato aggiornato e le sedute sono state ripristinate'
         : 'Rinnovo non completato: verifica la sincronizzazione prima di riprovare', 'error');
-      App.openPackageOverview(clientId);
+      App._openPackageFinance(clientId);
       return;
     }
 
@@ -2854,7 +2901,7 @@ const App = {
       `Rinnovo completo · ${carriedAppointments.length} sedute mantenute, ${created.length} create · saldo ${App._fmtMoney(renewal.finance.balance)}`,
       'success'
     );
-    App.openPackageOverview(clientId);
+    App._openPackageFinance(clientId);
   },
 
   async _updatePackageAppointmentRow(apptId) {
