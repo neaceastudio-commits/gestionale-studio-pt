@@ -8,6 +8,43 @@ begin;
 alter table public.appointments
   add column if not exists performed_by_operator_id text;
 
+do $$
+declare
+  performer_type text;
+  scheduled_type text;
+  operator_type text;
+begin
+  select data_type into performer_type
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'appointments'
+    and column_name = 'performed_by_operator_id';
+
+  select data_type into scheduled_type
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'appointments'
+    and column_name = 'operator_id';
+
+  select data_type into operator_type
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'operators'
+    and column_name = 'id';
+
+  if performer_type is null or scheduled_type is null or operator_type is null then
+    raise exception 'Migrazione bloccata: colonne ID PT richieste non trovate';
+  end if;
+
+  if performer_type <> operator_type or scheduled_type <> operator_type then
+    raise exception
+      'Migrazione bloccata: tipi ID incompatibili (esecutore %, programmato %, operatore %)',
+      performer_type,
+      scheduled_type,
+      operator_type;
+  end if;
+end $$;
+
 comment on column public.appointments.performed_by_operator_id is
   'operators.id del PT che ha realmente eseguito la prestazione. NULL significa non registrato e non deve essere dedotto da operator_id.';
 

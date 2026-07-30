@@ -9,7 +9,9 @@ with appointment_counts as (
     count(*) filter (where a.status = 'fatto') as completed_sessions,
     count(*) filter (where a.date >= current_date and a.status <> 'annullato') as future_sessions
   from public.appointments a
-  cross join lateral unnest(coalesce(a.client_ids, array[]::text[])) as client_rows(client_id)
+  cross join lateral jsonb_array_elements_text(
+    coalesce(a.client_ids, '[]'::jsonb)
+  ) as client_rows(client_id)
   where a.operator_id is not null and a.operator_id <> ''
   group by client_rows.client_id, a.operator_id
 ), active_assignment_counts as (
@@ -28,6 +30,7 @@ select
   c.active,
   c.pt_assegnato as current_responsible_pt_id,
   responsible.nome || ' ' || responsible.cognome as current_responsible_pt,
+  (responsible.id is not null) as current_responsible_pt_valid,
   coalesce(assignment.active_rows, 0) as parallel_active_assignment_rows,
   assignment.active_trainer_ids as parallel_active_assignment_ids,
   coalesce(
@@ -43,7 +46,12 @@ select
     '[]'::jsonb
   ) as appointment_evidence_only,
   case
-    when c.pt_assegnato is not null and c.pt_assegnato <> '' then 'KEEP clients.pt_assegnato'
+    when nullif(c.pt_assegnato, '') is not null
+      and responsible.id is not null
+      then 'KEEP clients.pt_assegnato'
+    when nullif(c.pt_assegnato, '') is not null
+      and responsible.id is null
+      then 'MANUAL: clients.pt_assegnato is not a valid operators.id'
     when count(counts.operator_id) = 0 then 'MANUAL: no assignment evidence'
     else 'MANUAL: appointment evidence is not a stable assignment'
   end as proposed_action
@@ -53,7 +61,7 @@ left join active_assignment_counts assignment on assignment.client_id = c.id
 left join appointment_counts counts on counts.client_id = c.id
 left join public.operators operator on operator.id = counts.operator_id
 group by c.id, c.nome, c.cognome, c.active, c.pt_assegnato,
-         responsible.nome, responsible.cognome,
+         responsible.id, responsible.nome, responsible.cognome,
          assignment.active_rows, assignment.active_trainer_ids
 order by c.active desc, c.cognome, c.nome;
 

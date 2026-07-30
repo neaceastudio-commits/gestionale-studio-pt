@@ -40,6 +40,10 @@ begin
   select pg_get_viewdef('public.pt_calendar_sessions'::regclass, true)
     into existing_definition;
 
+  -- pg_get_viewdef può terminare la definizione con ";". Dentro una
+  -- sottoquery quel terminatore produce SQL invalido.
+  existing_definition := rtrim(existing_definition, E' \n\r\t;');
+
   execute format(
     'create or replace view public.pt_calendar_sessions as '
     'select existing_view.*, appointments.performed_by_operator_id '

@@ -1,0 +1,19 @@
+{
+  "name": "neacea-gestionale-studio-pt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NEACEA Gestionale Studio PT with an isolated local Supabase staging harness.",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "staging:up": "cd local-staging && ../node_modules/.bin/supabase start --network-id neacea-local-network -x realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor,mailpit,postgres-meta",
+    "staging:apply": "node local-staging/scripts/apply-local-schema.mjs",
+    "staging:test": "node --test tests/*.test.cjs local-staging/tests/*.test.mjs",
+    "staging:check": "node local-staging/scripts/apply-local-schema.mjs && node --test tests/*.test.cjs local-staging/tests/*.test.mjs",
+    "staging:status": "cd local-staging && ../node_modules/.bin/supabase status",
+    "staging:down": "cd local-staging && ../node_modules/.bin/supabase stop"
+  },
+  "devDependencies": {
+    "supabase": "2.110.0"
+  }
+}
