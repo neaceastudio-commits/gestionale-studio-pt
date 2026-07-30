@@ -7,7 +7,7 @@ const path = require('node:path');
 const htmlPath = path.join(__dirname, '..', 'app', 'acquisizione', 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].at(-1)[1]
-  .replace(/\bcarica\(\);\s*$/, '');
+  .replace(/\bverifyAcquisitionAccess\(\)\.catch\(showAccessError\);\s*$/, '');
 
 let fetchHandler = async () => response(500, 'fetch non configurato');
 const context = vm.createContext({
@@ -113,7 +113,7 @@ test('un cliente già presente viene aggiornato e non duplicato', async () => {
   assert.match(patch.notes, /Indirizzo: Via Roma 10, 09100 Cagliari CA/);
   assert.equal('package_types' in patch, false);
   assert.equal('sessions_total' in patch, false);
-  assert.equal('pt_assegnato' in patch, false);
+  assert.equal(patch.pt_assegnato, 'op_1');
   assert.equal('importo' in patch, false);
 
   const archived = calls.find(call =>

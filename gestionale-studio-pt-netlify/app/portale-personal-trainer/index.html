@@ -1453,6 +1453,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite">Salvato</div>
 
+  <script src="../shared/pt-domain.js?v=1"></script>
   <script>
     const SUPABASE_URL = "https://cdywqyqqmjhgkzwrrixc.supabase.co";
     const SUPABASE_KEY = "sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24";
@@ -1828,22 +1829,22 @@
     }
 
     function operatorFromAny(value) {
-      const raw = String(value || "").trim();
-      if (!raw) return null;
-      const key = raw.toLowerCase();
-      return appState.operators.find(op =>
-        String(op.id || "").toLowerCase() === key ||
-        String(op.email || "").toLowerCase() === key ||
-        fullName(op).toLowerCase() === key
-      ) || null;
+      const id = NeaceaPtDomain.strictOperatorId(value, appState.operators);
+      return id ? appState.operators.find(op => op.id === id) || null : null;
     }
 
     function operatorIdFromAny(value) {
-      return operatorFromAny(value)?.id || String(value || "").trim();
+      return operatorFromAny(value)?.id || "";
     }
 
     function clientTrainerId(client) {
-      return operatorIdFromAny(client?.trainer_id || client?.pt_assegnato || client?.operator_id);
+      return NeaceaPtDomain.responsibleTrainerId(client, appState.operators);
+    }
+
+    function storageKeyFor(clientId = appState.selectedClientId, programId = appState.selectedProgramId) {
+      const ptId = appState.currentPt?.id || "anon";
+      const programKey = programId || "new";
+      return `${STORAGE_PREFIX}_${ptId}_${clientId || "no_client"}_${programKey}`;
     }
 
     function trainerForClient(client) {
@@ -1878,29 +1879,6 @@
       if (canEditClient()) return true;
       showToast("Modalità Proprietario: le schede degli altri PT sono disponibili solo in lettura");
       return false;
-    }
-
-    function sessionTrainerId(session) {
-      return operatorIdFromAny(session?.trainer_id || session?.operator_id || session?.pt_id);
-    }
-
-    function sessionClientIds(session) {
-      return Array.from(new Set([
-        ...(Array.isArray(session?.client_ids) ? session.client_ids : []),
-        ...(Array.isArray(session?.clientIds) ? session.clientIds : []),
-        session?.client_id,
-        session?.cliente_id
-      ].filter(Boolean).map(String)));
-    }
-
-    function legacyStorageKeyFor(clientId = appState.selectedClientId) {
-      const ptId = appState.currentPt?.id || "anon";
-      return `${STORAGE_PREFIX}_${ptId}_${clientId || "no_client"}`;
-    }
-
-    function storageKeyFor(clientId = appState.selectedClientId, programId = appState.selectedProgramId) {
-      const programKey = programId || "new";
-      return `${legacyStorageKeyFor(clientId)}_${programKey}`;
     }
 
     function myClients() {
@@ -2129,9 +2107,8 @@
 
     async function loadPortalData() {
       if (appState.dataLoaded) return;
-      const [clients, sessions, acquisitions, programs] = await Promise.all([
+      const [clients, acquisitions, programs] = await Promise.all([
         sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
-        sb("pt_calendar_sessions", "?select=*&order=date.asc,start_time.asc").catch(() => []),
         sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
         sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
       ]);
@@ -2144,7 +2121,7 @@
         return {
           ...client,
           client_id: client.id,
-          trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || client.operator_id),
+          trainer_id: clientTrainerId(client),
           obiettivo: client.obiettivo || acq?.obiettivo || "",
           note_operative: acq?.impressioni || client.notes || ""
         };

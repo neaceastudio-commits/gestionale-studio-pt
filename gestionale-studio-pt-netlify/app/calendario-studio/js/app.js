@@ -27,6 +27,10 @@ const UI = {
 
 // ── APP CONTROLLER ────────────────────────────────────────
 
+// Il token del portale identifica il PT, ma le scritture restano disabilitate
+// finche Supabase Auth e le policy RLS non autorizzano l'utente lato database.
+const PORTAL_PT_MUTATIONS_ENABLED = false;
+
 const App = {
   portalPt: {
     enabled: false,
@@ -37,42 +41,16 @@ const App = {
     accessParam: ''
   },
 
-  _normKey(value) {
-    return String(value || '').trim().toLowerCase();
-  },
-
   _operatorLabel(operator) {
     return [operator?.nome, operator?.cognome].filter(Boolean).join(' ').trim() || operator?.email || operator?.id || '';
   },
 
-  _operatorKeys(operator) {
-    return [
-      operator?.id,
-      operator?.operator_id,
-      operator?.email,
-      App._operatorLabel(operator)
-    ].map(App._normKey).filter(Boolean);
-  },
-
-  _clientTrainerKeys(client) {
-    return [
-      client?.ptAssegnato,
-      client?.pt_assegnato,
-      client?.trainer_id,
-      client?.operatorId,
-      client?.operator_id
-    ].map(App._normKey).filter(Boolean);
-  },
-
   _resolvePortalOperator(params = new URLSearchParams(window.location.search)) {
     const opParam = params.get('op') || params.get('operator') || params.get('operator_id') || '';
-    const emailParam = params.get('email') || params.get('ptEmail') || '';
-    const wanted = [opParam, emailParam].map(App._normKey).filter(Boolean);
-    const operator = State.getOperators().find(op => {
-      const keys = App._operatorKeys(op);
-      return wanted.some(value => keys.includes(value));
-    }) || null;
-    return { operator, opParam, emailParam, accessParam: params.get('access') || '' };
+    const operators = State.getOperators();
+    const operatorId = NeaceaPtDomain.strictOperatorId(opParam, operators);
+    const operator = operatorId ? operators.find(op => op.id === operatorId) || null : null;
+    return { operator, opParam, accessParam: params.get('access') || '' };
   },
 
   async _initPortalPtMode() {
@@ -90,10 +68,11 @@ const App = {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Sessione PT non valida');
-      const authorizedOperator = State.getOperators().find(op =>
-        App._operatorKeys(op).includes(App._normKey(result.operatorId)) &&
-        (!result.email || App._operatorKeys(op).includes(App._normKey(result.email)))
-      ) || null;
+      const operators = State.getOperators();
+      const authorizedOperatorId = NeaceaPtDomain.strictOperatorId(result.operatorId, operators);
+      const authorizedOperator = authorizedOperatorId
+        ? operators.find(op => op.id === authorizedOperatorId) || null
+        : null;
       if (!authorizedOperator) throw new Error('Profilo PT non trovato');
 
       App.portalPt = {
@@ -108,15 +87,22 @@ const App = {
       console.warn('[PT access]', error);
       UI.showToast('Accesso calendario PT non valido o scaduto: rientra dal Portale PT', 'error');
     }
-    App._applyPortalPtNavigation();
+    App._applyPortalReadOnlyUi();
     App._renderPortalPtBadge();
     return App.portalPt.authorized;
   },
 
-  _applyPortalPtNavigation() {
+  _applyPortalReadOnlyUi() {
     if (!App.isPortalPtMode()) return;
-    document.querySelectorAll('[data-view="availability"], [data-view="operators"]').forEach(button => {
-      button.hidden = true;
+    document.querySelectorAll('[data-view="availability"], [data-view="operators"]').forEach(tab => {
+      tab.hidden = true;
+    });
+    if (App.portalPtMutationsEnabled()) return;
+    document.body.classList.add('portal-pt-readonly');
+    document.querySelectorAll('[onclick*="openNewAppointment"]').forEach(button => {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.title = 'Sola lettura: autenticazione Supabase e RLS non abilitati';
     });
   },
 
@@ -124,7 +110,7 @@ const App = {
     const topbarRight = document.querySelector('.topbar-right');
     if (!topbarRight || document.getElementById('portal-pt-badge')) return;
     const label = App.portalPt.authorized
-      ? (App._operatorLabel(App.portalPt.operator) || App.portalPt.emailParam || 'PT')
+      ? (App._operatorLabel(App.portalPt.operator) || 'PT')
       : 'Accesso PT scaduto';
     const badge = document.createElement('span');
     badge.id = 'portal-pt-badge';
@@ -132,7 +118,7 @@ const App = {
     badge.style.cursor = 'default';
     badge.style.background = 'rgba(255,255,255,.12)';
     badge.style.borderColor = 'rgba(255,255,255,.18)';
-    badge.textContent = `PT: ${label}`;
+    badge.textContent = `PT: ${label}${App.portalPtMutationsEnabled() ? '' : ' · sola lettura'}`;
     topbarRight.prepend(badge);
   },
 
@@ -146,40 +132,49 @@ const App = {
 
   portalOperatorId() {
     if (!App.portalPt.authorized) return '';
-    return App.currentPortalOperator()?.id || '';
+    return NeaceaPtDomain.strictOperatorId(App.currentPortalOperator()?.id, State.getOperators());
   },
 
-  canEditClient(clientOrId) {
+  portalPtMutationsEnabled() {
+    return PORTAL_PT_MUTATIONS_ENABLED;
+  },
+
+  canViewClient(clientOrId) {
     if (!App.isPortalPtMode()) return true;
     if (!App.portalPt.authorized) return false;
     const client = typeof clientOrId === 'string'
       ? State.getClients().find(c => c.id === clientOrId)
       : clientOrId;
-    if (!client) return false;
-    const operatorKeys = App._operatorKeys(App.portalPt.operator);
-    const trainerKeys = App._clientTrainerKeys(client);
-    return operatorKeys.some(key => trainerKeys.includes(key));
+    const operatorId = App.portalOperatorId();
+    return !!client && !!operatorId
+      && NeaceaPtDomain.responsibleTrainerId(client, State.getOperators()) === operatorId;
+  },
+
+  canEditClient(clientOrId) {
+    if (!App.isPortalPtMode()) return true;
+    if (!App.portalPtMutationsEnabled()) return false;
+    return App.canViewClient(clientOrId);
   },
 
   canEditAppointment(appt) {
     if (!App.isPortalPtMode()) return true;
-    if (!App.portalPt.authorized || !appt) return false;
+    if (!App.portalPtMutationsEnabled()) return false;
+    if (!appt) return false;
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
-    const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
-    if (clientIds.length) return isOwnAppointment && clientIds.every(clientId => App.canEditClient(clientId));
-    return false;
+    if (clientIds.length) return clientIds.every(clientId => App.canViewClient(clientId));
+    return NeaceaPtDomain.scheduledTrainerId(appt, State.getOperators()) === App.portalOperatorId();
   },
 
   canViewAppointment(appt) {
     if (!App.isPortalPtMode()) return true;
     if (!App.portalPt.authorized || !appt) return false;
-    const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
+    const isOwnAppointment = NeaceaPtDomain.scheduledTrainerId(appt, State.getOperators()) === App.portalOperatorId();
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
-    return isOwnAppointment || clientIds.some(clientId => App.canEditClient(clientId));
+    return isOwnAppointment || clientIds.some(clientId => App.canViewClient(clientId));
   },
 
   visibleClients(clients = State.getClients()) {
-    return App.isPortalPtMode() ? clients.filter(client => App.canEditClient(client)) : clients;
+    return App.isPortalPtMode() ? clients.filter(client => App.canViewClient(client)) : clients;
   },
 
   guardPortalEdit(kind, item) {
@@ -213,6 +208,10 @@ const App = {
   // ── APERTURA MODALI ──────────────────────────────────
 
   openNewAppointment(dateStr = null, clientId = null, startTime = null, serviceId = null) {
+    if (App.isPortalPtMode() && !App.portalPtMutationsEnabled()) {
+      UI.showToast('Modalità PT in sola lettura: non puoi creare appuntamenti', 'error');
+      return;
+    }
     if (App.isPortalPtMode() && clientId && !App.canEditClient(clientId)) {
       UI.showToast('Modalità PT: puoi creare appuntamenti solo per i tuoi clienti assegnati', 'error');
       return;
@@ -284,7 +283,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Stato</label>
-            <select id="appt-status" class="form-input" ${App.isPortalPtMode() ? 'disabled' : ''}>${statusHtml}</select>
+            <select id="appt-status" class="form-input" onchange="App._onStatusChange()" ${App.isPortalPtMode() ? 'disabled' : ''}>${statusHtml}</select>
           </div>
         </div>
 
@@ -311,6 +310,10 @@ const App = {
         <!-- Operatore: ricostruito da _buildOperatorSection -->
         <div id="operator-section">
           ${App._buildOperatorSection(curSvcId, appt?.operatorId||null, appt?.date||defaultDate, appt?.startTime||defaultStartTime||'09:00', appt?.durationMin||svc?.durationMin||60, apptId || null)}
+        </div>
+
+        <div id="performer-section">
+          ${App._buildPerformerSection(appt?.performedByOperatorId || null)}
         </div>
 
         ${App.isPortalPtMode() ? '' : `<div id="operator-overlap-override" class="operator-overlap-override" hidden>
@@ -342,6 +345,7 @@ const App = {
     UI.openModal(html);
     // Trigger validazione iniziale
     App._onSlotChange();
+    App._onStatusChange();
   },
 
   // ── SEZIONE CLIENTI ──────────────────────────────────
@@ -349,7 +353,7 @@ const App = {
     const svc = Services.getService(serviceId);
     if (!svc || svc.isBlock) return '';
     const compatible = Services.getCompatibleClients(serviceId)
-      .filter(client => !App.isPortalPtMode() || App.canEditClient(client));
+      .filter(client => !App.isPortalPtMode() || App.canViewClient(client));
     const compCount  = compatible.filter(c => c.compatible).length;
     const isMulti    = svc.maxClients > 1;
 
@@ -427,9 +431,8 @@ const App = {
     const bufferMin = svc?.bufferMin || 0;
     const excludeId = excludeAppointmentId || document.getElementById('appt-id')?.value || null;
     const portalOperator = App.currentPortalOperator();
-    if (portalOperator?.id) selectedOpId = portalOperator.id;
     const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId)
-      .filter(op => !App.isPortalPtMode() || !portalOperator || App._operatorKeys(op).some(key => App._operatorKeys(portalOperator).includes(key)));
+      .filter(op => !App.isPortalPtMode() || !portalOperator || op.id === portalOperator.id);
 
     // Se selectedOpId non valido, prova auto-assign
     if (!selectedOpId && date && startTime) {
@@ -462,6 +465,39 @@ const App = {
         </select>
         ${warning}
       </div>`;
+  },
+
+  _buildPerformerSection(selectedPerformerId = null) {
+    const operators = State.getOperators();
+    const selected = NeaceaPtDomain.strictOperatorId(selectedPerformerId, operators);
+    const activeOptions = operators
+      .filter(operator => operator.active !== false)
+      .map(operator => `
+        <option value="${operator.id}" ${operator.id === selected ? 'selected' : ''}>${operator.nome} ${operator.cognome}</option>
+      `).join('');
+    const selectedInactive = selected
+      ? operators.find(operator => operator.id === selected && operator.active === false)
+      : null;
+    const inactiveOption = selectedInactive
+      ? `<option value="${selectedInactive.id}" selected disabled>${selectedInactive.nome} ${selectedInactive.cognome} (inattivo · storico)</option>`
+      : '';
+    return `
+      <div class="form-group" id="appt-performer-group">
+        <label>PT esecutore della prestazione</label>
+        <select id="appt-performer" class="form-input">
+          <option value="">— seleziona quando la seduta è svolta —</option>
+          ${inactiveOption}${activeOptions}
+        </select>
+        <div class="form-hint">Usato per statistiche e compensi. Non modifica il PT responsabile del cliente.</div>
+      </div>`;
+  },
+
+  _onStatusChange() {
+    const status = document.getElementById('appt-status')?.value || 'prenotato';
+    const performerGroup = document.getElementById('appt-performer-group');
+    const performer = document.getElementById('appt-performer');
+    if (performerGroup) performerGroup.hidden = status !== 'fatto';
+    if (status !== 'fatto' && performer) performer.value = '';
   },
 
   // ── CAMBIO SERVIZIO ──────────────────────────────────
@@ -601,7 +637,7 @@ const App = {
   _withPtAudit(notes, action) {
     const current = String(notes || '').trim();
     if (!App.isPortalPtMode() || !App.portalPt.authorized) return current;
-    const actor = App.portalPt.emailParam || App._operatorLabel(App.portalPt.operator) || App.portalOperatorId() || 'PT';
+    const actor = App._operatorLabel(App.portalPt.operator) || App.portalOperatorId() || 'PT';
     const line = `[PT-AUDIT] ${new Date().toISOString()} · ${action} · ${actor}`;
     return [current, line].filter(Boolean).join('\n');
   },
@@ -788,32 +824,42 @@ const App = {
   },
 
   // ── SALVA APPUNTAMENTO ───────────────────────────────
-  _saveAppointment(apptId) {
+  async _saveAppointment(apptId) {
     const svcId   = document.getElementById('appt-service')?.value;
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
     let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
+    const performerId = document.getElementById('appt-performer')?.value || null;
     let notes     = document.getElementById('appt-notes')?.value || '';
     const svc     = Services.getService(svcId);
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
     const clientIds = clientEls.map(el => el.value);
-    if (App.isPortalPtMode() && App.portalOperatorId()) opId = App.portalOperatorId();
-
     if (!svcId || !date || !time) { UI.showToast('Compila tutti i campi obbligatori', 'error'); return; }
     if (!svc?.isBlock && clientIds.length === 0) { UI.showToast('Seleziona almeno un cliente', 'error'); return; }
 
-    const apptData = {
+    let apptData = {
       serviceId: svcId, clientIds, operatorId: opId,
       date, startTime: time, durationMin: dur,
       bufferMin: svc?.bufferMin ?? 10, status, notes,
+      performedByOperatorId: performerId,
     };
     if (!App.guardPortalEdit('appointment', { ...apptData, id: apptId || null })) return;
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     notes = App._withPtAudit(notes, before ? 'appuntamento modificato' : 'appuntamento creato');
     apptData.notes = notes;
+    apptData = NeaceaPtDomain.normalizePerformanceTransition(
+      before,
+      apptData,
+      State.getOperators(),
+      App.portalOperatorId()
+    );
+    if (status === 'fatto' && !apptData.performedByOperatorId) {
+      UI.showToast('Seleziona il PT che ha eseguito la prestazione', 'error');
+      return;
+    }
     const sameClients = before
       ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
       : false;
@@ -874,27 +920,43 @@ const App = {
     }
     apptData.notes = notes;
 
+    const appointmentsBefore = State.getAppointments();
+    const clientsBefore = State.getClients();
     let saved;
     if (apptId) {
       saved = Services.updateAppointment(apptId, apptData);
-      if (before?.status !== 'fatto' && saved?.status === 'fatto') App._consumeClientSessions(saved);
-      UI.showToast('Appuntamento aggiornato', 'success');
     } else {
       saved = Services.addAppointment(apptData);
-      if (saved?.status === 'fatto') App._consumeClientSessions(saved);
-      UI.showToast('Appuntamento creato', 'success');
     }
 
+    const touchedClients = App._consumeClientSessions({
+      ...saved,
+      clientIds: [...new Set([...(before?.clientIds || []), ...(saved?.clientIds || [])])],
+    }, { persistRemote: false });
+
+    const syncResult = await SupabaseSync.pushAppointment(saved);
+    if (syncResult?.error) {
+      State.saveAppointments(appointmentsBefore);
+      State.saveClients(clientsBefore);
+      Calendar.render();
+      UI.showToast('Appuntamento non salvato: verifica schema e permessi Supabase', 'error');
+      return;
+    }
+    await Promise.all(touchedClients.map(client => SupabaseSync.pushClient(client)));
+    if (CONFIG.SHEETS.enabled) {
+      touchedClients.forEach(client => Sheets.pushClient(client));
+      Sheets.pushAppointment(saved);
+    }
     UI.closeModal();
     Calendar.render();
-    SupabaseSync.pushAppointment(saved);
-    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
+    UI.showToast(apptId ? 'Appuntamento aggiornato' : 'Appuntamento creato', 'success');
   },
 
   // ── MODAL DETTAGLIO ──────────────────────────────────
   _renderDetailModal(appt) {
     const svc     = Services.getService(appt.serviceId);
     const op      = Services.getOperator(appt.operatorId);
+    const performer = Services.getOperator(appt.performedByOperatorId);
     const isCircuit = svc?.isGroup;
     const isBlock   = svc?.isBlock;
     const clients   = State.getClients();
@@ -958,9 +1020,13 @@ const App = {
         <div class="detail-grid">
           ${bodyHtml}
           <div class="detail-section">
-            <div class="detail-label">Operatore</div>
+            <div class="detail-label">PT programmato</div>
             <div class="detail-value">${op?`${op.nome} ${op.cognome}`:'—'}</div>
           </div>
+          ${appt.status === 'fatto' ? `<div class="detail-section">
+            <div class="detail-label">PT esecutore</div>
+            <div class="detail-value">${performer ? `${performer.nome} ${performer.cognome}${performer.active === false ? ' (inattivo)' : ''}` : 'Non registrato'}</div>
+          </div>` : ''}
           <div class="detail-section">
             <div class="detail-label">Stato</div>
             <div class="detail-value">
@@ -1008,40 +1074,32 @@ const App = {
   _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const doneAppt = Services.updateAppointment(apptId, { status: 'fatto', notes: App._withPtAudit(before?.notes, 'segnato come fatto') });
-    if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
-    UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
-    SupabaseSync.pushAppointment(doneAppt);
-    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(doneAppt);
+    App._renderAppointmentModal(apptId, before?.date);
+    const status = document.getElementById('appt-status');
+    if (status) status.value = 'fatto';
+    App._onStatusChange();
+    UI.showToast('Seleziona il PT esecutore e salva la seduta', 'info');
   },
-  _consumeClientSessions(appt) {
-    if (!appt?.clientIds?.length) return;
-    const clients = State.getClients();
-    const touched = [];
-    appt.clientIds.forEach(id => {
-      const idx = clients.findIndex(c => c.id === id);
-      if (idx < 0) return;
-      const total = Number(clients[idx].sessionsTotal ?? clients[idx].sessions_total ?? 0);
-      const remaining = Number(clients[idx].sessionsRemaining ?? clients[idx].sessions_remaining ?? 0);
-      if (total <= 0 || remaining <= 0) return;
-      clients[idx] = { ...clients[idx], sessionsRemaining: Math.max(0, remaining - 1) };
-      touched.push(clients[idx]);
-    });
-    if (!touched.length) return;
-    State.saveClients(clients);
-    touched.forEach(client => {
+  _consumeClientSessions(appt, { persistRemote = true } = {}) {
+    if (!appt?.clientIds?.length) return [];
+    const touched = Services.recalculateClientSessions(appt.clientIds);
+    if (persistRemote) touched.forEach(client => {
       SupabaseSync.pushClient(client);
       if (CONFIG.SHEETS.enabled) Sheets.pushClient(client);
     });
+    return touched;
   },
   async _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const nsAppt = Services.updateAppointment(apptId, { status: 'noshow', notes: App._withPtAudit(before?.notes, 'segnato come no-show') });
+    const nsAppt = Services.updateAppointment(apptId, {
+      status: 'noshow',
+      performedByOperatorId: '',
+      notes: App._withPtAudit(before?.notes, 'segnato come no-show'),
+    });
     await SupabaseSync.pushAppointment(nsAppt);
-    if (before?.status === 'fatto' && App._recalculateClientSessions) {
-      await App._recalculateClientSessions(before.clientIds || []);
-    }
+    const touched = App._consumeClientSessions(nsAppt, { persistRemote: false });
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
     UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
   },
@@ -1051,12 +1109,12 @@ const App = {
     if (!confirm('Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
     const cancelled = Services.updateAppointment(apptId, {
       status: 'annullato',
+      performedByOperatorId: '',
       notes: App._withPtAudit(before?.notes, 'appuntamento annullato'),
     });
     await SupabaseSync.pushAppointment(cancelled);
-    if (before?.status === 'fatto' && App._recalculateClientSessions) {
-      await App._recalculateClientSessions(before.clientIds || []);
-    }
+    const touched = App._consumeClientSessions(cancelled, { persistRemote: false });
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);
     UI.closeModal();
     UI.showToast('Appuntamento annullato e conservato nello storico', 'success');
@@ -1085,11 +1143,12 @@ const App = {
       return;
     }
     Services.deleteAppointment(apptId);
-    const balance = Services.serviceUsesPackageSessions(appt.serviceId) && App._recalculateClientSessions
-      ? await App._recalculateClientSessions(appt.clientIds || [])
-      : { ok: true };
+    const touched = Services.serviceUsesPackageSessions(appt.serviceId)
+      ? App._consumeClientSessions(appt, { persistRemote: false })
+      : [];
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
     UI.closeModal();
-    UI.showToast(balance?.ok === false ? 'Appuntamento eliminato, residuo da verificare' : 'Appuntamento eliminato e conteggi aggiornati', balance?.ok === false ? 'info' : 'success');
+    UI.showToast('Appuntamento eliminato e conteggi aggiornati', 'success');
     Calendar.render();
   },
 
@@ -1363,11 +1422,8 @@ const App = {
 
   // ── TRASFERIMENTO CLIENTE TRA PT ─────────────────────
   _assignedTrainer(client) {
-    const trainerKeys = App._clientTrainerKeys(client);
-    if (!trainerKeys.length) return null;
-    return State.getOperators().find(operator =>
-      App._operatorKeys(operator).some(key => trainerKeys.includes(key))
-    ) || null;
+    const trainerId = NeaceaPtDomain.responsibleTrainerId(client, State.getOperators());
+    return trainerId ? State.getOperators().find(operator => operator.id === trainerId) || null : null;
   },
 
   _isPtAppointment(appt) {
@@ -1820,7 +1876,7 @@ const App = {
     );
     const operators = State.getOperators()
       .filter(o => o.active !== false)
-      .filter(o => !App.isPortalPtMode() || App._operatorKeys(o).some(key => App._operatorKeys(App.currentPortalOperator()).includes(key)));
+      .filter(o => !App.isPortalPtMode() || o.id === App.portalOperatorId());
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
     const today = App._dateStr(new Date());
@@ -2416,7 +2472,6 @@ const App = {
     );
     const fallbackOperator = selectedOperator ||
       futureToReplace[0]?.operatorId ||
-      [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
       currentClient.ptAssegnato ||
       null;
     const fallbackOperatorData = fallbackOperator ? Services.getOperator(fallbackOperator) : null;
@@ -2909,9 +2964,7 @@ const App = {
     if (!App.guardPortalEdit('appointment', appt)) return;
     const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
     const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
-    const nextOperatorId = App.isPortalPtMode() && App.portalOperatorId()
-      ? App.portalOperatorId()
-      : (document.getElementById(`pkg-operator-${apptId}`)?.value || null);
+    const nextOperatorId = document.getElementById(`pkg-operator-${apptId}`)?.value || null;
     const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
     if (!appt || !nextDate || !nextTime || !nextStatus) return;
     if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && appt.status === nextStatus) {
@@ -2919,7 +2972,15 @@ const App = {
       return;
     }
 
-    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus };
+    if (nextStatus === 'fatto' && !appt.performedByOperatorId) {
+      UI.showToast('Apri la seduta e seleziona il PT esecutore prima di segnarla come svolta', 'error');
+      return;
+    }
+    const patch = NeaceaPtDomain.normalizePerformanceTransition(
+      appt,
+      { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus },
+      State.getOperators()
+    );
     const validation = Services.canBookAppointment(patch);
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
@@ -2927,19 +2988,26 @@ const App = {
       return;
     }
 
+    const appointmentsBefore = State.getAppointments();
+    const clientsBefore = State.getClients();
     const saved = Services.updateAppointment(apptId, {
-      date: nextDate,
-      startTime: nextTime,
-      operatorId: nextOperatorId,
-      status: nextStatus,
+      ...patch,
       notes: App._withPtAudit(appt.notes, 'seduta aggiornata dal quadro pacchetto'),
     });
-    if (appt.status !== 'fatto' && saved.status === 'fatto') App._consumeClientSessions(saved);
-    await SupabaseSync.pushAppointment(saved);
-    if (appt.status === 'fatto' && saved.status !== 'fatto' && App._recalculateClientSessions) {
-      await App._recalculateClientSessions(saved.clientIds || []);
+    const touched = App._consumeClientSessions(saved, { persistRemote: false });
+    const result = await SupabaseSync.pushAppointment(saved);
+    if (result?.error) {
+      State.saveAppointments(appointmentsBefore);
+      State.saveClients(clientsBefore);
+      Calendar.render();
+      UI.showToast('Seduta non salvata: verifica esecutore, schema e permessi', 'error');
+      return;
     }
-    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
+    if (CONFIG.SHEETS.enabled) {
+      Sheets.pushAppointment(saved);
+      touched.forEach(client => Sheets.pushClient(client));
+    }
     Calendar.render();
     UI.showToast('Appuntamento aggiornato', 'success');
     const clientId = saved?.clientIds?.[0];
@@ -2966,11 +3034,10 @@ const App = {
       return;
     }
     Services.deleteAppointment(apptId);
-    const balance = App._recalculateClientSessions
-      ? await App._recalculateClientSessions(appt.clientIds || [])
-      : { ok: true };
+    const touched = App._consumeClientSessions(appt, { persistRemote: false });
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
     Calendar.render();
-    UI.showToast(balance?.ok === false ? 'Seduta eliminata, residuo da verificare' : 'Seduta eliminata e conteggi aggiornati', balance?.ok === false ? 'info' : 'success');
+    UI.showToast('Seduta eliminata e conteggi aggiornati', 'success');
     const clientId = appt.clientIds?.[0];
     if (clientId) App.openPackageOverview(clientId);
   },
@@ -3053,6 +3120,10 @@ const App = {
 
   // ── GESTIONE DATI ────────────────────────────────────
   openDataManager() {
+    if (App.isPortalPtMode()) {
+      UI.showToast('Modalità PT in sola lettura: gestione dati riservata allo studio', 'error');
+      return;
+    }
     const hasBackup = !!localStorage.getItem('neacea_backup');
     const lastSync  = localStorage.getItem('neacea_last_sync');
     const bkRaw     = localStorage.getItem('neacea_backup');
@@ -3179,6 +3250,12 @@ const App = {
   },
 
   async syncLocalToSupabase({ silent = true, refresh = false } = {}) {
+    if (App.isPortalPtMode() && !App.portalPtMutationsEnabled()) {
+      return {
+        success: false,
+        errors: [{ label: 'syncLocalToSupabase', error: 'PORTAL_PT_READ_ONLY' }],
+      };
+    }
     const snapshot = {
       operators: State.getOperators(),
       clients: State.getClients(),
@@ -3220,10 +3297,12 @@ const App = {
     });
 
     const params = new URLSearchParams(window.location.search);
+    const portalBlockedView = App.isPortalPtMode()
+      && ['availability', 'operators'].includes(params.get('view'));
     const allowedViews = App.isPortalPtMode()
       ? ['dashboard', 'day', 'week', 'room', 'clients']
       : ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'operators'];
-    const initialView = allowedViews.includes(params.get('view'))
+    const initialView = !portalBlockedView && allowedViews.includes(params.get('view'))
       ? params.get('view')
       : 'dashboard';
     Calendar.switchView(initialView);

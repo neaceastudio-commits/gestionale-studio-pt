@@ -82,9 +82,9 @@ const SupabaseSync = (() => {
       package_start: c.packageStart || null,
       data_conferma: c.packageCycleStart || c.package_cycle_start || null,
       notes: c.notes || '',
-      ...(c.ptAssegnato !== undefined || c.pt_assegnato !== undefined
-        ? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }
-        : {}),
+      pt_assegnato: Object.prototype.hasOwnProperty.call(c, 'ptAssegnato')
+        ? (c.ptAssegnato || null)
+        : (c.pt_assegnato || null),
       tipo_servizio: c.tipoServizio || c.tipo_servizio || '',
       tipo_abbonamento: c.tipoAbbonamento || c.tipo_abbonamento || '',
       stato_abbonamento: c.statoAbbonamento || c.stato_abbonamento || '',
@@ -117,6 +117,7 @@ const SupabaseSync = (() => {
       serviceId: r.service_id,
       clientIds: Array.isArray(r.client_ids) ? r.client_ids : [],
       operatorId: r.operator_id || null,
+      performedByOperatorId: r.performed_by_operator_id || null,
       date: r.date,
       startTime: String(r.start_time || '').slice(0, 5),
       durationMin: r.duration_min || 60,
@@ -242,7 +243,12 @@ const SupabaseSync = (() => {
       id: a.id,
       service_id: a.serviceId,
       client_ids: a.clientIds || [],
-      operator_id: a.operatorId || null,
+      operator_id: Object.prototype.hasOwnProperty.call(a, 'operatorId')
+        ? (a.operatorId || null)
+        : (a.operator_id || null),
+      performed_by_operator_id: Object.prototype.hasOwnProperty.call(a, 'performedByOperatorId')
+        ? (a.performedByOperatorId || null)
+        : (a.performed_by_operator_id || null),
       date: a.date,
       start_time: a.startTime,
       duration_min: parseInt(a.durationMin) || 60,
@@ -253,10 +259,33 @@ const SupabaseSync = (() => {
     };
   }
 
+  function supabaseErrorDetails(result) {
+    const raw = result?.error || result || '';
+    if (raw && typeof raw === 'object') return raw;
+    try {
+      return JSON.parse(String(raw || ''));
+    } catch (_) {
+      return { message: String(raw || '') };
+    }
+  }
+
+  function isMissingPerformedByColumnError(result) {
+    const details = supabaseErrorDetails(result);
+    const code = String(details.code || '');
+    const message = String(details.message || details.error || '').toLowerCase();
+    const namesColumn = message.includes('performed_by_operator_id');
+    return namesColumn && (
+      code === '42703'
+      || code === 'PGRST204'
+      || message.includes('does not exist')
+      || message.includes('schema cache')
+    );
+  }
+
   async function pullAll() {
     const [clients, operators, appointments] = await Promise.all([
       request('clients', { query: '?select=*&order=active.desc,cognome.asc,nome.asc' }),
-      request('operators', { query: '?select=*&active=eq.true&order=cognome.asc,nome.asc' }),
+      request('operators', { query: '?select=*&order=active.desc,cognome.asc,nome.asc' }),
       request('appointments', { query: '?select=*&order=date.asc,start_time.asc' }),
     ]);
     if (!clients?.error && Array.isArray(clients)) State.saveClients(clients.map(clientFromDb));
@@ -267,11 +296,34 @@ const SupabaseSync = (() => {
 
   async function pushAppointment(appt) {
     if (!appt) return;
+    const body = appointmentToDb(appt);
+    if (body.status === 'fatto' && !body.performed_by_operator_id) {
+      return {
+        error: JSON.stringify({
+          code: 'NEACEA_PERFORMER_REQUIRED',
+          message: 'performed_by_operator_id is required when status is fatto',
+        }),
+      };
+    }
+    const result = await request('appointments', {
+      method: 'POST',
+      query: '?on_conflict=id',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body,
+    });
+    if (!result?.error) return result;
+    if (!isMissingPerformedByColumnError(result)) return result;
+
+    // Prima della migrazione si degrada soltanto una seduta non svolta e
+    // soltanto quando Supabase certifica che la nuova colonna non esiste.
+    if (body.status === 'fatto' || body.performed_by_operator_id) return result;
+    const legacyBody = { ...body };
+    delete legacyBody.performed_by_operator_id;
     return request('appointments', {
       method: 'POST',
       query: '?on_conflict=id',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: appointmentToDb(appt),
+      body: legacyBody,
     });
   }
 

@@ -22,6 +22,8 @@ const portalSource = read('app/portale-personal-trainer/index.html');
 const acquisitionSource = read('app/acquisizione/index.html');
 const accessFunctionSource = read('netlify/functions/pt-access-email.js');
 const appleFunctionSource = read('netlify/functions/apple-calendar.js');
+require('../app/shared/pt-domain.js');
+const NeaceaPtDomain = globalThis.NeaceaPtDomain;
 
 [
   ['Apple Calendar CSS', indexSource.includes('css/apple-calendar.css')],
@@ -45,7 +47,7 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Portale accetta la sessione Dashboard', portalSource.includes('const accessToken = params.get("access")') && portalSource.includes('activatePtSession(pt, accessToken)')],
   ['Directory PT per la Dashboard', accessFunctionSource.includes("action === 'resolve'") && accessFunctionSource.includes('findPersonalTrainer')],
   ['PT cliente separato dal PT delle sedute', appSource.includes('Modifica il PT degli appuntamenti, non il PT assegnato al cliente.')],
-  ['Assegnazione PT conservata negli aggiornamenti cliente', supabaseSource.includes('? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }')],
+  ['Assegnazione PT conservata negli aggiornamenti cliente', supabaseSource.includes("Object.prototype.hasOwnProperty.call(c, 'ptAssegnato')")],
   ['Portale usa solo assegnazione esplicita', !portalSource.includes('inferredTrainerId(client.id)')],
   ['Acquisizione assegna solo clienti ancora senza PT', acquisitionSource.includes('if(!currentPt&&p.ptId)patch.pt_assegnato=p.ptId;')],
   ['Trasferimento cliente riservato alla Direzione', appSource.includes('openTransferClient(clientId)') && appSource.includes('if (!App.guardStudioManagement()) return;')],
@@ -106,6 +108,7 @@ const context = {
   CONFIG: { SHEETS: { enabled: false } },
   SupabaseSync: { pushClient() {} },
   Sheets: { pushClient() {} },
+  NeaceaPtDomain,
   console,
   fetch,
   setTimeout,
@@ -123,7 +126,7 @@ App.portalPt = {
   accessParam: 'signed-token',
 };
 
-assert('PT modifica il proprio cliente', App.canEditClient('client-own'));
+assert('Portale PT resta in sola lettura anche sul proprio cliente', !App.canEditClient('client-own'));
 assert('PT non modifica clienti altrui', !App.canEditClient('client-other'));
 assert('PT vede appuntamento assegnato come operatore', App.canViewAppointment(appointments[0]));
 assert('PT vede appuntamento del proprio cliente', App.canViewAppointment(appointments[1]));

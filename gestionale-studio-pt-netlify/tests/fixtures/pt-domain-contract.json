@@ -1,0 +1,53 @@
+{
+  "operators": [
+    { "id": "pt-responsabile", "nome": "PT", "cognome": "Responsabile", "active": true },
+    { "id": "pt-sostituto", "nome": "PT", "cognome": "Sostituto", "active": true },
+    { "id": "pt-inattivo", "nome": "PT", "cognome": "Inattivo", "active": false }
+  ],
+  "cases": [
+    {
+      "name": "responsabile stabile",
+      "client": { "pt_assegnato": "pt-responsabile" },
+      "appointment": { "operator_id": "pt-responsabile", "status": "prenotato" },
+      "expected": { "responsible": "pt-responsabile", "scheduled": "pt-responsabile", "performer": "" }
+    },
+    {
+      "name": "sostituzione programmata",
+      "client": { "pt_assegnato": "pt-responsabile" },
+      "appointment": { "operator_id": "pt-sostituto", "status": "prenotato" },
+      "expected": { "responsible": "pt-responsabile", "scheduled": "pt-sostituto", "performer": "" }
+    },
+    {
+      "name": "esecutore diverso dal programmato",
+      "client": { "pt_assegnato": "pt-responsabile" },
+      "appointment": {
+        "operator_id": "pt-responsabile",
+        "performed_by_operator_id": "pt-sostituto",
+        "status": "fatto"
+      },
+      "expected": { "responsible": "pt-responsabile", "scheduled": "pt-responsabile", "performer": "pt-sostituto" }
+    },
+    {
+      "name": "esecutore assente",
+      "client": { "pt_assegnato": "pt-responsabile" },
+      "appointment": { "operator_id": "pt-responsabile", "status": "fatto" },
+      "expected": { "responsible": "pt-responsabile", "scheduled": "pt-responsabile", "performer": "" }
+    },
+    {
+      "name": "PT legacy non valido",
+      "client": { "pt_assegnato": "responsabile@example.test" },
+      "appointment": { "operator_id": "PT Responsabile", "status": "prenotato" },
+      "expected": { "responsible": "", "scheduled": "", "performer": "" }
+    },
+    {
+      "name": "operatore inattivo nello storico",
+      "client": { "pt_assegnato": "pt-responsabile" },
+      "appointment": {
+        "operator_id": "pt-responsabile",
+        "performed_by_operator_id": "pt-inattivo",
+        "status": "fatto"
+      },
+      "expected": { "responsible": "pt-responsabile", "scheduled": "pt-responsabile", "performer": "pt-inattivo" }
+    }
+  ]
+}

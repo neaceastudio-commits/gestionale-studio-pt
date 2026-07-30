@@ -256,6 +256,30 @@ const Services = (() => {
     };
   }
 
+  function recalculateClientSessions(clientIds = []) {
+    const wanted = new Set(clientIds.map(String).filter(Boolean));
+    if (!wanted.size) return [];
+    const clients = State.getClients();
+    const touched = [];
+
+    clients.forEach((client, index) => {
+      if (!wanted.has(String(client.id))) return;
+      const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
+      if (total <= 0) return;
+      const metrics = getClientSessionMetrics(client);
+      if (Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0) === metrics.remaining) return;
+      clients[index] = {
+        ...client,
+        sessionsRemaining: metrics.remaining,
+        sessions_remaining: metrics.remaining,
+      };
+      touched.push(clients[index]);
+    });
+
+    if (touched.length) State.saveClients(clients);
+    return touched;
+  }
+
   function opHasRole(op, svc) {
     if (!svc?.requiredRoles?.length) return true;
     const roles = Array.isArray(op.roles) ? op.roles : String(op.roles || '').split(',').map(r => r.trim());
@@ -500,6 +524,7 @@ const Services = (() => {
     appointmentInCurrentPackageCycle,
     getClientPackageAppointments,
     getClientSessionMetrics,
+    recalculateClientSessions,
     getCompatibleClients,
     getAvailableOperatorsForSlot,
     autoAssignOperator,

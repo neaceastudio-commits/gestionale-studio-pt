@@ -4,6 +4,8 @@ const vm = require('vm');
 
 const root = path.resolve(__dirname, '..');
 const appSource = fs.readFileSync(path.join(root, 'app/calendario-studio/js/app.js'), 'utf8');
+require('../app/shared/pt-domain.js');
+const NeaceaPtDomain = globalThis.NeaceaPtDomain;
 
 function assert(label, condition) {
   if (!condition) throw new Error(`FAIL ${label}`);
@@ -79,6 +81,7 @@ const context = {
   location: { search: '' },
   URLSearchParams,
   CONFIG: { SHEETS: { enabled: false } },
+  NeaceaPtDomain,
   SupabaseSync: {
     async pushAppointment(appt) {
       pushed.push(`appointment:${appt.id}:${appt.operatorId}`);

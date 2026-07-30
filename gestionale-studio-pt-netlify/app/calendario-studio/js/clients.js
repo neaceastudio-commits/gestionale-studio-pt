@@ -353,6 +353,7 @@ const Clients = (() => {
                 .filter(Boolean);
               const svcColor = services[0]?.color || '#94A3B8';
               const metrics = getPackageMetrics(c);
+              const canEdit = typeof App !== 'undefined' ? App.canEditClient(c.id) : true;
               const remainingPct = metrics.total ? Math.round((metrics.remaining / metrics.total) * 100) : 0;
               return `
               <tr class="${showingHistory ? 'row-inactive row-history' : ''}" onclick="${showingHistory || ptMode ? `App.openPackageOverview('${c.id}')` : `App.openEditClient('${c.id}')`}">
@@ -412,9 +413,9 @@ const Clients = (() => {
                       <div class="text-muted" style="font-size:0.72rem">
                         Residuo salvato nel cliente: ${metrics.storedRemaining} · residuo corretto dagli appuntamenti fatti: ${metrics.computedRemaining}
                       </div>
-                      <button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
+                      ${canEdit ? `<button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
                         Allinea residuo
-                      </button>` : ''}
+                      </button>` : ''}` : ''}
                     ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
                   </div>`}
                 </td>

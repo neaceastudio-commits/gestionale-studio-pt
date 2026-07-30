@@ -201,6 +201,11 @@ const App = {
   isPortalPtMode: () => false,
   canViewAppointment: () => true,
 };
+class FixedDate extends Date {
+  constructor(...args) {
+    super(...(args.length ? args : ['2026-07-28T12:00:00Z']));
+  }
+}
 const serviceContext = {
   State,
   App,
@@ -215,7 +220,7 @@ const serviceContext = {
     workHours: { start: '08:00', end: '20:00' },
   },
   console,
-  Date,
+  Date: FixedDate,
   Intl,
 };
 vm.createContext(serviceContext);

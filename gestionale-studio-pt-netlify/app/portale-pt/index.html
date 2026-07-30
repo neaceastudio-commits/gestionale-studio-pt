@@ -874,6 +874,7 @@
     </section>
   </main>
 
+  <script src="../shared/pt-domain.js?v=1"></script>
   <script>
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
@@ -919,6 +920,29 @@
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
+    }
+    function isMissingPerformedByColumnError(error) {
+      const raw = error?.message || error?.error || error || '';
+      let details = raw;
+      if (typeof raw === 'string') {
+        try { details = JSON.parse(raw); } catch (_) { details = { message: raw }; }
+      }
+      const code = String(details?.code || '');
+      const message = String(details?.message || details?.error || '').toLowerCase();
+      return message.includes('performed_by_operator_id') && (
+        code === '42703'
+        || code === 'PGRST204'
+        || message.includes('does not exist')
+        || message.includes('schema cache')
+      );
+    }
+    async function loadAppointments() {
+      try {
+        return await supabase('appointments', '?select=id,service_id,client_ids,operator_id,performed_by_operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc');
+      } catch (error) {
+        if (!isMissingPerformedByColumnError(error)) throw error;
+        return supabase('appointments', '?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc');
+      }
     }
     async function supabaseInsert(table, rows) {
       const res = await fetch(endpoint(table), {
@@ -1053,7 +1077,9 @@
     function filteredAllAppointments() {
       const opId = document.getElementById('operatorSelect')?.value || '';
       return state.appointments
-        .filter(a => !opId || a.operator_id === opId)
+        .filter(a => !opId || (a.status === 'fatto'
+          ? NeaceaPtDomain.performedTrainerId(a, state.operators) === opId
+          : NeaceaPtDomain.scheduledTrainerId(a, state.operators) === opId))
         .filter(a => a.status !== 'annullato');
     }
     function percent(value, total) {
@@ -1084,20 +1110,9 @@
       return `<div class="anamnesis-field ${cls}"><div class="field-label">${esc(label)}</div><div class="field-value">${esc(display)}</div></div>`;
     }
     function normalizeClientAssignments() {
-      const byClient = new Map();
-      state.appointments
-        .filter(appt => appt.operator_id && Array.isArray(appt.client_ids))
-        .forEach(appt => {
-          appt.client_ids.forEach(id => {
-            if (!byClient.has(id)) byClient.set(id, new Map());
-            const ops = byClient.get(id);
-            ops.set(appt.operator_id, (ops.get(appt.operator_id) || 0) + 1);
-          });
-        });
       state.clients = state.clients.map(client => {
-        if (client.pt_assegnato || !byClient.has(client.id)) return client;
-        const best = [...byClient.get(client.id).entries()].sort((a, b) => b[1] - a[1])[0];
-        return best ? { ...client, pt_assegnato: best[0] } : client;
+        const id = NeaceaPtDomain.responsibleTrainerId(client, state.operators);
+        return { ...client, pt_assegnato: id || null };
       });
     }
     function renderOperatorSelect() {
@@ -1568,14 +1583,17 @@
         if (paymentStatus(client) === 'Pagato') row.revenue += Number(client.importo || 0);
       });
       appointments.forEach(appt => {
-        const id = appt.operator_id || 'none';
-        if (!byPt.has(id)) byPt.set(id, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
-        const row = byPt.get(id);
-        row.appts += 1;
-        if (appt.status === 'fatto') row.done += 1;
-        if (appt.status === 'noshow') row.noshow += 1;
+        const scheduledId = NeaceaPtDomain.scheduledTrainerId(appt, state.operators) || 'none';
+        if (!byPt.has(scheduledId)) byPt.set(scheduledId, { name: 'PT non assegnato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
+        byPt.get(scheduledId).appts += 1;
+        if (appt.status === 'noshow') byPt.get(scheduledId).noshow += 1;
+        if (appt.status === 'fatto') {
+          const performerId = NeaceaPtDomain.performedTrainerId(appt, state.operators) || 'performer-missing';
+          if (!byPt.has(performerId)) byPt.set(performerId, { name: 'Esecutore non registrato', clients: 0, appts: 0, done: 0, noshow: 0, revenue: 0 });
+          byPt.get(performerId).done += 1;
+        }
       });
-      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.revenue).sort((a, b) => b.clients - a.clients || b.appts - a.appts);
+      const rows = [...byPt.values()].filter(r => r.clients || r.appts || r.done || r.noshow || r.revenue).sort((a, b) => b.clients - a.clients || b.appts - a.appts);
       const maxClients = Math.max(1, ...rows.map(r => r.clients));
       if (!rows.length) {
         list.innerHTML = '<div class="empty">Nessun dato PT disponibile.</div>';
@@ -1667,7 +1685,7 @@
         const [operators, clients, appointments, acquisitions] = await Promise.all([
           supabase('operators', '?select=id,nome,cognome,email,roles,color,active&active=eq.true&order=cognome.asc,nome.asc'),
           supabase('clients', '?select=id,nome,cognome,email,telefono,package_types,package_frequency,sessions_total,sessions_remaining,giorni_settimana,package_start,notes,active,pt_assegnato,obiettivo,professione,tipo_servizio,tipo_abbonamento,stato_pagamento,importo,data_inizio,stato_abbonamento&active=eq.true&order=cognome.asc,nome.asc'),
-          supabase('appointments', '?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes&order=date.asc,start_time.asc'),
+          loadAppointments(),
           supabase('acquisizioni', '?select=*&order=data_acquisizione.desc')
         ]);
         state.operators = operators || [];

@@ -912,7 +912,7 @@ async function apiFetch(p){
     const existingClient=await findClientForAcquisition(acq);
     if(existingClient){
       const patch=existingClientPatch(acq);
-      const currentPt=existingClient.pt_assegnato||existingClient.ptAssegnato||existingClient.trainer_id||'';
+      const currentPt=existingClient.pt_assegnato||'';
       if(!currentPt&&p.ptId)patch.pt_assegnato=p.ptId;
       patch.notes=mergeAnamnesisNotes(existingClient.notes,patch.notes);
       let update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:patch});

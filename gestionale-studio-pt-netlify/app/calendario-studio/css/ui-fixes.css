@@ -32,6 +32,11 @@
   transform: translateY(-1px);
 }
 
+/* Il parametro URL del portale PT identifica solo il contesto di lettura. */
+.portal-pt-readonly [onclick*="openNewAppointment"] {
+  display: none !important;
+}
+
 .view-header {
   align-items: center;
 }
