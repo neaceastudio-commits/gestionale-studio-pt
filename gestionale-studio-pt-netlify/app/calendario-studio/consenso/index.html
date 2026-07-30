@@ -106,6 +106,20 @@
       font-weight: 700;
       outline: none;
     }
+    .value.multiline {
+      white-space: pre-wrap;
+      line-height: 1.48;
+      font-weight: 600;
+    }
+    .field.is-empty { display: none; }
+    .anamnesis-empty {
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
     [contenteditable="true"] {
       outline: 2px solid transparent;
       border-radius: 4px;
@@ -248,10 +262,31 @@
       </div>
     </section>
 
+    <section id="anamnesis-section">
+      <h2 contenteditable="true">3. Riepilogo dei dati comunicati in anamnesi</h2>
+      <div id="anamnesis-empty" class="anamnesis-empty">Nessuna anamnesi collegata al cliente.</div>
+      <div class="grid">
+        <div class="field" data-anamnesis-field><span class="label">Sesso</span><span id="anamnesis-sex" class="value" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Professione</span><span id="anamnesis-profession" class="value" contenteditable="true"></span></div>
+        <div class="field full" data-anamnesis-field><span class="label">Servizi e obiettivo dichiarato</span><span id="anamnesis-goal" class="value multiline" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Tempistica</span><span id="anamnesis-timing" class="value" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Motivazione percepita</span><span id="anamnesis-motivation" class="value" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Esperienza di allenamento</span><span id="anamnesis-experience" class="value" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Attività fisica / inattività</span><span id="anamnesis-activity" class="value" contenteditable="true"></span></div>
+        <div class="field full" data-anamnesis-field><span class="label">Sport praticati</span><span id="anamnesis-sport" class="value multiline" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Frequenza desiderata</span><span id="anamnesis-frequency" class="value" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Disponibilità e orari</span><span id="anamnesis-schedule" class="value multiline" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Come ha conosciuto lo studio</span><span id="anamnesis-source" class="value" contenteditable="true"></span></div>
+        <div class="field" data-anamnesis-field><span class="label">Cosa non ha funzionato in precedenza</span><span id="anamnesis-previous" class="value multiline" contenteditable="true"></span></div>
+        <div class="field full" data-anamnesis-field><span class="label">Patologie, farmaci, infortuni, limitazioni, stress, sonno e altre note dichiarate</span><span id="anamnesis-health" class="value multiline" contenteditable="true"></span></div>
+        <div class="field full" data-anamnesis-field><span class="label">Proposta, follow-up e note operative</span><span id="anamnesis-operational" class="value multiline" contenteditable="true"></span></div>
+      </div>
+    </section>
+
     <section id="dynamic-sections">
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">3. Oggetto del consenso e del servizio</h2>
+        <h2 contenteditable="true">4. Oggetto del consenso e del servizio</h2>
         <p contenteditable="true">Il presente consenso viene sottoscritto una sola volta, prima dell'inizio della fruizione dei servizi dello studio, e disciplina l'accesso del cliente alle attivita' di Personal Training, valutazione funzionale, educazione motoria e programmazione dell'allenamento erogate da NEACEA Studio, salvo successive modifiche sostanziali dei servizi o revoca espressa del consenso ove applicabile.</p>
         <p contenteditable="true">Le attivita' potranno includere:</p>
         <ul>
@@ -265,21 +300,21 @@
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">4. Dichiarazioni sullo stato di salute</h2>
+        <h2 contenteditable="true">5. Dichiarazioni sullo stato di salute</h2>
         <p contenteditable="true">Il cliente dichiara di aver comunicato in modo completo e veritiero eventuali patologie, dolori, infortuni, interventi chirurgici, terapie farmacologiche, limitazioni funzionali, gravidanza o altre condizioni rilevanti per lo svolgimento dell'attivita' fisica.</p>
         <p contenteditable="true">Il cliente si impegna a informare tempestivamente lo staff NEACEA di qualsiasi variazione dello stato di salute e a interrompere l'attivita' in caso di dolore, malessere, vertigini, difficolta' respiratoria o sintomi anomali.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">5. Rischi e limiti della prestazione</h2>
+        <h2 contenteditable="true">6. Rischi e limiti della prestazione</h2>
         <p contenteditable="true">Il cliente e' consapevole che l'attivita' fisica, anche se programmata e supervisionata, puo' comportare rischi quali affaticamento, indolenzimento muscolare, irritazioni articolari, cadute, traumi o altri eventi non prevedibili.</p>
         <p contenteditable="true">Il servizio di Personal Training non sostituisce visite mediche, diagnosi, terapie o trattamenti sanitari. Eventuali indicazioni tecniche hanno finalita' di educazione motoria, miglioramento della performance, benessere e organizzazione dell'allenamento.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">6. Regole di utilizzo dello studio</h2>
+        <h2 contenteditable="true">7. Regole di utilizzo dello studio</h2>
         <ul>
           <li contenteditable="true">Il cliente utilizza attrezzature e spazi seguendo le indicazioni dello staff.</li>
           <li contenteditable="true">Il cliente non modifica autonomamente esercizi, carichi o impostazioni degli attrezzi se non autorizzato.</li>
@@ -290,26 +325,26 @@
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">7. Raccolta e trattamento dei dati personali</h2>
+        <h2 contenteditable="true">8. Raccolta e trattamento dei dati personali</h2>
         <p contenteditable="true">Ai sensi del Regolamento UE 2016/679 (GDPR), il cliente prende atto che NEACEA potra' trattare dati anagrafici, di contatto, amministrativi, informazioni relative allo stato fisico, abitudini di allenamento, obiettivi, misurazioni, fotografie tecniche e dati necessari alla gestione del percorso.</p>
         <p contenteditable="true">I dati saranno utilizzati per gestione del cliente, programmazione e monitoraggio dell'allenamento, organizzazione appuntamenti, comunicazioni operative, adempimenti amministrativi e tutela dei diritti della struttura.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">8. Documentazione fotografica e video tecnica</h2>
+        <h2 contenteditable="true">9. Documentazione fotografica e video tecnica</h2>
         <p contenteditable="true">La raccolta di fotografie o brevi riprese tecniche potra' essere proposta per valutazione posturale, confronto dei progressi, analisi esecutiva degli esercizi e documentazione interna del percorso. Tali contenuti non saranno utilizzati per finalita' promozionali senza consenso specifico.</p>
       </div>
 
       <div class="editable-section">
         <button class="remove-row" onclick="removeBlock(this)">x</button>
-        <h2 contenteditable="true">9. Videosorveglianza interna</h2>
+        <h2 contenteditable="true">10. Videosorveglianza interna</h2>
         <p contenteditable="true">Il cliente prende atto che all'interno dello studio possono essere presenti telecamere a circuito chiuso, utilizzate per finalita' di sicurezza, tutela delle persone, protezione dei beni e verifica di eventuali eventi rilevanti. Le immagini non sono destinate alla diffusione pubblica e sono trattate secondo la normativa vigente.</p>
       </div>
     </section>
 
     <section id="consent-rows">
-      <h2 contenteditable="true">10. Consensi e dichiarazioni da barrare</h2>
+      <h2 contenteditable="true">11. Consensi e dichiarazioni da barrare</h2>
       <div class="consent-row">
         <span class="box"></span>
         <span contenteditable="true">Dichiaro di essere in possesso di certificazione medica/idoneita' ove richiesta.</span>
@@ -333,13 +368,13 @@
     </section>
 
     <section>
-      <h2 contenteditable="true">11. Dichiarazione finale</h2>
+      <h2 contenteditable="true">12. Dichiarazione finale</h2>
       <p contenteditable="true">Il sottoscritto dichiara di aver letto integralmente e compreso il presente documento, di aver avuto la possibilita' di porre domande e di aver ricevuto informazioni chiare sulla natura delle attivita' proposte, sui limiti del servizio, sui rischi ragionevolmente prevedibili connessi all'attivita' fisica e sul trattamento dei dati personali.</p>
       <p contenteditable="true">Il cliente presta il proprio consenso libero, informato e consapevole allo svolgimento delle attivita' presso NEACEA Studio, ferma restando la possibilita' di comunicare in qualsiasi momento variazioni dello stato di salute, limitazioni sopravvenute o revoca dei consensi facoltativi secondo la normativa applicabile.</p>
     </section>
 
     <section>
-      <h2 contenteditable="true">12. Firma</h2>
+      <h2 contenteditable="true">13. Firma</h2>
       <div class="grid">
         <div class="field"><span class="label">Luogo e data</span><span id="place-date" class="value" contenteditable="true"></span></div>
         <div class="field"><span class="label">Nome leggibile cliente</span><span id="readable-name" class="value" contenteditable="true"></span></div>
@@ -376,34 +411,166 @@
       return d.toLocaleDateString('it-IT');
     }
 
-    function setText(id, value) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value || '';
+    function hasValue(value) {
+      return value !== null && value !== undefined && String(value).trim() !== '';
     }
 
-    function fillFromConsent(consent) {
-      const data = consent && consent.data ? consent.data : {};
-      const fullName = [data.nome, data.cognome].filter(Boolean).join(' ');
+    function firstValue(...values) {
+      return values.find(hasValue) ?? '';
+    }
+
+    function normalizeText(value) {
+      return hasValue(value) ? String(value).replace(/\\n/g, '\n').trim() : '';
+    }
+
+    function noteValue(source, labels) {
+      const lines = normalizeText(source).split('\n').map(line => line.trim()).filter(Boolean);
+      for (const label of labels) {
+        const prefix = label.toLowerCase() + ':';
+        const line = lines.find(item => item.toLowerCase().startsWith(prefix));
+        if (line) return line.slice(prefix.length).trim();
+      }
+      return '';
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = hasValue(value) ? String(value) : '';
+    }
+
+    function setAnamnesisText(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return false;
+      const text = normalizeText(value);
+      el.textContent = text;
+      const field = el.closest('[data-anamnesis-field]');
+      if (field) field.classList.toggle('is-empty', !text);
+      return Boolean(text);
+    }
+
+    function buildAddress(profile, acquisition) {
+      const sourceNotes = firstValue(acquisition && acquisition.impressioni, profile.notes);
+      const street = firstValue(
+        profile.indirizzo,
+        acquisition && acquisition.indirizzo,
+        noteValue(sourceNotes, ['Indirizzo per fattura', 'Indirizzo'])
+      );
+      const locality = [
+        firstValue(profile.cap, acquisition && acquisition.cap, noteValue(sourceNotes, ['CAP'])),
+        firstValue(profile.comune, acquisition && acquisition.comune, noteValue(sourceNotes, ['Comune'])),
+        firstValue(profile.provincia, acquisition && acquisition.provincia, noteValue(sourceNotes, ['Provincia'])),
+      ].filter(hasValue).join(' ');
+      return [street, locality].filter(hasValue).join(', ');
+    }
+
+    function fillDocument(profile, acquisition, operator, consent) {
+      const consentData = consent && consent.data ? consent.data : {};
+      const fullName = [profile.nome, profile.cognome].filter(hasValue).join(' ');
+      const opName = operator ? [operator.nome, operator.cognome].filter(hasValue).join(' ') : '';
+      const sourceNotes = firstValue(acquisition && acquisition.impressioni, profile.notes);
 
       setText('client-name', fullName);
-      setText('client-birth', fmtDate(data.nascita));
-      setText('client-tax', data.codice_fiscale || '');
-      setText('client-phone', data.telefono || '');
-      setText('client-email', data.email || consent.email || '');
-      setText('client-doc', data.documento || '');
-      setText('client-address', data.indirizzo || '');
-      setText('client-emergency', data.contatto_emergenza || '');
+      setText('client-birth', fmtDate(firstValue(profile.nascita, acquisition && acquisition.nascita)));
+      setText('client-tax', firstValue(profile.codice_fiscale, acquisition && acquisition.codice_fiscale, noteValue(sourceNotes, ['Codice fiscale'])));
+      setText('client-phone', firstValue(profile.telefono, acquisition && acquisition.telefono));
+      setText('client-email', firstValue(profile.email, consent && consent.email, acquisition && acquisition.email));
+      setText('client-doc', firstValue(profile.documento, acquisition && acquisition.documento, noteValue(sourceNotes, ['Documento'])));
+      setText('client-address', buildAddress(profile, acquisition));
+      setText('client-emergency', firstValue(profile.contatto_emergenza, acquisition && acquisition.contatto_emergenza, noteValue(sourceNotes, ['Contatto emergenza'])));
+      setText('pt-name', opName);
       setText('readable-name', fullName);
-      setText('place-date', "Quartu Sant'Elena, " + fmtDate(data.data_consenso || new Date().toISOString().slice(0, 10)));
+      setText('operator-readable', opName);
+      setText('place-date', "Quartu Sant'Elena, " + fmtDate(firstValue(consentData.data_consenso, new Date().toISOString().slice(0, 10))));
 
-      if (data.firma) {
+      if (hasValue(consentData.firma)) {
         const line = document.querySelector('.signature .line');
         if (line) {
-          line.textContent = data.firma;
+          line.textContent = consentData.firma;
           line.style.fontWeight = '800';
           line.style.paddingTop = '8px';
         }
       }
+    }
+
+    function fillAnamnesis(profile, acquisition) {
+      const acq = acquisition || {};
+      const notes = [];
+      const acquisitionNotes = normalizeText(acq.impressioni);
+      const clientNotes = normalizeText(profile.notes);
+      if (acquisitionNotes) notes.push(acquisitionNotes);
+      else if (clientNotes) notes.push(clientNotes);
+
+      const operational = [
+        hasValue(acq.proposta) ? 'Proposta: ' + acq.proposta : '',
+        hasValue(acq.followup) ? 'Follow-up: ' + fmtDate(String(acq.followup).slice(0, 10)) : '',
+      ].filter(hasValue).join('\n');
+
+      const fields = [
+        setAnamnesisText('anamnesis-sex', firstValue(acq.sesso, profile.sesso)),
+        setAnamnesisText('anamnesis-profession', firstValue(acq.professione, profile.professione)),
+        setAnamnesisText('anamnesis-goal', [
+          hasValue(acq.servizi) ? 'Servizi richiesti: ' + acq.servizi : '',
+          hasValue(acq.obiettivo) ? 'Obiettivo: ' + acq.obiettivo : '',
+          hasValue(acq.obiettivo_libero) ? acq.obiettivo_libero : '',
+          !hasValue(acq.obiettivo) && hasValue(profile.obiettivo) ? 'Obiettivo: ' + profile.obiettivo : '',
+        ].filter(hasValue).join('\n')),
+        setAnamnesisText('anamnesis-timing', acq.tempistica),
+        setAnamnesisText('anamnesis-motivation', hasValue(acq.motivazione) ? acq.motivazione + '/10' : profile.motivazione),
+        setAnamnesisText('anamnesis-experience', acq.esperienza),
+        setAnamnesisText('anamnesis-activity', firstValue(acq.inattivo, acq.attivita)),
+        setAnamnesisText('anamnesis-sport', acq.sport),
+        setAnamnesisText('anamnesis-frequency', firstValue(acq.sessioni_pref, profile.package_frequency, profile.sessioni_pref)),
+        setAnamnesisText('anamnesis-schedule', acq.orari),
+        setAnamnesisText('anamnesis-source', firstValue(acq.come, profile.come)),
+        setAnamnesisText('anamnesis-previous', acq.non_funzionato),
+        setAnamnesisText('anamnesis-health', notes.join('\n\n')),
+        setAnamnesisText('anamnesis-operational', operational),
+      ];
+
+      const count = fields.filter(Boolean).length;
+      const empty = document.getElementById('anamnesis-empty');
+      if (empty) empty.hidden = count > 0;
+      return count;
+    }
+
+    async function getClient(id) {
+      if (!id) return null;
+      const rows = await sb('clients', '?select=*&id=eq.' + encodeURIComponent(id) + '&limit=1');
+      return rows[0] || null;
+    }
+
+    async function getOperator(client) {
+      if (!client || !client.pt_assegnato) return null;
+      const rows = await sb('operators', '?select=*&id=eq.' + encodeURIComponent(client.pt_assegnato) + '&limit=1');
+      return rows[0] || null;
+    }
+
+    async function findAcquisition(profile) {
+      if (!profile) return null;
+      const attempts = [];
+      if (hasValue(profile.email)) {
+        attempts.push('email=ilike.' + encodeURIComponent(String(profile.email).trim()));
+      }
+      if (hasValue(profile.telefono)) {
+        attempts.push('telefono=eq.' + encodeURIComponent(String(profile.telefono).trim()));
+      }
+      if (hasValue(profile.nome) && hasValue(profile.cognome)) {
+        attempts.push(
+          'nome=ilike.' + encodeURIComponent(String(profile.nome).trim()) +
+          '&cognome=ilike.' + encodeURIComponent(String(profile.cognome).trim())
+        );
+      }
+
+      for (const filters of attempts) {
+        const rows = await sb('acquisizioni', '?select=*&' + filters + '&order=data_acquisizione.desc&limit=5');
+        if (!rows.length) continue;
+        const exact = rows.find(row =>
+          (!hasValue(profile.nascita) || row.nascita === profile.nascita) &&
+          (!hasValue(profile.telefono) || !hasValue(row.telefono) || row.telefono === profile.telefono)
+        );
+        return exact || rows[0];
+      }
+      return null;
     }
 
     function removeBlock(btn) {
@@ -439,43 +606,35 @@
       }
 
       try {
+        let consent = null;
+        let client = null;
+        let profile = null;
+
         if (consentId) {
           const consensi = await sb('consensi_cliente', '?select=*&id=eq.' + encodeURIComponent(consentId) + '&limit=1');
-          const consent = consensi[0];
+          consent = consensi[0];
           if (!consent) throw new Error('Consenso non trovato');
 
-          fillFromConsent(consent);
-          status.style.display = 'none';
-          document.getElementById('doc').style.display = 'block';
-          return;
+          const consentData = consent.data || {};
+          const linkedClientId = firstValue(consent.cliente_id, consentData.client_id);
+          client = await getClient(linkedClientId);
+          profile = { ...(client || {}) };
+          Object.entries(consentData).forEach(([key, value]) => {
+            if (hasValue(value)) profile[key] = value;
+          });
+        } else {
+          client = await getClient(id);
+          if (!client) throw new Error('Cliente non trovato');
+          profile = { ...client };
         }
 
-        const rows = await sb('clients', '?select=*&id=eq.' + encodeURIComponent(id) + '&limit=1');
-        const client = rows[0];
-        if (!client) throw new Error('Cliente non trovato');
+        const [operator, acquisition] = await Promise.all([
+          getOperator(client),
+          findAcquisition(profile),
+        ]);
 
-        let operator = null;
-        if (client.pt_assegnato) {
-          const ops = await sb('operators', '?select=*&id=eq.' + encodeURIComponent(client.pt_assegnato) + '&limit=1');
-          operator = ops[0] || null;
-        }
-
-        const fullName = [client.nome, client.cognome].filter(Boolean).join(' ');
-        const opName = operator ? [operator.nome, operator.cognome].filter(Boolean).join(' ') : '';
-
-        setText('client-name', fullName);
-        setText('client-birth', fmtDate(client.nascita));
-        setText('client-tax', client.codice_fiscale || '');
-        setText('client-phone', client.telefono || '');
-        setText('client-email', client.email || '');
-        setText('client-doc', client.documento || '');
-        setText('client-address', client.indirizzo || '');
-        setText('client-emergency', client.contatto_emergenza || '');
-        setText('pt-name', opName);
-        setText('readable-name', fullName);
-        setText('operator-readable', opName);
-        setText('place-date', "Quartu Sant'Elena, " + new Date().toLocaleDateString('it-IT'));
-
+        fillDocument(profile, acquisition, operator, consent);
+        fillAnamnesis(profile, acquisition);
         status.style.display = 'none';
         document.getElementById('doc').style.display = 'block';
       } catch (err) {

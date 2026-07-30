@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Test rinnovo pacchetto</title>
+  <link rel="stylesheet" href="../app/calendario-studio/css/base.css">
+  <link rel="stylesheet" href="../app/calendario-studio/css/layout.css">
+  <link rel="stylesheet" href="../app/calendario-studio/css/calendar.css">
+  <link rel="stylesheet" href="../app/calendario-studio/css/clients-fix.css">
+  <link rel="stylesheet" href="../app/calendario-studio/css/ui-fixes.css">
+</head>
+<body>
+  <div style="position:fixed;z-index:100000;right:12px;top:12px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:8px 12px;font:12px/1.4 sans-serif;box-shadow:0 4px 20px #0f172a22">
+    <label><input id="e2e-fail-client" type="checkbox" onchange="window.__E2E.failClient=this.checked"> Simula errore salvataggio cliente</label>
+    <output id="e2e-status" style="display:block;margin-top:3px;color:#475569"></output>
+  </div>
+  <div class="main-content">
+    <div id="view-dashboard" class="view-panel active"></div>
+    <div id="view-clients" class="view-panel"></div>
+  </div>
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-box"><div id="modal-content"></div></div>
+  </div>
+  <div id="toast-area"></div>
+
+  <script src="../app/calendario-studio/js/config.js"></script>
+  <script src="../app/calendario-studio/js/package-ledger.js"></script>
+  <script>
+    const fixtureClient = {
+      id: 'client-e2e-package',
+      nome: 'Cliente',
+      cognome: 'Collaudo',
+      email: 'collaudo@neacea.test',
+      packageTypes: ['PT 1:1'],
+      packageFrequency: '2x settimana',
+      sessionsTotal: 8,
+      sessionsRemaining: 2,
+      giorniSettimana: ['Martedì', 'Giovedì'],
+      packageStart: '2026-07-01',
+      packageCycleStart: '2026-07-01',
+      acquisitionStart: '2026-07-01',
+      statoPagamento: 'Da pagare',
+      importo: 200,
+      ptAssegnato: 'pt-e2e',
+      statoAbbonamento: 'Attivo',
+      active: true,
+      notes: 'Fixture isolata: nessun dato reale',
+    };
+    const fixtureOperator = {
+      id: 'pt-e2e',
+      nome: 'PT',
+      cognome: 'Collaudo',
+      email: 'pt@neacea.test',
+      roles: ['PT'],
+      active: true,
+    };
+    const doneDates = ['2026-07-07', '2026-07-09', '2026-07-14', '2026-07-16', '2026-07-21', '2026-07-23'];
+    const futureDates = ['2026-08-04', '2026-08-06'];
+    const fixtureAppointments = [...doneDates.map((date, index) => ({
+      id: `old-done-${index + 1}`,
+      serviceId: 'pt11',
+      clientIds: [fixtureClient.id],
+      operatorId: fixtureOperator.id,
+      date,
+      startTime: '17:00',
+      durationMin: 60,
+      bufferMin: 10,
+      status: 'fatto',
+      notes: '[CICLO-PACCHETTO 2026-07-01]',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })), ...futureDates.map((date, index) => ({
+      id: `old-future-${index + 1}`,
+      serviceId: 'pt11',
+      clientIds: [fixtureClient.id],
+      operatorId: fixtureOperator.id,
+      date,
+      startTime: '17:00',
+      durationMin: 60,
+      bufferMin: 10,
+      status: 'prenotato',
+      notes: '[CICLO-PACCHETTO 2026-07-01]',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }))];
+
+    const memory = {
+      clients: [{ ...fixtureClient }],
+      operators: [{ ...fixtureOperator }],
+      appointments: fixtureAppointments.map(item => ({ ...item, clientIds: [...item.clientIds] })),
+    };
+    const remote = JSON.parse(JSON.stringify(memory));
+    let sequence = 0;
+    const State = {
+      init() {},
+      getClients: () => memory.clients,
+      getOperators: () => memory.operators,
+      getAppointments: () => memory.appointments,
+      saveClients: value => { memory.clients = value; },
+      saveOperators: value => { memory.operators = value; },
+      saveAppointments: value => { memory.appointments = value; },
+      genId: prefix => `${prefix}_e2e_${++sequence}`,
+      KEYS: {},
+    };
+    const SupabaseSync = {
+      async pullAll() {},
+      async pushClient(client) {
+        if (window.__E2E.failClient) {
+          refreshHarnessStatus();
+          return { error: 'forced client failure' };
+        }
+        const index = remote.clients.findIndex(item => item.id === client.id);
+        if (index >= 0) remote.clients[index] = JSON.parse(JSON.stringify(client));
+        else remote.clients.push(JSON.parse(JSON.stringify(client)));
+        refreshHarnessStatus();
+        return null;
+      },
+      async pushAppointment(appt) {
+        const index = remote.appointments.findIndex(item => item.id === appt.id);
+        if (index >= 0) remote.appointments[index] = JSON.parse(JSON.stringify(appt));
+        else remote.appointments.push(JSON.parse(JSON.stringify(appt)));
+        refreshHarnessStatus();
+        return null;
+      },
+      async deleteAppointment(id) {
+        remote.appointments = remote.appointments.filter(item => item.id !== id);
+        refreshHarnessStatus();
+        return null;
+      },
+      async pushLocalSnapshot() { return { success: true, errors: [] }; },
+    };
+    const Sheets = { pushClient: async () => null, pushAppointment: async () => null, fullSync() {} };
+    const Calendar = {
+      render() {},
+      switchView() {},
+      getCurrentDateStr: () => '2026-07-28',
+    };
+    window.__E2E = {
+      failClient: false,
+      memory,
+      remote,
+      snapshot() {
+        const client = memory.clients[0];
+        const ledger = PackageLedger.parse(client);
+        const current = PackageLedger.currentCycle(ledger);
+        return {
+          cycles: ledger.cycles.length,
+          currentCycleId: current?.id || '',
+          finance: PackageLedger.cycleFinancial(current),
+          appointments: memory.appointments.length,
+          currentCycleAppointments: memory.appointments.filter(item => PackageLedger.appointmentCycleId(item.notes) === current?.id).length,
+          flatStatus: client.statoPagamento,
+          flatAmount: client.importo,
+        };
+      },
+    };
+    function cycleCount(client) {
+      if (!client) return 0;
+      const ledger = PackageLedger.parse(client);
+      return ledger.parseError ? -1 : ledger.cycles.length;
+    }
+    function currentTaggedCount(store) {
+      const ledger = PackageLedger.parse(store.clients[0]);
+      const current = PackageLedger.currentCycle(ledger);
+      return current ? store.appointments.filter(item => PackageLedger.appointmentCycleId(item.notes) === current.id).length : 0;
+    }
+    function refreshHarnessStatus() {
+      const output = document.getElementById('e2e-status');
+      if (!output) return;
+      output.textContent = `Locale: ${memory.appointments.length} sedute / ${cycleCount(memory.clients[0])} cicli · Remoto: ${remote.appointments.length} sedute / ${cycleCount(remote.clients[0])} cicli · tag correnti remoti ${currentTaggedCount(remote)}`;
+    }
+  </script>
+  <script src="../app/calendario-studio/js/services.js"></script>
+  <script src="../app/calendario-studio/js/clients.js"></script>
+  <script src="../app/calendario-studio/js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        App.openPackageOverview(fixtureClient.id);
+        refreshHarnessStatus();
+      }, 50);
+    });
+  </script>
+</body>
+</html>

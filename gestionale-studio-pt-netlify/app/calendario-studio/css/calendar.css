@@ -25,7 +25,8 @@
 .cal-event {
   position: absolute; border-radius: var(--radius-sm);
   padding: 5px 8px; overflow: hidden;
-  transition: box-shadow .12s; z-index: 1; min-width: 80px;
+  transition: box-shadow .12s; z-index: 1; min-width: 0;
+  box-sizing: border-box;
 }
 .cal-event:hover { box-shadow: var(--shadow-md); z-index: 10; }
 .event-time   { font-size: 10px; font-weight: 800; opacity: .7; display: block; }

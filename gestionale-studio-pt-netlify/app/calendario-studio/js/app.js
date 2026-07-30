@@ -27,24 +27,22 @@ const UI = {
 
 // ── APP CONTROLLER ────────────────────────────────────────
 
-// La modalita PT basata sul solo parametro URL resta deliberatamente read-only
-// finche autenticazione e RLS non autorizzano le mutazioni lato server.
+// Il token del portale identifica il PT, ma le scritture restano disabilitate
+// finche Supabase Auth e le policy RLS non autorizzano l'utente lato database.
 const PORTAL_PT_MUTATIONS_ENABLED = false;
 
 const App = {
   portalPt: {
     enabled: false,
+    authorized: false,
     operator: null,
-    opParam: ''
+    opParam: '',
+    emailParam: '',
+    accessParam: ''
   },
 
   _operatorLabel(operator) {
     return [operator?.nome, operator?.cognome].filter(Boolean).join(' ').trim() || operator?.email || operator?.id || '';
-  },
-
-  _isPtOperator(operator) {
-    const roles = Array.isArray(operator?.roles) ? operator.roles : [];
-    return roles.some(role => ['pt', 'personal_trainer', 'personal trainer'].includes(String(role).toLowerCase()));
   },
 
   _resolvePortalOperator(params = new URLSearchParams(window.location.search)) {
@@ -52,30 +50,75 @@ const App = {
     const operators = State.getOperators();
     const operatorId = NeaceaPtDomain.strictOperatorId(opParam, operators);
     const operator = operatorId ? operators.find(op => op.id === operatorId) || null : null;
-    return { operator, opParam };
+    return { operator, opParam, accessParam: params.get('access') || '' };
   },
 
-  _initPortalPtMode() {
+  async _initPortalPtMode() {
     const params = new URLSearchParams(window.location.search);
     const shouldEnable = params.get('pt') === '1' || params.get('mode') === 'pt';
-    if (!shouldEnable) return;
+    if (!shouldEnable) return true;
+
     const resolved = App._resolvePortalOperator(params);
-    App.portalPt = { enabled: true, ...resolved };
-    App._renderPortalPtBadge();
+    App.portalPt = { enabled: true, authorized: false, ...resolved };
+    try {
+      const response = await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify_token', token: resolved.accessParam }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Sessione PT non valida');
+      const operators = State.getOperators();
+      const authorizedOperatorId = NeaceaPtDomain.strictOperatorId(result.operatorId, operators);
+      const authorizedOperator = authorizedOperatorId
+        ? operators.find(op => op.id === authorizedOperatorId) || null
+        : null;
+      if (!authorizedOperator) throw new Error('Profilo PT non trovato');
+
+      App.portalPt = {
+        enabled: true,
+        authorized: true,
+        operator: authorizedOperator,
+        opParam: result.operatorId,
+        emailParam: result.email,
+        accessParam: resolved.accessParam,
+      };
+    } catch (error) {
+      console.warn('[PT access]', error);
+      UI.showToast('Accesso calendario PT non valido o scaduto: rientra dal Portale PT', 'error');
+    }
     App._applyPortalReadOnlyUi();
+    App._renderPortalPtBadge();
+    return App.portalPt.authorized;
+  },
+
+  _applyPortalReadOnlyUi() {
+    if (!App.isPortalPtMode()) return;
+    document.querySelectorAll('[data-view="availability"], [data-view="operators"]').forEach(tab => {
+      tab.hidden = true;
+    });
+    if (App.portalPtMutationsEnabled()) return;
+    document.body.classList.add('portal-pt-readonly');
+    document.querySelectorAll('[onclick*="openNewAppointment"]').forEach(button => {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.title = 'Sola lettura: autenticazione Supabase e RLS non abilitati';
+    });
   },
 
   _renderPortalPtBadge() {
     const topbarRight = document.querySelector('.topbar-right');
     if (!topbarRight || document.getElementById('portal-pt-badge')) return;
-    const label = App._operatorLabel(App.portalPt.operator) || App.portalPt.opParam || 'PT';
+    const label = App.portalPt.authorized
+      ? (App._operatorLabel(App.portalPt.operator) || 'PT')
+      : 'Accesso PT scaduto';
     const badge = document.createElement('span');
     badge.id = 'portal-pt-badge';
     badge.className = 'topbar-btn';
     badge.style.cursor = 'default';
     badge.style.background = 'rgba(255,255,255,.12)';
     badge.style.borderColor = 'rgba(255,255,255,.18)';
-    badge.textContent = `PT: ${label} · sola lettura`;
+    badge.textContent = `PT: ${label}${App.portalPtMutationsEnabled() ? '' : ' · sola lettura'}`;
     topbarRight.prepend(badge);
   },
 
@@ -88,38 +131,29 @@ const App = {
   },
 
   portalOperatorId() {
-    return App.currentPortalOperator()?.id
-      || NeaceaPtDomain.strictOperatorId(App.portalPt.opParam, State.getOperators())
-      || '';
+    if (!App.portalPt.authorized) return '';
+    return NeaceaPtDomain.strictOperatorId(App.currentPortalOperator()?.id, State.getOperators());
   },
 
   portalPtMutationsEnabled() {
     return PORTAL_PT_MUTATIONS_ENABLED;
   },
 
-  _applyPortalReadOnlyUi() {
-    if (!App.isPortalPtMode() || App.portalPtMutationsEnabled()) return;
-    document.body.classList.add('portal-pt-readonly');
-    document.querySelectorAll('[onclick*="openNewAppointment"]').forEach((button) => {
-      button.disabled = true;
-      button.setAttribute('aria-disabled', 'true');
-      button.title = 'Sola lettura: autenticazione e permessi di scrittura non abilitati';
-    });
-    document.querySelectorAll('[data-view="availability"], [data-view="operators"]').forEach((tab) => {
-      tab.hidden = true;
-    });
+  canViewClient(clientOrId) {
+    if (!App.isPortalPtMode()) return true;
+    if (!App.portalPt.authorized) return false;
+    const client = typeof clientOrId === 'string'
+      ? State.getClients().find(c => c.id === clientOrId)
+      : clientOrId;
+    const operatorId = App.portalOperatorId();
+    return !!client && !!operatorId
+      && NeaceaPtDomain.responsibleTrainerId(client, State.getOperators()) === operatorId;
   },
 
   canEditClient(clientOrId) {
     if (!App.isPortalPtMode()) return true;
     if (!App.portalPtMutationsEnabled()) return false;
-    const client = typeof clientOrId === 'string'
-      ? State.getClients().find(c => c.id === clientOrId)
-      : clientOrId;
-    if (!client) return false;
-    const operatorId = App.portalOperatorId();
-    return !!operatorId
-      && NeaceaPtDomain.responsibleTrainerId(client, State.getOperators()) === operatorId;
+    return App.canViewClient(clientOrId);
   },
 
   canEditAppointment(appt) {
@@ -127,39 +161,70 @@ const App = {
     if (!App.portalPtMutationsEnabled()) return false;
     if (!appt) return false;
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
-    if (clientIds.length) return clientIds.every(clientId => App.canEditClient(clientId));
-    const operatorId = App.portalOperatorId();
-    return !!operatorId
-      && NeaceaPtDomain.scheduledTrainerId(appt, State.getOperators()) === operatorId;
+    if (clientIds.length) return clientIds.every(clientId => App.canViewClient(clientId));
+    return NeaceaPtDomain.scheduledTrainerId(appt, State.getOperators()) === App.portalOperatorId();
+  },
+
+  canViewAppointment(appt) {
+    if (!App.isPortalPtMode()) return true;
+    if (!App.portalPt.authorized || !appt) return false;
+    const isOwnAppointment = NeaceaPtDomain.scheduledTrainerId(appt, State.getOperators()) === App.portalOperatorId();
+    const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
+    return isOwnAppointment || clientIds.some(clientId => App.canViewClient(clientId));
+  },
+
+  visibleClients(clients = State.getClients()) {
+    return App.isPortalPtMode() ? clients.filter(client => App.canViewClient(client)) : clients;
   },
 
   guardPortalEdit(kind, item) {
     if (kind === 'client' && App.canEditClient(item)) return true;
     if (kind === 'appointment' && App.canEditAppointment(item)) return true;
-    UI.showToast('Modalita PT in sola lettura: autenticazione e permessi di scrittura non sono ancora abilitati', 'error');
+    UI.showToast('Modalità PT: puoi modificare solo clienti e appuntamenti assegnati al tuo profilo', 'error');
     return false;
   },
 
-  openClientFromList(clientId) {
-    if (App.canEditClient(clientId)) App.openEditClient(clientId);
-    else App.openPackageOverview(clientId);
+  canManageStudioData() {
+    return !App.isPortalPtMode();
+  },
+
+  canManagePackage(clientOrId) {
+    if (!App.isPortalPtMode()) return true;
+    return App.canEditClient(clientOrId);
+  },
+
+  guardPackageManagement(clientOrId) {
+    if (App.canManagePackage(clientOrId)) return true;
+    UI.showToast('Modalità PT: puoi gestire i pacchetti solo dei tuoi clienti assegnati', 'error');
+    return false;
+  },
+
+  guardStudioManagement() {
+    if (App.canManageStudioData()) return true;
+    UI.showToast('Modalità PT: anagrafica, pagamenti, cambio PT e archiviazione restano alla Direzione', 'error');
+    return false;
   },
 
   // ── APERTURA MODALI ──────────────────────────────────
 
   openNewAppointment(dateStr = null, clientId = null, startTime = null, serviceId = null) {
     if (App.isPortalPtMode() && !App.portalPtMutationsEnabled()) {
-      UI.showToast('Modalita PT in sola lettura: non puoi creare appuntamenti', 'error');
+      UI.showToast('Modalità PT in sola lettura: non puoi creare appuntamenti', 'error');
       return;
     }
     if (App.isPortalPtMode() && clientId && !App.canEditClient(clientId)) {
-      UI.showToast('Modalita PT: puoi creare appuntamenti solo per i tuoi clienti assegnati', 'error');
+      UI.showToast('Modalità PT: puoi creare appuntamenti solo per i tuoi clienti assegnati', 'error');
       return;
     }
     App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : [], startTime || '09:00', serviceId || 'pt11');
   },
   openDetail(apptId) {
-    const appt = State.getAppointments().find(a => a.id === apptId);
+    const rawAppt = State.getAppointments().find(a => a.id === apptId);
+    if (App.isPortalPtMode() && !App.canViewAppointment(rawAppt)) {
+      UI.showToast('Questo appuntamento non è collegato al tuo profilo PT', 'error');
+      return;
+    }
+    const appt = Services.getVisibleAppointment(rawAppt);
     if (appt) App._renderDetailModal(appt);
   },
 
@@ -169,14 +234,17 @@ const App = {
     const appt   = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     const isEdit = !!appt;
     if (isEdit && !App.guardPortalEdit('appointment', appt)) {
-      App._renderDetailModal(appt);
+      const visibleAppt = Services.getVisibleAppointment(appt);
+      if (visibleAppt) App._renderDetailModal(visibleAppt);
       return;
     }
     const curSvcId = appt?.serviceId || defaultServiceId || 'pt11';
     const svc = Services.getService(curSvcId);
 
     // Servizi dropdown
-    const svcsHtml = Object.values(CONFIG.SERVICES).map(s =>
+    const svcsHtml = Object.values(CONFIG.SERVICES)
+      .filter(s => !App.isPortalPtMode() || !s.isBlock)
+      .map(s =>
       `<option value="${s.id}" ${curSvcId===s.id?'selected':''}>${s.label}${s.isBlock?' 🚫':''}</option>`
     ).join('');
 
@@ -215,7 +283,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Stato</label>
-            <select id="appt-status" class="form-input" onchange="App._onStatusChange()">${statusHtml}</select>
+            <select id="appt-status" class="form-input" onchange="App._onStatusChange()" ${App.isPortalPtMode() ? 'disabled' : ''}>${statusHtml}</select>
           </div>
         </div>
 
@@ -248,6 +316,16 @@ const App = {
           ${App._buildPerformerSection(appt?.performedByOperatorId || null)}
         </div>
 
+        ${App.isPortalPtMode() ? '' : `<div id="operator-overlap-override" class="operator-overlap-override" hidden>
+          <label class="operator-overlap-toggle">
+            <input id="appt-force-operator-overlap" type="checkbox"
+                   ${Services.hasForcedPt11Overlap(appt) ? 'checked' : ''}
+                   onchange="App._onSlotChange()">
+            <span><strong>Forza doppio PT 1:1</strong> — richiesta specifica cliente autorizzata da PT/gestionale</span>
+          </label>
+          <div id="operator-overlap-copy" class="operator-overlap-copy"></div>
+        </div>`}
+
         <div id="slot-validation" class="slot-validation" style="margin-bottom:8px"></div>
 
         <div class="form-group">
@@ -275,7 +353,7 @@ const App = {
     const svc = Services.getService(serviceId);
     if (!svc || svc.isBlock) return '';
     const compatible = Services.getCompatibleClients(serviceId)
-      .filter(client => !App.isPortalPtMode() || App.canEditClient(client));
+      .filter(client => !App.isPortalPtMode() || App.canViewClient(client));
     const compCount  = compatible.filter(c => c.compatible).length;
     const isMulti    = svc.maxClients > 1;
 
@@ -352,8 +430,9 @@ const App = {
     const svc = Services.getService(serviceId);
     const bufferMin = svc?.bufferMin || 0;
     const excludeId = excludeAppointmentId || document.getElementById('appt-id')?.value || null;
+    const portalOperator = App.currentPortalOperator();
     const ops = Services.getAvailableOperatorsForSlot(serviceId, date, startTime, durationMin, bufferMin, excludeId)
-      .filter(op => op.active !== false);
+      .filter(op => !App.isPortalPtMode() || !portalOperator || op.id === portalOperator.id);
 
     // Se selectedOpId non valido, prova auto-assign
     if (!selectedOpId && date && startTime) {
@@ -389,17 +468,25 @@ const App = {
   },
 
   _buildPerformerSection(selectedPerformerId = null) {
-    const operators = State.getOperators().filter(operator => operator.active !== false);
+    const operators = State.getOperators();
     const selected = NeaceaPtDomain.strictOperatorId(selectedPerformerId, operators);
-    const options = operators.map(operator => `
-      <option value="${operator.id}" ${operator.id === selected ? 'selected' : ''}>${operator.nome} ${operator.cognome}</option>
-    `).join('');
+    const activeOptions = operators
+      .filter(operator => operator.active !== false)
+      .map(operator => `
+        <option value="${operator.id}" ${operator.id === selected ? 'selected' : ''}>${operator.nome} ${operator.cognome}</option>
+      `).join('');
+    const selectedInactive = selected
+      ? operators.find(operator => operator.id === selected && operator.active === false)
+      : null;
+    const inactiveOption = selectedInactive
+      ? `<option value="${selectedInactive.id}" selected disabled>${selectedInactive.nome} ${selectedInactive.cognome} (inattivo · storico)</option>`
+      : '';
     return `
       <div class="form-group" id="appt-performer-group">
         <label>PT esecutore della prestazione</label>
         <select id="appt-performer" class="form-input">
           <option value="">— seleziona quando la seduta è svolta —</option>
-          ${options}
+          ${inactiveOption}${activeOptions}
         </select>
         <div class="form-hint">Usato per statistiche e compensi. Non modifica il PT responsabile del cliente.</div>
       </div>`;
@@ -463,7 +550,27 @@ const App = {
       date, startTime: time, durationMin: dur, bufferMin: svc?.bufferMin||0, status: 'prenotato',
     };
 
-    const validation = Services.canBookAppointment(tmpAppt);
+    const baseValidation = Services.canBookAppointment(tmpAppt);
+    const overrideBox = document.getElementById('operator-overlap-override');
+    const overrideInput = document.getElementById('appt-force-operator-overlap');
+    const overrideCopy = document.getElementById('operator-overlap-copy');
+    const overrideEligible = !App.isPortalPtMode() && baseValidation.operatorOverrideEligible;
+
+    if (overrideBox) overrideBox.hidden = !overrideEligible;
+    if (!overrideEligible && overrideInput) overrideInput.checked = false;
+    if (overrideCopy) {
+      const conflicts = (baseValidation.operatorConflicts || [])
+        .map(a => (a.clientIds || []).map(Services.clientConflictLabel).join(', ') || 'nessun cliente')
+        .join(' · ');
+      overrideCopy.textContent = overrideEligible
+        ? `Eccezione consentita: massimo due PT 1:1 contemporanei. Già presente: ${conflicts}.`
+        : '';
+    }
+
+    const forceRequested = overrideEligible && !!overrideInput?.checked;
+    const validation = forceRequested
+      ? Services.canBookAppointment(tmpAppt, { allowOperatorOverlap: true })
+      : baseValidation;
     const validEl = document.getElementById('slot-validation');
     if (validEl) {
       if (validation.ok) {
@@ -476,7 +583,9 @@ const App = {
         } else if (svc?.isValuation && !svc?.room) {
           roomInfo = ' · Nessuna sala occupata';
         }
-        validEl.innerHTML = `<div class="val-ok">✓ Slot disponibile${roomInfo}</div>`;
+        validEl.innerHTML = forceRequested
+          ? `<div class="val-forced">⚠ Doppio PT 1:1 pronto per la forzatura${roomInfo}. Al salvataggio sarà richiesta conferma.</div>`
+          : `<div class="val-ok">✓ Slot disponibile${roomInfo}</div>`;
       } else {
         validEl.innerHTML = `<div class="val-error">⚠ ${validation.errors.join(' · ')}</div>`;
       }
@@ -504,6 +613,33 @@ const App = {
       '"': '&quot;',
       "'": '&#39;',
     }[ch]));
+  },
+
+  _forcedAuditLines(notes) {
+    return String(notes || '').split('\n').filter(line => line.includes('[FORZA-PT11]'));
+  },
+
+  _archiveForcedAudit(notes) {
+    return String(notes || '').replaceAll('[FORZA-PT11]', '[STORICO-FORZA-PT11]');
+  },
+
+  _buildForcedAudit(validation, apptData) {
+    const when = new Date().toLocaleString('it-IT', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const otherClients = (validation.operatorConflicts || [])
+      .flatMap(a => a.clientIds || [])
+      .map(Services.clientConflictLabel)
+      .join(', ') || 'cliente non indicato';
+    return `[FORZA-PT11] ${when} · Doppio PT 1:1 autorizzato da PT/gestionale · ${Services.operatorFullName(apptData.operatorId)} · sovrapposto a ${otherClients}`;
+  },
+
+  _withPtAudit(notes, action) {
+    const current = String(notes || '').trim();
+    if (!App.isPortalPtMode() || !App.portalPt.authorized) return current;
+    const actor = App._operatorLabel(App.portalPt.operator) || App.portalOperatorId() || 'PT';
+    const line = `[PT-AUDIT] ${new Date().toISOString()} · ${action} · ${actor}`;
+    return [current, line].filter(Boolean).join('\n');
   },
 
   _apptTimeRange(appt, includeBuffer = false) {
@@ -537,7 +673,7 @@ const App = {
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
-    const opId    = document.getElementById('appt-operator')?.value || null;
+    let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
     const notes   = document.getElementById('appt-notes')?.value || '';
     const svc     = Services.getService(svcId);
@@ -696,7 +832,7 @@ const App = {
     let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
     const performerId = document.getElementById('appt-performer')?.value || null;
-    const notes   = document.getElementById('appt-notes')?.value || '';
+    let notes     = document.getElementById('appt-notes')?.value || '';
     const svc     = Services.getService(svcId);
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
     const clientIds = clientEls.map(el => el.value);
@@ -712,6 +848,8 @@ const App = {
     if (!App.guardPortalEdit('appointment', { ...apptData, id: apptId || null })) return;
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
+    notes = App._withPtAudit(notes, before ? 'appuntamento modificato' : 'appuntamento creato');
+    apptData.notes = notes;
     apptData = NeaceaPtDomain.normalizePerformanceTransition(
       before,
       apptData,
@@ -733,9 +871,19 @@ const App = {
       (before.operatorId || null) === opId &&
       sameClients;
 
-    const validation = sameSlot
-      ? { ok: true, errors: [] }
-      : Services.canBookAppointment({ ...apptData, id: apptId||null });
+    const draft = { ...apptData, id: apptId || null };
+    const baseValidation = Services.canBookAppointment(draft);
+    const forceRequested = !!document.getElementById('appt-force-operator-overlap')?.checked;
+    const forceApproved = forceRequested && baseValidation.operatorOverrideEligible;
+    const continuingAuthorizedOverlap = !!(
+      sameSlot &&
+      before &&
+      Services.hasForcedPt11Overlap(before) &&
+      baseValidation.operatorConflicts?.length
+    );
+    const validation = (sameSlot && (!baseValidation.operatorConflicts?.length || continuingAuthorizedOverlap))
+      ? { ok: true, errors: [], operatorConflicts: baseValidation.operatorConflicts || [] }
+      : Services.canBookAppointment(draft, { allowOperatorOverlap: forceApproved });
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       const ve = document.getElementById('slot-validation');
@@ -743,6 +891,34 @@ const App = {
       App._openConflictOverview({ ...apptData, id: apptId || null }, validation.errors);
       return;
     }
+
+    const authorizingOverlap = forceApproved && !continuingAuthorizedOverlap;
+    if (authorizingOverlap) {
+      const otherClients = (baseValidation.operatorConflicts || [])
+        .flatMap(a => a.clientIds || [])
+        .map(Services.clientConflictLabel)
+        .join(', ');
+      const confirmed = confirm(
+        `ATTENZIONE: ${Services.operatorFullName(opId)} avrà due clienti PT 1:1 contemporaneamente (${otherClients} + ${clientIds.map(Services.clientConflictLabel).join(', ')}).\n\nConfermi la forzatura richiesta da PT/gestionale?`
+      );
+      if (!confirmed) return;
+      notes = App._archiveForcedAudit(notes).trim();
+      const auditLine = App._buildForcedAudit(baseValidation, apptData);
+      notes = notes ? `${notes}\n${auditLine}` : auditLine;
+    } else if (continuingAuthorizedOverlap) {
+      const preservedLines = App._forcedAuditLines(before.notes);
+      const missingLines = preservedLines.filter(line => !notes.includes(line));
+      if (missingLines.length) notes = [notes.trim(), ...missingLines].filter(Boolean).join('\n');
+    } else {
+      notes = App._archiveForcedAudit(notes);
+      if (before && Services.hasForcedPt11Overlap(before)) {
+        const missingHistory = App._forcedAuditLines(before.notes)
+          .map(line => line.replace('[FORZA-PT11]', '[STORICO-FORZA-PT11]'))
+          .filter(line => !notes.includes(line));
+        if (missingHistory.length) notes = [notes.trim(), ...missingHistory].filter(Boolean).join('\n');
+      }
+    }
+    apptData.notes = notes;
 
     const appointmentsBefore = State.getAppointments();
     const clientsBefore = State.getClients();
@@ -771,7 +947,6 @@ const App = {
       touchedClients.forEach(client => Sheets.pushClient(client));
       Sheets.pushAppointment(saved);
     }
-
     UI.closeModal();
     Calendar.render();
     UI.showToast(apptId ? 'Appuntamento aggiornato' : 'Appuntamento creato', 'success');
@@ -785,7 +960,7 @@ const App = {
     const isCircuit = svc?.isGroup;
     const isBlock   = svc?.isBlock;
     const clients   = State.getClients();
-    const canEdit = App.canEditAppointment(appt);
+    const canEdit   = App.canEditAppointment(appt);
 
     let bodyHtml = '';
     if (isBlock) {
@@ -826,6 +1001,7 @@ const App = {
 
     const roomLabel = svc?.room ? CONFIG.ROOMS[svc.room]?.label : (svc?.isValuation ? 'Nessuna sala (mobile)' : '');
     const roomTag   = roomLabel ? `<span class="room-tag">${roomLabel}</span>` : '';
+    const forcedOverlap = Services.hasForcedPt11Overlap(appt);
 
     const html = `
       <div class="modal-header" style="border-left:4px solid ${svc?.color||'#64748B'}">
@@ -836,15 +1012,20 @@ const App = {
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body appt-detail-body">
+        ${forcedOverlap ? `
+          <div class="forced-overlap-alert">
+            <strong>⚠ Doppio PT 1:1 autorizzato</strong>
+            <span>Questo personal gestisce due clienti nello stesso orario. La forzatura è tracciata nelle note.</span>
+          </div>` : ''}
         <div class="detail-grid">
           ${bodyHtml}
           <div class="detail-section">
-            <div class="detail-label">PT della seduta</div>
+            <div class="detail-label">PT programmato</div>
             <div class="detail-value">${op?`${op.nome} ${op.cognome}`:'—'}</div>
           </div>
           ${appt.status === 'fatto' ? `<div class="detail-section">
             <div class="detail-label">PT esecutore</div>
-            <div class="detail-value">${performer ? `${performer.nome} ${performer.cognome}` : 'Non registrato'}</div>
+            <div class="detail-value">${performer ? `${performer.nome} ${performer.cognome}${performer.active === false ? ' (inattivo)' : ''}` : 'Non registrato'}</div>
           </div>` : ''}
           <div class="detail-section">
             <div class="detail-label">Stato</div>
@@ -856,11 +1037,12 @@ const App = {
         ${appt.notes?`<div class="detail-section detail-section-full detail-notes"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
       </div>
       <div class="modal-footer">
-        ${!canEdit ? '<span class="form-hint">Modalita PT: appuntamento in sola lettura.</span>' : ''}
-        ${canEdit ? `<button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>` : ''}
+        ${!canEdit ? '<span class="form-hint">Modalità PT: appuntamento in sola lettura.</span>' : ''}
+        ${canEdit && !App.isPortalPtMode() ? `<button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>` : ''}
         ${canEdit && !isBlock?`
           <button class="act-btn primary" onclick="App._markDone('${appt.id}')">✓ Fatto</button>
           <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">No-show</button>
+          ${App.isPortalPtMode() && appt.status !== 'annullato' ? `<button class="act-btn del" onclick="App._markCancelled('${appt.id}')">Annulla</button>` : ''}
         `:''}
         ${canEdit ? `<button class="btn-primary" onclick="App._renderAppointmentModal('${appt.id}','${appt.date}')">Modifica</button>` : '<button class="btn-primary" onclick="UI.closeModal()">Chiudi</button>'}
       </div>
@@ -868,105 +1050,35 @@ const App = {
     UI.openModal(html);
   },
 
-  async _addParticipant(apptId) {
+  _addParticipant(apptId) {
     const sel = document.getElementById('add-part-select');
     if (!sel?.value) return;
-    const appt = State.getAppointments().find(a => a.id === apptId);
-    if (!App.guardPortalEdit('appointment', appt) || !App.guardPortalEdit('client', sel.value)) return;
-    const appointmentsBefore = State.getAppointments();
-    const clientsBefore = State.getClients();
+    const before = State.getAppointments().find(a => a.id === apptId);
+    if (!App.guardPortalEdit('appointment', before) || !App.guardPortalEdit('client', sel.value)) return;
     const result = Services.addCircuitParticipant(apptId, sel.value);
     if (result?.ok === false) { UI.showToast(result.error, 'error'); return; }
     UI.showToast('Partecipante aggiunto', 'success');
     Calendar.render();
-    const nextAppt = State.getAppointments().find(a => a.id === apptId);
-    if (nextAppt) {
-      const touchedClients = App._consumeClientSessions(nextAppt, { persistRemote: false });
-      const syncResult = await SupabaseSync.pushAppointment(nextAppt);
-      if (syncResult?.error) {
-        State.saveAppointments(appointmentsBefore);
-        State.saveClients(clientsBefore);
-        Calendar.render();
-        UI.showToast('Partecipante non salvato: verifica schema e permessi Supabase', 'error');
-        return;
-      }
-      await Promise.all(touchedClients.map(client => SupabaseSync.pushClient(client)));
-      if (CONFIG.SHEETS.enabled) {
-        Sheets.pushAppointment(nextAppt);
-        touchedClients.forEach(client => Sheets.pushClient(client));
-      }
-      App._renderDetailModal(nextAppt);
-    }
-  },
-  async _removeParticipant(apptId, clientId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
-    if (!App.guardPortalEdit('appointment', appt) || !App.guardPortalEdit('client', clientId)) return;
-    const appointmentsBefore = State.getAppointments();
-    const clientsBefore = State.getClients();
+    if (appt) App._renderDetailModal(appt);
+  },
+  _removeParticipant(apptId, clientId) {
+    const before = State.getAppointments().find(a => a.id === apptId);
+    if (!App.guardPortalEdit('appointment', before) || !App.guardPortalEdit('client', clientId)) return;
     Services.removeCircuitParticipant(apptId, clientId);
     UI.showToast('Partecipante rimosso', 'success');
     Calendar.render();
-    const nextAppt = State.getAppointments().find(a => a.id === apptId);
-    if (nextAppt) {
-      const touchedClients = App._consumeClientSessions({
-        ...nextAppt,
-        clientIds: [...new Set([...(appt.clientIds || []), ...(nextAppt.clientIds || [])])],
-      }, { persistRemote: false });
-      const syncResult = await SupabaseSync.pushAppointment(nextAppt);
-      if (syncResult?.error) {
-        State.saveAppointments(appointmentsBefore);
-        State.saveClients(clientsBefore);
-        Calendar.render();
-        UI.showToast('Rimozione non salvata: verifica schema e permessi Supabase', 'error');
-        return;
-      }
-      await Promise.all(touchedClients.map(client => SupabaseSync.pushClient(client)));
-      if (CONFIG.SHEETS.enabled) {
-        Sheets.pushAppointment(nextAppt);
-        touchedClients.forEach(client => Sheets.pushClient(client));
-      }
-      App._renderDetailModal(nextAppt);
-    }
+    const appt = State.getAppointments().find(a => a.id === apptId);
+    if (appt) App._renderDetailModal(appt);
   },
-  async _markDone(apptId) {
+  _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    if (!App.portalOperatorId() && !before?.performedByOperatorId) {
-      App._renderAppointmentModal(apptId, before?.date);
-      const status = document.getElementById('appt-status');
-      if (status) status.value = 'fatto';
-      App._onStatusChange();
-      UI.showToast('Seleziona il PT che ha eseguito la prestazione', 'info');
-      return;
-    }
-    const update = NeaceaPtDomain.normalizePerformanceTransition(
-      before,
-      { ...before, status: 'fatto' },
-      State.getOperators(),
-      App.portalOperatorId()
-    );
-    if (!update.performedByOperatorId) {
-      UI.showToast('Impossibile attribuire la prestazione: seleziona il PT esecutore', 'error');
-      return;
-    }
-    const appointmentsBefore = State.getAppointments();
-    const clientsBefore = State.getClients();
-    const doneAppt = Services.updateAppointment(apptId, update);
-    const touchedClients = App._consumeClientSessions(doneAppt, { persistRemote: false });
-    const syncResult = await SupabaseSync.pushAppointment(doneAppt);
-    if (syncResult?.error) {
-      State.saveAppointments(appointmentsBefore);
-      State.saveClients(clientsBefore);
-      Calendar.render();
-      UI.showToast('Seduta non salvata: esecutore, schema o permessi non validi', 'error');
-      return;
-    }
-    await Promise.all(touchedClients.map(client => SupabaseSync.pushClient(client)));
-    UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
-    if (CONFIG.SHEETS.enabled) {
-      Sheets.pushAppointment(doneAppt);
-      touchedClients.forEach(client => Sheets.pushClient(client));
-    }
+    App._renderAppointmentModal(apptId, before?.date);
+    const status = document.getElementById('appt-status');
+    if (status) status.value = 'fatto';
+    App._onStatusChange();
+    UI.showToast('Seleziona il PT esecutore e salva la seduta', 'info');
   },
   _consumeClientSessions(appt, { persistRemote = true } = {}) {
     if (!appt?.clientIds?.length) return [];
@@ -980,47 +1092,76 @@ const App = {
   async _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', before)) return;
-    const appointmentsBefore = State.getAppointments();
-    const clientsBefore = State.getClients();
     const nsAppt = Services.updateAppointment(apptId, {
       status: 'noshow',
       performedByOperatorId: '',
+      notes: App._withPtAudit(before?.notes, 'segnato come no-show'),
     });
-    const touchedClients = App._consumeClientSessions(nsAppt, { persistRemote: false });
-    const syncResult = await SupabaseSync.pushAppointment(nsAppt);
-    if (syncResult?.error) {
-      State.saveAppointments(appointmentsBefore);
-      State.saveClients(clientsBefore);
-      Calendar.render();
-      UI.showToast('No-show non salvato: verifica i permessi Supabase', 'error');
+    await SupabaseSync.pushAppointment(nsAppt);
+    const touched = App._consumeClientSessions(nsAppt, { persistRemote: false });
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
+    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
+    UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
+  },
+  async _markCancelled(apptId) {
+    const before = State.getAppointments().find(a => a.id === apptId);
+    if (!App.guardPortalEdit('appointment', before)) return;
+    if (!confirm('Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
+    const cancelled = Services.updateAppointment(apptId, {
+      status: 'annullato',
+      performedByOperatorId: '',
+      notes: App._withPtAudit(before?.notes, 'appuntamento annullato'),
+    });
+    await SupabaseSync.pushAppointment(cancelled);
+    const touched = App._consumeClientSessions(cancelled, { persistRemote: false });
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
+    if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);
+    UI.closeModal();
+    UI.showToast('Appuntamento annullato e conservato nello storico', 'success');
+    Calendar.render();
+  },
+  async _deleteAppt(apptId) {
+    if (App.isPortalPtMode()) {
+      UI.showToast('Modalità PT: annulla l’appuntamento senza eliminarne lo storico', 'error');
       return;
     }
-    await Promise.all(touchedClients.map(client => SupabaseSync.pushClient(client)));
-    UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
-    if (CONFIG.SHEETS.enabled) {
-      Sheets.pushAppointment(nsAppt);
-      touchedClients.forEach(client => Sheets.pushClient(client));
-    }
-  },
-  _deleteAppt(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
+    if (!appt) return;
     if (!App.guardPortalEdit('appointment', appt)) return;
-    if (!confirm('Eliminare questo appuntamento?')) return;
+    const affectsCurrentCycle = appt.status === 'fatto' && appt.clientIds?.some(id => {
+      const client = Services.getClient(id);
+      return client && Services.serviceUsesPackageSessions(appt.serviceId) && Services.appointmentInCurrentPackageCycle(appt, client);
+    });
+    const impact = affectsCurrentCycle
+      ? '\n\nÈ una lezione fatta del ciclo corrente: il residuo verrà aumentato automaticamente di 1.'
+      : '';
+    if (!confirm(`Eliminare definitivamente questo appuntamento?${impact}`)) return;
+
+    const result = await SupabaseSync.deleteAppointment(apptId);
+    if (result?.error) {
+      UI.showToast('Appuntamento non eliminato: errore di sincronizzazione', 'error');
+      return;
+    }
     Services.deleteAppointment(apptId);
-    App._consumeClientSessions(appt);
-    SupabaseSync.deleteAppointment(apptId);
-    UI.closeModal(); UI.showToast('Appuntamento eliminato', 'success'); Calendar.render();
+    const touched = Services.serviceUsesPackageSessions(appt.serviceId)
+      ? App._consumeClientSessions(appt, { persistRemote: false })
+      : [];
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
+    UI.closeModal();
+    UI.showToast('Appuntamento eliminato e conteggi aggiornati', 'success');
+    Calendar.render();
   },
 
   // ── MODAL CLIENTE ────────────────────────────────────
   openNewClient() {
     if (App.isPortalPtMode()) {
-      UI.showToast('Modalita PT: la creazione cliente resta al gestionale studio', 'error');
+      UI.showToast('Modalità PT: la creazione cliente resta al gestionale studio', 'error');
       return;
     }
     App._renderClientModal(null);
   },
   openEditClient(cid) {
+    if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', cid)) {
       App.openPackageOverview(cid);
       return;
@@ -1028,26 +1169,21 @@ const App = {
     App._renderClientModal(cid);
   },
   openEditPackage(cid) {
-    if (!App.guardPortalEdit('client', cid)) {
+    if (!App.guardPackageManagement(cid)) {
       App.openPackageOverview(cid);
       return;
     }
     App._renderClientModal(cid, true);
   },
 
-  openRenewPackage(cid) {
-    if (!App.guardPortalEdit('client', cid)) {
-      App.openPackageOverview(cid);
-      return;
-    }
-    App._renderClientModal(cid, true, true);
-  },
-
-  _renderClientModal(clientId, packageOnly = false, renewal = false) {
+  _renderClientModal(clientId, packageOnly = false) {
+    if (packageOnly) {
+      if (!App.guardPackageManagement(clientId)) return;
+    } else if (!App.guardStudioManagement()) return;
     const client = clientId ? State.getClients().find(c => c.id === clientId) : null;
     const isEdit = !!client;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
-      UI.showToast('Modalita PT: puoi modificare solo i tuoi clienti assegnati', 'error');
+      UI.showToast('Modalità PT: puoi modificare solo i tuoi clienti assegnati', 'error');
       return;
     }
     // Supporta sia vecchio schema stringa che nuovo array
@@ -1066,10 +1202,7 @@ const App = {
     ).join('');
     const curDays = Array.isArray(client?.giorniSettimana) ? client.giorniSettimana : [];
     const currentMetrics = client ? Services.getClientSessionMetrics(client) : null;
-    const responsiblePtOptions = State.getOperators()
-      .filter(operator => operator.active !== false && App._isPtOperator(operator))
-      .map(operator => `<option value="${operator.id}" ${client?.ptAssegnato === operator.id ? 'selected' : ''}>${operator.nome} ${operator.cognome}</option>`)
-      .join('');
+    const personalReadOnlyAttr = packageOnly ? 'disabled' : '';
     const dayOptions = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label">
         <input type="checkbox" name="client-day" value="${g}" ${curDays.includes(g)?'checked':''} onchange="App._limitClientDays(this)">
@@ -1078,74 +1211,53 @@ const App = {
 
     const html = `
       <div class="modal-header">
-        <h3>${renewal ? 'Rinnova pacchetto' : (packageOnly ? 'Modifica pacchetto e giorni' : (isEdit?'Modifica Cliente':'Nuovo Cliente'))}</h3>
+        <h3>${packageOnly ? 'Modifica pacchetto e giorni' : (isEdit?'Modifica Cliente':'Nuovo Cliente')}</h3>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group">
             <label>Nome *</label>
-            <input type="text" id="cl-nome" class="form-input" value="${client?.nome||''}">
+            <input type="text" id="cl-nome" class="form-input" value="${client?.nome||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Cognome *</label>
-            <input type="text" id="cl-cognome" class="form-input" value="${client?.cognome||''}">
+            <input type="text" id="cl-cognome" class="form-input" value="${client?.cognome||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Email</label>
-            <input type="email" id="cl-email" class="form-input" value="${client?.email||''}">
+            <input type="email" id="cl-email" class="form-input" value="${client?.email||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Telefono</label>
-            <input type="text" id="cl-telefono" class="form-input" value="${client?.telefono||''}">
+            <input type="text" id="cl-telefono" class="form-input" value="${client?.telefono||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Data di nascita</label>
-            <input type="date" id="cl-nascita" class="form-input" value="${client?.nascita||''}">
+            <input type="date" id="cl-nascita" class="form-input" value="${client?.nascita||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Codice fiscale</label>
-            <input type="text" id="cl-codice-fiscale" class="form-input" value="${client?.codiceFiscale||''}">
+            <input type="text" id="cl-codice-fiscale" class="form-input" value="${client?.codiceFiscale||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Documento</label>
-            <input type="text" id="cl-documento" class="form-input" value="${client?.documento||''}">
+            <input type="text" id="cl-documento" class="form-input" value="${client?.documento||''}" ${personalReadOnlyAttr}>
           </div>
           <div class="form-group">
             <label>Contatto emergenza</label>
-            <input type="text" id="cl-contatto-emergenza" class="form-input" value="${client?.contattoEmergenza||''}">
+            <input type="text" id="cl-contatto-emergenza" class="form-input" value="${client?.contattoEmergenza||''}" ${personalReadOnlyAttr}>
           </div>
         </div>
         <div class="form-group">
           <label>Indirizzo</label>
-          <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}">
-        </div>
-
-        <div class="form-section-label">Gestione percorso</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>PT responsabile</label>
-            <select id="cl-responsible-pt" class="form-input">
-              <option value="">— Non assegnato —</option>
-              ${responsiblePtOptions}
-            </select>
-            <div class="form-hint">Assegnazione stabile del cliente. Non cambia quando una singola seduta viene affidata a un sostituto.</div>
-          </div>
-          <div class="form-group">
-            <label>Stato abbonamento</label>
-            <input id="cl-subscription-status" class="form-input" list="subscription-statuses" value="${client?.statoAbbonamento || 'Attivo'}">
-            <datalist id="subscription-statuses"><option value="Attivo"><option value="Sospeso"><option value="Scaduto"></datalist>
-          </div>
-          <div class="form-group">
-            <label>Inizio pacchetto attivo</label>
-            <input type="date" id="cl-package-start" class="form-input" value="${renewal ? App._dateStr(new Date()) : (client?.packageStart || '')}">
-          </div>
+          <input type="text" id="cl-indirizzo" class="form-input" value="${client?.indirizzo||''}" ${personalReadOnlyAttr}>
         </div>
 
         <div class="form-section-label">Pacchetti acquistati</div>
@@ -1166,12 +1278,12 @@ const App = {
           </div>
           <div class="form-group">
             <label>Sessioni totali</label>
-            <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${renewal ? '' : (client?.sessionsTotal||'')}" onchange="App._limitClientDays()">
+            <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${currentMetrics?.total || client?.sessionsTotal || ''}" onchange="App._limitClientDays()">
           </div>
           <div class="form-group">
             <label>Sessioni residue automatiche</label>
             <div class="computed-field">
-              ${renewal ? 'Ripartono dal nuovo totale e dalla nuova data di inizio' : (client ? (currentMetrics?.total ? `${currentMetrics.remaining} residue · ${currentMetrics.completed} fatte` : 'Imposta le sessioni totali') : 'Calcolate dopo il salvataggio')}
+              ${client ? (currentMetrics?.total ? `${currentMetrics.remaining} residue · ${currentMetrics.completed} fatte nel ciclo · ${currentMetrics.lifetimeCompleted} complessive` : 'Imposta le sessioni totali') : 'Calcolate dopo il salvataggio'}
             </div>
             <div class="form-hint">Si aggiornano segnando le sedute come fatto.</div>
           </div>
@@ -1184,13 +1296,16 @@ const App = {
 
         <div class="form-group">
           <label>Note</label>
-          <textarea id="cl-notes" class="form-input" rows="2">${client?.notes||''}</textarea>
+          <textarea id="cl-notes" class="form-input" rows="2" ${personalReadOnlyAttr}>${App._escapeHtml(typeof PackageLedger !== 'undefined' ? PackageLedger.strip(client?.notes || '') : (client?.notes || ''))}</textarea>
+          ${client && String(client.notes || '').includes(PackageLedger.START)
+            ? '<div class="form-hint">Lo storico economico è protetto e non viene mostrato in questo campo.</div>'
+            : ''}
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
-        <button class="btn-primary" onclick="App._saveClient('${clientId||''}', '${renewal ? 'renewal' : ''}')">
-          ${renewal ? 'Conferma rinnovo' : (isEdit?'Salva modifiche':'Salva cliente')}
+        <button class="btn-primary" onclick="App._saveClient('${clientId||''}', ${packageOnly ? 'true' : 'false'})">
+          ${isEdit?'Salva modifiche':'Salva cliente'}
         </button>
       </div>
     `;
@@ -1232,9 +1347,12 @@ const App = {
     </div>`;
   },
 
-  async _saveClient(clientId, mode = '') {
+  _saveClient(clientId, packageOnly = false) {
+    if (packageOnly) {
+      if (!App.guardPackageManagement(clientId)) return;
+    } else if (!App.guardStudioManagement()) return;
     if (App.isPortalPtMode() && (!clientId || !App.canEditClient(clientId))) {
-      UI.showToast('Modalita PT: puoi salvare solo i tuoi clienti assegnati', 'error');
+      UI.showToast('Modalità PT: puoi salvare solo i tuoi clienti assegnati', 'error');
       return;
     }
     const nome      = document.getElementById('cl-nome')?.value.trim();
@@ -1249,34 +1367,40 @@ const App = {
     const pkgs      = [...document.querySelectorAll('input[name="pkg"]:checked')].map(el=>el.value);
     const frequency = document.getElementById('cl-frequency')?.value;
     const sessTotal = parseInt(document.getElementById('cl-sessions-total')?.value)||0;
-    const notes     = document.getElementById('cl-notes')?.value.trim();
-    const requestedPtAssegnato = document.getElementById('cl-responsible-pt')?.value || null;
-    const statoAbbonamento = document.getElementById('cl-subscription-status')?.value.trim() || 'Attivo';
-    const packageStart = document.getElementById('cl-package-start')?.value || null;
     if (!App._limitClientDays()) return;
     const giorniSettimana = [...document.querySelectorAll('input[name="client-day"]:checked')].map(el=>el.value);
 
     if (!nome||!cognome) { UI.showToast('Nome e cognome obbligatori','error'); return; }
-    if (mode === 'renewal' && (!sessTotal || !packageStart)) {
-      UI.showToast('Per il rinnovo indica data di inizio e sessioni totali', 'error');
-      return;
-    }
 
     const clients = State.getClients();
     const currentClient = clientId ? clients.find(c => c.id === clientId) : null;
-    const ptAssegnato = App.isPortalPtMode()
-      ? (currentClient?.ptAssegnato || null)
-      : requestedPtAssegnato;
-    const completedSessions = currentClient ? Services.getClientSessionMetrics({ ...currentClient, sessionsTotal: sessTotal, packageStart }).completed : 0;
+    const currentMetrics = currentClient ? Services.getClientSessionMetrics(currentClient) : null;
+    const completedSessions = currentMetrics?.completed || 0;
     const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
+    let rawNotes = packageOnly
+      ? String(currentClient?.notes || '')
+      : String(document.getElementById('cl-notes')?.value || '').trim();
+    if (!packageOnly && currentClient && String(currentClient.notes || '').includes(PackageLedger.START)) {
+      const ledger = PackageLedger.parse(currentClient);
+      if (ledger.parseError) {
+        UI.showToast('Cliente non salvato: lo storico pagamenti deve essere prima corretto', 'error');
+        return;
+      }
+      rawNotes = PackageLedger.serialize(rawNotes, ledger);
+    }
+    const notes = packageOnly
+      ? App._withPtAudit(rawNotes, 'pacchetto aggiornato')
+      : rawNotes;
     const data = {
       nome, cognome, email, telefono, nascita, codiceFiscale, documento, indirizzo, contattoEmergenza,
       packageTypes: pkgs,
       packageFrequency: frequency,
       giorniSettimana,
       sessionsTotal: sessTotal, sessionsRemaining: sessRem,
-      ptAssegnato, statoAbbonamento, packageStart,
-      notes, active: true,
+      packageCycleStart: currentClient
+        ? (currentClient.packageCycleStart || currentMetrics?.cycleStart || currentClient.packageStart || App._dateStr(new Date()))
+        : App._dateStr(new Date()),
+      notes, active: currentClient ? currentClient.active !== false : true,
     };
 
     let saved;
@@ -1284,22 +1408,238 @@ const App = {
       const idx = clients.findIndex(c=>c.id===clientId);
       if (idx!==-1) { clients[idx] = { ...clients[idx], ...data }; saved = clients[idx]; }
     } else {
-      const newC = { id: State.genId('c'), ...data, packageStart: data.packageStart || App._dateStr(new Date()) };
+      const newC = { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
       clients.push(newC); saved = newC;
     }
-    const clientsBefore = State.getClients();
     State.saveClients(clients);
-    const syncResult = await SupabaseSync.pushClient(saved);
-    if (syncResult?.error) {
-      State.saveClients(clientsBefore);
-      UI.showToast('Cliente non salvato: verifica schema e permessi Supabase', 'error');
-      return;
-    }
+    SupabaseSync.pushClient(saved);
     if (CONFIG.SHEETS.enabled) Sheets.pushClient(saved);
 
     UI.closeModal();
     if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
-    UI.showToast(mode === 'renewal' ? 'Pacchetto rinnovato' : (clientId?'Cliente aggiornato':'Cliente salvato'),'success');
+    UI.showToast(clientId?'Cliente aggiornato':'Cliente salvato','success');
+  },
+
+  // ── TRASFERIMENTO CLIENTE TRA PT ─────────────────────
+  _assignedTrainer(client) {
+    const trainerId = NeaceaPtDomain.responsibleTrainerId(client, State.getOperators());
+    return trainerId ? State.getOperators().find(operator => operator.id === trainerId) || null : null;
+  },
+
+  _isPtAppointment(appt) {
+    const service = Services.getService(appt?.serviceId);
+    return !!service?.requiredRoles?.includes('PT');
+  },
+
+  _clientTransferPlan(clientId, fromDate) {
+    const appointments = State.getAppointments().filter(appt =>
+      appt.date >= fromDate &&
+      !['fatto', 'annullato', 'noshow'].includes(appt.status) &&
+      Array.isArray(appt.clientIds) &&
+      appt.clientIds.includes(clientId) &&
+      App._isPtAppointment(appt)
+    );
+    return {
+      individual: appointments.filter(appt => appt.clientIds.length === 1),
+      shared: appointments.filter(appt => appt.clientIds.length > 1),
+    };
+  },
+
+  _refreshClientTransferSummary(clientId) {
+    const summary = document.getElementById('transfer-client-summary');
+    if (!summary) return;
+    const fromDate = document.getElementById('transfer-effective-date')?.value || App._dateStr(new Date());
+    const plan = App._clientTransferPlan(clientId, fromDate);
+    summary.innerHTML = `
+      <strong>${plan.individual.length}</strong> sedute future individuali saranno assegnate al nuovo PT.
+      ${plan.shared.length
+        ? `<br><strong>${plan.shared.length}</strong> sedute condivise resteranno invariate e andranno verificate manualmente.`
+        : '<br>Nessuna seduta condivisa da verificare.'}
+      <br>Le sedute già svolte e lo storico non verranno modificati.
+    `;
+  },
+
+  openTransferClient(clientId) {
+    if (!App.guardStudioManagement()) return;
+    const client = State.getClients().find(item => item.id === clientId);
+    if (!client || client.active === false) {
+      UI.showToast('Puoi trasferire solo un cliente attivo', 'error');
+      return;
+    }
+
+    const currentTrainer = App._assignedTrainer(client);
+    const trainers = State.getOperators()
+      .filter(operator => operator.active !== false)
+      .filter(operator => Array.isArray(operator.roles) && operator.roles.includes('PT'));
+    const availableTrainers = trainers.filter(operator => operator.id !== currentTrainer?.id);
+    if (!availableTrainers.length) {
+      UI.showToast('Non ci sono altri PT attivi disponibili', 'error');
+      return;
+    }
+
+    const today = App._dateStr(new Date());
+    const clientName = App._escapeHtml(`${client.nome || ''} ${client.cognome || ''}`.trim());
+    const currentTrainerName = currentTrainer
+      ? App._escapeHtml(App._operatorLabel(currentTrainer))
+      : 'Non assegnato';
+    const options = availableTrainers.map(operator =>
+      `<option value="${App._escapeHtml(operator.id)}">${App._escapeHtml(App._operatorLabel(operator))}</option>`
+    ).join('');
+
+    const html = `
+      <div class="modal-header">
+        <div>
+          <h3>Trasferisci cliente</h3>
+          <p class="modal-subtitle">${clientName}</p>
+        </div>
+        <button class="modal-close" onclick="UI.closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>PT attuale</label>
+            <div class="computed-field">${currentTrainerName}</div>
+          </div>
+          <div class="form-group">
+            <label>Nuovo PT *</label>
+            <select id="transfer-new-operator" class="form-input">
+              <option value="">— seleziona —</option>
+              ${options}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Decorrenza del trasferimento</label>
+          <input id="transfer-effective-date" class="form-input" type="date" value="${today}" min="${today}"
+                 onchange="App._refreshClientTransferSummary('${client.id}')">
+        </div>
+        <div id="transfer-client-summary" class="computed-field" style="line-height:1.6"></div>
+        <div class="form-hint" style="margin-top:10px">
+          Dopo il trasferimento il cliente sarà visibile al nuovo PT e non più al precedente.
+          L'operazione resta riservata alla Direzione.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
+        <button class="btn-primary" onclick="App._transferClient('${client.id}')">Conferma trasferimento</button>
+      </div>
+    `;
+    UI.openModal(html);
+    App._refreshClientTransferSummary(client.id);
+  },
+
+  async _transferClient(clientId) {
+    if (!App.guardStudioManagement()) return;
+    const clients = State.getClients();
+    const clientIndex = clients.findIndex(item => item.id === clientId);
+    const currentClient = clients[clientIndex];
+    if (clientIndex < 0 || !currentClient || currentClient.active === false) {
+      UI.showToast('Cliente non disponibile per il trasferimento', 'error');
+      return;
+    }
+
+    const newOperatorId = document.getElementById('transfer-new-operator')?.value || '';
+    const fromDate = document.getElementById('transfer-effective-date')?.value || App._dateStr(new Date());
+    const newOperator = State.getOperators().find(operator =>
+      operator.id === newOperatorId &&
+      operator.active !== false &&
+      Array.isArray(operator.roles) &&
+      operator.roles.includes('PT')
+    );
+    if (!newOperator) {
+      UI.showToast('Seleziona un nuovo PT attivo', 'error');
+      return;
+    }
+
+    const currentTrainer = App._assignedTrainer(currentClient);
+    if (currentTrainer?.id === newOperator.id) {
+      UI.showToast('Il cliente è già assegnato a questo PT', 'error');
+      return;
+    }
+
+    const plan = App._clientTransferPlan(clientId, fromDate);
+    const changes = plan.individual.map(appt => ({
+      before: appt,
+      after: { ...appt, operatorId: newOperator.id, updatedAt: Date.now() },
+    }));
+    const conflicts = changes
+      .map(change => ({
+        ...change,
+        validation: Services.canBookAppointment(change.after, { strictPackageDays: false }),
+      }))
+      .filter(change => !change.validation.ok);
+
+    if (conflicts.length) {
+      const detail = conflicts.slice(0, 10).map(change =>
+        `${App._fmtLongDate(change.after.date)} ${change.after.startTime}: ${change.validation.errors.join(' · ')}`
+      ).join('\n');
+      UI.showToast('Trasferimento non eseguito: il nuovo PT ha dei conflitti', 'error');
+      alert(`Risolvi prima questi conflitti:\n\n${detail}`);
+      return;
+    }
+
+    const oldTrainerName = currentTrainer ? App._operatorLabel(currentTrainer) : 'Non assegnato';
+    const newTrainerName = App._operatorLabel(newOperator);
+    const sharedWarning = plan.shared.length
+      ? `\n${plan.shared.length} sedute condivise resteranno con il PT attuale e dovranno essere verificate.`
+      : '';
+    const confirmed = confirm(
+      `Trasferire ${currentClient.nome} ${currentClient.cognome} da ${oldTrainerName} a ${newTrainerName} dal ${fromDate}?\n\n` +
+      `${changes.length} sedute future individuali saranno aggiornate.${sharedWarning}\n` +
+      'Le sedute già svolte e lo storico resteranno invariati.'
+    );
+    if (!confirmed) return;
+
+    const auditLine = `[TRASFERIMENTO PT ${App._dateStr(new Date())}] ${oldTrainerName} → ${newTrainerName} · decorrenza ${fromDate}`;
+    const updatedClient = {
+      ...currentClient,
+      ptAssegnato: newOperator.id,
+      pt_assegnato: newOperator.id,
+      notes: [String(currentClient.notes || '').trim(), auditLine].filter(Boolean).join('\n'),
+    };
+
+    try {
+      const appointmentResults = await Promise.all(changes.map(change =>
+        SupabaseSync.pushAppointment(change.after)
+      ));
+      if (appointmentResults.some(result => result?.error)) {
+        throw new Error('salvataggio sedute non riuscito');
+      }
+
+      const clientResult = await SupabaseSync.pushClient(updatedClient);
+      if (clientResult?.error) throw new Error('salvataggio cliente non riuscito');
+    } catch (error) {
+      await Promise.all([
+        ...changes.map(change =>
+          Promise.resolve(SupabaseSync.pushAppointment(change.before)).catch(() => null)
+        ),
+        Promise.resolve(SupabaseSync.pushClient(currentClient)).catch(() => null),
+      ]);
+      console.warn('[Trasferimento PT]', error);
+      UI.showToast('Trasferimento non completato: i dati precedenti sono stati ripristinati', 'error');
+      return;
+    }
+
+    const changesById = new Map(changes.map(change => [change.after.id, change.after]));
+    State.saveAppointments(State.getAppointments().map(appt => changesById.get(appt.id) || appt));
+    clients[clientIndex] = updatedClient;
+    State.saveClients(clients);
+    if (CONFIG.SHEETS.enabled) {
+      Sheets.pushClient(updatedClient);
+      changes.forEach(change => Sheets.pushAppointment(change.after));
+    }
+
+    UI.closeModal();
+    Calendar.render();
+    if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
+    UI.showToast(`Cliente trasferito a ${newTrainerName} · ${changes.length} sedute aggiornate`, 'success');
+    if (plan.shared.length) {
+      alert(
+        `Trasferimento completato.\n\n` +
+        `${plan.shared.length} sedute condivise non sono state modificate per non spostare anche gli altri clienti. ` +
+        'Apri il Quadro pacchetto per verificarle.'
+      );
+    }
   },
 
   // ── QUADRO PACCHETTO CLIENTE ─────────────────────────
@@ -1313,15 +1653,117 @@ const App = {
     return null;
   },
 
+  _withPackageCycle(notes, cycleStart, cycleId = '') {
+    const clean = String(notes || '')
+      .replace(/\n?\[CICLO-PACCHETTO\s+\d{4}-\d{2}-\d{2}\]/gi, '')
+      .replace(/\n?\[CICLO-PACCHETTO-ID\s+[a-zA-Z0-9_-]+\]/gi, '')
+      .trim();
+    const marker = cycleStart ? `[CICLO-PACCHETTO ${cycleStart}]` : '';
+    const idMarker = cycleId ? `[CICLO-PACCHETTO-ID ${cycleId}]` : '';
+    return [clean, marker, idMarker].filter(Boolean).join('\n');
+  },
+
+  _fmtMoney(value) {
+    return new Intl.NumberFormat('it-IT', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+    }).format(Number(value || 0));
+  },
+
+  _packageLedger(client, metrics = {}) {
+    try {
+      return PackageLedger.ensure(client, metrics);
+    } catch (error) {
+      return { version: 1, cycles: [], parseError: error.message || String(error) };
+    }
+  },
+
+  _packagePaymentStatusClass(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'pagato') return 'paid';
+    if (normalized === 'parziale') return 'partial';
+    if (normalized.includes('riconciliare')) return 'reconcile';
+    return 'open';
+  },
+
+  _updateRenewalPaymentPreview() {
+    const total = Number(document.getElementById('pkg-renew-amount')?.value || 0);
+    const paid = Number(document.getElementById('pkg-renew-paid')?.value || 0);
+    const preview = document.getElementById('pkg-renew-payment-preview');
+    if (!preview) return;
+    const status = PackageLedger.normalizeStatus(total, paid);
+    const balance = Math.max(0, PackageLedger.roundMoney(total - paid));
+    preview.className = `package-payment-preview ${App._packagePaymentStatusClass(status)}`;
+    preview.innerHTML = `<strong>${App._escapeHtml(status)}</strong><span>Incassato ${App._fmtMoney(paid)} · saldo ${App._fmtMoney(balance)}</span>`;
+  },
+
+  _packageHistoryRows(client, ledger) {
+    if (ledger?.parseError) {
+      return `<tr><td colspan="9" class="package-ledger-error">${App._escapeHtml(ledger.parseError)}</td></tr>`;
+    }
+    if (!ledger?.cycles?.length) {
+      return '<tr><td colspan="9" class="text-muted">Nessun ciclo registrato.</td></tr>';
+    }
+    return [...ledger.cycles].reverse().map((cycle, reverseIndex) => {
+      const number = ledger.cycles.length - reverseIndex;
+      const finance = PackageLedger.cycleFinancial(cycle);
+      const payments = Array.isArray(cycle.payments) ? cycle.payments : [];
+      const lastPayment = payments.length ? payments[payments.length - 1] : null;
+      const snapshot = cycle.closedAt
+        ? `${Number(cycle.sessionsCompletedAtClose || 0)}/${Number(cycle.sessionsTotal || 0)} fatte`
+        : `${Number(cycle.sessionsTotal || 0)} acquistate`;
+      return `
+        <tr>
+          <td><strong>#${number}</strong><span class="package-cycle-source">${cycle.source === 'renewal' ? 'Rinnovo' : 'Importato'}</span></td>
+          <td>${App._escapeHtml(App._fmtLongDate(cycle.startDate))}</td>
+          <td>${snapshot}</td>
+          <td>${App._fmtMoney(finance.total)}</td>
+          <td>${App._fmtMoney(finance.paid)}</td>
+          <td><strong>${App._fmtMoney(finance.balance)}</strong></td>
+          <td><span class="package-payment-badge ${App._packagePaymentStatusClass(finance.status)}">${App._escapeHtml(finance.status)}</span></td>
+          <td>${lastPayment ? `${App._escapeHtml(App._fmtLongDate(lastPayment.date))}<br><span class="text-muted">${App._escapeHtml(lastPayment.method || 'Non indicato')}</span>` : '—'}</td>
+          <td>${payments.length}</td>
+        </tr>`;
+    }).join('');
+  },
+
+  _packagePaymentMovementRows(client, cycle) {
+    const payments = Array.isArray(cycle?.payments) ? cycle.payments : [];
+    if (!payments.length) {
+      return '<tr><td colspan="6" class="text-muted">Nessun movimento registrato nel ciclo.</td></tr>';
+    }
+    return [...payments].reverse().map(payment => {
+      const isReversed = payments.some(item => item.kind === 'storno' && item.reversesPaymentId === payment.id);
+      const amount = Number(payment.amount || 0);
+      const signedAmount = payment.kind === 'storno' ? -Math.abs(amount) : amount;
+      const type = payment.kind === 'storno'
+        ? 'Storno'
+        : payment.kind === 'rettifica' ? 'Rettifica' : 'Incasso';
+      const canReverse = payment.kind !== 'storno' && amount > 0 && !isReversed;
+      return `
+        <tr>
+          <td>${App._escapeHtml(App._fmtLongDate(payment.date))}</td>
+          <td><span class="package-movement-kind ${payment.kind || 'incasso'}">${type}</span></td>
+          <td><strong class="${signedAmount < 0 ? 'package-negative-amount' : ''}">${signedAmount < 0 ? '−' : '+'}${App._fmtMoney(Math.abs(signedAmount))}</strong></td>
+          <td>${App._escapeHtml(payment.method || 'Non indicato')}</td>
+          <td>${App._escapeHtml(payment.note || '—')}${isReversed ? '<br><span class="text-muted">Movimento stornato</span>' : ''}</td>
+          <td>${canReverse ? `<button class="btn btn-sm" onclick="App._reversePackagePayment('${client.id}','${App._escapeHtml(payment.id)}')">Storna</button>` : '—'}</td>
+        </tr>`;
+    }).join('');
+  },
+
   _packageAppointments(client, includeNutrition = true) {
-    const trainingServiceId = App._packageServiceId(client);
-    return State.getAppointments()
-      .filter(a => a.status !== 'annullato')
-      .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
-      .filter(a => {
-        if (trainingServiceId && a.serviceId === trainingServiceId) return true;
-        return includeNutrition && (a.serviceId === 'nutrizione' || a.serviceId === 'check');
-      })
+    const packageAppointments = Services.getClientPackageAppointments(client);
+    const nutritionAppointments = includeNutrition
+      ? State.getAppointments().filter(a =>
+          a.status !== 'annullato' &&
+          Array.isArray(a.clientIds) &&
+          a.clientIds.includes(client.id) &&
+          (a.serviceId === 'nutrizione' || a.serviceId === 'check')
+        )
+      : [];
+    return [...new Map([...packageAppointments, ...nutritionAppointments].map(a => [a.id, a])).values()]
       .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
   },
 
@@ -1375,35 +1817,84 @@ const App = {
     return out;
   },
 
+  _setPackageWorkspace(mode = 'lessons') {
+    const showFinance = mode === 'finance';
+    document.querySelectorAll('.package-lessons-only').forEach(element => {
+      element.hidden = showFinance;
+    });
+    document.querySelectorAll('.package-finance-only').forEach(element => {
+      element.hidden = !showFinance;
+    });
+
+    const lessonsButton = document.getElementById('pkg-workspace-lessons');
+    const financeButton = document.getElementById('pkg-workspace-finance');
+    lessonsButton?.classList.toggle('active', !showFinance);
+    financeButton?.classList.toggle('active', showFinance);
+    lessonsButton?.setAttribute('aria-pressed', String(!showFinance));
+    financeButton?.setAttribute('aria-pressed', String(showFinance));
+
+    const lessonsFooter = document.getElementById('pkg-footer-lessons');
+    const financeFooter = document.getElementById('pkg-footer-finance');
+    if (lessonsFooter) lessonsFooter.hidden = !showFinance;
+    if (financeFooter) financeFooter.hidden = showFinance;
+
+    const body = document.querySelector('.package-overview');
+    if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  _openPackageFinance(clientId) {
+    App.openPackageOverview(clientId);
+    if (!App.isPortalPtMode()) App._setPackageWorkspace('finance');
+  },
+
   openPackageOverview(clientId) {
+    if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
 
+    const isArchived = client.active === false;
+    const storedArchivedStatus = String(client.statoAbbonamento || client.stato_abbonamento || '').trim();
+    const archivedStatus = !storedArchivedStatus || (isArchived && storedArchivedStatus.toLowerCase() === 'attivo')
+      ? 'Archiviato'
+      : storedArchivedStatus;
     const metrics = Services.getClientSessionMetrics(client);
+    const packageLedger = App._packageLedger(client, metrics);
+    const currentPackageCycle = packageLedger.parseError ? null : PackageLedger.currentCycle(packageLedger);
+    const currentFinance = PackageLedger.cycleFinancial(currentPackageCycle || {
+      amount: client.importo || 0,
+      openingPaidAmount: String(client.statoPagamento || '').toLowerCase() === 'pagato' ? Number(client.importo || 0) : 0,
+      payments: [],
+    });
+    const financialSummary = PackageLedger.summary([client]);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
     const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
     const appointments = App._packageAppointments(client, true);
-    const operators = App.isPortalPtMode() && App.currentPortalOperator()
-      ? [App.currentPortalOperator()]
-      : State.getOperators().filter(o => o.active !== false);
+    const displayAppointments = [...appointments].sort((a, b) =>
+      `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`)
+    );
+    const operators = State.getOperators()
+      .filter(o => o.active !== false)
+      .filter(o => !App.isPortalPtMode() || o.id === App.portalOperatorId());
     const suggested = App._suggestPackageDates(client, metrics.toSchedule).slice(0, 8);
     const hasTotal = metrics.total > 0;
-    const canEdit = App.canEditClient(client.id);
     const today = App._dateStr(new Date());
+    const defaultRenewalStart = today;
     const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label package-plan-day">
         <input type="checkbox" name="pkg-plan-day" value="${g}" ${days.includes(g) ? 'checked' : ''} onchange="App._limitPackagePlanDays('${client.id}', this)">
         <span>${g.slice(0, 3)}</span>
       </label>`).join('');
 
-    const rows = appointments.length ? appointments.map(a => {
+    const rows = displayAppointments.length ? displayAppointments.map(a => {
       const svc = Services.getService(a.serviceId);
-      const rowOperators = App.isPortalPtMode() && App.currentPortalOperator()
-        ? [App.currentPortalOperator()]
-        : State.getOperators().filter(op => op.active !== false);
-      const operatorOptions = rowOperators
+      const usesPackage = Services.serviceUsesPackageSessions(a.serviceId);
+      const isCurrentCycle = usesPackage && Services.appointmentInCurrentPackageCycle(a, client);
+      const cycleLabel = usesPackage ? (isCurrentCycle ? 'Ciclo corrente' : 'Storico') : 'Servizio extra';
+      const canEditRow = !isArchived && App.canEditAppointment(a);
+      const rowReadOnlyAttr = canEditRow ? '' : 'disabled';
+      const operatorOptions = operators
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
       const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
@@ -1412,43 +1903,42 @@ const App = {
       return `
         <tr>
           <td>
-            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}">
+            <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}" ${rowReadOnlyAttr}>
           </td>
           <td>
             <div class="time-edit-cell">
-              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900">
+              <input id="pkg-time-${a.id}" class="form-input package-time-input" type="time" value="${a.startTime}" step="900" ${rowReadOnlyAttr}>
             </div>
           </td>
           <td><span class="role-tag">${svc?.label || a.serviceId}</span></td>
           <td>
-            <select id="pkg-operator-${a.id}" class="form-input package-operator-input">
+            ${canEditRow ? `<select id="pkg-operator-${a.id}" class="form-input package-operator-input">
               <option value="">—</option>
               ${operatorOptions}
-            </select>
+            </select>` : `<span class="text-muted">${Services.operatorFullName(a.operatorId) || '—'}</span>`}
           </td>
           <td>
-            <select id="pkg-status-${a.id}" class="form-input package-status-input">
+            ${canEditRow ? `<select id="pkg-status-${a.id}" class="form-input package-status-input">
               ${statusOptions}
-            </select>
+            </select>` : `<span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>`}
           </td>
+          <td><span class="role-tag">${cycleLabel}</span></td>
           <td>
-            <div class="package-row-actions">
-              ${canEdit ? `
-                <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
-                <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
-                <button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>
-              ` : '<span class="text-muted">Sola lettura</span>'}
-            </div>
+            ${!canEditRow ? '<span class="client-history-readonly">Solo lettura</span>' : `<div class="package-row-actions">
+              <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
+              <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
+              ${App.isPortalPtMode() ? '' : `<button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>`}
+            </div>`}
           </td>
         </tr>`;
     }).join('') : `
-        <tr><td colspan="6" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
+        <tr><td colspan="7" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
 
     const html = `
       <div class="modal-header">
         <div>
           <h3>Quadro pacchetto</h3>
-          <p class="modal-subtitle">${client.nome} ${client.cognome}</p>
+          <p class="modal-subtitle">${client.nome} ${client.cognome}${isArchived ? ` · Storico: ${archivedStatus}` : ''}</p>
         </div>
         <button class="modal-close" onclick="UI.closeModal()">✕</button>
       </div>
@@ -1458,25 +1948,57 @@ const App = {
             <div class="eyebrow">Pacchetto acquistato</div>
             <div class="package-overview-title">${pkgs.join(' + ') || 'Nessun pacchetto impostato'}</div>
             <div class="package-overview-sub">
-              ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'}
+              ${service ? service.label : 'servizio non impostato'} · ${client.packageFrequency || 'frequenza non impostata'} · ciclo dal ${App._fmtLongDate(metrics.cycleStart)}
             </div>
           </div>
-          ${canEdit ? `<div class="package-row-actions">
-            <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
-            <button class="btn-primary" onclick="UI.closeModal();App.openRenewPackage('${client.id}')">Rinnova pacchetto</button>
-          </div>` : '<span class="form-hint">Modalita PT: cliente in sola lettura.</span>'}
+          ${isArchived
+            ? '<span class="client-history-badge">Storico in sola lettura</span>'
+            : `<div class="action-btns">
+                ${App.isPortalPtMode() ? '' : `<button class="btn" onclick="App.openTransferClient('${client.id}')">Trasferisci PT</button>`}
+                <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
+              </div>`}
         </div>
 
-        <div class="package-overview-kpis">
-          <div class="${hasTotal ? '' : 'warn'}"><span>Totali</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
-          <div><span>Fatte</span><strong>${metrics.completed}</strong></div>
-          <div><span>Future</span><strong>${metrics.scheduled}</strong></div>
+        ${App.isPortalPtMode() ? '' : `
+        <div class="package-workspace-switch" role="group" aria-label="Sezione quadro pacchetto">
+          <button id="pkg-workspace-lessons" class="package-workspace-button active" type="button" aria-pressed="true" onclick="App._setPackageWorkspace('lessons')">
+            <span>📅</span>
+            <span><strong>Lezioni</strong><small>Calendario e sedute</small></span>
+          </button>
+          <button id="pkg-workspace-finance" class="package-workspace-button package-workspace-payment" type="button" aria-pressed="false" onclick="App._setPackageWorkspace('finance')">
+            <span>💳</span>
+            <span><strong>Pagamenti</strong><small>${App._escapeHtml(currentFinance.status)} · saldo ${App._fmtMoney(currentFinance.balance)}</small></span>
+          </button>
+        </div>`}
+
+        <div class="package-overview-kpis package-lessons-only">
+          <div class="${hasTotal ? '' : 'warn'}"><span>Acquistate nel ciclo</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
+          <div><span>Fatte nel ciclo</span><strong>${metrics.completed}</strong></div>
+          <div><span>Future del ciclo</span><strong>${metrics.scheduled}</strong></div>
           <div><span>Residue</span><strong>${hasTotal ? metrics.remaining : '—'}</strong></div>
           <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
-          <div class="${metrics.overPlanned ? 'warn' : ''}"><span>Oltre pacchetto</span><strong>${metrics.overPlanned || 0}</strong></div>
+          <div><span>Fatte complessive</span><strong>${metrics.lifetimeCompleted}</strong></div>
+          <div><span>Storico precedente</span><strong>${metrics.previousCompleted}</strong></div>
+          ${App.isPortalPtMode() ? '' : `<div class="${currentFinance.balance > 0 ? 'warn' : ''}"><span>Saldo ciclo</span><strong>${App._fmtMoney(currentFinance.balance)}</strong></div>`}
         </div>
 
-        <div class="package-overview-grid">
+        ${App.isPortalPtMode() ? '' : `
+        <div class="package-finance-strip package-finance-only" hidden>
+          <div><span>Cicli registrati</span><strong>${financialSummary.cycles}</strong></div>
+          <div><span>Valore storico</span><strong>${App._fmtMoney(financialSummary.expected)}</strong></div>
+          <div><span>Incassato storico</span><strong>${App._fmtMoney(financialSummary.collected)}</strong></div>
+          <div class="${financialSummary.outstanding > 0 ? 'warn' : ''}"><span>Da incassare</span><strong>${App._fmtMoney(financialSummary.outstanding)}</strong></div>
+        </div>
+        ${packageLedger.parseError ? `<div class="package-ledger-error package-finance-only" hidden>${App._escapeHtml(packageLedger.parseError)}. I rinnovi sono bloccati finché il registro non viene corretto.</div>` : ''}`}
+
+        ${!isArchived && metrics.needsCycleSetup ? `
+          <section class="package-panel package-lessons-only" style="border-color:#F59E0B;background:#FFFBEB">
+            <h4>Ciclo corrente rilevato</h4>
+            <p>Il vecchio sistema sommava i rinnovi. Ho separato ${metrics.total} lezioni del ciclo corrente dalle ${metrics.previousCompleted} già svolte in precedenza.</p>
+            <button class="btn-primary" onclick="App._confirmCurrentPackageCycle('${client.id}')">Conferma separazione</button>
+          </section>` : ''}
+
+        <div class="package-overview-grid package-lessons-only">
           <section class="package-panel">
             <h4>Giornate acquistate</h4>
             <div class="day-chip-row">
@@ -1485,7 +2007,7 @@ const App = {
             <p>Queste sono le giornate reali usate per generare le prossime sedute. L'acquisizione resta nello storico iniziale.</p>
           </section>
 
-          <section class="package-panel">
+          ${isArchived ? '' : `<section class="package-panel">
             <h4>Prossime date suggerite</h4>
             <div class="suggested-date-row">
               ${hasTotal
@@ -1495,12 +2017,16 @@ const App = {
             <div class="package-generate-row">
               <label>Ora</label>
               <input id="pkg-gen-time" class="form-input" type="time" value="09:00" step="900">
-              ${canEdit ? `<button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>` : ''}
+              <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>
             </div>
-          </section>
+          </section>`}
         </div>
 
-        <section class="package-panel package-reschedule-panel">
+        ${isArchived ? `
+        <section class="package-panel client-history-notice package-lessons-only">
+          <h4>Cliente nello storico</h4>
+          <p>Anagrafica, lezioni e conteggi sono conservati. Non è possibile programmare o modificare sedute finché il cliente non viene riattivato.</p>
+        </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
           <h4>Cambio giorni/orari futuri</h4>
           <div class="package-reschedule-grid">
             <div>
@@ -1515,38 +2041,199 @@ const App = {
                 <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
               </div>
               <div class="form-group">
-                <label>PT</label>
+                <label>PT delle sedute</label>
                 <select id="pkg-plan-operator" class="form-input">
                   <option value="">Mantieni/auto</option>
                   ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
                 </select>
+                <div class="form-hint">Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</div>
               </div>
               <div class="form-group">
-                <label>Da data</label>
+                <label>Modifica future dal</label>
                 <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
               </div>
             </div>
           </div>
           <div class="package-reschedule-actions">
-            ${canEdit ? `
-              <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
-              <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
-            ` : '<span class="form-hint">Cambio giorni disponibile solo per il PT assegnato.</span>'}
+            <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Salva solo giorni</button>
+            <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
           </div>
-          <p>Usalo quando il cliente cambia disponibilita: non modifica l'acquisizione originale, aggiorna la pianificazione reale e ricrea solo le sedute future non svolte.</p>
+          <p>Questa sezione modifica soltanto il calendario del ciclo attuale. Non crea rinnovi e non tocca importi o pagamenti.</p>
+        </section>`}
+
+        ${App.isPortalPtMode() || isArchived ? '' : `
+        <section class="package-panel package-payment-panel package-finance-only" hidden>
+          <div class="package-section-heading">
+            <div>
+              <h4>Pagamento ciclo corrente</h4>
+              <p>Gli incassi vengono aggiunti come movimenti distinti: nessun pagamento precedente viene sovrascritto.</p>
+            </div>
+            <span class="package-payment-badge ${App._packagePaymentStatusClass(currentFinance.status)}">${App._escapeHtml(currentFinance.status)}</span>
+          </div>
+          <div class="package-current-payment-summary">
+            <div><span>Concordato</span><strong>${App._fmtMoney(currentFinance.total)}</strong></div>
+            <div><span>Incassato</span><strong>${App._fmtMoney(currentFinance.paid)}</strong></div>
+            <div><span>Saldo</span><strong>${App._fmtMoney(currentFinance.balance)}</strong></div>
+          </div>
+          <div class="package-payment-form">
+            <div class="form-group">
+              <label>Importo concordato €</label>
+              <input id="pkg-current-amount" class="form-input" type="number" min="0" step="0.01" value="${currentFinance.total.toFixed(2)}">
+            </div>
+            <button class="btn" onclick="App._updatePackageCycleAmount('${client.id}')">Aggiorna importo</button>
+            <div class="form-group">
+              <label>Nuovo incasso €</label>
+              <input id="pkg-payment-amount" class="form-input" type="number" min="0.01" max="${currentFinance.balance.toFixed(2)}" step="0.01" placeholder="${currentFinance.balance.toFixed(2)}" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Data incasso</label>
+              <input id="pkg-payment-date" class="form-input" type="date" value="${today}" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Metodo</label>
+              <select id="pkg-payment-method" class="form-input" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+                <option>Contanti</option>
+                <option>Carta / POS</option>
+                <option>Bonifico</option>
+                <option>Altro</option>
+              </select>
+            </div>
+            <div class="form-group package-payment-note">
+              <label>Nota incasso</label>
+              <input id="pkg-payment-note" class="form-input" type="text" maxlength="160" placeholder="Facoltativa" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+            </div>
+            <button class="btn-primary" onclick="App._recordPackagePayment('${client.id}')" ${currentFinance.balance <= 0 || packageLedger.parseError ? 'disabled' : ''}>Registra incasso</button>
+          </div>
+          <div class="package-movement-area">
+            <h5>Movimenti del ciclo</h5>
+            <div class="package-history-scroll">
+              <table class="package-movement-table">
+                <thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Nota</th><th>Azione</th></tr></thead>
+                <tbody>${App._packagePaymentMovementRows(client, currentPackageCycle)}</tbody>
+              </table>
+            </div>
+          </div>
+          <div class="package-adjustment-box">
+            <div>
+              <h5>Rettifica manuale</h5>
+              <p>Imposta l’incassato reale del ciclo: puoi chiudere il saldo oppure riaprirlo. La differenza viene registrata come movimento di rettifica.</p>
+            </div>
+            <div class="form-group">
+              <label>Incassato totale corretto €</label>
+              <input id="pkg-reconcile-total" class="form-input" type="number" min="0" max="${currentFinance.total.toFixed(2)}" step="0.01" value="${currentFinance.paid.toFixed(2)}">
+            </div>
+            <div class="form-group">
+              <label>Data rettifica</label>
+              <input id="pkg-reconcile-date" class="form-input" type="date" value="${today}">
+            </div>
+            <div class="form-group">
+              <label>Metodo / riferimento</label>
+              <input id="pkg-reconcile-method" class="form-input" type="text" maxlength="80" value="Rettifica Direzione">
+            </div>
+            <div class="form-group package-adjustment-reason">
+              <label>Motivo obbligatorio</label>
+              <input id="pkg-reconcile-reason" class="form-input" type="text" maxlength="180" placeholder="Es. pagamento registrato fuori app / correzione errore">
+            </div>
+            <button class="btn" onclick="App._reconcilePackagePayment('${client.id}')" ${packageLedger.parseError ? 'disabled' : ''}>Applica rettifica</button>
+          </div>
         </section>
 
-        <section class="package-panel">
+        <section class="package-panel package-renewal-panel package-finance-only" hidden>
+          <div class="package-section-heading">
+            <div>
+              <h4>Apri un nuovo rinnovo</h4>
+              <p>Il ciclo attuale viene chiuso nello storico; il nuovo ciclo e il suo pagamento restano separati. Giorni, orario e PT si impostano nella sezione Lezioni.</p>
+            </div>
+            <span class="package-renewal-lock">Solo Direzione</span>
+          </div>
+          <div class="package-renewal-plan-link">
+            <span>Vuoi cambiare giorni, orario o PT prima del rinnovo?</span>
+            <button class="btn" type="button" onclick="App._setPackageWorkspace('lessons')">Apri programmazione lezioni</button>
+          </div>
+          <div class="package-renewal-grid">
+            <div class="form-group">
+              <label>Data inizio *</label>
+              <input id="pkg-renew-start" class="form-input" type="date" value="${defaultRenewalStart}">
+            </div>
+            <div class="form-group">
+              <label>Nuove sedute *</label>
+              <input id="pkg-renew-count" class="form-input" type="number" min="1" step="1" value="${hasTotal ? metrics.total : 8}">
+            </div>
+            <div class="form-group">
+              <label>Importo concordato € *</label>
+              <input id="pkg-renew-amount" class="form-input" type="number" min="0" step="0.01" value="${currentFinance.total.toFixed(2)}" oninput="App._updateRenewalPaymentPreview()">
+            </div>
+            <div class="form-group">
+              <label>Incassato ora €</label>
+              <input id="pkg-renew-paid" class="form-input" type="number" min="0" step="0.01" value="0.00" oninput="App._updateRenewalPaymentPreview()">
+            </div>
+            <div class="form-group">
+              <label>Data incasso</label>
+              <input id="pkg-renew-payment-date" class="form-input" type="date" value="${today}">
+            </div>
+            <div class="form-group">
+              <label>Scadenza saldo</label>
+              <input id="pkg-renew-due-date" class="form-input" type="date">
+            </div>
+            <div class="form-group">
+              <label>Metodo</label>
+              <select id="pkg-renew-method" class="form-input">
+                <option>Contanti</option>
+                <option>Carta / POS</option>
+                <option>Bonifico</option>
+                <option>Altro</option>
+              </select>
+            </div>
+            <div class="form-group package-renewal-note">
+              <label>Nota rinnovo / pagamento</label>
+              <input id="pkg-renew-note" class="form-input" type="text" maxlength="160" placeholder="Facoltativa">
+            </div>
+          </div>
+          <div class="package-renewal-footer">
+            <div id="pkg-renew-payment-preview" class="package-payment-preview open">
+              <strong>Da pagare</strong><span>Incassato ${App._fmtMoney(0)} · saldo ${App._fmtMoney(currentFinance.total)}</span>
+            </div>
+            <button id="pkg-renew-submit" class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')" ${packageLedger.parseError ? 'disabled' : ''}>Rinnova e genera sedute</button>
+          </div>
+          <p>Giorni, orario e PT saranno quelli impostati nella sezione Lezioni. Se una data è in conflitto, il rinnovo viene annullato interamente: non resteranno salvataggi parziali.</p>
+        </section>`}
+
+        ${App.isPortalPtMode() ? '' : `
+        <section class="package-panel package-history-panel package-finance-only" hidden>
+          <div class="package-section-heading">
+            <div>
+              <h4>Storico rinnovi e pagamenti</h4>
+              <p>I cicli importati indicano i dati già presenti; i nuovi rinnovi conserveranno tutti i movimenti.</p>
+            </div>
+            <button class="btn" onclick="Clients.exportPackagePayments('${client.id}')">Esporta CSV cliente</button>
+          </div>
+          <div class="package-history-scroll">
+            <table class="package-history-table">
+              <thead><tr><th>Ciclo</th><th>Inizio</th><th>Sedute</th><th>Valore</th><th>Incassato</th><th>Saldo</th><th>Stato</th><th>Ultimo incasso</th><th>Mov.</th></tr></thead>
+              <tbody>${App._packageHistoryRows(client, packageLedger)}</tbody>
+            </table>
+          </div>
+        </section>`}
+
+        <section class="package-panel package-lessons-only">
           <h4>Appuntamenti collegati</h4>
           <table class="package-timeline-table">
-            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Azioni</th></tr></thead>
+            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Ciclo</th><th>Azioni</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </section>
       </div>
       <div class="modal-footer">
-        <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
-        ${canEdit ? `<button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>` : ''}
+        ${isArchived ? `
+          <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
+          ${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="Clients.reactivate('${client.id}')">Riattiva cliente</button>`}
+        ` : `
+          <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
+          ${App.isPortalPtMode() ? '' : `<button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>`}
+          ${App.isPortalPtMode() ? '' : `<button id="pkg-footer-lessons" class="btn" hidden onclick="App._setPackageWorkspace('lessons')">Torna alle lezioni</button>`}
+          ${App.isPortalPtMode() ? '' : `<button id="pkg-footer-finance" class="btn-primary" onclick="App._setPackageWorkspace('finance')">Pagamenti e rinnovo</button>`}
+          <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>
+        `}
       </div>
     `;
     UI.openModal(html);
@@ -1569,18 +2256,59 @@ const App = {
   },
 
   _updateClientPackageDays(clientId, days) {
-    if (!App.guardPortalEdit('client', clientId)) return null;
+    return App._updateClientPackagePlan(clientId, { days });
+  },
+
+  _updateClientPackagePlan(clientId, { days = null, packageStart = '' } = {}) {
+    if (!App.guardPackageManagement(clientId)) return null;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx < 0) return null;
-    clients[idx] = {
-      ...clients[idx],
-      giorniSettimana: days
-    };
+    const patch = {};
+    if (Array.isArray(days)) patch.giorniSettimana = days;
+    if (packageStart) patch.packageStart = packageStart;
+    if (App.isPortalPtMode()) patch.notes = App._withPtAudit(clients[idx].notes, 'pianificazione pacchetto aggiornata');
+    clients[idx] = { ...clients[idx], ...patch };
     State.saveClients(clients);
     SupabaseSync.pushClient(clients[idx]);
     if (CONFIG.SHEETS.enabled) Sheets.pushClient(clients[idx]);
     return clients[idx];
+  },
+
+  async _confirmCurrentPackageCycle(clientId) {
+    if (!App.guardPackageManagement(clientId)) return;
+    const clients = State.getClients();
+    const idx = clients.findIndex(c => c.id === clientId);
+    if (idx < 0) return;
+    const client = clients[idx];
+    const metrics = Services.getClientSessionMetrics(client);
+    const cycleStart = metrics.cycleStart || client.packageStart || App._dateStr(new Date());
+    const confirmed = confirm(
+      `Confermi il ciclo corrente di ${client.nome} ${client.cognome}?\n\n` +
+      `${metrics.total} lezioni acquistate nel ciclo dal ${cycleStart}.\n` +
+      `${metrics.completed} fatte nel ciclo, ${metrics.remaining} residue.\n` +
+      `${metrics.previousCompleted} lezioni precedenti resteranno nello storico separato.\n\n` +
+      'Se il numero acquistato non è corretto, annulla e usa Modifica pacchetto.'
+    );
+    if (!confirmed) return;
+
+    const updated = {
+      ...client,
+      packageCycleStart: cycleStart,
+      sessionsTotal: metrics.total,
+      sessionsRemaining: metrics.remaining,
+      notes: App._withPtAudit(client.notes, 'ciclo pacchetto confermato'),
+    };
+    const result = await SupabaseSync.pushClient(updated);
+    if (result?.error) {
+      UI.showToast('Ciclo non salvato: riprova', 'error');
+      return;
+    }
+    clients[idx] = updated;
+    State.saveClients(clients);
+    Calendar.render();
+    UI.showToast('Ciclo corrente separato dallo storico', 'success');
+    App.openPackageOverview(clientId);
   },
 
   _packageAvailabilitySuggestions(appt, limit = 8) {
@@ -1646,7 +2374,8 @@ const App = {
         a.date >= fromDate &&
         a.serviceId === serviceId &&
         Array.isArray(a.clientIds) &&
-        a.clientIds.includes(clientId)
+        a.clientIds.includes(clientId) &&
+        (!App.isPortalPtMode() || App.canEditAppointment(a))
       )
       .map(appt => {
         const patch = {};
@@ -1658,15 +2387,15 @@ const App = {
   },
 
   _savePackageSchedule(clientId) {
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '';
-    const operatorId = App.isPortalPtMode() && App.portalOperatorId()
-      ? App.portalOperatorId()
+    const operatorId = App.isPortalPtMode()
+      ? ''
       : (document.getElementById('pkg-plan-operator')?.value || '');
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
@@ -1689,20 +2418,26 @@ const App = {
       return;
     }
 
-    const saved = App._updateClientPackageDays(clientId, days);
+    const saved = App._updateClientPackagePlan(clientId, {
+      days,
+      packageStart: fromDate
+    });
     if (!saved) return;
     const touched = changes
-      .map(change => Services.updateAppointment(change.appt.id, change.patch))
+      .map(change => Services.updateAppointment(change.appt.id, {
+        ...change.patch,
+        notes: App._withPtAudit(change.appt.notes, 'orario pacchetto aggiornato'),
+      }))
       .filter(Boolean);
     touched.forEach(appt => SupabaseSync.pushAppointment(appt));
     if (CONFIG.SHEETS.enabled) touched.forEach(appt => Sheets.pushAppointment(appt));
     Calendar.render();
-    UI.showToast(touched.length ? `Giorni, orario e PT salvati su ${touched.length} sedute future` : 'Giorni reali del pacchetto salvati', 'success');
+    UI.showToast(touched.length ? `Data pacchetto e ${touched.length} sedute future aggiornate` : 'Data e giorni reali del pacchetto salvati', 'success');
     App.openPackageOverview(clientId);
   },
 
   async _regenerateFuturePackageAppointments(clientId) {
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
@@ -1732,7 +2467,8 @@ const App = {
       a.date >= fromDate &&
       a.serviceId === serviceId &&
       Array.isArray(a.clientIds) &&
-      a.clientIds.includes(clientId)
+      a.clientIds.includes(clientId) &&
+      (!App.isPortalPtMode() || App.canEditAppointment(a))
     );
     const fallbackOperator = selectedOperator ||
       futureToReplace[0]?.operatorId ||
@@ -1744,23 +2480,42 @@ const App = {
     const confirmed = confirm(
       `Rigenero le sedute future di ${currentClient.nome} ${currentClient.cognome} da ${fromDate}.\n` +
       `Le sedute future non svolte (${futureToReplace.length}) saranno sostituite con: ${days.join(', ')} alle ${time}, PT ${fallbackOperatorLabel}.\n\n` +
+      'La data partenza pacchetto verra aggiornata.\n' +
       'Le sedute gia fatte non vengono toccate.'
     );
     if (!confirmed) return;
 
-    const backupClients = State.getClients();
-    const updatedClient = App._updateClientPackageDays(clientId, days);
+    const backupClients = State.getClients().map(client => ({ ...client }));
+    const updatedClient = App._updateClientPackagePlan(clientId, {
+      days,
+      packageStart: fromDate
+    });
     if (!updatedClient) return;
-    const backupAppointments = State.getAppointments();
+    const backupAppointments = State.getAppointments().map(appt => ({
+      ...appt,
+      clientIds: [...(appt.clientIds || [])],
+    }));
     const futureIds = new Set(futureToReplace.map(a => a.id));
-    State.saveAppointments(backupAppointments.filter(a => !futureIds.has(a.id)));
+    const cancelledReplacements = futureToReplace.map(appt => ({
+      ...appt,
+      status: 'annullato',
+      notes: App._withPtAudit(appt.notes, 'seduta sostituita dalla rigenerazione pacchetto'),
+      updatedAt: Date.now(),
+    }));
+    const cancelledById = new Map(cancelledReplacements.map(appt => [appt.id, appt]));
+    State.saveAppointments(App.isPortalPtMode()
+      ? backupAppointments.map(appt => cancelledById.get(appt.id) || appt)
+      : backupAppointments.filter(appt => !futureIds.has(appt.id)));
+    const syncReplacedAppointments = () => App.isPortalPtMode()
+      ? cancelledReplacements.map(appt => SupabaseSync.pushAppointment(appt))
+      : futureToReplace.map(appt => SupabaseSync.deleteAppointment(appt.id));
 
     const metricsAfterRemoval = Services.getClientSessionMetrics(updatedClient);
     const missing = metricsAfterRemoval.toSchedule;
     if (missing <= 0) {
-      await Promise.all(futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)));
+      await Promise.all(syncReplacedAppointments());
       Calendar.render();
-      UI.showToast('Pianificazione aggiornata: nessuna seduta futura da creare', 'success');
+      UI.showToast('Pianificazione aggiornata: le precedenti sedute restano nello storico', 'success');
       App.openPackageOverview(clientId);
       return;
     }
@@ -1780,7 +2535,14 @@ const App = {
         durationMin: service.durationMin || 60,
         bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
         status: 'prenotato',
-        notes: `Rigenerata per cambio giorni da ${fromDate}`,
+        notes: App._withPtAudit(
+          App._withPackageCycle(
+            `Rigenerata per cambio giorni da ${fromDate}`,
+            Services.getPackageCycleContext(updatedClient).start,
+            Services.getPackageCycleContext(updatedClient).id
+          ),
+          'seduta rigenerata dal pacchetto'
+        ),
       };
       const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
       if (!validation.ok) {
@@ -1802,7 +2564,7 @@ const App = {
     }
 
     await Promise.all([
-      ...futureToReplace.map(a => SupabaseSync.deleteAppointment(a.id)),
+      ...syncReplacedAppointments(),
       ...created.map(a => SupabaseSync.pushAppointment(a)),
     ]);
     if (CONFIG.SHEETS.enabled) created.forEach(a => Sheets.pushAppointment(a));
@@ -1817,14 +2579,392 @@ const App = {
     App.openPackageOverview(clientId);
   },
 
+  async _recordPackagePayment(clientId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.recordPayment(currentClient, metrics, {
+        amount: document.getElementById('pkg-payment-amount')?.value,
+        date: document.getElementById('pkg-payment-date')?.value,
+        method: document.getElementById('pkg-payment-method')?.value,
+        note: document.getElementById('pkg-payment-note')?.value,
+      });
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(result.client.notes, `incasso pacchetto ${App._fmtMoney(result.finance.paid)} registrato`),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('Il pagamento non è stato sincronizzato');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast(`Incasso registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
+      Clients.render();
+      App._openPackageFinance(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Pagamento non registrato', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _updatePackageCycleAmount(clientId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.updateCurrentAmount(
+        currentClient,
+        metrics,
+        document.getElementById('pkg-current-amount')?.value
+      );
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(result.client.notes, `importo ciclo aggiornato a ${App._fmtMoney(result.finance.total)}`),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('L’importo non è stato sincronizzato');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast('Importo del ciclo aggiornato', 'success');
+      Clients.render();
+      App._openPackageFinance(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Importo non aggiornato', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _reconcilePackagePayment(clientId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.reconcilePaidTotal(currentClient, metrics, {
+        targetPaid: document.getElementById('pkg-reconcile-total')?.value,
+        date: document.getElementById('pkg-reconcile-date')?.value,
+        method: document.getElementById('pkg-reconcile-method')?.value,
+        reason: document.getElementById('pkg-reconcile-reason')?.value,
+      });
+      const action = result.adjustment > 0 ? 'aumento' : 'riduzione';
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(
+          result.client.notes,
+          `rettifica incassato (${action} ${App._fmtMoney(Math.abs(result.adjustment))})`
+        ),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('La rettifica non è stata sincronizzata');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast(`Rettifica registrata · incassato ${App._fmtMoney(result.finance.paid)} · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
+      Clients.render();
+      App._openPackageFinance(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Rettifica non registrata', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _reversePackagePayment(clientId, paymentId) {
+    if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
+    const clients = State.getClients();
+    const index = clients.findIndex(client => client.id === clientId);
+    if (index < 0) return;
+    const date = prompt('Data dello storno (AAAA-MM-GG)', App._dateStr(new Date()));
+    if (date === null) return;
+    const reason = prompt('Motivo dello storno (obbligatorio)', '');
+    if (reason === null) return;
+    if (!confirm('Confermi lo storno? Il movimento originale resterà visibile e verrà aggiunta una riga negativa.')) return;
+    const currentClient = clients[index];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    try {
+      App._packagePaymentBusy = true;
+      const result = PackageLedger.reversePayment(currentClient, metrics, paymentId, {
+        date,
+        reason,
+        method: 'Storno Direzione',
+      });
+      const updated = {
+        ...result.client,
+        notes: App._withPtAudit(
+          result.client.notes,
+          `incasso ${App._fmtMoney(result.reversedPayment.amount)} stornato`
+        ),
+      };
+      const sync = await SupabaseSync.pushClient(updated);
+      if (sync?.error) throw new Error('Lo storno non è stato sincronizzato');
+      clients[index] = updated;
+      State.saveClients(clients);
+      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      UI.showToast(`Storno registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
+      Clients.render();
+      App._openPackageFinance(clientId);
+    } catch (error) {
+      UI.showToast(error.message || 'Storno non registrato', 'error');
+    } finally {
+      App._packagePaymentBusy = false;
+    }
+  },
+
+  async _rollbackPackageRenewalRemote(originalAppointments, createdAppointments) {
+    try {
+      const results = await Promise.all([
+        ...originalAppointments.map(appt => SupabaseSync.pushAppointment(appt)),
+        ...createdAppointments.map(appt => SupabaseSync.deleteAppointment(appt.id)),
+      ]);
+      return !results.some(result => result?.error);
+    } catch (_) {
+      return false;
+    }
+  },
+
+  async _renewPackageAppointments(clientId) {
+    if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
+    if (!App._limitPackagePlanDays(clientId)) return;
+    const currentClient = State.getClients().find(client => client.id === clientId);
+    if (!currentClient) return;
+
+    const days = App._selectedPackagePlanDays();
+    const fromDate = document.getElementById('pkg-renew-start')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-plan-time')?.value || '09:00';
+    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null;
+    const renewCount = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
+    if (!days.length) {
+      UI.showToast('Seleziona almeno un giorno reale', 'error');
+      return;
+    }
+
+    const serviceId = App._packageServiceId(currentClient);
+    const service = serviceId ? Services.getService(serviceId) : null;
+    if (!service) {
+      UI.showToast('Pacchetto PT non impostato per questo cliente', 'error');
+      return;
+    }
+
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    let renewal;
+    let validationError = null;
+    try {
+      renewal = PackageLedger.renew(currentClient, metrics, {
+        sessions: renewCount,
+        startDate: fromDate,
+        amount: document.getElementById('pkg-renew-amount')?.value,
+        paidNow: document.getElementById('pkg-renew-paid')?.value,
+        paymentDate: document.getElementById('pkg-renew-payment-date')?.value,
+        dueDate: document.getElementById('pkg-renew-due-date')?.value,
+        paymentMethod: document.getElementById('pkg-renew-method')?.value,
+        paymentNote: document.getElementById('pkg-renew-note')?.value,
+        renewalNote: document.getElementById('pkg-renew-note')?.value,
+        days,
+        time,
+        operatorId: selectedOperator,
+      });
+    } catch (error) {
+      UI.showToast(error.message || 'Dati del rinnovo non validi', 'error');
+      return;
+    }
+
+    const futureToCarry = State.getAppointments().filter(appt =>
+      appt.status === 'prenotato' &&
+      appt.date >= fromDate &&
+      appt.serviceId === serviceId &&
+      Array.isArray(appt.clientIds) &&
+      appt.clientIds.includes(clientId) &&
+      Services.appointmentInCurrentPackageCycle(appt, currentClient)
+    );
+    if (futureToCarry.length > renewCount) {
+      UI.showToast(`Ci sono ${futureToCarry.length} sedute future ma il rinnovo ne prevede ${renewCount}`, 'error');
+      return;
+    }
+
+    const operator = selectedOperator ? Services.getOperator(selectedOperator) : null;
+    const operatorLabel = operator ? `${operator.nome} ${operator.cognome}` : 'senza PT assegnato';
+    const confirmed = confirm(
+      `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n\n` +
+      `Nuovo ciclo: ${renewCount} sedute dal ${fromDate}, ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
+      `Valore: ${App._fmtMoney(renewal.finance.total)} · incassato ora: ${App._fmtMoney(renewal.finance.paid)} · saldo: ${App._fmtMoney(renewal.finance.balance)} (${renewal.finance.status}).\n` +
+      `${futureToCarry.length} sedute future saranno trasferite al nuovo ciclo e verranno create esattamente ${renewCount - futureToCarry.length} sedute mancanti.\n\n` +
+      `Il ciclo precedente (${metrics.completed}/${metrics.total || 0} fatte) sarà chiuso nello storico.`
+    );
+    if (!confirmed) return;
+
+    App._packageRenewalBusy = true;
+    const submitButton = document.getElementById('pkg-renew-submit');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Verifica e salvataggio…';
+    }
+
+    const backupClients = State.getClients().map(client => ({ ...client }));
+    const backupAppointments = State.getAppointments().map(appt => ({
+      ...appt,
+      clientIds: [...(appt.clientIds || [])],
+    }));
+    const updatedClient = {
+      ...renewal.client,
+      giorniSettimana: days,
+      packageStart: fromDate,
+      packageCycleStart: fromDate,
+      sessionsTotal: renewCount,
+      sessionsRemaining: renewCount,
+      active: true,
+      statoAbbonamento: currentClient.statoAbbonamento || 'Attivo',
+      notes: App._withPtAudit(renewal.client.notes, `pacchetto rinnovato · ciclo ${renewal.cycle.id}`),
+    };
+    const carriedAppointments = futureToCarry.map(appt => ({
+      ...appt,
+      notes: App._withPtAudit(
+        App._withPackageCycle(appt.notes, fromDate, renewal.cycle.id),
+        'seduta collegata al nuovo ciclo'
+      ),
+      updatedAt: Date.now(),
+    }));
+    const carriedById = new Map(carriedAppointments.map(appt => [appt.id, appt]));
+    const plannedAppointments = backupAppointments.map(appt => carriedById.get(appt.id) || appt);
+    const created = [];
+    const skipped = [];
+    const missing = renewCount - carriedAppointments.length;
+
+    try {
+      // Stato temporaneo usato solo per validare capienza, disponibilita',
+      // giorni acquistati e numero esatto di sedute del nuovo ciclo.
+      State.saveClients(backupClients.map(client => client.id === clientId ? updatedClient : client));
+      State.saveAppointments(plannedAppointments);
+      const dates = App._suggestPackageDates(updatedClient, Math.max(missing * 10, missing), {
+        days,
+        fromDate,
+        includeStart: true,
+      });
+      dates.some(date => {
+        if (created.length >= missing) return true;
+        const now = Date.now();
+        const draft = {
+          id: State.genId('a'),
+          serviceId,
+          clientIds: [clientId],
+          operatorId: selectedOperator,
+          date,
+          startTime: time,
+          durationMin: service.durationMin || 60,
+          bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+          status: 'prenotato',
+          notes: App._withPtAudit(
+            App._withPackageCycle(`Rinnovo pacchetto da ${fromDate}`, fromDate, renewal.cycle.id),
+            'seduta creata dal rinnovo pacchetto'
+          ),
+          createdAt: now,
+          updatedAt: now,
+        };
+        const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
+        if (!validation.ok) {
+          skipped.push(`${App._fmtLongDate(date)}: ${validation.errors[0]}`);
+          return false;
+        }
+        created.push(draft);
+        State.saveAppointments([...State.getAppointments(), draft]);
+        return false;
+      });
+    } catch (error) {
+      validationError = error;
+    } finally {
+      State.saveClients(backupClients);
+      State.saveAppointments(backupAppointments);
+    }
+
+    if (validationError) {
+      App._packageRenewalBusy = false;
+      UI.showToast(validationError.message || 'Verifica del rinnovo non riuscita', 'error');
+      App._openPackageFinance(clientId);
+      return;
+    }
+
+    if (created.length !== missing) {
+      App._packageRenewalBusy = false;
+      UI.showToast(`Rinnovo annullato: trovate ${created.length} date valide su ${missing} necessarie`, 'error');
+      alert('Nessun dato è stato salvato. Risolvi i conflitti o cambia giorni/orario:\n' + skipped.slice(0, 12).join('\n'));
+      App._openPackageFinance(clientId);
+      return;
+    }
+
+    const changedAppointments = [...carriedAppointments, ...created];
+    let appointmentSync;
+    try {
+      appointmentSync = await Promise.all(changedAppointments.map(appt => SupabaseSync.pushAppointment(appt)));
+    } catch (error) {
+      appointmentSync = [{ error: error.message || String(error) }];
+    }
+    if (appointmentSync.some(result => result?.error)) {
+      const rollbackOk = await App._rollbackPackageRenewalRemote(futureToCarry, created);
+      App._packageRenewalBusy = false;
+      UI.showToast(rollbackOk
+        ? 'Rinnovo annullato: sincronizzazione fallita, nessun dato parziale conservato'
+        : 'Rinnovo annullato: verifica la connessione prima di riprovare', 'error');
+      App._openPackageFinance(clientId);
+      return;
+    }
+
+    let clientSync;
+    try {
+      clientSync = await SupabaseSync.pushClient(updatedClient);
+    } catch (error) {
+      clientSync = { error: error.message || String(error) };
+    }
+    if (clientSync?.error) {
+      const rollbackOk = await App._rollbackPackageRenewalRemote(futureToCarry, created);
+      App._packageRenewalBusy = false;
+      UI.showToast(rollbackOk
+        ? 'Rinnovo annullato: il cliente non è stato aggiornato e le sedute sono state ripristinate'
+        : 'Rinnovo non completato: verifica la sincronizzazione prima di riprovare', 'error');
+      App._openPackageFinance(clientId);
+      return;
+    }
+
+    const finalById = new Map(carriedAppointments.map(appt => [appt.id, appt]));
+    State.saveClients(backupClients.map(client => client.id === clientId ? updatedClient : client));
+    State.saveAppointments([
+      ...backupAppointments.map(appt => finalById.get(appt.id) || appt),
+      ...created,
+    ].sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)));
+    App._lastRenewedPackage = { clientId, cycleId: renewal.cycle.id, appointmentIds: changedAppointments.map(appt => appt.id) };
+    if (CONFIG.SHEETS.enabled) {
+      await Sheets.pushClient(updatedClient);
+      created.forEach(appt => Sheets.pushAppointment(appt));
+    }
+    App._packageRenewalBusy = false;
+    Calendar.render();
+    Clients.render();
+    UI.showToast(
+      `Rinnovo completo · ${carriedAppointments.length} sedute mantenute, ${created.length} create · saldo ${App._fmtMoney(renewal.finance.balance)}`,
+      'success'
+    );
+    App._openPackageFinance(clientId);
+  },
+
   async _updatePackageAppointmentRow(apptId) {
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (!App.guardPortalEdit('appointment', appt)) return;
     const nextDate = document.getElementById(`pkg-date-${apptId}`)?.value;
     const nextTime = document.getElementById(`pkg-time-${apptId}`)?.value;
-    const nextOperatorId = document.getElementById(`pkg-operator-${apptId}`)?.value
-      || appt.operatorId
-      || null;
+    const nextOperatorId = document.getElementById(`pkg-operator-${apptId}`)?.value || null;
     const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
     if (!appt || !nextDate || !nextTime || !nextStatus) return;
     if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && appt.status === nextStatus) {
@@ -1832,7 +2972,15 @@ const App = {
       return;
     }
 
-    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus };
+    if (nextStatus === 'fatto' && !appt.performedByOperatorId) {
+      UI.showToast('Apri la seduta e seleziona il PT esecutore prima di segnarla come svolta', 'error');
+      return;
+    }
+    const patch = NeaceaPtDomain.normalizePerformanceTransition(
+      appt,
+      { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus },
+      State.getOperators()
+    );
     const validation = Services.canBookAppointment(patch);
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
@@ -1840,32 +2988,25 @@ const App = {
       return;
     }
 
-    const normalized = NeaceaPtDomain.normalizePerformanceTransition(
-      appt,
-      { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus },
-      State.getOperators(),
-      App.portalOperatorId()
-    );
-    if (nextStatus === 'fatto' && !normalized.performedByOperatorId) {
-      UI.showToast('Seleziona un PT prima di segnare la seduta come fatta', 'error');
-      return;
-    }
     const appointmentsBefore = State.getAppointments();
     const clientsBefore = State.getClients();
-    const saved = Services.updateAppointment(apptId, normalized);
-    const touchedClients = App._consumeClientSessions(saved, { persistRemote: false });
-    const syncResult = await SupabaseSync.pushAppointment(saved);
-    if (syncResult?.error) {
+    const saved = Services.updateAppointment(apptId, {
+      ...patch,
+      notes: App._withPtAudit(appt.notes, 'seduta aggiornata dal quadro pacchetto'),
+    });
+    const touched = App._consumeClientSessions(saved, { persistRemote: false });
+    const result = await SupabaseSync.pushAppointment(saved);
+    if (result?.error) {
       State.saveAppointments(appointmentsBefore);
       State.saveClients(clientsBefore);
       Calendar.render();
-      UI.showToast('Seduta non salvata: esecutore, schema o permessi non validi', 'error');
+      UI.showToast('Seduta non salvata: verifica esecutore, schema e permessi', 'error');
       return;
     }
-    await Promise.all(touchedClients.map(client => SupabaseSync.pushClient(client)));
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
     if (CONFIG.SHEETS.enabled) {
       Sheets.pushAppointment(saved);
-      touchedClients.forEach(client => Sheets.pushClient(client));
+      touched.forEach(client => Sheets.pushClient(client));
     }
     Calendar.render();
     UI.showToast('Appuntamento aggiornato', 'success');
@@ -1874,21 +3015,35 @@ const App = {
   },
 
   async _deletePackageAppointment(apptId) {
+    if (App.isPortalPtMode()) {
+      UI.showToast('Modalità PT: le sedute si annullano, non si eliminano', 'error');
+      return;
+    }
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (!appt) return;
     if (!App.guardPortalEdit('appointment', appt)) return;
-    if (!confirm('Eliminare questa seduta dal pacchetto?')) return;
+    const client = appt.clientIds?.map(Services.getClient).find(Boolean);
+    const affectsCurrentCycle = appt.status === 'fatto' && client && Services.appointmentInCurrentPackageCycle(appt, client);
+    const impact = affectsCurrentCycle
+      ? '\n\nÈ una lezione fatta del ciclo corrente: il residuo aumenterà automaticamente di 1.'
+      : '\n\nLo storico e il ciclo corrente verranno ricalcolati automaticamente.';
+    if (!confirm(`Eliminare definitivamente questa seduta?${impact}`)) return;
+    const result = await SupabaseSync.deleteAppointment(apptId);
+    if (result?.error) {
+      UI.showToast('Seduta non eliminata: errore di sincronizzazione', 'error');
+      return;
+    }
     Services.deleteAppointment(apptId);
-    await SupabaseSync.deleteAppointment(apptId);
-    if (appt.status === 'fatto') App._consumeClientSessions(appt);
+    const touched = App._consumeClientSessions(appt, { persistRemote: false });
+    await Promise.all(touched.map(client => SupabaseSync.pushClient(client)));
     Calendar.render();
-    UI.showToast('Seduta eliminata dal pacchetto', 'success');
+    UI.showToast('Seduta eliminata e conteggi aggiornati', 'success');
     const clientId = appt.clientIds?.[0];
     if (clientId) App.openPackageOverview(clientId);
   },
 
   async _generateMissingPackageAppointments(clientId) {
-    if (!App.guardPortalEdit('client', clientId)) return;
+    if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
 
@@ -1920,13 +3075,22 @@ const App = {
       const draft = {
         serviceId,
         clientIds: [client.id],
-        operatorId: App.isPortalPtMode() && App.portalOperatorId() ? App.portalOperatorId() : (client.ptAssegnato || null),
+        operatorId: App.isPortalPtMode() && App.portalOperatorId()
+          ? App.portalOperatorId()
+          : (client.ptAssegnato || null),
         date,
         startTime: time,
         durationMin: service.durationMin || 60,
         bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
         status: 'prenotato',
-        notes: 'Programmazione generata dal quadro pacchetto',
+        notes: App._withPtAudit(
+          App._withPackageCycle(
+            'Programmazione generata dal quadro pacchetto',
+            Services.getPackageCycleContext(client).start,
+            Services.getPackageCycleContext(client).id
+          ),
+          'seduta generata dal pacchetto'
+        ),
       };
       const validation = Services.canBookAppointment(draft, { strictPackageDays: true });
       if (!validation.ok) {
@@ -1957,7 +3121,7 @@ const App = {
   // ── GESTIONE DATI ────────────────────────────────────
   openDataManager() {
     if (App.isPortalPtMode()) {
-      UI.showToast('Modalita PT in sola lettura: gestione dati non disponibile', 'error');
+      UI.showToast('Modalità PT in sola lettura: gestione dati riservata allo studio', 'error');
       return;
     }
     const hasBackup = !!localStorage.getItem('neacea_backup');
@@ -2087,9 +3251,10 @@ const App = {
 
   async syncLocalToSupabase({ silent = true, refresh = false } = {}) {
     if (App.isPortalPtMode() && !App.portalPtMutationsEnabled()) {
-      const error = 'Modalita PT in sola lettura: sincronizzazione locale disabilitata';
-      if (!silent) UI.showToast(error, 'error');
-      return { success: false, errors: [{ label: 'authorization', error }] };
+      return {
+        success: false,
+        errors: [{ label: 'syncLocalToSupabase', error: 'PORTAL_PT_READ_ONLY' }],
+      };
     }
     const snapshot = {
       operators: State.getOperators(),
@@ -2121,7 +3286,7 @@ const App = {
   async init() {
     State.init();
     await App.refreshFromSupabase({ silent: true, force: true });
-    App._initPortalPtMode();
+    await App._initPortalPtMode();
 
     document.querySelectorAll('[data-view]').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
@@ -2132,12 +3297,13 @@ const App = {
     });
 
     const params = new URLSearchParams(window.location.search);
-    const requestedView = params.get('view');
     const portalBlockedView = App.isPortalPtMode()
-      && !App.portalPtMutationsEnabled()
-      && ['availability', 'operators'].includes(requestedView);
-    const initialView = !portalBlockedView && ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'operators'].includes(requestedView)
-      ? requestedView
+      && ['availability', 'operators'].includes(params.get('view'));
+    const allowedViews = App.isPortalPtMode()
+      ? ['dashboard', 'day', 'week', 'room', 'clients']
+      : ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'operators'];
+    const initialView = !portalBlockedView && allowedViews.includes(params.get('view'))
+      ? params.get('view')
       : 'dashboard';
     Calendar.switchView(initialView);
 

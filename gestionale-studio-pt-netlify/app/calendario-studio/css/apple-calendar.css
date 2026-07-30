@@ -1,0 +1,116 @@
+.apple-calendar-topbar {
+  border-color: rgba(255, 255, 255, .28);
+  background: rgba(255, 255, 255, .1);
+}
+
+.apple-calendar-topbar:hover {
+  border-color: rgba(255, 255, 255, .5);
+  background: rgba(255, 255, 255, .18);
+}
+
+.apple-calendar-modal {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.apple-calendar-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.apple-calendar-steps > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--blue-xpale);
+}
+
+.apple-calendar-steps strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+}
+
+.apple-calendar-steps span,
+.apple-calendar-note span {
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.apple-calendar-token-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+}
+
+.apple-calendar-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text3);
+  background: var(--bg);
+}
+
+.apple-calendar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.apple-calendar-actions[hidden] {
+  display: none;
+}
+
+.apple-calendar-result {
+  min-height: 20px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.apple-calendar-result.loading { color: var(--text3); }
+.apple-calendar-result.success { color: var(--green); }
+.apple-calendar-result.error { color: var(--red); }
+
+.apple-calendar-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 13px 14px;
+  border: 1px solid #f2d38d;
+  border-radius: var(--radius-sm);
+  background: #fff8e8;
+}
+
+.apple-calendar-note strong {
+  color: #7b5917;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .apple-calendar-topbar { order: 2; }
+}
+
+@media (max-width: 680px) {
+  .apple-calendar-steps { grid-template-columns: 1fr; }
+  .apple-calendar-token-row { grid-template-columns: 1fr; }
+  .apple-calendar-actions { flex-direction: column; }
+  .apple-calendar-actions button { width: 100%; }
+  .modal-footer { flex-wrap: wrap; }
+}

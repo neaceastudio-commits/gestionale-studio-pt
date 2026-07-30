@@ -205,7 +205,7 @@
           delete fallback[column];
           if(value){
             const label = ACQUISIZIONE_LABELS[column] || column;
-            fallback.impressioni = [fallback.impressioni, label+': '+value].filter(Boolean).join('\\n');
+            fallback.impressioni = [fallback.impressioni, label+': '+value].filter(Boolean).join('\n');
           }
         }
       }
@@ -227,7 +227,7 @@
         provincia && 'Provincia: '+provincia,
       ].filter(Boolean);
       const noteParts = [
-        fatturazioneParts.length && 'Dati fatturazione:\\n'+fatturazioneParts.join('\\n'),
+        fatturazioneParts.length && 'Dati fatturazione:\n'+fatturazioneParts.join('\n'),
         contattoEmergenza && 'Contatto emergenza: '+contattoEmergenza,
         $('note').value && 'Note cliente: '+$('note').value,
         $('patologie').value && 'Patologie: '+$('patologie').value,
@@ -236,7 +236,7 @@
         $('limitazioni').value && 'Limitazioni: '+$('limitazioni').value,
         $('stress').value && 'Stress: '+$('stress').value,
         $('sonno').value && 'Sonno: '+$('sonno').value,
-      ].filter(Boolean).join('\\n');
+      ].filter(Boolean).join('\n');
       return {
         id,
         nome:$('nome').value.trim(),

@@ -1,6 +1,9 @@
 const crypto = require('crypto');
 
 const PORTAL_URL = 'https://neacea-portale-personal-trainer.netlify.app/';
+const DASHBOARD_URL = 'https://dashboard-pt.netlify.app/';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0rUGnUDD_Jb6shCE2LUfAXDYn8Vh85LLSXrtuxZvbyzkxXaAay9_lwn-s2NUlxC-Y/exec';
 const DEFAULT_TOKEN = 'neacea2026studio';
 
@@ -20,11 +23,81 @@ function clean(value) {
   }[char]));
 }
 
-function portalLink(email, operatorId = '') {
-  const url = new URL(PORTAL_URL);
+function accessLink(email, operatorId = '', destination = 'portal') {
+  const url = new URL(destination === 'dashboard' ? DASHBOARD_URL : PORTAL_URL);
   url.searchParams.set('email', email);
   if (operatorId) url.searchParams.set('op', operatorId);
   return url.toString();
+}
+
+function operatorRoles(operator) {
+  return Array.from(new Set([
+    ...(Array.isArray(operator?.system_roles) ? operator.system_roles : []),
+    ...(Array.isArray(operator?.legacy_roles) ? operator.legacy_roles : []),
+    ...(Array.isArray(operator?.roles) ? operator.roles : []),
+    ...(operator?.role ? [operator.role] : []),
+  ].filter(Boolean).map((role) => String(role).trim().toLowerCase())));
+}
+
+function isPersonalTrainer(operator) {
+  return operatorRoles(operator).some((role) => ['pt', 'personal_trainer', 'personal trainer'].includes(role));
+}
+
+function accessLevelFor(operator) {
+  const ownerRoles = new Set([
+    'admin',
+    'administrator',
+    'amministratore',
+    'owner',
+    'titolare',
+    'super_admin',
+    'direzione',
+  ]);
+  return operatorRoles(operator).some((role) => ownerRoles.has(role)) ? 'owner' : 'pt';
+}
+
+function publicOperator(operator) {
+  return {
+    id: String(operator?.operator_id || operator?.id || '').trim(),
+    email: String(operator?.email || '').trim().toLowerCase(),
+    nome: String(operator?.nome || '').trim(),
+    cognome: String(operator?.cognome || '').trim(),
+    accessLevel: accessLevelFor(operator),
+  };
+}
+
+async function findPersonalTrainer(email, operatorId = '') {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedId = String(operatorId || '').trim();
+  if (!normalizedEmail || !normalizedEmail.includes('@')) return null;
+
+  const load = async (table) => {
+    const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+    url.searchParams.set('select', '*');
+    url.searchParams.set('active', 'eq.true');
+    url.searchParams.set('email', `ilike.${normalizedEmail}`);
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+    });
+    if (!response.ok) throw new Error(`PT_DIRECTORY_${response.status}`);
+    return response.json();
+  };
+
+  let operators = [];
+  try {
+    operators = await load('operator_effective_roles');
+  } catch (_) {
+    operators = await load('operators');
+  }
+  const matches = (operators || []).filter((operator) => {
+    if (!isPersonalTrainer(operator)) return false;
+    const value = publicOperator(operator);
+    return value.email === normalizedEmail && (!normalizedId || value.id === normalizedId);
+  });
+  return matches.length === 1 ? publicOperator(matches[0]) : null;
 }
 
 function accessSecret() {
@@ -40,29 +113,62 @@ function accessCode(email, operatorId = '') {
   return String(numeric).padStart(6, '0');
 }
 
-function buildEmail(payload) {
+function signAccessToken(email, operatorId = '', accessLevel = 'pt') {
+  const payload = Buffer.from(JSON.stringify({
+    email: String(email || '').trim().toLowerCase(),
+    operatorId: String(operatorId || '').trim(),
+    accessLevel: accessLevel === 'owner' ? 'owner' : 'pt',
+    exp: Date.now() + (12 * 60 * 60 * 1000),
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function verifyAccessToken(token) {
+  const [payload, signature] = String(token || '').split('.');
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.email || !data.operatorId || Number(data.exp || 0) <= Date.now()) return null;
+    data.accessLevel = data.accessLevel === 'owner' ? 'owner' : 'pt';
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
+
+function buildEmail(payload, operator = null) {
   const email = String(payload.email || '').trim().toLowerCase();
   const operatorId = String(payload.operatorId || payload.operator_id || '').trim();
-  const name = String(payload.name || '').trim() || 'Personal Trainer';
-  const link = portalLink(email, operatorId);
+  const destination = String(payload.destination || '').toLowerCase() === 'dashboard' ? 'dashboard' : 'portal';
+  const operatorName = [operator?.nome, operator?.cognome].filter(Boolean).join(' ');
+  const name = operatorName || String(payload.name || '').trim() || 'Personal Trainer';
+  const link = accessLink(email, operatorId, destination);
   const code = accessCode(email, operatorId);
-  const subject = 'Accesso al Portale Personal Trainer Neacea';
+  const subject = destination === 'dashboard'
+    ? 'Accesso alla Dashboard Personal Trainer Neacea'
+    : 'Accesso al Portale Personal Trainer Neacea';
+  const accessLabel = destination === 'dashboard' ? 'Dashboard Personal Trainer' : 'Portale Personal Trainer';
   const html = `
     <div style="font-family:Arial,sans-serif;background:#eef6fb;padding:24px;color:#17314a">
       <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d8e7ef;border-radius:14px;overflow:hidden">
         <div style="background:#17314a;color:#fff;padding:20px 24px">
           <div style="font-size:24px;font-weight:800">Neacea</div>
-          <div style="opacity:.8;font-weight:700">Portale Personal Trainer</div>
+          <div style="opacity:.8;font-weight:700">${accessLabel}</div>
         </div>
         <div style="padding:24px">
           <p style="margin:0 0 14px;font-size:17px;font-weight:700">Ciao ${clean(name)},</p>
-          <p style="margin:0 0 18px;line-height:1.5">Il tuo accesso al Portale Personal Trainer e' attivo. Da qui puoi vedere clienti assegnati, schede e appuntamenti collegati alla tua email.</p>
+          <p style="margin:0 0 18px;line-height:1.5">Il tuo accesso Neacea e' attivo. Inserisci questo codice una sola volta nella Dashboard; da li potrai aprire gli strumenti disponibili per il tuo profilo.</p>
           <p style="margin:0 0 10px;font-weight:800">Email accesso</p>
           <p style="margin:0 0 16px;background:#eef6fb;border:1px solid #d8e7ef;border-radius:10px;padding:12px 14px;font-size:18px;font-weight:800">${clean(email)}</p>
           <p style="margin:0 0 10px;font-weight:800">Codice / password</p>
           <p style="margin:0 0 22px;background:#17314a;color:#fff;border-radius:10px;padding:14px 16px;font-size:28px;letter-spacing:6px;font-weight:900;text-align:center">${clean(code)}</p>
           <p style="margin:0 0 24px">
-            <a href="${clean(link)}" style="display:inline-block;background:#17314a;color:#fff;text-decoration:none;padding:13px 18px;border-radius:8px;font-weight:800">Entra nel portale</a>
+            <a href="${clean(link)}" style="display:inline-block;background:#17314a;color:#fff;text-decoration:none;padding:13px 18px;border-radius:8px;font-weight:800">Apri ${accessLabel}</a>
           </p>
           <p style="margin:0;color:#668195;font-size:13px;line-height:1.45">Se il pulsante non si apre, copia questo link nel browser:<br><a href="${clean(link)}" style="color:#17314a">${clean(link)}</a></p>
         </div>
@@ -71,7 +177,7 @@ function buildEmail(payload) {
   const text = [
     `Ciao ${name},`,
     '',
-    'Il tuo accesso al Portale Personal Trainer Neacea e attivo.',
+    `Il tuo accesso alla ${accessLabel} Neacea e attivo.`,
     `Email accesso: ${email}`,
     `Codice / password: ${code}`,
     `Apri il portale da qui: ${link}`,
@@ -159,6 +265,28 @@ exports.handler = async (event) => {
   try {
     const input = JSON.parse(event.body || '{}');
     const action = String(input.action || 'send').toLowerCase();
+    if (action === 'resolve') {
+      const operator = await findPersonalTrainer(input.email, input.operatorId || input.operator_id);
+      return {
+        statusCode: operator ? 200 : 404,
+        headers,
+        body: JSON.stringify(operator
+          ? { success: true, operator }
+          : { success: false, error: 'Email non trovata tra i Personal Trainer attivi.' }),
+      };
+    }
+    if (action === 'verify_token') {
+      const data = verifyAccessToken(input.token);
+      const operator = data ? await findPersonalTrainer(data.email, data.operatorId) : null;
+      const valid = data && operator;
+      return {
+        statusCode: valid ? 200 : 401,
+        headers,
+        body: JSON.stringify(valid
+          ? { success: true, email: operator.email, operatorId: operator.id, accessLevel: operator.accessLevel, expiresAt: data.exp }
+          : { success: false, error: 'Sessione PT non valida o scaduta.' }),
+      };
+    }
     if (action === 'verify') {
       const email = String(input.email || '').trim().toLowerCase();
       const operatorId = String(input.operatorId || input.operator_id || '').trim();
@@ -166,20 +294,39 @@ exports.handler = async (event) => {
       if (!email || !email.includes('@') || !code) {
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email e codice sono obbligatori.' }) };
       }
+      const operator = await findPersonalTrainer(email, operatorId);
+      if (!operator) {
+        return { statusCode: 404, headers, body: JSON.stringify({ success: false, error: 'Profilo Personal Trainer non trovato o non attivo.' }) };
+      }
       const valid = crypto.timingSafeEqual(
-        Buffer.from(accessCode(email, operatorId)),
+        Buffer.from(accessCode(operator.email, operator.id)),
         Buffer.from(code.padStart(6, '0').slice(-6))
       );
       return {
         statusCode: valid ? 200 : 401,
         headers,
         body: JSON.stringify(valid
-          ? { success: true, email }
+          ? {
+              success: true,
+              email: operator.email,
+              operatorId: operator.id,
+              accessLevel: operator.accessLevel,
+              token: signAccessToken(operator.email, operator.id, operator.accessLevel),
+              expiresAt: Date.now() + (12 * 60 * 60 * 1000),
+            }
           : { success: false, error: 'Codice accesso non valido.' }),
       };
     }
 
-    const message = buildEmail(input);
+    const operator = await findPersonalTrainer(input.email, input.operatorId || input.operator_id);
+    if (!operator) {
+      return { statusCode: 404, headers, body: JSON.stringify({ success: false, error: 'Email non trovata tra i Personal Trainer attivi.' }) };
+    }
+    const message = buildEmail({
+      ...input,
+      email: operator.email,
+      operatorId: operator.id,
+    }, operator);
     if (!message.email || !message.email.includes('@')) {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Email PT non valida.' }) };
     }

@@ -2,7 +2,7 @@
   "name": "neacea-gestionale-studio-pt",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "description": "NEACEA Gestionale Studio PT with an isolated local Supabase staging harness.",
   "scripts": {
     "test": "node --test tests/*.test.cjs",

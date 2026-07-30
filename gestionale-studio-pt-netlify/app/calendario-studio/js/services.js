@@ -43,6 +43,41 @@ const Services = (() => {
     return State.getOperators().find(o => o.id === id) || null;
   }
 
+  function getActiveClientIds(appt) {
+    if (!Array.isArray(appt?.clientIds)) return [];
+    return appt.clientIds.filter(id => {
+      const client = getClient(id);
+      return !!client && client.active !== false;
+    });
+  }
+
+  function isAppointmentVisible(appt) {
+    if (!appt) return false;
+    const svc = getService(appt.serviceId);
+    if (svc?.isBlock) return true;
+    return getActiveClientIds(appt).length > 0;
+  }
+
+  function getVisibleAppointment(appt) {
+    if (!isAppointmentVisible(appt)) return null;
+    const svc = getService(appt.serviceId);
+    if (svc?.isBlock) return appt;
+    const activeClientIds = getActiveClientIds(appt);
+    return activeClientIds.length === (appt.clientIds || []).length
+      ? appt
+      : { ...appt, clientIds: activeClientIds };
+  }
+
+  function appointmentRoomLoad(appt) {
+    const svc = getService(appt?.serviceId);
+    if (!svc?.room) return 0;
+    const configuredLoad = Number(svc.roomLoad || 0);
+    if (svc.isGroup || Number(svc.maxClients || 1) > 1) {
+      return Math.min(configuredLoad || getActiveClientIds(appt).length, getActiveClientIds(appt).length);
+    }
+    return configuredLoad;
+  }
+
   function clientFullName(id) {
     const c = getClient(id);
     return c ? `${c.nome} ${c.cognome}`.trim() : id || '-';
@@ -97,25 +132,127 @@ const Services = (() => {
     return !!svc && !svc.isBlock && !svc.isNutri && !svc.isValuation;
   }
 
+  function extractAppointmentPackageCycle(appt) {
+    const notes = String(appt?.notes || '');
+    const explicit = notes.match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/i);
+    if (explicit) return explicit[1];
+    const renewals = [...notes.matchAll(/Rinnovo pacchetto da\s+(\d{4}-\d{2}-\d{2})/gi)];
+    return renewals.length ? renewals[renewals.length - 1][1] : '';
+  }
+
+  function extractAppointmentPackageCycleId(appt) {
+    return typeof PackageLedger !== 'undefined'
+      ? PackageLedger.appointmentCycleId(appt?.notes)
+      : (String(appt?.notes || '').match(/\[CICLO-PACCHETTO-ID\s+([a-zA-Z0-9_-]+)\]/i)?.[1] || '');
+  }
+
+  function getPackageCycleContext(client) {
+    if (!client?.id) return { start: '', id: '', legacy: true, persisted: false, inferredFromAppointment: false };
+    const ledger = typeof PackageLedger !== 'undefined' ? PackageLedger.parse(client) : null;
+    const currentLedgerCycle = ledger && !ledger.parseError ? PackageLedger.currentCycle(ledger) : null;
+    const persistedStart = String(client.packageCycleStart || client.package_cycle_start || '').slice(0, 10);
+    const appointmentStarts = State.getAppointments()
+      .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
+      .filter(a => serviceUsesPackageSessions(a.serviceId))
+      .map(extractAppointmentPackageCycle)
+      .filter(Boolean)
+      .sort();
+    const inferredStart = appointmentStarts[appointmentStarts.length - 1] || '';
+    const acquisitionStart = String(
+      client.acquisitionStart || client.dataInizio || client.data_inizio || client.packageStart || ''
+    ).slice(0, 10);
+    return {
+      start: currentLedgerCycle?.startDate || persistedStart || inferredStart || acquisitionStart,
+      id: currentLedgerCycle?.id || '',
+      legacy: currentLedgerCycle ? currentLedgerCycle.legacy === true : true,
+      persisted: !!persistedStart,
+      inferredFromAppointment: !persistedStart && !!inferredStart,
+    };
+  }
+
+  function appointmentInCurrentPackageCycle(appt, client) {
+    if (!appt || !client) return false;
+    const context = getPackageCycleContext(client);
+    const appointmentCycle = extractAppointmentPackageCycle(appt);
+    const appointmentCycleId = extractAppointmentPackageCycleId(appt);
+    if (context.id && appointmentCycleId) return appointmentCycleId === context.id;
+    // I cicli creati dal nuovo registro usano sempre un ID: una vecchia
+    // seduta senza ID non puo' entrare per errore nel nuovo rinnovo.
+    if (context.id && !context.legacy) return false;
+    // Dopo che il ciclo è stato confermato sul cliente, la data di inizio è
+    // l'unica fonte di verità: una lezione svolta nello stesso giorno del
+    // rinnovo appartiene al nuovo ciclo anche se conserva una vecchia nota.
+    if (context.persisted) return !context.start || String(appt.date || '') >= context.start;
+    if (appointmentCycle) return !context.start || appointmentCycle === context.start;
+    return !context.start || String(appt.date || '') >= context.start;
+  }
+
+  function getClientPackageAppointments(client, options = {}) {
+    if (!client?.id) return [];
+    const excludeAppointmentId = options.excludeAppointmentId || null;
+    const includeCancelled = options.includeCancelled === true;
+    return State.getAppointments().filter(a =>
+      a.id !== excludeAppointmentId &&
+      (includeCancelled || a.status !== 'annullato') &&
+      Array.isArray(a.clientIds) &&
+      a.clientIds.includes(client.id) &&
+      serviceUsesPackageSessions(a.serviceId)
+    );
+  }
+
   function getClientSessionMetrics(client, excludeAppointmentId = null) {
     if (!client) {
-      return { total: 0, completed: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
+      return { total: 0, rawTotal: 0, completed: 0, lifetimeCompleted: 0, previousCompleted: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
     }
 
-    const total = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
+    const today = localDateStr(new Date());
+    const rawTotal = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
-    const metrics = NeaceaPtDomain.calculatePackageSessions({
-      clientId: client.id,
-      total,
-      appointments: State.getAppointments().filter(a => a.id !== excludeAppointmentId),
-      packageStart: client.packageStart || client.package_start || '',
-      serviceUsesPackageSessions,
-      today: localDateStr(new Date()),
-    });
+    const packageAppts = getClientPackageAppointments(client, { excludeAppointmentId });
+    const cycleContext = getPackageCycleContext(client);
+    const currentAppts = packageAppts.filter(a => appointmentInCurrentPackageCycle(a, client));
+    const completed = currentAppts.filter(a => a.status === 'fatto').length;
+    const scheduled = currentAppts.filter(a => a.status === 'prenotato' && a.date >= today).length;
+    const noShow = currentAppts.filter(a => a.status === 'noshow').length;
+    const lifetimeCompleted = packageAppts.filter(a => a.status === 'fatto').length;
+    const previousCompleted = Math.max(0, lifetimeCompleted - completed);
+    let total = rawTotal;
+
+    // I rinnovi creati dalle versioni precedenti sommavano il nuovo pacchetto
+    // al totale storico. Finché il ciclo non viene confermato, ricaviamo il
+    // totale corrente da residuo + fatte del ciclo e lo arrotondiamo solo per
+    // i vecchi pacchetti chiaramente multipli di quattro.
+    if (cycleContext.inferredFromAppointment && previousCompleted > 0 && rawTotal > 0) {
+      const inferred = Math.max(completed + scheduled, storedRemaining + completed);
+      let normalized = inferred;
+      if (rawTotal % 4 === 0 && inferred > 0 && inferred < rawTotal && inferred % 4 !== 0) {
+        normalized = Math.ceil(inferred / 4) * 4;
+      }
+      if (normalized > 0) total = Math.min(rawTotal, normalized);
+    }
+
+    const plannedTotal = completed + scheduled;
+    const remaining = total > 0 ? Math.max(0, total - completed) : storedRemaining;
+    const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
+    const overPlanned = total > 0 ? Math.max(0, plannedTotal - total) : 0;
+
     return {
-      ...metrics,
-      remaining: total > 0 ? metrics.remaining : storedRemaining,
+      total,
+      rawTotal,
+      completed,
+      lifetimeCompleted,
+      previousCompleted,
+      scheduled,
+      noShow,
+      plannedTotal,
+      remaining,
+      toSchedule,
+      overPlanned,
       storedRemaining,
+      computedRemaining: remaining,
+      cycleStart: cycleContext.start,
+      cyclePersisted: cycleContext.persisted,
+      needsCycleSetup: cycleContext.inferredFromAppointment && !cycleContext.persisted,
     };
   }
 
@@ -157,6 +294,7 @@ const Services = (() => {
       const conflicts = State.getAppointments().filter(a =>
         a.id !== excludeId &&
         a.status !== 'annullato' &&
+        isAppointmentVisible(a) &&
         a.operatorId === op.id &&
         a.date === date &&
         overlaps(tmp, a, false)
@@ -172,7 +310,10 @@ const Services = (() => {
   }
 
   function getAppointmentsForDate(date) {
-    return State.getAppointments().filter(a => a.date === date);
+    return State.getAppointments()
+      .filter(a => a.date === date && isAppointmentVisible(a))
+      .filter(a => typeof App === 'undefined' || !App.isPortalPtMode?.() || App.canViewAppointment(a))
+      .map(getVisibleAppointment);
   }
 
   function weekdayName(dateStr) {
@@ -188,19 +329,20 @@ const Services = (() => {
   function getRoomLoadAt(date, startTime, durationMin, roomId, excludeId = null) {
     const slot = { date, startTime, durationMin, bufferMin: 0 };
     return State.getAppointments()
-      .filter(a => a.id !== excludeId && a.date === date && a.status !== 'annullato')
+      .filter(a => a.id !== excludeId && a.date === date && a.status !== 'annullato' && isAppointmentVisible(a))
       .filter(a => {
         const svc = getService(a.serviceId);
         return svc?.room === roomId && overlaps(slot, a, false);
       })
       .reduce((sum, a) => {
-        const svc = getService(a.serviceId);
-        return sum + (svc?.isGroup ? (a.clientIds?.length || 0) : Number(svc?.roomLoad || 0));
+        return sum + appointmentRoomLoad(a);
       }, 0);
   }
 
   function canBookAppointment(appt, options = {}) {
     const errors = [];
+    let operatorConflicts = [];
+    let operatorOverrideEligible = false;
     const svc = getService(appt.serviceId);
     if (!svc) errors.push('Servizio non valido');
 
@@ -214,16 +356,23 @@ const Services = (() => {
     const appts = State.getAppointments().filter(a =>
       a.id !== appt.id &&
       a.date === appt.date &&
-      a.status !== 'annullato'
+      a.status !== 'annullato' &&
+      isAppointmentVisible(a)
     );
 
     if (appt.operatorId) {
       const op = getOperator(appt.operatorId);
       if (op && !opHasRole(op, svc)) errors.push('Operatore senza ruolo compatibile');
-      const operatorConflict = appts.find(a => a.operatorId === appt.operatorId && overlaps(appt, a, false));
-      if (operatorConflict) {
-        const conflictClients = (operatorConflict.clientIds || []).map(clientConflictLabel).join(', ') || 'nessun cliente';
-        errors.push(`${operatorFullName(appt.operatorId)} occupato alle ${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`);
+      operatorConflicts = appts.filter(a => a.operatorId === appt.operatorId && overlaps(appt, a, false));
+      operatorOverrideEligible = appt.serviceId === 'pt11' &&
+        operatorConflicts.length === 1 &&
+        operatorConflicts.every(a => a.serviceId === 'pt11');
+      if (operatorConflicts.length && !(options.allowOperatorOverlap && operatorOverrideEligible)) {
+        const conflictSummary = operatorConflicts.map(operatorConflict => {
+          const conflictClients = (operatorConflict.clientIds || []).map(clientConflictLabel).join(', ') || 'nessun cliente';
+          return `${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`;
+        }).join(' · ');
+        errors.push(`${operatorFullName(appt.operatorId)} occupato alle ${conflictSummary}`);
       }
     }
 
@@ -264,12 +413,16 @@ const Services = (() => {
 
     if (svc?.room) {
       const current = getRoomLoadAt(appt.date, appt.startTime, appt.durationMin, svc.room, appt.id);
-      const add = svc.isGroup ? (appt.clientIds?.length || 0) : Number(svc.roomLoad || 0);
+      const add = appointmentRoomLoad(appt);
       const max = getRoomMax(svc.room);
       if (current + add > max) errors.push(`${CONFIG.ROOMS[svc.room]?.label || 'Sala'} piena`);
     }
 
-    return { ok: errors.length === 0, errors };
+    return { ok: errors.length === 0, errors, operatorConflicts, operatorOverrideEligible };
+  }
+
+  function hasForcedPt11Overlap(appt) {
+    return /\[FORZA-PT11\]/.test(String(appt?.notes || ''));
   }
 
   function addAppointment(data) {
@@ -336,7 +489,7 @@ const Services = (() => {
       inSalaNow: nowMin < 0 ? 0 : appts.reduce((sum, a) => {
         const svc = getService(a.serviceId);
         const inNow = timeToMin(a.startTime) <= nowMin && nowMin < timeToMin(a.startTime) + Number(a.durationMin || svc?.durationMin || 60);
-        return inNow && svc?.room === 'pt' ? sum + (svc.isGroup ? (a.clientIds?.length || 0) : Number(svc.roomLoad || 0)) : sum;
+        return inNow && svc?.room === 'pt' ? sum + appointmentRoomLoad(a) : sum;
       }, 0),
       nutriAppts: appts.filter(a => getService(a.serviceId)?.isNutri).length,
       valAppts: appts.filter(a => getService(a.serviceId)?.isValuation).length,
@@ -357,11 +510,19 @@ const Services = (() => {
     overlaps,
     getClient,
     getOperator,
+    getActiveClientIds,
+    isAppointmentVisible,
+    getVisibleAppointment,
     clientFullName,
     clientConflictLabel,
     operatorFullName,
     clientCanUseService,
     serviceUsesPackageSessions,
+    extractAppointmentPackageCycle,
+    extractAppointmentPackageCycleId,
+    getPackageCycleContext,
+    appointmentInCurrentPackageCycle,
+    getClientPackageAppointments,
     getClientSessionMetrics,
     recalculateClientSessions,
     getCompatibleClients,
@@ -371,6 +532,7 @@ const Services = (() => {
     getRoomMax,
     getRoomLoadAt,
     canBookAppointment,
+    hasForcedPt11Overlap,
     addAppointment,
     updateAppointment,
     deleteAppointment,

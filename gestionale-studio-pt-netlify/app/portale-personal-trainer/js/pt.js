@@ -661,18 +661,6 @@ async function loadPhaseViews() {
     ...session,
     trainer_id: sessionTrainerId(session),
   }));
-  const inferredTrainerByClient = state.sessions.reduce((acc, session) => {
-    const trainerId = sessionTrainerId(session);
-    if (!trainerId) return acc;
-    sessionClientIds(session).forEach((clientId) => {
-      acc[clientId] = acc[clientId] || {};
-      acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
-    });
-    return acc;
-  }, {});
-  const inferredTrainerId = (clientId) => Object.entries(inferredTrainerByClient[clientId] || {})
-    .sort((a, b) => b[1] - a[1])
-    .map(([trainerId]) => trainerId)[0] || '';
   state.clients = (clients || []).map((client) => {
     const acq = (acquisitions || []).find((item) => {
       const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -681,7 +669,7 @@ async function loadPhaseViews() {
     });
     return {
       assignment_id: `client_${client.id}`,
-      trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || inferredTrainerId(client.id)),
+      trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id),
       client_id: client.id,
       nome: client.nome,
       cognome: client.cognome,
@@ -722,24 +710,6 @@ async function loadFallback() {
     .map((op) => ({ ...op, roles: operatorRoles(op) }))
     .filter((op) => isPersonalTrainer(op));
 
-  const inferredTrainerByClient = (appointments || []).reduce((acc, appt) => {
-    const trainerId = operatorIdFromAny(appt.operator_id);
-    if (!trainerId) return acc;
-    const clientIds = Array.isArray(appt.client_ids) ? appt.client_ids : [];
-    clientIds.forEach((clientId) => {
-      acc[clientId] = acc[clientId] || {};
-      acc[clientId][trainerId] = (acc[clientId][trainerId] || 0) + 1;
-    });
-    return acc;
-  }, {});
-
-  function inferredTrainerId(clientId) {
-    const counts = inferredTrainerByClient[clientId] || {};
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([trainerId]) => trainerId)[0] || '';
-  }
-
   state.clients = (clients || []).map((client) => {
     const acq = (acquisitions || []).find((item) => {
       const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -748,7 +718,7 @@ async function loadFallback() {
     });
     return {
       assignment_id: `legacy_${client.id}`,
-      trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || inferredTrainerId(client.id)),
+      trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id),
       client_id: client.id,
       nome: client.nome,
       cognome: client.cognome,

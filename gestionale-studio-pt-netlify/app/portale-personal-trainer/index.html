@@ -24,6 +24,11 @@
     body { margin: 0; color: var(--ink); background: #eef3f8; }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; border: 0; }
+    button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; opacity: .56; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+      outline: 3px solid rgba(46,121,184,.32);
+      outline-offset: 2px;
+    }
     .hidden { display: none !important; }
 
     .login-screen {
@@ -121,6 +126,30 @@
     }
     .nav-btn.active, .nav-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
 
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 18;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+      padding: 7px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 12px;
+      background: rgba(16,47,85,.96);
+      box-shadow: 0 14px 40px rgba(12,31,53,.28);
+      backdrop-filter: blur(12px);
+    }
+    .mobile-nav .nav-btn {
+      min-height: 48px;
+      padding: 7px 5px;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
     .main { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
     .topbar {
       min-height: 68px;
@@ -139,6 +168,16 @@
     .crumbs, .save-state { color: var(--muted); font-size: 14px; }
     .save-state strong { color: var(--ok); }
     .user-chip { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
+    .access-role {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eaf2f9;
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
     .avatar {
       width: 36px;
       height: 36px;
@@ -150,7 +189,27 @@
       font-weight: 800;
     }
 
-    .content { min-width: 0; padding: 26px 28px 44px; display: grid; gap: 18px; }
+    .content { min-width: 0; padding: 26px 28px 44px; }
+    .readonly-banner {
+      margin-bottom: 18px;
+      padding: 13px 15px;
+      border: 1px solid #9cc2e4;
+      border-radius: 9px;
+      background: #edf6ff;
+      color: #174f7d;
+      line-height: 1.45;
+    }
+    .readonly-banner strong { color: var(--brand); }
+    .app-view { display: none; min-width: 0; }
+    .app-view.active { display: grid; gap: 18px; }
+    .view-kicker {
+      margin: 0 0 7px;
+      color: var(--brand-2);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -199,6 +258,50 @@
     .metric span { color: var(--muted); font-size: 13px; }
     .metric strong { display: block; margin-top: 6px; font-size: 25px; color: var(--brand); }
 
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .dashboard-card {
+      min-height: 180px;
+      padding: 20px;
+      display: grid;
+      align-content: space-between;
+      gap: 18px;
+    }
+    .dashboard-card h2 { margin: 0 0 7px; color: var(--brand); font-size: 20px; }
+    .dashboard-card p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .dashboard-card .btn { justify-self: start; }
+
+    .client-focus {
+      min-width: 0;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      background: linear-gradient(135deg, #102f55, #1f5f96);
+      color: #fff;
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+    }
+    .client-focus .view-kicker { color: #bcd8ef; }
+    .client-focus h2 { margin: 0 0 5px; font-size: clamp(23px, 3vw, 32px); }
+    .client-focus p { margin: 0; color: #d9e8f4; line-height: 1.45; }
+    .client-focus .actions { justify-content: flex-end; }
+    .client-focus .btn { box-shadow: none; }
+
+    .empty-focus {
+      padding: 24px;
+      border: 1px dashed #b9c8d7;
+      border-radius: 9px;
+      background: #f8fbfe;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-focus strong { display: block; color: var(--brand); margin-bottom: 5px; font-size: 18px; }
+
     .workspace {
       display: grid;
       grid-template-columns: 330px minmax(0, 1fr);
@@ -223,7 +326,15 @@
     }
     .panel-title { margin: 0; color: var(--brand); font-size: 18px; }
 
-    .client-list, .exercise-library { padding: 10px; display: grid; gap: 8px; }
+    .client-list, .exercise-library { padding: 14px; display: grid; gap: 10px; }
+    .client-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .client-search {
+      padding: 10px 10px 0;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(190px, .45fr);
+      gap: 10px;
+    }
+    .client-search input, .client-search select { background: #fbfdff; }
     .client-card, .library-card {
       border: 1px solid transparent;
       background: #f7fafc;
@@ -233,6 +344,7 @@
       gap: 6px;
       text-align: left;
     }
+    .client-card { min-height: 112px; align-content: start; }
     .client-card.active { border-color: #9cc2e4; background: #edf6ff; }
     .client-card strong, .library-card strong { font-size: 15px; }
     .client-card span, .library-card span { color: var(--muted); font-size: 13px; }
@@ -290,10 +402,11 @@
 
     .sheet-meta {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      padding: 0 16px 16px;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 14px;
+      padding: 6px 20px 20px;
     }
+    .sheet-meta .field-wide { grid-column: span 2; }
     .field { display: grid; gap: 6px; }
     label {
       font-size: 12px;
@@ -373,6 +486,21 @@
     }
     .exercise-name { font-weight: 800; min-width: 0; overflow-wrap: anywhere; }
     .mini-actions { display: flex; gap: 6px; align-items: center; }
+    .exercise-save-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.16);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .exercise-save-badge.saving { background: #f3b53f; color: #26394d; }
+    .exercise-save-badge.saved { background: #dff5e9; color: #176b43; }
+    .exercise-save-badge.error { background: #ffe3e3; color: #8a2929; }
     .mini-btn {
       width: 34px;
       height: 34px;
@@ -393,6 +521,180 @@
     }
     .exercise-info strong { color: var(--brand); }
     .edit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .exercise-editor-grid {
+      display: grid;
+      grid-template-columns: minmax(250px, 1.6fr) repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #d7e2ed;
+      border-radius: 8px;
+      background: #f6f9fc;
+    }
+    .exercise-editor-grid label { color: #536577; }
+    .exercise-editor-grid select,
+    .exercise-editor-grid input { background: #fff; }
+    .manual-plan-input { margin-top: 6px; text-align: center; }
+    .manual-help {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .creation-preview { padding: 18px; display: grid; gap: 14px; }
+    .creation-preview-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .creation-preview h2 { margin: 0 0 5px; color: var(--brand); }
+    .creation-preview p { margin: 0; color: var(--muted); }
+    .preview-exercise-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 8px;
+    }
+    .preview-exercise-item {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f8fafc;
+      display: grid;
+      gap: 3px;
+    }
+    .preview-exercise-item strong { color: var(--brand); }
+    .preview-exercise-item span { color: var(--muted); font-size: 12px; }
+
+    .sheet-presentation { overflow: hidden; }
+    .presentation-head {
+      padding: 24px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fbfe;
+    }
+    .presentation-head h1 { font-size: clamp(28px, 4vw, 42px); }
+    .presentation-head p { margin: 0; color: var(--muted); }
+    .presentation-meta {
+      padding: 16px 24px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .presentation-meta div { padding: 10px 12px; border-radius: 7px; background: #f4f7fa; }
+    .presentation-meta span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .presentation-meta strong { display: block; margin-top: 4px; color: var(--brand); }
+    .readonly-exercise-stack { padding: 18px; display: grid; gap: 14px; }
+    .readonly-exercise {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .readonly-exercise-head {
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      background: #53606b;
+    }
+    .readonly-number { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); font-weight: 900; }
+    .readonly-exercise-body { padding: 13px; display: grid; gap: 10px; }
+    .readonly-notes { margin: 0; color: var(--muted); line-height: 1.45; }
+    .readonly-plan-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+    }
+    .readonly-plan-cell { padding: 10px; border-radius: 7px; background: #f5f8fb; }
+    .readonly-plan-cell strong { display: block; color: var(--brand); font-size: 12px; }
+    .readonly-plan-cell span { display: block; margin-top: 4px; }
+    .operational-exercise-grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .operational-plan-cell {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      padding: 10px;
+      border-radius: 7px;
+      background: #f5f8fb;
+    }
+    .operational-plan-cell > strong { color: var(--brand); font-size: 12px; }
+    .operational-plan-cell label { font-size: 10px; }
+    .operational-plan-cell input { background: #fff; }
+    .week-navigator {
+      margin: 16px 24px 0;
+      padding: 14px;
+      border: 1px solid #cfdae5;
+      border-radius: 9px;
+      background: #f8fbfe;
+      display: grid;
+      gap: 11px;
+    }
+    .week-navigator-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .week-navigator-head strong { color: var(--brand); }
+    .week-navigator-head span { color: var(--muted); font-size: 13px; }
+    .week-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    .week-button {
+      min-width: 126px;
+      padding: 9px 11px;
+      border: 1px solid #c8d5e2;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--brand);
+      text-align: left;
+    }
+    .week-button strong, .week-button small { display: block; }
+    .week-button small { margin-top: 2px; color: var(--muted); font-weight: 700; }
+    .week-button.completed { background: #e8f6ef; border-color: #9ed3b9; }
+    .week-button.current { background: #fff5d8; border-color: #e5b84f; }
+    .week-button.next { background: #edf6ff; border-color: #8cbce4; }
+    .week-button.selected { box-shadow: 0 0 0 3px rgba(22,63,115,.18); border-color: var(--brand); }
+    .operational-plan-cell.selected-week { outline: 3px solid rgba(22,63,115,.2); background: #edf5fd; }
+    .operational-plan-cell.completed-week { border: 1px solid #a9d8c1; }
+    .operational-plan-cell.next-week { border: 1px dashed #74a9d4; }
+    .set-editor {
+      border: 1px solid #d5e0ea;
+      border-radius: 9px;
+      background: #f8fbfe;
+      overflow: hidden;
+    }
+    .set-editor-head {
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: #eaf2f9;
+    }
+    .set-editor-head strong { color: var(--brand); }
+    .set-editor-head span { color: var(--muted); font-size: 12px; }
+    .set-list { display: grid; gap: 7px; padding: 10px; }
+    .set-row {
+      display: grid;
+      grid-template-columns: 76px minmax(90px, .8fr) minmax(110px, 1fr) minmax(90px, .7fr) 38px;
+      gap: 8px;
+      align-items: end;
+      padding: 9px;
+      border: 1px solid #dce5ee;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .set-number { align-self: center; color: var(--brand); font-weight: 900; }
+    .set-field { display: grid; gap: 4px; }
+    .set-field label { font-size: 10px; }
+    .set-field input { min-height: 38px; }
+    .set-remove { width: 36px; height: 38px; border-radius: 7px; background: #fbe7e7; color: var(--danger); font-weight: 900; }
+    .set-previous { grid-column: 2 / -1; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .set-editor.compact .set-field label { display: none; }
 
     .progress-wrap { overflow-x: auto; }
     .progress-table {
@@ -544,10 +846,67 @@
       font-size: 12px;
       font-weight: 800;
     }
+    .previous-load {
+      display: block;
+      margin-top: 5px;
+      color: #5f6f7f;
+      font-size: 11px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+    .history-controls {
+      display: grid;
+      grid-template-columns: minmax(210px, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+      padding-top: 2px;
+    }
+    .history-controls .field { min-width: 0; }
     .exercise.fresh {
       outline: 3px solid rgba(21, 122, 86, .22);
       box-shadow: 0 10px 28px rgba(21, 122, 86, .16);
     }
+
+    .program-actions {
+      padding: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .program-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .program-card {
+      min-height: 170px;
+      padding: 17px;
+      display: grid;
+      align-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .program-card.active { border-color: #86b5dc; box-shadow: 0 10px 28px rgba(46,121,184,.14); }
+    .program-card h3 { margin: 0 0 5px; color: var(--brand); font-size: 19px; }
+    .program-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .program-card .actions { justify-content: flex-start; }
+    .program-state {
+      display: inline-flex;
+      width: max-content;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #e8f5ef;
+      color: var(--ok);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .program-state.local { background: #fff3df; color: #9a5b08; }
 
     .modal-backdrop {
       position: fixed;
@@ -563,10 +922,12 @@
     .modal {
       width: min(980px, 100%);
       max-height: min(840px, 92vh);
-      overflow: auto;
+      overflow: hidden;
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 24px 70px rgba(0,0,0,.25);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
     }
     .modal-head, .modal-foot {
       padding: 18px 22px;
@@ -578,7 +939,7 @@
     .modal-head { border-bottom: 1px solid var(--line); }
     .modal-foot { border-top: 1px solid var(--line); justify-content: flex-end; }
     .modal-head h2 { margin: 0; color: var(--brand); font-size: 24px; }
-    .modal-body { padding: 20px 22px; display: grid; gap: 15px; }
+    .modal-body { padding: 20px 22px; display: grid; gap: 15px; overflow-y: auto; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .preset-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
     .preset {
@@ -592,6 +953,19 @@
     .preset.active { border-color: var(--brand-2); background: #edf6ff; }
     .preset strong { display: block; color: var(--brand); margin-bottom: 4px; }
     .preset span { color: var(--muted); font-size: 13px; }
+    .exercise-modal-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+    .exercise-modal-body > .form-grid { grid-column: 1 / -1; }
+    #exercisePickerField { grid-column: 1; grid-row: span 2; }
+    #progressionPickerField { grid-column: 2; }
+    #exerciseNotesField { grid-column: 1 / -1; }
+    #exerciseModal .exercise-library,
+    #exerciseModal .preset-row,
+    #exerciseModal #presetPreview { max-height: 260px; overflow-y: auto; overscroll-behavior: contain; }
+    #exerciseModal .exercise-library { padding: 8px 0; }
+    #exerciseModal .preset-row { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-right: 4px; }
+    .exercise-insert-summary { min-width: 0; display: grid; gap: 2px; margin-right: auto; text-align: left; }
+    .exercise-insert-summary strong { color: var(--brand); }
+    .exercise-insert-summary span { color: var(--muted); font-size: 12px; }
 
     .toast {
       position: fixed;
@@ -612,12 +986,18 @@
     @media (max-width: 1160px) {
       .app-shell { grid-template-columns: 1fr; }
       .sidebar { display: none; }
+      .mobile-nav { display: grid; }
       .workspace { grid-template-columns: 1fr; }
       .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .sheet-meta, .edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .exercise-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .operational-exercise-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .presentation-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: 1fr; }
       .hero { grid-template-columns: 1fr; }
       .actions { justify-content: flex-start; }
       .library-entry, .builder-head { grid-template-columns: 1fr; }
+      .history-controls { grid-template-columns: 1fr; }
       .builder-head .btn { justify-self: stretch; }
       .inline-builder-grid, .inline-results { grid-template-columns: 1fr; }
       .inline-builder-grid .field-wide, .archive-grid .field-wide { grid-column: span 1; }
@@ -625,9 +1005,29 @@
 
     @media (max-width: 760px) {
       .topbar { padding: 12px 16px; align-items: flex-start; flex-direction: column; }
-      .content { padding: 20px 14px 34px; }
+      .content { padding: 20px 14px 104px; }
       .summary-grid, .sheet-meta, .edit-grid, .form-grid, .preset-row, .small-cols { grid-template-columns: 1fr; }
+      .exercise-editor-grid { grid-template-columns: 1fr; }
+      .operational-exercise-grid { grid-template-columns: 1fr; }
+      .presentation-head { flex-direction: column; }
+      .presentation-meta { grid-template-columns: 1fr; }
+      .sheet-meta .field-wide { grid-column: span 1; }
+      .client-focus { grid-template-columns: 1fr; }
+      .client-focus .actions { justify-content: flex-start; }
+      .client-search { grid-template-columns: 1fr; }
       .sheet-toolbar { grid-template-columns: 1fr; }
+      .exercise-modal-body { grid-template-columns: 1fr; }
+      .exercise-modal-body > .form-grid,
+      #exercisePickerField,
+      #progressionPickerField,
+      #exerciseNotesField { grid-column: 1; grid-row: auto; }
+      #exerciseModal .modal-foot { flex-wrap: wrap; }
+      #exerciseModal .exercise-insert-summary { flex-basis: 100%; }
+      #exerciseModal .modal-foot .btn { flex: 1; }
+      .set-row { grid-template-columns: 64px 1fr 1fr; }
+      .set-row .set-field:nth-of-type(3) { grid-column: 2 / 3; }
+      .set-remove { grid-column: 3; grid-row: 2; justify-self: end; }
+      .set-previous { grid-column: 1 / -1; }
       .exercise-head { grid-template-columns: 1fr auto; }
       .badge { grid-column: 1 / -1; width: max-content; }
     }
@@ -655,7 +1055,7 @@
         <button id="sendCodeButton" class="btn" type="button">Invia codice via e-mail</button>
       </div>
       <p class="login-help">Se non hai il codice, inserisci la tua email e richiedilo qui.</p>
-      <div id="loginError" class="notice hidden"></div>
+      <div id="loginError" class="notice hidden" role="status" aria-live="polite"></div>
     </div>
   </section>
 
@@ -666,184 +1066,268 @@
         <div><strong>NEACEA</strong><span>Studio personal</span></div>
       </div>
       <nav class="side-nav" aria-label="Sezioni">
-        <button class="nav-btn active" data-nav-target="summaryGrid">Riepilogo</button>
-        <button class="nav-btn" data-nav-target="clientPanel">Clienti</button>
-        <button class="nav-btn" data-nav-target="sheetEditorPanel">Scheda PT</button>
-        <button class="nav-btn" data-nav-target="exerciseLibraryEntry">Esercizi e progressioni</button>
+        <button class="nav-btn active" data-view="clientsView">Clienti</button>
+        <button class="nav-btn" data-view="programsView">Programmi mensili</button>
+        <button class="nav-btn" data-view="builderView">Crea programma</button>
+        <button class="nav-btn" data-view="sheetView">Usa scheda</button>
         <button class="nav-btn" data-nav-action="calendar">Calendario studio</button>
-        <button class="nav-btn" data-nav-action="save">Salvataggio</button>
       </nav>
     </aside>
+
+    <nav class="mobile-nav" aria-label="Navigazione rapida">
+      <button class="nav-btn" data-view="clientsView">Clienti</button>
+      <button class="nav-btn" data-view="programsView">Programmi</button>
+      <button class="nav-btn" data-view="builderView">Crea</button>
+      <button class="nav-btn" data-view="sheetView">Usa scheda</button>
+      <button class="nav-btn" data-nav-action="calendar">Calendario</button>
+    </nav>
 
     <main class="main">
       <header class="topbar">
         <div>
           <div class="crumbs" id="crumbs">Clienti / - / Scheda interna</div>
-          <div class="save-state" id="saveState">Bozza pronta</div>
+          <div class="save-state" id="saveState" role="status" aria-live="polite">Bozza pronta</div>
         </div>
-        <div class="user-chip"><div class="avatar" id="avatar">PT</div><span id="currentPtName">Personal Trainer</span></div>
+        <div class="user-chip">
+          <div class="avatar" id="avatar">PT</div>
+          <span id="currentPtName">Personal Trainer</span>
+          <span class="access-role" id="currentAccessRole">PT</span>
+        </div>
       </header>
 
       <section class="content">
-        <div class="hero">
-          <div>
-            <h1>Scheda PT studio</h1>
-            <p class="subtitle">Uso interno NEACEA: gestione sedute, esercizi, progressioni e note trainer. Niente PDF, niente video, massima attenzione al salvataggio della bozza.</p>
+        <div class="readonly-banner hidden" id="readonlyBanner" role="status" aria-live="polite"></div>
+        <section class="app-view active" id="summaryView" aria-labelledby="summaryTitle">
+          <div class="hero">
+            <div>
+              <p class="view-kicker">Area di lavoro</p>
+              <h1 id="summaryTitle">Riepilogo</h1>
+              <p class="subtitle" id="clientContext">Seleziona un cliente per creare o aggiornare la sua scheda di allenamento.</p>
+            </div>
+            <div class="actions">
+              <button class="btn" id="calendarBtn"><span class="icon">#</span>Calendario studio</button>
+            </div>
           </div>
-          <div class="actions">
-            <button class="btn" id="resetBtn"><span class="icon">!</span>Nuova bozza</button>
-            <button class="btn" id="calendarBtn"><span class="icon">#</span>Calendario studio</button>
-            <button class="btn good" id="saveBtn"><span class="icon">#</span>Salva ora</button>
+
+          <div class="summary-grid" id="summaryGrid" aria-label="Riepilogo scheda">
+            <div class="metric"><span>Cliente selezionato</span><strong id="metricClient">-</strong></div>
+            <div class="metric"><span>Settimane</span><strong id="metricSessions">0</strong></div>
+            <div class="metric"><span>Esercizi nell'allenamento</span><strong id="metricExercises">0</strong></div>
+            <div class="metric"><span>Stato</span><strong id="metricStatus">Nuova</strong></div>
           </div>
-        </div>
+        </section>
 
-        <div class="summary-grid" id="summaryGrid" aria-label="Riepilogo scheda">
-          <div class="metric"><span>Cliente</span><strong id="metricClient">-</strong></div>
-          <div class="metric"><span>Sedute</span><strong id="metricSessions">6</strong></div>
-          <div class="metric"><span>Esercizi scheda</span><strong id="metricExercises">0</strong></div>
-          <div class="metric"><span>Stato</span><strong>Bozza interna</strong></div>
-        </div>
-
-        <div class="workspace">
-          <aside class="panel" id="clientPanel">
-            <div class="panel-head">
-              <h2 class="panel-title">Clienti</h2>
+        <section class="app-view" id="clientsView" aria-labelledby="clientsTitle">
+          <div class="hero">
+            <div>
+              <p class="view-kicker" id="clientsKicker">Anagrafica assegnata</p>
+              <h1 id="clientsTitle">Clienti</h1>
+              <p class="subtitle" id="clientsSubtitle">Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.</p>
+            </div>
+            <div class="actions">
+              <button class="btn primary" id="openSelectedSheetBtn" type="button">Apri programma</button>
+              <button class="btn" id="openSelectedProgramsBtn" type="button">Programmi mensili</button>
+            </div>
+          </div>
+          <div class="panel" id="clientPanel">
+            <div class="panel-head"><h2 class="panel-title" id="clientPanelTitle">I miei clienti</h2></div>
+            <div class="client-search">
+              <label for="clientSearch">Cerca cliente
+                <input id="clientSearch" type="search" autocomplete="off" placeholder="Nome, email, obiettivo o PT">
+              </label>
+              <label class="hidden" id="trainerFilterField" for="trainerFilter">Filtra per Personal Trainer
+                <select id="trainerFilter"><option value="">Tutti i Personal Trainer</option></select>
+              </label>
             </div>
             <div class="client-list" id="clientList"></div>
+          </div>
+        </section>
 
-          </aside>
+        <section class="app-view" id="programsView" aria-labelledby="programsTitle">
+          <div class="hero">
+            <div>
+              <p class="view-kicker">Archivio mensile</p>
+              <h1 id="programsTitle">Programmi mensili</h1>
+              <p class="subtitle">Qui trovi le bozze e i programmi già salvati del cliente.</p>
+            </div>
+          </div>
+          <div class="client-focus requires-client" id="programClientFocus">
+            <div>
+              <p class="view-kicker">Cliente selezionato</p>
+              <h2 id="programClientName">Nessun cliente</h2>
+              <p id="programClientMeta">Seleziona prima un cliente dall'area Clienti.</p>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" data-go-view="clientsView">Cambia cliente</button>
+              <button class="btn good" id="openSheetBtn" type="button">Crea o modifica programma</button>
+            </div>
+          </div>
+          <div class="panel requires-client" id="programActionsPanel">
+            <div class="panel-head"><h2 class="panel-title">Azioni programma</h2></div>
+            <div class="program-actions">
+              <button class="btn" id="resetBtn"><span class="icon">+</span>Nuovo programma</button>
+              <button class="btn primary" id="newMonthBtn" type="button"><span class="icon">+</span>Mese successivo dall'aperto</button>
+            </div>
+          </div>
+          <div class="program-grid requires-client" id="programCards"></div>
+        </section>
 
-          <section class="editor">
+        <section class="app-view" id="builderView" aria-labelledby="builderViewTitle">
+          <div class="client-focus requires-client" id="sheetClientFocus">
+            <div>
+              <p class="view-kicker">Crea programma mensile · <span id="sheetPeriodLabel">Periodo</span></p>
+              <h2 id="sheetClientName">Nessun cliente</h2>
+              <p id="sheetClientMeta">Seleziona prima un cliente dall'area Clienti.</p>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="button" data-go-view="sheetView">Usa scheda</button>
+              <button class="btn good" id="saveBtn"><span class="icon">#</span>Salva ora</button>
+            </div>
+          </div>
+
+          <section class="editor requires-client">
             <div class="panel" id="sheetEditorPanel">
               <div class="sheet-toolbar">
-                <div class="tabs" id="sheetTabs" aria-label="Schede">
-                  <span>Schede:</span>
+                <div class="history-controls">
+                  <div class="field">
+                    <label for="programHistory">Programma mensile aperto</label>
+                    <select id="programHistory" aria-label="Storico programmi del cliente"><option value="">Nuovo programma</option></select>
+                  </div>
                 </div>
+                <div class="tabs" id="sheetTabs" aria-label="Allenamenti"><span>Allenamenti:</span></div>
                 <div class="actions">
-                  <button class="btn" id="addSheetBtn"><span class="icon">+</span>Nuova scheda</button>
-                  <button class="btn danger" id="removeSheetBtn"><span class="icon">x</span>Elimina scheda</button>
-                  <button class="btn" id="addExerciseBtn"><span class="icon">+</span>Nuovo esercizio</button>
-                  <button class="btn primary" id="duplicateSheetBtn"><span class="icon">#</span>Duplica scheda</button>
-                  <button class="btn good" id="completeTemplateBtn"><span class="icon">#</span>Scheda completa</button>
+                  <button class="btn" id="addSheetBtn"><span class="icon">+</span>Nuovo allenamento</button>
+                  <button class="btn primary" id="duplicateSheetBtn"><span class="icon">#</span>Duplica allenamento</button>
+                  <button class="btn danger" id="removeSheetBtn"><span class="icon">x</span>Elimina allenamento</button>
+                  <button class="btn good" id="addExerciseBtn"><span class="icon">+</span>Aggiungi esercizio</button>
                 </div>
               </div>
 
               <div class="sheet-meta">
+                <div class="field">
+                  <label for="period">Mese di riferimento</label>
+                  <input id="period" type="month">
+                </div>
                 <div class="field">
                   <label for="goal">Obiettivo</label>
                   <input id="goal" value="Tonificazione e forza base">
                 </div>
                 <div class="field">
                   <label for="level">Livello</label>
-                  <select id="level">
-                    <option>Base</option>
-                    <option selected>Intermedio</option>
-                    <option>Avanzato</option>
-                  </select>
+                  <select id="level"><option>Base</option><option selected>Intermedio</option><option>Avanzato</option></select>
                 </div>
                 <div class="field">
                   <label for="frequency">Frequenza</label>
-                  <input id="frequency" value="2 sedute / settimana">
+                  <input id="frequency" value="2 allenamenti / settimana">
                 </div>
-                <div class="field">
+                <div class="field field-wide">
                   <label for="warmup">Riscaldamento</label>
                   <input id="warmup" value="8 min cyclette + mobilita">
                 </div>
               </div>
 
               <div class="session-manager">
-                <label>Sedute della scheda</label>
+                <label>Settimane di progressione</label>
                 <div class="session-row" id="sessionRow"></div>
                 <div class="actions">
-                  <button class="btn" id="addSessionBtn"><span class="icon">+</span>Aggiungi seduta</button>
-                  <button class="btn" id="removeSessionBtn"><span class="icon">-</span>Togli ultima</button>
+                  <button class="btn" id="addSessionBtn"><span class="icon">+</span>Aggiungi settimana</button>
+                  <button class="btn" id="removeSessionBtn"><span class="icon">-</span>Togli ultima settimana</button>
                 </div>
               </div>
-
               <div class="note-area">
                 <label for="generalNotes">Note interne studio</label>
-                <textarea id="generalNotes">Controllare tecnica sui multiarticolari. Se il cliente arriva affaticato, mantenere il carico della seduta precedente.</textarea>
+                <textarea id="generalNotes">Controllare tecnica sui multiarticolari. Se il cliente arriva affaticato, mantenere il carico dell'allenamento precedente.</textarea>
               </div>
             </div>
+
+            <div class="panel creation-preview" id="creationPreview" aria-live="polite"></div>
+
+            <div id="builderWeekNavigator"></div>
 
             <div class="section-head">
-              <h2 id="sheetTitle">Scheda A</h2>
-              <div class="actions">
-                <button class="btn" id="compactBtn"><span class="icon">=</span>Vista compatta</button>
-              </div>
+              <h1 id="builderViewTitle"><span id="sheetTitle">Allenamento A</span></h1>
+              <div class="actions"><button class="btn" id="compactBtn"><span class="icon">=</span>Vista compatta</button></div>
             </div>
-
-            <div class="panel inline-builder" id="exerciseLibraryEntry">
-              <div class="builder-head">
-                <div>
-                  <h2>Aggiungi esercizio a <span id="inlineSheetName">Scheda A</span></h2>
-                  <p>Qui scegli esercizio e progressione: quando premi Aggiungi lo vedi subito nella scheda sotto.</p>
-                </div>
-                <button class="btn primary" id="inlineAddExerciseBtn"><span class="icon">+</span>Aggiungi esercizio</button>
-              </div>
-              <div class="inline-builder-grid">
-                <div class="field">
-                  <label for="inlineLine">Linea di lavoro</label>
-                  <select id="inlineLine"></select>
-                </div>
-                <div class="field">
-                  <label for="inlineGroup">Gruppo</label>
-                  <select id="inlineGroup"></select>
-                </div>
-                <div class="field">
-                  <label for="inlineExerciseSearch">Esercizio</label>
-                  <input id="inlineExerciseSearch" placeholder="Cerca o scrivi esercizio">
-                </div>
-                <div class="field">
-                  <label for="inlineProgression">Progressione</label>
-                  <select id="inlineProgression"></select>
-                </div>
-                <div class="field">
-                  <label for="inlineRecovery">Recupero</label>
-                  <input id="inlineRecovery" value="75 sec">
-                </div>
-              </div>
-              <div class="field">
-                <label for="inlineNotes">Note trainer</label>
-                <textarea id="inlineNotes">Movimento controllato, tecnica pulita, evitare compensi.</textarea>
-              </div>
-              <div class="inline-results" id="inlineExerciseResults"></div>
-              <div class="small-cols" id="inlineProgressionPreview"></div>
-              <details class="archive-panel" id="exerciseArchivePanel">
-                <summary>Archivio esercizi studio</summary>
-                <div class="archive-grid">
-                  <div class="field field-wide">
-                    <label for="customExerciseName">Nome esercizio</label>
-                    <input id="customExerciseName" placeholder="Es. Pressa orizzontale">
-                  </div>
-                  <div class="field">
-                    <label for="customExerciseLine">Linea</label>
-                    <select id="customExerciseLine"></select>
-                  </div>
-                  <div class="field">
-                    <label for="customExerciseGroup">Gruppo</label>
-                    <select id="customExerciseGroup"></select>
-                  </div>
-                  <div class="field">
-                    <label for="customExerciseRecovery">Recupero default</label>
-                    <input id="customExerciseRecovery" value="75 sec">
-                  </div>
-                  <div class="field field-wide">
-                    <label for="customExerciseTags">Parole chiave</label>
-                    <input id="customExerciseTags" placeholder="macchina, principianti, ginocchio">
-                  </div>
-                  <div class="field field-wide">
-                    <label for="customExerciseNotes">Note default</label>
-                    <textarea id="customExerciseNotes">Movimento controllato, tecnica pulita, evitare compensi.</textarea>
-                  </div>
-                  <button class="btn good" id="saveCustomExerciseBtn" type="button"><span class="icon">+</span>Salva in archivio</button>
-                </div>
-              </details>
-            </div>
-
             <div class="exercise-stack" id="exerciseStack"></div>
           </section>
-        </div>
+        </section>
+
+        <section class="app-view" id="sheetView" aria-labelledby="sheetPreviewTitle">
+          <div class="client-focus requires-client">
+            <div>
+              <p class="view-kicker">Scheda operativa · <span id="previewPeriodLabel">Periodo</span></p>
+              <h2 id="previewClientName">Nessun cliente</h2>
+              <p id="previewClientMeta">Modifica esercizi e registra i carichi: ogni variazione viene salvata automaticamente.</p>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" data-go-view="builderView">Modifica struttura programma</button>
+            </div>
+          </div>
+          <section class="panel sheet-presentation requires-client">
+            <div class="presentation-head">
+              <div>
+                <p class="view-kicker">Uso durante l'allenamento</p>
+                <h1 id="sheetPreviewTitle">Allenamento A</h1>
+                <p id="previewProgramDetails"></p>
+              </div>
+              <div class="tabs" id="previewSheetTabs" aria-label="Allenamenti da usare"></div>
+            </div>
+            <div class="presentation-meta" id="previewMeta"></div>
+            <div id="operationalWeekNavigator"></div>
+            <div class="readonly-exercise-stack" id="sheetPreviewStack"></div>
+          </section>
+        </section>
+
+        <section class="app-view" id="libraryView" aria-labelledby="libraryTitle">
+          <div class="hero">
+            <div>
+              <p class="view-kicker">Archivio studio</p>
+              <h1 id="libraryTitle">Esercizi e progressioni</h1>
+              <p class="subtitle">Scegli l'esercizio e la progressione. L'inserimento avviene nella scheda attiva del cliente selezionato.</p>
+            </div>
+            <div class="actions"><button class="btn primary" type="button" data-go-view="builderView">Torna alla compilazione</button></div>
+          </div>
+          <div class="client-focus requires-client" id="libraryClientFocus">
+            <div>
+              <p class="view-kicker">Destinazione</p>
+              <h2 id="libraryClientName">Nessun cliente</h2>
+              <p>Aggiunta a <strong id="librarySheetName">Allenamento A</strong> · <span id="libraryPeriodLabel">Periodo</span></p>
+            </div>
+            <div class="actions"><button class="btn" type="button" data-go-view="builderView">Vedi compilazione</button></div>
+          </div>
+
+          <div class="panel inline-builder requires-client" id="exerciseLibraryEntry">
+            <div class="builder-head">
+              <div>
+                <h2>Aggiungi esercizio a <span id="inlineSheetName">Allenamento A</span></h2>
+                <p>Filtra l'archivio, scegli la progressione e inserisci l'esercizio nella scheda.</p>
+              </div>
+              <button class="btn primary" id="inlineAddExerciseBtn"><span class="icon">+</span>Aggiungi esercizio</button>
+            </div>
+            <div class="inline-builder-grid">
+              <div class="field"><label for="inlineLine">Linea di lavoro</label><select id="inlineLine"></select></div>
+              <div class="field"><label for="inlineGroup">Gruppo</label><select id="inlineGroup"></select></div>
+              <div class="field"><label for="inlineExerciseSearch">Esercizio</label><input id="inlineExerciseSearch" placeholder="Cerca o scrivi esercizio"></div>
+              <div class="field"><label for="inlineProgression">Progressione</label><select id="inlineProgression"></select></div>
+              <div class="field"><label for="inlineRecovery">Recupero</label><input id="inlineRecovery" value="75 sec"></div>
+            </div>
+            <div class="field"><label for="inlineNotes">Note trainer</label><textarea id="inlineNotes">Movimento controllato, tecnica pulita, evitare compensi.</textarea></div>
+            <div class="inline-results" id="inlineExerciseResults"></div>
+            <div class="small-cols" id="inlineProgressionPreview"></div>
+            <details class="archive-panel" id="exerciseArchivePanel">
+              <summary>Gestisci archivio esercizi studio</summary>
+              <div class="archive-grid">
+                <div class="field field-wide"><label for="customExerciseName">Nome esercizio</label><input id="customExerciseName" placeholder="Es. Pressa orizzontale"></div>
+                <div class="field"><label for="customExerciseLine">Linea</label><select id="customExerciseLine"></select></div>
+                <div class="field"><label for="customExerciseGroup">Gruppo</label><select id="customExerciseGroup"></select></div>
+                <div class="field"><label for="customExerciseRecovery">Recupero default</label><input id="customExerciseRecovery" value="75 sec"></div>
+                <div class="field field-wide"><label for="customExerciseTags">Parole chiave</label><input id="customExerciseTags" placeholder="macchina, principianti, ginocchio"></div>
+                <div class="field field-wide"><label for="customExerciseNotes">Note default</label><textarea id="customExerciseNotes">Movimento controllato, tecnica pulita, evitare compensi.</textarea></div>
+                <button class="btn good" id="saveCustomExerciseBtn" type="button"><span class="icon">+</span>Salva in archivio</button>
+              </div>
+            </details>
+          </div>
+        </section>
       </section>
     </main>
   </div>
@@ -854,7 +1338,7 @@
         <h2 id="modalTitle">Nuovo esercizio</h2>
         <button class="btn ghost" id="closeModalBtn" aria-label="Chiudi"><span class="icon">x</span></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body exercise-modal-body">
         <div class="form-grid">
           <div class="field">
             <label for="newName">Esercizio</label>
@@ -893,26 +1377,88 @@
 
         <div class="small-cols" id="presetPreview"></div>
 
-        <div class="field">
+        <div class="field" id="exerciseNotesField">
           <label for="newNotes">Note trainer</label>
           <textarea id="newNotes">Movimento controllato, tecnica pulita, evitare compensi.</textarea>
         </div>
       </div>
       <div class="modal-foot">
+        <div class="exercise-insert-summary" id="exerciseInsertSummary" aria-live="polite"></div>
         <button class="btn" id="cancelModalBtn">Annulla</button>
         <button class="btn primary" id="insertExerciseBtn"><span class="icon">+</span>Inserisci esercizio</button>
       </div>
     </div>
   </div>
 
-  <div class="toast" id="toast">Salvato</div>
+  <div class="modal-backdrop" id="newProgramModal" role="dialog" aria-modal="true" aria-labelledby="newProgramTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <p class="view-kicker">Configurazione iniziale</p>
+          <h2 id="newProgramTitle">Nuovo programma</h2>
+          <p class="subtitle" id="newProgramClient">Cliente selezionato</p>
+        </div>
+        <button class="btn ghost" id="closeNewProgramBtn" type="button" aria-label="Chiudi"><span class="icon">x</span></button>
+      </div>
+      <div class="modal-body">
+        <p class="subtitle">Definisci la struttura iniziale. Il programma verrà creato vuoto e gli esercizi saranno scelti successivamente dal PT.</p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="newProgramPeriod">Mese di riferimento</label>
+            <input id="newProgramPeriod" type="month">
+          </div>
+          <div class="field">
+            <label for="newProgramWorkouts">Numero di allenamenti</label>
+            <select id="newProgramWorkouts">
+              <option value="1" selected>1 · Allenamento A</option>
+              <option value="2">2 · Allenamenti A/B</option>
+              <option value="3">3 · Allenamenti A/B/C</option>
+              <option value="4">4 · Allenamenti A/B/C/D</option>
+              <option value="5">5 · Allenamenti A/B/C/D/E</option>
+              <option value="6">6 · Allenamenti A/B/C/D/E/F</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newProgramWeeks">Settimane di progressione</label>
+            <select id="newProgramWeeks">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option>
+              <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+              <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newProgramLevel">Livello</label>
+            <select id="newProgramLevel"><option>Base</option><option selected>Intermedio</option><option>Avanzato</option></select>
+          </div>
+          <div class="field">
+            <label for="newProgramGoal">Obiettivo</label>
+            <input id="newProgramGoal" placeholder="Es. forza, postura, ricomposizione">
+          </div>
+          <div class="field">
+            <label for="newProgramFrequency">Frequenza</label>
+            <input id="newProgramFrequency" value="2 allenamenti / settimana">
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label for="newProgramWarmup">Riscaldamento</label>
+            <input id="newProgramWarmup" placeholder="Es. 8 minuti cyclette + mobilità">
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="cancelNewProgramBtn" type="button">Annulla</button>
+        <button class="btn primary" id="createNewProgramBtn" type="button"><span class="icon">+</span>Crea programma</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">Salvato</div>
 
   <script src="../shared/pt-domain.js?v=1"></script>
   <script>
     const SUPABASE_URL = "https://cdywqyqqmjhgkzwrrixc.supabase.co";
     const SUPABASE_KEY = "sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24";
     const STORAGE_PREFIX = "neacea_pt_studio_sheet_v3";
-    const SCHEMA_VERSION = 5;
+    const SCHEMA_VERSION = 7;
     let STORAGE_KEY = `${STORAGE_PREFIX}_demo`;
     const appState = {
       operators: [],
@@ -922,6 +1468,13 @@
       selectedClientId: "",
       selectedProgramId: "",
       loginOperatorId: "",
+      clientFilter: "",
+      trainerFilter: "",
+      activeView: "clientsView",
+      accessToken: "",
+      manualPlan: [],
+      dataLoaded: false,
+      saveMode: "draft",
       loading: false
     };
     const CUSTOM_EXERCISES_KEY = "neacea_pt_custom_exercises_v1";
@@ -986,16 +1539,17 @@
     ].map(([name, group]) => enrichExercise({ name, group, source: "base" })), customExerciseLibrary);
 
     const presets = {
+      manual: { title: "Manuale", desc: "Scrivi liberamente serie, ripetizioni e carico per ogni settimana.", plan: [] },
       reps: { title: "Aumenta reps", desc: "Crescono le ripetizioni, carico stabile.", plan: ["3 x 8", "3 x 9", "3 x 10", "3 x 11", "3 x 12", "3 x 12"] },
       load: { title: "Aumenta carico", desc: "Stesse reps, piccolo aumento peso.", plan: ["3 x 10", "3 x 10 +1kg", "3 x 10 +2kg", "3 x 10 +3kg", "3 x 10 +4kg", "3 x 10 +5kg"] },
-      volume: { title: "Aumenta volume", desc: "Aggiunge serie nelle sedute finali.", plan: ["3 x 10", "3 x 10", "4 x 10", "4 x 10", "4 x 12", "5 x 10"] },
+      volume: { title: "Aumenta volume", desc: "Aggiunge serie nelle settimane finali.", plan: ["3 x 10", "3 x 10", "4 x 10", "4 x 10", "4 x 12", "5 x 10"] },
       technique: { title: "Tecnica", desc: "Volume stabile, focus controllo.", plan: ["3 x 8 lento", "3 x 8 lento", "3 x 10", "3 x 10", "4 x 8", "4 x 8"] },
       density: { title: "Densita", desc: "Stesso lavoro, recupero piu' breve.", plan: ["3 x 10 rec 90", "3 x 10 rec 80", "3 x 10 rec 75", "3 x 10 rec 70", "3 x 10 rec 60", "3 x 10 rec 60"] },
       circuit: { title: "Circuito", desc: "Giri progressivi per esercizi semplici.", plan: ["2 giri", "2 giri", "3 giri", "3 giri", "4 giri", "4 giri"] },
-      deload: { title: "Deload finale", desc: "Ultima seduta piu' leggera.", plan: ["4 x 10", "4 x 10", "4 x 12", "4 x 12", "5 x 10", "3 x 10 leggero"] },
-      maintain: { title: "Mantenimento", desc: "Stessa consegna ogni seduta.", plan: ["3 x 10", "3 x 10", "3 x 10", "3 x 10", "3 x 10", "3 x 10"] },
+      deload: { title: "Deload finale", desc: "Ultima settimana piu' leggera.", plan: ["4 x 10", "4 x 10", "4 x 12", "4 x 12", "5 x 10", "3 x 10 leggero"] },
+      maintain: { title: "Mantenimento", desc: "Stessa consegna ogni settimana.", plan: ["3 x 10", "3 x 10", "3 x 10", "3 x 10", "3 x 10", "3 x 10"] },
       rir: { title: "RIR controllato", desc: "Margine sempre piu' preciso.", plan: ["3 x 10 RIR 3", "3 x 10 RIR 3", "3 x 10 RIR 2", "3 x 10 RIR 2", "3 x 10 RIR 1", "3 x 10 RIR 1"] },
-      wave: { title: "Onda carico", desc: "Alterna sedute leggere e pesanti.", plan: ["3 x 12 leggero", "4 x 8 medio", "5 x 5 alto", "3 x 12 leggero", "4 x 8 medio", "5 x 5 alto"] },
+      wave: { title: "Onda carico", desc: "Alterna settimane leggere e pesanti.", plan: ["3 x 12 leggero", "4 x 8 medio", "5 x 5 alto", "3 x 12 leggero", "4 x 8 medio", "5 x 5 alto"] },
       pyramid: { title: "Piramidale", desc: "Serie con reps a scalare.", plan: ["12-10-8", "12-10-8", "10-8-6", "10-8-6", "8-6-6", "8-6-6"] },
       topSet: { title: "Top set", desc: "Una serie guida piu' backoff.", plan: ["1 top + 2 backoff", "1 top + 2 backoff", "1 top + 3 backoff", "1 top + 3 backoff", "1 top + 3 backoff", "test tecnico"] },
       tempo: { title: "Tempo", desc: "Controllo eccentrico progressivo.", plan: ["3 x 8 tempo 3010", "3 x 8 tempo 3010", "3 x 10 tempo 3010", "3 x 10 tempo 4010", "4 x 8 tempo 4010", "4 x 8 libero"] },
@@ -1097,7 +1651,7 @@
     function progressionKeysForContext(line, group) {
       const groupLine = inferLine(group);
       const keys = progressionByLine[line] || progressionByLine[groupLine] || progressionByLine.all;
-      return keys.filter(key => presets[key]);
+      return ["manual", ...keys.filter(key => key !== "manual" && presets[key])];
     }
 
     function findExerciseByName(name, group = "") {
@@ -1158,14 +1712,16 @@
       sheetOrder: ["A", "B", "C"],
       compact: false,
       selectedPreset: "reps",
+      activeWeekIndex: 0,
       meta: {
+        period: currentPeriodKey(),
         goal: "Tonificazione e forza base",
         level: "Intermedio",
-        frequency: "2 sedute / settimana",
+        frequency: "2 allenamenti / settimana",
         warmup: "8 min cyclette + mobilita",
-        generalNotes: "Controllare tecnica sui multiarticolari. Se il cliente arriva affaticato, mantenere il carico della seduta precedente."
+        generalNotes: "Controllare tecnica sui multiarticolari. Se il cliente arriva affaticato, mantenere il carico dell'allenamento precedente."
       },
-      sessions: ["Seduta 1", "Seduta 2", "Seduta 3", "Seduta 4", "Seduta 5", "Seduta 6"],
+      sessions: ["Settimana 1", "Settimana 2", "Settimana 3", "Settimana 4", "Settimana 5", "Settimana 6"],
       sheets: {
         A: [
           makeExercise("Squat multipower", "Gambe", "Parti leggero. Controlla profondita e ginocchia.", ["3 x 8", "3 x 8", "3 x 8", "4 x 8", "4 x 8", "4 x 8"], "75 sec", "Media 3/5"),
@@ -1185,10 +1741,17 @@
 
     let state = JSON.parse(JSON.stringify(defaultState));
     let lastAddedExerciseId = "";
+    let cloudSaveTimer = null;
+    let cloudSaveRunning = false;
+    let cloudSaveQueued = false;
+    let cloudSaveRetryDelay = 350;
+    const stateVersions = new WeakMap();
+    const pendingExerciseIds = new Set();
 
     const stack = document.getElementById("exerciseStack");
     const title = document.getElementById("sheetTitle");
     const modal = document.getElementById("exerciseModal");
+    const newProgramModal = document.getElementById("newProgramModal");
     const toast = document.getElementById("toast");
     const presetPreview = document.getElementById("presetPreview");
 
@@ -1220,6 +1783,29 @@
       return [item?.nome, item?.cognome].filter(Boolean).join(" ") || item?.email || "-";
     }
 
+    function currentPeriodKey(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function normalizePeriodKey(value, fallbackDate = "") {
+      const raw = String(value || "").trim();
+      if (/^\d{4}-\d{2}$/.test(raw)) return raw;
+      const parsed = fallbackDate ? new Date(fallbackDate) : new Date();
+      return Number.isNaN(parsed.getTime()) ? currentPeriodKey() : currentPeriodKey(parsed);
+    }
+
+    function periodLabel(value) {
+      const key = normalizePeriodKey(value);
+      const [year, month] = key.split("-").map(Number);
+      const label = new Date(year, month - 1, 1).toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+      return label.charAt(0).toUpperCase() + label.slice(1);
+    }
+
+    function nextPeriodKey(value) {
+      const [year, month] = normalizePeriodKey(value).split("-").map(Number);
+      return currentPeriodKey(new Date(year, month, 1));
+    }
+
     function initials(value) {
       return String(value || "PT").split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "PT";
     }
@@ -1237,6 +1823,11 @@
       return operatorRoles(op).some(role => ["pt", "personal_trainer", "personal trainer"].includes(String(role).toLowerCase()));
     }
 
+    function isAdministrator(op) {
+      if (String(op?.accessLevel || "").toLowerCase() === "owner") return true;
+      return operatorRoles(op).some(role => ["admin", "administrator", "amministratore", "owner", "titolare", "super_admin", "direzione"].includes(String(role).toLowerCase()));
+    }
+
     function operatorFromAny(value) {
       const id = NeaceaPtDomain.strictOperatorId(value, appState.operators);
       return id ? appState.operators.find(op => op.id === id) || null : null;
@@ -1250,12 +1841,48 @@
       return NeaceaPtDomain.responsibleTrainerId(client, appState.operators);
     }
 
-    function storageKeyFor(clientId = appState.selectedClientId) {
+    function storageKeyFor(clientId = appState.selectedClientId, programId = appState.selectedProgramId) {
       const ptId = appState.currentPt?.id || "anon";
-      return `${STORAGE_PREFIX}_${ptId}_${clientId || "no_client"}`;
+      const programKey = programId || "new";
+      return `${STORAGE_PREFIX}_${ptId}_${clientId || "no_client"}_${programKey}`;
+    }
+
+    function trainerForClient(client) {
+      return operatorFromAny(clientTrainerId(client));
+    }
+
+    function programTrainer(program) {
+      const data = program?.data || {};
+      const audit = Array.isArray(data.audit_log) ? data.audit_log : [];
+      return operatorFromAny(
+        data.trainer_id ||
+        data.created_by ||
+        data.save_meta?.saved_by ||
+        data.matrix?.trainer?.id ||
+        audit.at(-1)?.by
+      );
+    }
+
+    function canEditClient(client = selectedClient()) {
+      return !!(
+        appState.currentPt &&
+        client &&
+        String(clientTrainerId(client)) === String(appState.currentPt.id)
+      );
+    }
+
+    function isReadOnlySelection() {
+      return !!selectedClient() && isAdministrator(appState.currentPt) && !canEditClient();
+    }
+
+    function requireEditableClient() {
+      if (canEditClient()) return true;
+      showToast("Modalità Proprietario: le schede degli altri PT sono disponibili solo in lettura");
+      return false;
     }
 
     function myClients() {
+      if (isAdministrator(appState.currentPt)) return appState.clients;
       return appState.clients.filter(client => String(clientTrainerId(client)) === String(appState.currentPt?.id || ""));
     }
 
@@ -1265,19 +1892,26 @@
 
     function normalizeProgram(row) {
       const data = row.data || {};
+      const savedState = data.pt_studio_state || data.studio_state || {};
       return {
         id: data.id || row.id,
         rowId: row.id,
         client_id: row.cliente_id || data.client_id || data.cliente_id || "",
         data,
+        archived: data.archived === true,
+        period: normalizePeriodKey(data.period || savedState.meta?.period, row.updated_at || row.created_at),
         updated_at: row.updated_at || row.created_at || ""
       };
     }
 
-    function latestClientProgram(clientId) {
+    function programsForClient(clientId = appState.selectedClientId, includeArchived = false) {
       return appState.programs
-        .filter(program => program.client_id === clientId)
-        .sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")))[0] || null;
+        .filter(program => program.client_id === clientId && (includeArchived || !program.archived))
+        .sort((a, b) => String(b.period || "").localeCompare(String(a.period || "")) || String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
+    }
+
+    function latestClientProgram(clientId) {
+      return programsForClient(clientId)[0] || null;
     }
 
     function accessFunctionBase() {
@@ -1318,6 +1952,62 @@
       return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
     }
 
+    function normalizeSetEntry(entry = {}, fallbackReps = "10") {
+      return {
+        id: entry.id || id("set"),
+        reps: String(entry.reps ?? entry.repetitions ?? fallbackReps ?? "").trim(),
+        load: String(entry.load ?? entry.carico ?? "").trim(),
+        rir: String(entry.rir ?? entry.rpe ?? "").trim(),
+        note: String(entry.note ?? "").trim(),
+        previousLoad: String(entry.previousLoad ?? entry.previous_load ?? "").trim()
+      };
+    }
+
+    function setEntriesFromLegacy(planValue = "", feedbackValue = "") {
+      const planText = String(planValue || "").trim();
+      const match = planText.match(/^(\d+)\s*[x×]\s*([0-9]+(?:\s*[-/]\s*[0-9]+)?)(.*)$/i);
+      const manualSequence = !match && /^\d+(?:\s*\/\s*\d+)+$/.test(planText)
+        ? planText.split("/").map(value => value.trim())
+        : (!match && /^\d+(?:-\d+){2,}$/.test(planText) ? planText.split("-").map(value => value.trim()) : []);
+      if (manualSequence.length) return manualSequence.map(reps => normalizeSetEntry({ reps }));
+      const count = Math.max(1, Math.min(20, match ? Number(match[1]) || 1 : 1));
+      const reps = (match ? match[2] : planText).trim() || "10";
+      const rawNote = String(match?.[3] || "").trim();
+      const plannedRirMatch = rawNote.match(/RIR\s*([0-9.,]+)/i);
+      const note = rawNote.replace(/RIR\s*[0-9.,]+/i, "").trim();
+      const feedbackText = String(feedbackValue || "").trim();
+      const feedbackParts = feedbackText.includes(" / ") ? feedbackText.split(" / ").map(value => value.trim()) : [];
+      return Array.from({ length: count }, (_, index) => {
+        const rawLoad = feedbackParts[index] || (feedbackParts.length ? "" : feedbackText);
+        const rirMatch = rawLoad.match(/(?:\s*·\s*|\s+)RIR\s*([0-9.,]+)/i);
+        const load = rawLoad.replace(/(?:\s*·\s*|\s+)RIR\s*[0-9.,]+/i, "").trim();
+        return normalizeSetEntry({ reps, load, rir: rirMatch?.[1] || plannedRirMatch?.[1] || "", note });
+      });
+    }
+
+    function ensureExerciseWeekSets(exercise, weekCount) {
+      const existing = Array.isArray(exercise.weekSets) ? exercise.weekSets : [];
+      exercise.weekSets = Array.from({ length: weekCount }, (_, weekIndex) => {
+        const week = existing[weekIndex];
+        if (Array.isArray(week) && week.length) return week.map(entry => normalizeSetEntry(entry));
+        return setEntriesFromLegacy(exercise.plan?.[weekIndex] || "", exercise.feedback?.[weekIndex] || "");
+      });
+      return exercise.weekSets;
+    }
+
+    function syncExerciseWeekSummary(exercise, weekIndex) {
+      const sets = exercise.weekSets?.[weekIndex] || [];
+      const reps = sets.map(set => String(set.reps || "").trim()).filter(Boolean);
+      const sameReps = reps.length && reps.every(value => value === reps[0]);
+      exercise.plan[weekIndex] = sameReps ? `${sets.length} x ${reps[0]}` : reps.join(" / ");
+      exercise.feedback[weekIndex] = sets.map(set => {
+        const load = String(set.load || "").trim();
+        const rir = String(set.rir || "").trim();
+        const effort = rir ? (/^(RIR|RPE)/i.test(rir) ? rir : `RIR ${rir}`) : "";
+        return [load, effort].filter(Boolean).join(" · ");
+      }).filter(Boolean).join(" / ");
+    }
+
     function normalizeState(candidate) {
       const base = clone(defaultState);
       if (!candidate || typeof candidate !== "object") return base;
@@ -1328,11 +2018,13 @@
         sessions: Array.isArray(candidate.sessions) && candidate.sessions.length ? [...candidate.sessions] : base.sessions,
         sheets: candidate.sheets && typeof candidate.sheets === "object" ? clone(candidate.sheets) : base.sheets,
       };
+      next.sessions = next.sessions.map((_, index) => `Settimana ${index + 1}`);
       next.sheetOrder = Array.isArray(candidate.sheetOrder) && candidate.sheetOrder.length
         ? [...candidate.sheetOrder]
         : Object.keys(next.sheets);
       next.currentSheet = next.sheetOrder.includes(candidate.currentSheet) ? candidate.currentSheet : next.sheetOrder[0] || "A";
       next.selectedPreset = presets[candidate.selectedPreset] ? candidate.selectedPreset : "reps";
+      next.meta.period = normalizePeriodKey(next.meta.period, candidate.lastSavedAt || "");
       next.sheetOrder.forEach(sheetKey => {
         next.sheets[sheetKey] = Array.isArray(next.sheets[sheetKey]) ? next.sheets[sheetKey] : [];
         next.sheets[sheetKey].forEach(exercise => {
@@ -1344,10 +2036,15 @@
           exercise.progressionName = exercise.progressionName || exercise.progression_name || "";
           exercise.progressionKey = exercise.progressionKey || exercise.progression_key || "";
           exercise.feedback = Array.isArray(exercise.feedback) ? exercise.feedback : exercise.plan.map(() => "");
+          exercise.previousFeedback = Array.isArray(exercise.previousFeedback) ? exercise.previousFeedback : [];
+          exercise.previousPlan = Array.isArray(exercise.previousPlan) ? exercise.previousPlan : [];
+          exercise.previousPeriod = exercise.previousPeriod || "";
           exercise.recovery = exercise.recovery || exercise.rest || "75 sec";
           exercise.effort = exercise.effort || "Media 3/5";
           exercise.recoveryNote = exercise.recoveryNote || "";
           exercise.effortNote = exercise.effortNote || "";
+          ensureExerciseWeekSets(exercise, next.sessions.length);
+          next.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
         });
       });
       return next;
@@ -1365,8 +2062,9 @@
       if (!sessions.length) return null;
       const next = clone(defaultState);
       next.meta.goal = data.goal || data.obiettivo || next.meta.goal;
+      next.meta.period = normalizePeriodKey(data.period, data.updated_at || "");
       next.meta.level = data.level || data.livello || next.meta.level;
-      next.meta.frequency = data.frequency ? `${data.frequency} sedute / settimana` : next.meta.frequency;
+      next.meta.frequency = data.frequency ? `${data.frequency} allenamenti / settimana` : next.meta.frequency;
       next.meta.warmup = sessions[0]?.warmup || next.meta.warmup;
       next.meta.generalNotes = data.notes || data.note || next.meta.generalNotes;
       next.sheetOrder = [];
@@ -1394,14 +2092,9 @@
       return normalizeState(next);
     }
 
-    async function loadData() {
+    async function loadOperators() {
       const operators = await sb("operator_effective_roles", "?select=*&active=eq.true&order=cognome.asc,nome.asc")
         .catch(() => sb("operators", "?select=*&active=eq.true&order=cognome.asc,nome.asc").catch(() => []));
-      const [clients, acquisitions, programs] = await Promise.all([
-        sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
-        sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
-        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
-      ]);
       appState.operators = (operators || []).map(op => ({
         id: op.operator_id || op.id,
         nome: op.nome,
@@ -1410,6 +2103,15 @@
         roles: operatorRoles(op),
         active: op.active !== false
       })).filter(isPersonalTrainer);
+    }
+
+    async function loadPortalData() {
+      if (appState.dataLoaded) return;
+      const [clients, acquisitions, programs] = await Promise.all([
+        sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
+        sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
+        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
+      ]);
       appState.clients = (clients || []).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -1419,13 +2121,14 @@
         return {
           ...client,
           client_id: client.id,
-          trainer_id: operatorIdFromAny(client.pt_assegnato),
+          trainer_id: clientTrainerId(client),
           obiettivo: client.obiettivo || acq?.obiettivo || "",
           note_operative: acq?.impressioni || client.notes || ""
         };
       });
       appState.programs = (programs || []).map(normalizeProgram);
       await loadExerciseArchiveFromSupabase();
+      appState.dataLoaded = true;
     }
 
     async function verifyAccess(email, code, operatorId = "") {
@@ -1441,6 +2144,37 @@
         throw new Error(result.error || result.raw || "Codice accesso non valido.");
       }
       return result;
+    }
+
+    async function verifyAccessToken(token) {
+      const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify_token", token })
+      });
+      const text = await response.text();
+      let result = {};
+      try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error || result.raw || "Sessione PT non valida o scaduta.");
+      }
+      return result;
+    }
+
+    async function activatePtSession(pt, token) {
+      appState.currentPt = pt;
+      appState.accessToken = token || "";
+      document.getElementById("loginButton").textContent = "Carico la tua area...";
+      await loadPortalData();
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("appShell").classList.remove("hidden");
+      document.getElementById("currentPtName").textContent = fullName(pt);
+      document.getElementById("avatar").textContent = initials(fullName(pt));
+      renderAccessScope();
+      renderClientList();
+      const firstClient = myClients()[0];
+      selectClient(firstClient?.client_id || "");
+      showView("clientsView");
     }
 
     async function sendAccessCode() {
@@ -1499,20 +2233,15 @@
       }
       try {
         document.getElementById("loginButton").disabled = true;
-        document.getElementById("loginButton").textContent = "Verifica...";
-        await verifyAccess(email, code, pt.id);
-        appState.currentPt = pt;
-        document.getElementById("loginScreen").classList.add("hidden");
-        document.getElementById("appShell").classList.remove("hidden");
-        document.getElementById("currentPtName").textContent = fullName(pt);
-        document.getElementById("avatar").textContent = initials(fullName(pt));
-        renderClientList();
-        const firstClient = myClients()[0];
-        selectClient(firstClient?.client_id || "");
+        document.getElementById("sendCodeButton").disabled = true;
+        document.getElementById("loginButton").textContent = "Verifica accesso...";
+        const access = await verifyAccess(email, code, pt.id);
+        await activatePtSession(pt, access.token);
       } catch (error) {
         setLoginMessage(error.message || "Accesso non riuscito.");
       } finally {
         document.getElementById("loginButton").disabled = false;
+        document.getElementById("sendCodeButton").disabled = false;
         document.getElementById("loginButton").textContent = "Entra nel portale";
       }
     }
@@ -1530,37 +2259,129 @@
         recovery,
         effort,
         feedback: plan.map(() => ""),
+        weekSets: plan.map(value => setEntriesFromLegacy(value, "")),
+        previousFeedback: [],
+        previousPlan: [],
+        previousPeriod: "",
         recoveryNote: "",
         effortNote: ""
       };
     }
 
-    function loadState() {
+    function readLocalState(key = STORAGE_KEY) {
       try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        const saved = JSON.parse(localStorage.getItem(key));
         if (saved && saved.sheets && saved.sessions) {
           saved.sheetOrder = saved.sheetOrder || Object.keys(saved.sheets);
           saved.currentSheet = saved.currentSheet || saved.sheetOrder[0] || "A";
           return normalizeState(saved);
         }
       } catch (error) {}
-      return normalizeState(defaultState);
+      return null;
+    }
+
+    function loadState() {
+      return readLocalState() || normalizeState(defaultState);
+    }
+
+    function timestampOf(value) {
+      const time = new Date(value || 0).getTime();
+      return Number.isNaN(time) ? 0 : time;
+    }
+
+    function localIsNewer(localState, program) {
+      if (!localState) return false;
+      if (!program) return true;
+      return localState.localDirty === true || timestampOf(localState.lastSavedAt) > timestampOf(program.updated_at);
     }
 
     function writeLocalState(savedAt = new Date().toISOString()) {
+      if (!canEditClient()) return false;
       state.lastSavedAt = savedAt;
+      state.draftProgramId = appState.selectedProgramId || "";
+      state.draftClientId = appState.selectedClientId || "";
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
     }
 
     function saveState(silent = true) {
+      if (!canEditClient()) return false;
+      state.localDirty = true;
       writeLocalState();
       renderSaveState("local");
       if (!silent) showToast("Bozza locale salvata");
+      return true;
     }
 
-    function autosave() {
+    function stateVersion(targetState = state) {
+      return stateVersions.get(targetState) || 0;
+    }
+
+    function markExerciseSaveState(exerciseIds, mode, label) {
+      const ids = new Set((Array.isArray(exerciseIds) ? exerciseIds : [exerciseIds]).filter(Boolean).map(String));
+      if (!ids.size) return;
+      document.querySelectorAll("[data-exercise-save]").forEach(element => {
+        if (!ids.has(String(element.dataset.exerciseSave || ""))) return;
+        element.classList.remove("saving", "saved", "error");
+        if (mode) element.classList.add(mode);
+        element.textContent = label;
+      });
+    }
+
+    function queueCloudSave(exerciseId = "") {
+      if (!canEditClient()) return;
+      if (exerciseId) {
+        pendingExerciseIds.add(String(exerciseId));
+        markExerciseSaveState(exerciseId, "saving", "Salvataggio...");
+      }
+      if (!appState.currentPt || !selectedClient()) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(flushCloudSave, 650);
+    }
+
+    async function flushCloudSave() {
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = null;
+      if (!canEditClient()) return false;
+      if (cloudSaveRunning) {
+        cloudSaveQueued = true;
+        return false;
+      }
+      cloudSaveRunning = true;
+      cloudSaveQueued = false;
+      const targetState = state;
+      const targetVersion = stateVersion(targetState);
+      const exerciseIds = [...pendingExerciseIds];
+      markExerciseSaveState(exerciseIds, "saving", "Salvataggio...");
+      try {
+        const saved = await saveProgramToSupabase(null, { silent: true, saveVersion: targetVersion });
+        if (saved && stateVersion(targetState) === targetVersion) {
+          cloudSaveRetryDelay = 350;
+          exerciseIds.forEach(exerciseId => pendingExerciseIds.delete(exerciseId));
+          markExerciseSaveState(exerciseIds, "saved", "Salvato");
+        } else if (!saved) {
+          cloudSaveQueued = true;
+          cloudSaveRetryDelay = 5000;
+          markExerciseSaveState(exerciseIds, "error", "Locale · riprovo");
+        }
+        return saved;
+      } finally {
+        cloudSaveRunning = false;
+        if (cloudSaveQueued || stateVersion(targetState) > targetVersion) {
+          clearTimeout(cloudSaveTimer);
+          cloudSaveTimer = setTimeout(flushCloudSave, cloudSaveRetryDelay);
+        }
+      }
+    }
+
+    function autosave(exerciseId = "") {
+      if (!canEditClient()) return false;
+      state.localDirty = true;
+      stateVersions.set(state, stateVersion(state) + 1);
       writeLocalState();
       renderSaveState("autosave");
+      queueCloudSave(exerciseId);
+      return true;
     }
 
     function stateFromProgram(program) {
@@ -1573,63 +2394,243 @@
       return stateFromLegacyProgram(program?.data);
     }
 
-    function clientDefaultState(client) {
-      const next = normalizeState(defaultState);
-      next.meta.goal = client?.obiettivo || next.meta.goal;
+    function previousExerciseHistory(name, group = "") {
+      const normalizedName = String(name || "").trim().toLowerCase();
+      const normalizedGroup = String(group || "").trim().toLowerCase();
+      for (const program of programsForClient()) {
+        if (program.id === appState.selectedProgramId) continue;
+        const previousState = stateFromProgram(program);
+        if (!previousState) continue;
+        const exercises = previousState.sheetOrder.flatMap(key => previousState.sheets[key] || []);
+        const match = exercises.find(exercise =>
+          String(exercise.name || "").trim().toLowerCase() === normalizedName &&
+          (!normalizedGroup || String(exercise.group || "").trim().toLowerCase() === normalizedGroup)
+        );
+        if (!match) continue;
+        return {
+          feedback: previousState.sessions.map((_, index) => match.feedback?.[index] || ""),
+          plan: previousState.sessions.map((_, index) => match.plan?.[index] || ""),
+          weekSets: clone(match.weekSets || []),
+          period: program.period || previousState.meta?.period || ""
+        };
+      }
+      return null;
+    }
+
+    function attachPreviousHistory(exercise) {
+      if (exercise.previousFeedback?.some(Boolean) || exercise.previousPlan?.some(Boolean)) return exercise;
+      const history = previousExerciseHistory(exercise.name, exercise.group);
+      if (!history) return exercise;
+      exercise.previousFeedback = [...history.feedback];
+      exercise.previousPlan = [...history.plan];
+      exercise.previousPeriod = history.period;
+      ensureExerciseWeekSets(exercise, state.sessions.length);
+      exercise.weekSets.forEach((sets, weekIndex) => {
+        const previousSets = history.weekSets?.[weekIndex] || [];
+        const previousParts = String(history.feedback?.[weekIndex] || "").split(" / ");
+        sets.forEach((set, setIndex) => {
+          set.previousLoad = previousSets?.[setIndex]?.load || previousParts[setIndex] || previousParts[0] || "";
+        });
+      });
+      return exercise;
+    }
+
+    function emptyClientState(client) {
+      const next = normalizeState({
+        currentSheet: "A",
+        sheetOrder: ["A"],
+        compact: false,
+        selectedPreset: "reps",
+        meta: {
+          period: currentPeriodKey(),
+          goal: client?.obiettivo || "",
+          level: "Intermedio",
+          frequency: "2 allenamenti / settimana",
+          warmup: "",
+          generalNotes: ""
+        },
+        sessions: ["Settimana 1", "Settimana 2", "Settimana 3", "Settimana 4"],
+        sheets: { A: [] },
+        lastSavedAt: null
+      });
       if (client?.note_operative) {
-        next.meta.generalNotes = `${next.meta.generalNotes}\n\nNote cliente: ${client.note_operative}`;
+        next.meta.generalNotes = `Note cliente: ${client.note_operative}`;
       }
       next.lastSavedAt = null;
       return next;
     }
 
+    function clientDefaultState(client) {
+      return emptyClientState(client);
+    }
+
     function renderClientList() {
-      const clients = myClients();
+      const term = appState.clientFilter.trim().toLowerCase();
+      const assignedClients = myClients();
+      const clients = assignedClients.filter(client => {
+        const trainer = trainerForClient(client);
+        const matchesTrainer = !appState.trainerFilter || String(clientTrainerId(client)) === String(appState.trainerFilter);
+        const matchesTerm = !term || [
+          fullName(client),
+          client.email,
+          client.obiettivo,
+          fullName(trainer)
+        ].some(value => String(value || "").toLowerCase().includes(term));
+        return matchesTrainer && matchesTerm;
+      });
       document.getElementById("clientList").innerHTML = clients.length ? clients.map(client => `
-        <button class="client-card ${client.client_id === appState.selectedClientId ? "active" : ""}" data-client-id="${escapeAttr(client.client_id)}">
+        <button class="client-card ${client.client_id === appState.selectedClientId ? "active" : ""}" data-client-id="${escapeAttr(client.client_id)}" aria-pressed="${client.client_id === appState.selectedClientId}">
           <strong>${escapeHtml(fullName(client))}</strong>
           <span>${escapeHtml(client.obiettivo || client.email || "Cliente PT")}</span>
+          ${isAdministrator(appState.currentPt) ? `<span>PT: ${escapeHtml(fullName(trainerForClient(client)) || "Non assegnato")}</span>` : ""}
+          <span>${programsForClient(client.client_id).length} programmi salvati${client.client_id === appState.selectedClientId ? " · Selezionato" : ""}</span>
         </button>
-      `).join("") : `<div class="client-card"><strong>Nessun cliente</strong><span>Nessun cliente assegnato a questo PT.</span></div>`;
+      `).join("") : `<div class="client-card"><strong>${assignedClients.length ? "Nessun risultato" : "Nessun cliente"}</strong><span>${assignedClients.length ? "Prova con un altro nome, obiettivo o PT." : "Nessun cliente assegnato a questo PT."}</span></div>`;
       document.querySelectorAll("[data-client-id]").forEach(button => {
-        button.addEventListener("click", () => selectClient(button.dataset.clientId));
+        button.addEventListener("click", () => {
+          selectClient(button.dataset.clientId);
+          showView(isReadOnlySelection() ? "programsView" : "builderView");
+        });
       });
+    }
+
+    function renderAccessScope() {
+      const owner = isAdministrator(appState.currentPt);
+      const trainerFilterField = document.getElementById("trainerFilterField");
+      const trainerFilter = document.getElementById("trainerFilter");
+      trainerFilterField?.classList.toggle("hidden", !owner);
+      if (trainerFilter && owner) {
+        const selectedValue = appState.trainerFilter;
+        trainerFilter.innerHTML = `
+          <option value="">Tutti i Personal Trainer</option>
+          ${appState.operators.map(operator => `<option value="${escapeAttr(operator.id)}">${escapeHtml(fullName(operator))}</option>`).join("")}
+        `;
+        trainerFilter.value = selectedValue;
+      }
+      document.getElementById("currentAccessRole").textContent = owner ? "Proprietario" : "PT";
+      document.getElementById("clientsKicker").textContent = owner ? "Controllo attività Personal Trainer" : "Anagrafica assegnata";
+      document.getElementById("clientsSubtitle").textContent = owner
+        ? "Seleziona un cliente per consultare, senza modificarle, le schede preparate dal Personal Trainer assegnato."
+        : "Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.";
+      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti";
     }
 
     function setEditorAvailability() {
       const hasClient = !!selectedClient();
       const hasPt = !!appState.currentPt;
-      ["saveBtn", "resetBtn", "calendarBtn", "addSheetBtn", "removeSheetBtn", "addExerciseBtn", "duplicateSheetBtn", "completeTemplateBtn", "addSessionBtn", "removeSessionBtn", "compactBtn", "inlineAddExerciseBtn"].forEach(id => {
+      const canEdit = canEditClient();
+      const readOnly = isReadOnlySelection();
+      ["openSheetBtn", "openSelectedSheetBtn", "openSelectedProgramsBtn", "compactBtn"].forEach(id => {
         const button = document.getElementById(id);
         if (button) button.disabled = !hasClient;
       });
+      ["saveBtn", "resetBtn", "newMonthBtn", "addSheetBtn", "removeSheetBtn", "addExerciseBtn", "duplicateSheetBtn", "addSessionBtn", "removeSessionBtn", "inlineAddExerciseBtn", "createNewProgramBtn"].forEach(id => {
+        const button = document.getElementById(id);
+        if (button) button.disabled = !canEdit;
+      });
       const calendarButton = document.getElementById("calendarBtn");
       if (calendarButton) calendarButton.disabled = !hasPt;
-      ["inlineLine", "inlineExerciseSearch", "inlineGroup", "inlineProgression", "inlineRecovery", "inlineNotes"].forEach(id => {
+      const historySelect = document.getElementById("programHistory");
+      if (historySelect) historySelect.disabled = !hasClient;
+      ["period", "goal", "level", "frequency", "warmup", "generalNotes", "inlineLine", "inlineExerciseSearch", "inlineGroup", "inlineProgression", "inlineRecovery", "inlineNotes"].forEach(id => {
         const field = document.getElementById(id);
-        if (field) field.disabled = !hasClient;
+        if (field) field.disabled = !canEdit;
       });
       ["saveCustomExerciseBtn", "customExerciseName", "customExerciseLine", "customExerciseGroup", "customExerciseRecovery", "customExerciseTags", "customExerciseNotes"].forEach(id => {
         const field = document.getElementById(id);
         if (field) field.disabled = !hasPt;
       });
-      const editor = document.querySelector(".editor");
-      if (editor) editor.style.opacity = hasClient ? "1" : ".55";
+      document.querySelectorAll("#exerciseStack input, #exerciseStack select, #exerciseStack textarea, #exerciseStack button, #sheetPreviewStack input, #sheetPreviewStack select, #sheetPreviewStack textarea, #sheetPreviewStack button, #sessionRow button").forEach(field => {
+        field.disabled = !canEdit;
+      });
+      const saveButton = document.getElementById("saveBtn");
+      if (saveButton) saveButton.classList.toggle("hidden", readOnly);
+      const programActions = document.getElementById("programActionsPanel");
+      if (programActions) programActions.classList.toggle("hidden", readOnly);
+      const openSheetButton = document.getElementById("openSheetBtn");
+      if (openSheetButton) openSheetButton.textContent = readOnly ? "Visualizza struttura" : "Crea o modifica programma";
+      document.querySelectorAll('.nav-btn[data-view="builderView"]').forEach(button => {
+        button.textContent = readOnly ? (button.closest(".mobile-nav") ? "Visualizza" : "Visualizza struttura") : (button.closest(".mobile-nav") ? "Crea" : "Crea programma");
+      });
+      const banner = document.getElementById("readonlyBanner");
+      if (banner) {
+        banner.classList.toggle("hidden", !readOnly);
+        if (readOnly) {
+          banner.innerHTML = `<strong>Modalità Proprietario · sola lettura.</strong> Stai consultando la scheda gestita da ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Nessun dato può essere modificato o salvato dal tuo accesso.`;
+        } else {
+          banner.textContent = "";
+        }
+      }
+      document.querySelectorAll(".requires-client").forEach(element => {
+        element.style.opacity = hasClient ? "1" : ".5";
+      });
     }
 
     function selectClient(clientId) {
+      if (state.localDirty && canEditClient()) flushCloudSave();
       appState.selectedClientId = clientId || "";
-      STORAGE_KEY = storageKeyFor(clientId);
       const client = selectedClient();
       const program = latestClientProgram(clientId);
-      appState.selectedProgramId = program?.id || "";
       const savedFromProgram = stateFromProgram(program);
-      state = savedFromProgram || loadState();
-      if (!savedFromProgram && !localStorage.getItem(STORAGE_KEY)) {
-        state = clientDefaultState(client);
-        saveState(true);
+      const newDraftKey = storageKeyFor(clientId, "");
+      const programKey = storageKeyFor(clientId, program?.id || "");
+      if (!canEditClient(client)) {
+        appState.selectedProgramId = program?.id || "";
+        STORAGE_KEY = programKey;
+        state = savedFromProgram || clientDefaultState(client);
+        state.localDirty = false;
+        appState.saveMode = program ? "readonly" : "readonly-empty";
+      } else {
+        const newDraft = readLocalState(newDraftKey);
+        const programDraft = readLocalState(programKey) || readLocalState(legacyStorageKeyFor(clientId));
+        if (newDraft && localIsNewer(newDraft, program)) {
+          appState.selectedProgramId = "";
+          STORAGE_KEY = newDraftKey;
+          state = newDraft;
+          appState.saveMode = "local";
+        } else if (programDraft && localIsNewer(programDraft, program)) {
+          appState.selectedProgramId = program?.id || programDraft.draftProgramId || "";
+          STORAGE_KEY = storageKeyFor(clientId, appState.selectedProgramId);
+          state = programDraft;
+          appState.saveMode = "local";
+        } else if (savedFromProgram) {
+          appState.selectedProgramId = program.id;
+          STORAGE_KEY = programKey;
+          state = savedFromProgram;
+          appState.saveMode = "supabase";
+        } else {
+          appState.selectedProgramId = "";
+          STORAGE_KEY = newDraftKey;
+          state = newDraft || clientDefaultState(client);
+          appState.saveMode = newDraft ? "local" : "draft";
+        }
       }
       renderClientList();
+      renderAll();
+    }
+
+    function selectProgram(programId) {
+      if (state.localDirty && canEditClient()) flushCloudSave();
+      const program = appState.programs.find(item => item.id === programId && item.client_id === appState.selectedClientId) || null;
+      appState.selectedProgramId = program?.id || "";
+      STORAGE_KEY = storageKeyFor(appState.selectedClientId, appState.selectedProgramId);
+      if (!canEditClient()) {
+        state = stateFromProgram(program) || clientDefaultState(selectedClient());
+        state.localDirty = false;
+        appState.saveMode = program ? "readonly" : "readonly-empty";
+      } else {
+        const localDraft = readLocalState(STORAGE_KEY);
+        if (localDraft && localIsNewer(localDraft, program)) {
+          state = localDraft;
+          appState.saveMode = "local";
+        } else if (program) {
+          state = stateFromProgram(program) || clientDefaultState(selectedClient());
+          appState.saveMode = "supabase";
+        } else {
+          state = localDraft || clientDefaultState(selectedClient());
+          appState.saveMode = localDraft ? "local" : "draft";
+        }
+      }
       renderAll();
     }
 
@@ -1637,11 +2638,17 @@
       while (exercise.plan.length < state.sessions.length) {
         exercise.plan.push(exercise.plan.at(-1) || "3 x 10");
         exercise.feedback.push("");
+        exercise.previousFeedback.push("");
+        exercise.previousPlan.push("");
       }
       while (exercise.plan.length > state.sessions.length) {
         exercise.plan.pop();
         exercise.feedback.pop();
+        exercise.previousFeedback.pop();
+        exercise.previousPlan.pop();
       }
+      ensureExerciseWeekSets(exercise, state.sessions.length);
+      state.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
     }
 
     function fitAllExercises() {
@@ -1655,17 +2662,23 @@
       }
       fitAllExercises();
       renderMeta();
+      renderProgramHistory();
+      renderProgramManager();
       renderTabs();
       renderSessions();
       renderLibrary();
       renderInlineBuilder();
       renderExercises();
+      renderCreationPreview();
+      renderSheetPreview();
       renderMetrics();
+      renderClientFocus();
       renderSaveState();
       setEditorAvailability();
     }
 
     function renderMeta() {
+      document.getElementById("period").value = state.meta.period || currentPeriodKey();
       document.getElementById("goal").value = state.meta.goal;
       document.getElementById("level").value = state.meta.level;
       document.getElementById("frequency").value = state.meta.frequency;
@@ -1673,10 +2686,151 @@
       document.getElementById("generalNotes").value = state.meta.generalNotes;
     }
 
+    function renderProgramHistory() {
+      const select = document.getElementById("programHistory");
+      const programs = programsForClient();
+      const draftLabel = `Nuovo programma · ${periodLabel(state.meta.period || currentPeriodKey())}`;
+      select.innerHTML = `
+        ${appState.selectedProgramId ? "" : `<option value="">${escapeHtml(draftLabel)}</option>`}
+        ${programs.map(program => {
+          const updated = program.updated_at
+            ? new Date(program.updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+            : "";
+          return `<option value="${escapeAttr(program.id)}">${escapeHtml(periodLabel(program.period))}${updated ? ` · salvata ${escapeHtml(updated)}` : ""}</option>`;
+        }).join("")}
+      `;
+      select.value = appState.selectedProgramId || "";
+    }
+
+    function stateExerciseCount(value) {
+      return Object.values(value?.sheets || {}).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0);
+    }
+
+    function renderProgramManager() {
+      const container = document.getElementById("programCards");
+      if (!container) return;
+      if (!selectedClient()) {
+        container.innerHTML = `<div class="empty-focus"><strong>Seleziona un cliente</strong>Apri l'area Clienti per vedere e gestire il suo archivio schede.</div>`;
+        return;
+      }
+      const editable = canEditClient();
+      const assignedTrainer = trainerForClient(selectedClient());
+      const draftCard = editable && !appState.selectedProgramId ? `
+        <article class="program-card active">
+          <div>
+            <span class="program-state local">Sincronizzazione automatica in corso</span>
+            <h3>${escapeHtml(periodLabel(state.meta.period))}</h3>
+            <p>${state.sheetOrder.length} allenamenti · ${stateExerciseCount(state)} esercizi · ${state.sessions.length} settimane</p>
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="button" data-open-current-draft="1">Apri la bozza</button>
+          </div>
+        </article>` : "";
+      const savedCards = programsForClient().map(program => {
+        const isActive = program.id === appState.selectedProgramId;
+        const programState = isActive ? state : stateFromProgram(program);
+        const updated = program.updated_at
+          ? new Date(program.updated_at).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          : "Data non disponibile";
+        const sheetCount = programState?.sheetOrder?.length || 0;
+        const exercises = stateExerciseCount(programState);
+        const hasLocalChanges = isActive && state.localDirty;
+        const lastAudit = Array.isArray(program.data?.audit_log) ? program.data.audit_log.at(-1) : null;
+        const trainer = programTrainer(program) || assignedTrainer;
+        return `
+          <article class="program-card ${isActive ? "active" : ""}">
+            <div>
+              <span class="program-state ${hasLocalChanges ? "local" : ""}">${editable ? (hasLocalChanges ? "Sincronizzazione..." : "Salvato automaticamente") : "Sola lettura"}</span>
+              <h3>${escapeHtml(periodLabel(isActive ? programState?.meta?.period : program.period))}</h3>
+              <p>PT: ${escapeHtml(fullName(trainer) || "Non identificato")} · ${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}${lastAudit ? ` · ultimo intervento ${escapeHtml(lastAudit.email || fullName(operatorFromAny(lastAudit.by)) || "PT")}` : ""}</p>
+            </div>
+            <div class="actions">
+              ${editable ? `
+                <button class="btn primary" type="button" data-open-program="${escapeAttr(program.id)}">Crea / modifica</button>
+                <button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Usa scheda</button>
+                <button class="btn" type="button" data-duplicate-program="${escapeAttr(program.id)}">Duplica</button>
+                <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Archivia</button>
+              ` : `
+                <button class="btn primary" type="button" data-preview-program="${escapeAttr(program.id)}">Visualizza scheda</button>
+                <button class="btn" type="button" data-open-program="${escapeAttr(program.id)}">Vedi struttura</button>
+              `}
+            </div>
+          </article>`;
+      }).join("");
+      const archivedCards = programsForClient(appState.selectedClientId, true)
+        .filter(program => program.archived)
+        .map(program => `
+          <article class="program-card">
+            <div>
+              <span class="program-state">Archiviata · recuperabile</span>
+              <h3>${escapeHtml(periodLabel(program.period))}</h3>
+              <p>Archiviata ${escapeHtml(new Date(program.data.archived_at || program.updated_at || Date.now()).toLocaleString("it-IT"))}</p>
+            </div>
+            <div class="actions">
+              ${editable
+                ? `<button class="btn" type="button" data-restore-program="${escapeAttr(program.id)}">Ripristina</button>`
+                : `<button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Visualizza</button>`}
+            </div>
+          </article>`).join("");
+      const emptyState = editable
+        ? `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`
+        : `<div class="empty-focus"><strong>Nessuna scheda salvata</strong>Il Personal Trainer assegnato non ha ancora salvato programmi per questo cliente.</div>`;
+      const archiveSection = archivedCards
+        ? `<details class="archive-panel"><summary>Schede archiviate (${programsForClient(appState.selectedClientId, true).filter(program => program.archived).length})</summary><div class="program-list">${archivedCards}</div></details>`
+        : "";
+      container.innerHTML = `${draftCard}${savedCards || (!draftCard ? emptyState : "")}${archiveSection}`;
+      container.querySelectorAll("[data-open-program]").forEach(button => {
+        button.addEventListener("click", () => {
+          selectProgram(button.dataset.openProgram);
+          showView("builderView");
+        });
+      });
+      container.querySelectorAll("[data-preview-program]").forEach(button => {
+        button.addEventListener("click", () => {
+          selectProgram(button.dataset.previewProgram);
+          showView("sheetView");
+        });
+      });
+      container.querySelector("[data-open-current-draft]")?.addEventListener("click", () => showView("builderView"));
+      container.querySelectorAll("[data-duplicate-program]").forEach(button => {
+        button.addEventListener("click", async () => {
+          if (appState.selectedProgramId !== button.dataset.duplicateProgram) selectProgram(button.dataset.duplicateProgram);
+          await duplicateProgram();
+        });
+      });
+      container.querySelectorAll("[data-delete-program]").forEach(button => {
+        button.addEventListener("click", () => deleteProgram(button.dataset.deleteProgram));
+      });
+      container.querySelectorAll("[data-restore-program]").forEach(button => {
+        button.addEventListener("click", () => restoreProgram(button.dataset.restoreProgram));
+      });
+    }
+
+    function renderClientFocus() {
+      const client = selectedClient();
+      const name = client ? fullName(client) : "Nessun cliente selezionato";
+      const objective = client?.obiettivo ? `Obiettivo: ${client.obiettivo}` : "Seleziona prima un cliente dall'area Clienti.";
+      const period = periodLabel(state.meta.period || currentPeriodKey());
+      ["programClientName", "sheetClientName", "libraryClientName"].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = name;
+      });
+      const programMeta = document.getElementById("programClientMeta");
+      if (programMeta) programMeta.textContent = client ? `${objective} · ${programsForClient().length} programmi salvati` : objective;
+      const sheetMeta = document.getElementById("sheetClientMeta");
+      if (sheetMeta) sheetMeta.textContent = client ? `${objective} · ${state.sheetOrder.length} allenamenti nel programma` : objective;
+      ["sheetPeriodLabel", "libraryPeriodLabel"].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = period;
+      });
+      const librarySheet = document.getElementById("librarySheetName");
+      if (librarySheet) librarySheet.textContent = `Allenamento ${state.currentSheet}`;
+    }
+
     function renderTabs() {
       const container = document.getElementById("sheetTabs");
       container.innerHTML = `
-        <span>Schede:</span>
+        <span>Allenamenti:</span>
         ${state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" data-sheet="${escapeAttr(key)}">${escapeHtml(key)}</button>`).join("")}
       `;
       container.querySelectorAll(".tab").forEach(button => {
@@ -1691,21 +2845,66 @@
     function renderMetrics() {
       const client = selectedClient();
       document.getElementById("metricClient").textContent = client ? fullName(client) : "-";
+      const viewLabels = {
+        summaryView: "Riepilogo",
+        clientsView: "Clienti",
+        programsView: "Programmi mensili",
+        builderView: "Crea programma",
+        sheetView: "Usa scheda",
+        libraryView: "Esercizi e progressioni"
+      };
       document.getElementById("crumbs").textContent = client
-        ? `Clienti / ${fullName(client)} / Scheda interna`
-        : "Clienti / Nessun cliente assegnato / Scheda interna";
+        ? `${viewLabels[appState.activeView] || "Portale PT"} / ${fullName(client)}`
+        : `${viewLabels[appState.activeView] || "Portale PT"} / Nessun cliente selezionato`;
       document.getElementById("metricSessions").textContent = state.sessions.length;
       document.getElementById("metricExercises").textContent = (state.sheets[state.currentSheet] || []).length;
+      document.getElementById("metricStatus").textContent = ({
+        draft: "Nuova",
+        local: "Bozza locale",
+        autosave: "Bozza locale",
+        saving: "Salvataggio...",
+        supabase: "Salvata",
+        error: "Da sincronizzare",
+        readonly: "Sola lettura",
+        "readonly-empty": "Nessuna scheda"
+      })[appState.saveMode] || "Bozza";
+      document.getElementById("clientContext").textContent = client
+        ? isReadOnlySelection()
+          ? `${fullName(client)}${client.obiettivo ? ` · Obiettivo: ${client.obiettivo}` : ""}. Consultazione della scheda di ${fullName(trainerForClient(client)) || "un altro PT"} in sola lettura.`
+          : `${fullName(client)}${client.obiettivo ? ` · Obiettivo: ${client.obiettivo}` : ""}. Ogni modifica viene salvata subito e sincronizzata automaticamente.`
+        : "Seleziona un cliente per creare o aggiornare la sua scheda di allenamento.";
     }
 
     function renderSaveState(prefix) {
       const el = document.getElementById("saveState");
-      if (prefix === "saving") {
-        el.innerHTML = "Salvataggio su <strong>Supabase</strong>...";
+      if (isReadOnlySelection()) {
+        appState.saveMode = appState.selectedProgramId ? "readonly" : "readonly-empty";
+        el.innerHTML = appState.selectedProgramId
+          ? "Modalità Proprietario · <strong>sola lettura</strong>"
+          : "Modalità Proprietario · <strong>nessuna scheda salvata</strong>";
+        const metricStatus = document.getElementById("metricStatus");
+        if (metricStatus) metricStatus.textContent = appState.selectedProgramId ? "Sola lettura" : "Nessuna scheda";
         return;
       }
-      if (prefix === "error") {
-        el.innerHTML = "Salvataggio Supabase non riuscito. <strong>Bozza locale conservata</strong>";
+      if (prefix) appState.saveMode = prefix;
+      const effectivePrefix = prefix || appState.saveMode;
+      const metricStatus = document.getElementById("metricStatus");
+      if (metricStatus) {
+        metricStatus.textContent = ({
+          draft: "Nuova",
+          local: "Bozza locale",
+          autosave: "Sincronizzazione...",
+          saving: "Salvataggio...",
+          supabase: "Salvata",
+          error: "Da sincronizzare"
+        })[appState.saveMode] || "Bozza";
+      }
+      if (effectivePrefix === "saving") {
+        el.innerHTML = "Modifica salvata sul dispositivo · <strong>sincronizzazione...</strong>";
+        return;
+      }
+      if (effectivePrefix === "error") {
+        el.innerHTML = "Connessione assente · <strong>modifica conservata, nuovo tentativo automatico</strong>";
         return;
       }
       if (!state.lastSavedAt) {
@@ -1714,38 +2913,38 @@
       }
       const time = new Date(state.lastSavedAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       const labels = {
-        autosave: "Autosave locale",
+        autosave: "Salvata sul dispositivo · sincronizzazione automatica",
         local: "Bozza locale",
-        supabase: "Salvata su Supabase"
+        supabase: "Salvata automaticamente"
       };
-      el.innerHTML = `${labels[prefix] || "Salvata"} alle <strong>${time}</strong>`;
+      el.innerHTML = `${labels[effectivePrefix] || "Salvata"} alle <strong>${time}</strong>`;
     }
 
     function syncMetaFromInputs() {
-      ["goal", "level", "frequency", "warmup", "generalNotes"].forEach(id => {
+      ["period", "goal", "level", "frequency", "warmup", "generalNotes"].forEach(id => {
         state.meta[id] = document.getElementById(id).value;
       });
     }
 
-    function exerciseCount() {
-      return Object.values(state.sheets).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0);
+    function exerciseCount(sourceState = state) {
+      return Object.values(sourceState.sheets).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0);
     }
 
-    function buildStandardSessions() {
-      return state.sheetOrder.map((sheetKey, sheetIndex) => ({
+    function buildStandardSessions(sourceState = state) {
+      return sourceState.sheetOrder.map((sheetKey, sheetIndex) => ({
         id: `sheet_${sheetKey}`,
         order: sheetIndex + 1,
-        name: `Scheda ${sheetKey}`,
-        focus: state.meta.goal || "",
-        warmup: state.meta.warmup || "",
+        name: `Allenamento ${sheetKey}`,
+        focus: sourceState.meta.goal || "",
+        warmup: sourceState.meta.warmup || "",
         cooldown: "",
-        notes: state.meta.generalNotes || "",
+        notes: sourceState.meta.generalNotes || "",
         blocks: [{
           id: `block_${sheetKey}`,
           code: sheetKey,
           line: "",
           mode: "Singolo",
-          exercises: (state.sheets[sheetKey] || []).map((exercise, exerciseIndex) => ({
+          exercises: (sourceState.sheets[sheetKey] || []).map((exercise, exerciseIndex) => ({
             id: exercise.id || id("exercise"),
             order: exerciseIndex + 1,
             name: exercise.name || "",
@@ -1753,10 +2952,14 @@
             progression: {
               name: exercise.progressionName || "Manuale studio",
               key: exercise.progressionKey || "",
-              sessions: state.sessions.map((_, index) => exercise.plan[index] || ""),
-              feedback: state.sessions.map((_, index) => exercise.feedback[index] || "")
+              sessions: sourceState.sessions.map((_, index) => exercise.plan[index] || ""),
+              feedback: sourceState.sessions.map((_, index) => exercise.feedback[index] || ""),
+              set_entries: sourceState.sessions.map((_, index) => clone(exercise.weekSets?.[index] || [])),
+              previous_feedback: sourceState.sessions.map((_, index) => exercise.previousFeedback?.[index] || ""),
+              previous_plan: sourceState.sessions.map((_, index) => exercise.previousPlan?.[index] || ""),
+              previous_period: exercise.previousPeriod || ""
             },
-            sets: "",
+            sets: String(exercise.weekSets?.[0]?.length || ""),
             reps: (exercise.plan || []).join(" / "),
             rest: exercise.recovery || "",
             tut: "",
@@ -1767,14 +2970,13 @@
       }));
     }
 
-    function buildMatrixFromState(savedAt = new Date().toISOString()) {
-      const client = selectedClient();
-      const sheets = state.sheetOrder.map((sheetKey, sheetIndex) => ({
+    function buildMatrixFromState(savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt) {
+      const sheets = sourceState.sheetOrder.map((sheetKey, sheetIndex) => ({
         key: sheetKey,
         order: sheetIndex + 1,
-        name: `Scheda ${sheetKey}`,
-        exercise_count: (state.sheets[sheetKey] || []).length,
-        exercises: (state.sheets[sheetKey] || []).map((exercise, exerciseIndex) => ({
+        name: `Allenamento ${sheetKey}`,
+        exercise_count: (sourceState.sheets[sheetKey] || []).length,
+        exercises: (sourceState.sheets[sheetKey] || []).map((exercise, exerciseIndex) => ({
           id: exercise.id || "",
           order: exerciseIndex + 1,
           name: exercise.name || "",
@@ -1785,14 +2987,18 @@
           recovery: exercise.recovery || "",
           effort: exercise.effort || "",
           notes: exercise.notes || "",
-          plan_by_session: state.sessions.map((sessionName, sessionIndex) => ({
+          previous_period: exercise.previousPeriod || "",
+          plan_by_session: sourceState.sessions.map((sessionName, sessionIndex) => ({
             session: sessionName,
             plan: exercise.plan[sessionIndex] || "",
-            feedback: exercise.feedback[sessionIndex] || ""
+            feedback: exercise.feedback[sessionIndex] || "",
+            sets: clone(exercise.weekSets?.[sessionIndex] || []),
+            previous_plan: exercise.previousPlan?.[sessionIndex] || "",
+            previous_feedback: exercise.previousFeedback?.[sessionIndex] || ""
           }))
         }))
       }));
-      const progressionSessions = state.sessions.map((sessionName, sessionIndex) => ({
+      const progressionSessions = sourceState.sessions.map((sessionName, sessionIndex) => ({
         id: `progression_${sessionIndex + 1}`,
         order: sessionIndex + 1,
         name: sessionName,
@@ -1819,97 +3025,145 @@
           email: client?.email || ""
         },
         trainer: {
-          id: appState.currentPt?.id || "",
-          name: appState.currentPt ? fullName(appState.currentPt) : "",
-          email: appState.currentPt?.email || ""
+          id: trainer?.id || "",
+          name: trainer ? fullName(trainer) : "",
+          email: trainer?.email || ""
         },
-        meta: clone(state.meta),
-        sheet_count: state.sheetOrder.length,
-        session_count: state.sessions.length,
-        exercise_count: exerciseCount(),
-        session_names: [...state.sessions],
+        meta: clone(sourceState.meta),
+        sheet_count: sourceState.sheetOrder.length,
+        session_count: sourceState.sessions.length,
+        exercise_count: exerciseCount(sourceState),
+        session_names: [...sourceState.sessions],
         sheets,
         progression_sessions: progressionSessions
       };
     }
 
-    function programPayload(programId, savedAt = new Date().toISOString()) {
-      const client = selectedClient();
-      const studioState = normalizeState(state);
+    function nextProgramAudit(programId, savedAt, trainer) {
+      const existing = appState.programs.find(program => program.id === programId);
+      const previous = Array.isArray(existing?.data?.audit_log) ? clone(existing.data.audit_log) : [];
+      const entry = {
+        action: existing ? "modifica" : "creazione",
+        at: savedAt,
+        by: trainer?.id || "",
+        email: trainer?.email || ""
+      };
+      const last = previous.at(-1);
+      const sameEditingSession = last?.action === "modifica" &&
+        entry.action === "modifica" &&
+        String(last.by || "") === String(entry.by || "") &&
+        Math.abs(new Date(entry.at).getTime() - new Date(last.at || 0).getTime()) < 10 * 60 * 1000;
+      if (sameEditingSession) previous[previous.length - 1] = entry;
+      else previous.push(entry);
+      return previous.slice(-60);
+    }
+
+    function programPayload(programId, savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt, clientId = appState.selectedClientId) {
+      const studioState = normalizeState(sourceState);
       studioState.lastSavedAt = savedAt;
+      studioState.draftProgramId = programId;
+      studioState.localDirty = false;
       return {
         id: programId,
-        client_id: appState.selectedClientId,
-        cliente_id: appState.selectedClientId,
-        trainer_id: appState.currentPt?.id || "",
-        created_by: appState.currentPt?.id || "",
-        name: `Scheda PT studio${client ? ` - ${fullName(client)}` : ""}`,
+        client_id: clientId,
+        cliente_id: clientId,
+        trainer_id: trainer?.id || "",
+        created_by: trainer?.id || "",
+        name: `Programma PT${client ? ` - ${fullName(client)}` : ""} · ${periodLabel(studioState.meta.period)}`,
+        period: studioState.meta.period || currentPeriodKey(),
         goal: studioState.meta.goal || "",
         level: studioState.meta.level || "",
         frequency: studioState.meta.frequency || "",
         warmup: studioState.meta.warmup || "",
         status: "bozza",
+        archived: false,
         schema_version: SCHEMA_VERSION,
         pt_studio_state: studioState,
-        sessions: buildStandardSessions(),
-        matrix: buildMatrixFromState(savedAt),
+        sessions: buildStandardSessions(studioState),
+        matrix: buildMatrixFromState(savedAt, studioState, client, trainer),
         save_meta: {
           saved_at: savedAt,
-          saved_by: appState.currentPt?.id || "",
+          saved_by: trainer?.id || "",
           source: "supabase"
-        }
+        },
+        audit_log: nextProgramAudit(programId, savedAt, trainer)
       };
     }
 
-    async function saveProgramToSupabase(event) {
+    async function saveProgramToSupabase(event, options = {}) {
       event?.preventDefault();
       const client = selectedClient();
+      const silent = options.silent === true;
       if (!appState.currentPt) {
-        showToast("Accesso PT richiesto");
-        return;
+        if (!silent) showToast("Accesso PT richiesto");
+        return false;
       }
       if (!client) {
-        showToast("Seleziona un cliente prima di salvare");
-        return;
+        if (!silent) showToast("Seleziona un cliente prima di salvare");
+        return false;
       }
-      if (String(clientTrainerId(client)) !== String(appState.currentPt.id)) {
-        showToast("Puoi salvare solo i clienti assegnati al tuo profilo");
-        return;
+      if (!canEditClient(client)) {
+        if (!silent) showToast("Modalità Proprietario: non puoi modificare le schede degli altri PT");
+        return false;
       }
       const saveButton = document.getElementById("saveBtn");
       syncMetaFromInputs();
       renderSaveState("saving");
-      saveButton.disabled = true;
+      if (saveButton) saveButton.disabled = true;
+      const sourceState = state;
+      const sourceClientId = appState.selectedClientId;
+      const sourceProgramId = appState.selectedProgramId;
+      const sourceStorageKey = STORAGE_KEY;
+      const sourceTrainer = appState.currentPt;
+      const saveVersion = Number.isFinite(options.saveVersion) ? options.saveVersion : stateVersion(sourceState);
       try {
-        const programId = appState.selectedProgramId || id("pt_light");
+        const programId = sourceProgramId || id("pt_light");
         const savedAt = new Date().toISOString();
-        state.lastSavedAt = savedAt;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        const payload = programPayload(programId, savedAt);
+        sourceState.lastSavedAt = savedAt;
+        sourceState.draftProgramId = programId;
+        sourceState.localDirty = true;
+        localStorage.setItem(sourceStorageKey, JSON.stringify(sourceState));
+        const payload = programPayload(programId, savedAt, sourceState, client, sourceTrainer, sourceClientId);
         await sb("schede_allenamento", "?on_conflict=id", {
           method: "POST",
           headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
           body: {
             id: programId,
-            cliente_id: appState.selectedClientId,
+            cliente_id: sourceClientId,
             data: payload,
             updated_at: savedAt
           }
         });
-        appState.selectedProgramId = programId;
-        const normalized = normalizeProgram({ id: programId, cliente_id: appState.selectedClientId, data: payload, updated_at: savedAt });
+        const hasNewerChanges = stateVersion(sourceState) > saveVersion;
+        sourceState.localDirty = hasNewerChanges;
+        const destinationStorageKey = storageKeyFor(sourceClientId, programId);
+        localStorage.setItem(destinationStorageKey, JSON.stringify(sourceState));
+        if (sourceStorageKey !== destinationStorageKey) localStorage.removeItem(sourceStorageKey);
+        const normalized = normalizeProgram({ id: programId, cliente_id: sourceClientId, data: payload, updated_at: savedAt });
         const existingIndex = appState.programs.findIndex(program => program.id === programId || program.rowId === programId);
         if (existingIndex >= 0) appState.programs.splice(existingIndex, 1, normalized);
         else appState.programs.unshift(normalized);
-        renderSaveState("supabase");
-        showToast("Scheda salvata su Supabase");
+        const contextStillOpen = state === sourceState && appState.selectedClientId === sourceClientId && appState.selectedProgramId === sourceProgramId;
+        if (contextStillOpen) {
+          appState.selectedProgramId = programId;
+          STORAGE_KEY = destinationStorageKey;
+          renderProgramHistory();
+          renderProgramManager();
+          renderClientFocus();
+          renderSaveState(hasNewerChanges ? "autosave" : "supabase");
+        }
+        if (!silent) showToast("Programma salvato");
+        if (hasNewerChanges && contextStillOpen) queueCloudSave();
+        return true;
       } catch (error) {
         console.error(error);
-        saveState(true);
-        renderSaveState("error");
-        showToast("Salvataggio Supabase non riuscito, bozza locale conservata");
+        sourceState.localDirty = true;
+        localStorage.setItem(sourceStorageKey, JSON.stringify(sourceState));
+        if (state === sourceState) renderSaveState("error");
+        if (!silent) showToast("Sincronizzazione non riuscita: la modifica resta salvata sul dispositivo");
+        return false;
       } finally {
-        saveButton.disabled = false;
+        if (saveButton) saveButton.disabled = false;
       }
     }
 
@@ -1936,8 +3190,7 @@
         <div class="library-card">
           <span><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.group)} · ${escapeHtml(lineLabel(item.line))}</span></span>
           <span class="library-actions">
-            <button class="add-mini secondary" type="button" onclick="chooseExercise('${escapeAttr(item.name)}', '${escapeAttr(item.group)}')">Scegli</button>
-            <button class="add-mini" type="button" onclick="quickAdd('${escapeAttr(item.name)}', '${escapeAttr(item.group)}')">Aggiungi</button>
+            <button class="add-mini" type="button" onclick="chooseExercise('${escapeAttr(item.name)}', '${escapeAttr(item.group)}')">Seleziona</button>
           </span>
         </div>
       `).join("");
@@ -1967,7 +3220,7 @@
       const groupSelect = document.getElementById("inlineGroup");
       const progressionSelect = document.getElementById("inlineProgression");
       if (!sheetName || !lineSelect || !groupSelect || !progressionSelect) return;
-      sheetName.textContent = `Scheda ${state.currentSheet}`;
+      sheetName.textContent = `Allenamento ${state.currentSheet}`;
 
       const currentLine = movementLines[lineSelect.value] ? lineSelect.value : "all";
       lineSelect.innerHTML = Object.entries(movementLines).map(([key, config]) => `
@@ -2046,13 +3299,29 @@
       const select = document.getElementById("inlineProgression");
       if (!preview || !select) return;
       const preset = presets[select.value] || presets.reps;
+      if (select.value === "manual") {
+        appState.manualPlan = state.sessions.map((_, index) => appState.manualPlan[index] || "");
+        preview.innerHTML = `
+          <p class="manual-help">Progressione libera: scrivi le ripetizioni di ogni serie separate da “/”. Esempio: 10 / 8 / 6 crea tre serie diverse.</p>
+          ${state.sessions.map((session, index) => `
+            <div class="light-box">
+              <strong>${escapeHtml(session)}</strong>
+              <input class="manual-plan-input" value="${escapeAttr(appState.manualPlan[index])}" oninput="updateManualProgression(${index}, this.value)" placeholder="Es. 10 / 8 / 6" aria-label="Ripetizioni delle serie ${escapeAttr(session)}">
+            </div>
+          `).join("")}`;
+        return;
+      }
       const plan = buildPlanForSessions(preset.plan);
-      preview.innerHTML = plan.map((value, index) => `
-        <div class="light-box"><strong>${escapeHtml(state.sessions[index])}</strong><span>${escapeHtml(value)}</span></div>
-      `).join("");
+      preview.innerHTML = plan.map((value, index) => renderProgressionWeekPreview(state.sessions[index], value)).join("");
+    }
+
+    function updateManualProgression(index, value) {
+      appState.manualPlan[index] = value;
+      renderExerciseInsertSummary();
     }
 
     function focusInlineBuilder() {
+      showView("libraryView");
       document.getElementById("exerciseLibraryEntry")?.scrollIntoView({ block: "start", behavior: "smooth" });
       window.setTimeout(() => document.getElementById("inlineExerciseSearch")?.focus(), 160);
     }
@@ -2105,10 +3374,13 @@
         recovery: (fromLibrary ? found.recovery : recoveryInput.value).trim() || "75 sec",
         effort: "Media 3/5",
         notes: (fromLibrary ? found.notes : notesInput.value).trim() || "Note trainer da completare.",
-        plan: buildPlanForSessions(preset.plan),
+        plan: presetKey === "manual"
+          ? state.sessions.map((_, index) => appState.manualPlan[index] || "")
+          : buildPlanForSessions(preset.plan),
         progressionName: preset.title,
         progressionKey: presetKey
       });
+      if (presetKey === "manual") appState.manualPlan = state.sessions.map(() => "");
     }
 
     async function saveCustomExercise() {
@@ -2150,12 +3422,78 @@
       }
     }
 
+    function exerciseLibraryOptions(exercise) {
+      const selectedKey = exerciseKey(exercise);
+      const hasSelected = exerciseLibrary.some(item => exerciseKey(item) === selectedKey);
+      const customCurrent = hasSelected || !exercise.name
+        ? ""
+        : `<option value="${escapeAttr(selectedKey)}" selected>${escapeHtml(exercise.name)} · ${escapeHtml(exercise.group)}</option>`;
+      return `${customCurrent}${groups.map(group => {
+        const items = exerciseLibrary.filter(item => item.group === group);
+        if (!items.length) return "";
+        return `<optgroup label="${escapeAttr(group)}">${items.map(item => `
+          <option value="${escapeAttr(exerciseKey(item))}" ${exerciseKey(item) === selectedKey ? "selected" : ""}>${escapeHtml(item.name)}</option>
+        `).join("")}</optgroup>`;
+      }).join("")}`;
+    }
+
+    function replaceExerciseFromLibrary(index, selectedKey) {
+      const exercise = state.sheets[state.currentSheet][index];
+      const replacement = exerciseLibrary.find(item => exerciseKey(item) === selectedKey);
+      if (!exercise || !replacement || exerciseKey(exercise) === selectedKey) return;
+      const hasRecordedLoads = exercise.feedback?.some(Boolean);
+      if (hasRecordedLoads && !confirmAction(`Sostituire “${exercise.name}” con “${replacement.name}”? I carichi registrati su questo esercizio verranno rimossi.`)) {
+        renderExercises();
+        return;
+      }
+      exercise.name = replacement.name;
+      exercise.group = replacement.group;
+      exercise.recovery = replacement.recovery || exercise.recovery || "75 sec";
+      exercise.notes = replacement.notes || exercise.notes || "";
+      exercise.feedback = state.sessions.map(() => "");
+      exercise.weekSets = state.sessions.map((_, weekIndex) => setEntriesFromLegacy(exercise.plan?.[weekIndex] || "3 x 10", ""));
+      exercise.previousFeedback = [];
+      exercise.previousPlan = [];
+      exercise.previousPeriod = "";
+      attachPreviousHistory(exercise);
+      renderAll();
+      autosave(exercise.id);
+      showToast(`Esercizio sostituito con ${replacement.name}`);
+    }
+
+    function applyExerciseProgression(index, presetKey) {
+      const exercise = state.sheets[state.currentSheet][index];
+      const preset = presets[presetKey];
+      if (!exercise || !preset) return;
+      exercise.progressionKey = presetKey;
+      exercise.progressionName = preset.title;
+      if (presetKey !== "manual") {
+        const previousWeekSets = clone(exercise.weekSets || []);
+        exercise.plan = buildPlanForSessions(preset.plan);
+        exercise.weekSets = exercise.plan.map((planValue, weekIndex) => {
+          const generated = setEntriesFromLegacy(planValue, "");
+          return generated.map((set, setIndex) => ({
+            ...set,
+            load: previousWeekSets?.[weekIndex]?.[setIndex]?.load || "",
+            rir: previousWeekSets?.[weekIndex]?.[setIndex]?.rir || "",
+            previousLoad: previousWeekSets?.[weekIndex]?.[setIndex]?.previousLoad || ""
+          }));
+        });
+        state.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
+      }
+      renderExercises();
+      autosave(exercise.id);
+      showToast(presetKey === "manual" ? "Progressione impostata come manuale" : `Progressione ${preset.title} applicata`);
+    }
+
     function renderExercises() {
-      title.textContent = `Scheda ${state.currentSheet}`;
+      title.textContent = `Allenamento ${state.currentSheet}`;
       const exercises = state.sheets[state.currentSheet];
       if (!exercises.length) {
-        stack.innerHTML = `<div class="panel" style="padding:18px;color:var(--muted)">Nessun esercizio in questa scheda. Usa il blocco qui sopra per scegliere esercizio e progressione.</div>`;
+        stack.innerHTML = `<div class="panel" style="padding:18px;color:var(--muted)">Nessun esercizio in questo allenamento. Usa “Aggiungi esercizio”; dopo l'inserimento potrai sostituire esercizio, progressione e intensità direttamente qui.</div>`;
         renderMetrics();
+        renderCreationPreview();
+        renderSheetPreview();
         return;
       }
       stack.innerHTML = exercises.map((exercise, index) => `
@@ -2164,7 +3502,9 @@
             <span class="badge">${escapeHtml(exercise.type)}</span>
             <div class="exercise-name">${escapeHtml(exercise.name)}</div>
             <div class="mini-actions">
-              <button class="mini-btn" title="Sposta su" onclick="moveExercise(${index}, -1)">^</button>
+              <span class="exercise-save-badge ${state.localDirty ? "saving" : "saved"}" data-exercise-save="${escapeAttr(exercise.id)}">${state.localDirty ? "Salvataggio..." : "Salvato"}</span>
+              <button class="mini-btn" title="Sposta su" aria-label="Sposta ${escapeAttr(exercise.name)} verso l'alto" onclick="moveExercise(${index}, -1)">↑</button>
+              <button class="mini-btn" title="Sposta giu" aria-label="Sposta ${escapeAttr(exercise.name)} verso il basso" onclick="moveExercise(${index}, 1)">↓</button>
               <button class="mini-btn" title="Duplica" onclick="duplicateExercise(${index})">#</button>
               <button class="mini-btn" title="Elimina" onclick="removeExercise(${index})">x</button>
             </div>
@@ -2175,58 +3515,253 @@
                 <strong>${escapeHtml(exercise.group)}</strong>
                 ${exercise.progressionName ? `<span class="progression-pill">${escapeHtml(exercise.progressionName)}</span>` : ""}
                 <span>${escapeHtml(exercise.notes)}</span>
+                ${exercise.previousPeriod ? `<span class="previous-load">Riferimento carichi: ${escapeHtml(periodLabel(exercise.previousPeriod))}</span>` : ""}
               </div>
               <span>${escapeHtml(exercise.recovery)} · ${escapeHtml(exercise.effort)}</span>
             </div>
-            <div class="edit-grid">
-              <input value="${escapeAttr(exercise.name)}" onchange="updateExercise(${index}, 'name', this.value)" aria-label="Nome esercizio">
-              <select onchange="updateExercise(${index}, 'group', this.value)" aria-label="Gruppo muscolare">${groups.map(group => `<option ${group === exercise.group ? "selected" : ""}>${escapeHtml(group)}</option>`).join("")}</select>
-              <input value="${escapeAttr(exercise.recovery)}" onchange="updateExercise(${index}, 'recovery', this.value)" aria-label="Recupero">
+            <div class="exercise-editor-grid">
+              <div class="field">
+                <label for="exercise-choice-${index}">Esercizio</label>
+                <select id="exercise-choice-${index}" onchange="replaceExerciseFromLibrary(${index}, this.value)">${exerciseLibraryOptions(exercise)}</select>
+              </div>
+              <div class="field">
+                <label for="exercise-progression-${index}">Progressione</label>
+                <select id="exercise-progression-${index}" onchange="applyExerciseProgression(${index}, this.value)">${Object.entries(presets).map(([key, preset]) => `<option value="${escapeAttr(key)}" ${key === (exercise.progressionKey || "manual") ? "selected" : ""}>${escapeHtml(preset.title)}</option>`).join("")}</select>
+              </div>
+              <div class="field">
+                <label for="exercise-effort-${index}">Intensità</label>
+                <select id="exercise-effort-${index}" onchange="updateExercise(${index}, 'effort', this.value)">${["Facile 2/5", "Media 3/5", "Impegnativa 4/5", "Alta 5/5"].map(value => `<option ${value === exercise.effort ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+              </div>
+              <div class="field">
+                <label for="exercise-group-${index}">Gruppo</label>
+                <select id="exercise-group-${index}" onchange="updateExercise(${index}, 'group', this.value)">${groups.map(group => `<option ${group === exercise.group ? "selected" : ""}>${escapeHtml(group)}</option>`).join("")}</select>
+              </div>
+              <div class="field">
+                <label for="exercise-recovery-${index}">Recupero</label>
+                <input id="exercise-recovery-${index}" value="${escapeAttr(exercise.recovery)}" onchange="updateExercise(${index}, 'recovery', this.value)">
+              </div>
             </div>
             <textarea onchange="updateExercise(${index}, 'notes', this.value)" aria-label="Note trainer">${escapeHtml(exercise.notes)}</textarea>
-            ${state.compact ? renderCompact(exercise) : renderTable(exercise, index)}
+            ${state.compact ? renderCompact(exercise, index) : renderTable(exercise, index)}
           </div>
         </article>
       `).join("");
       renderMetrics();
+      renderCreationPreview();
+      renderSheetPreview();
     }
 
-    function renderCompact(exercise) {
-      return `
-        <div class="small-cols">
-          ${state.sessions.map((session, index) => `
-            <div class="light-box"><strong>${escapeHtml(session)}</strong><span>${escapeHtml(exercise.plan[index] || "")}</span></div>
-          `).join("")}
+    function renderCreationPreview() {
+      const container = document.getElementById("creationPreview");
+      if (!container) return;
+      const exercises = state.sheets[state.currentSheet] || [];
+      container.innerHTML = `
+        <div class="creation-preview-head">
+          <div>
+            <p class="view-kicker">Anteprima in tempo reale</p>
+            <h2>Allenamento ${escapeHtml(state.currentSheet)} · ${escapeHtml(periodLabel(state.meta.period))}</h2>
+            <p>${exercises.length} esercizi · ${state.sessions.length} settimane · ${escapeHtml(state.meta.frequency || "Frequenza da definire")}</p>
+          </div>
+          <button class="btn primary" type="button" onclick="showView('sheetView')">Usa questa scheda</button>
         </div>
-      `;
+        <div class="preview-exercise-list">
+          ${exercises.length ? exercises.map((exercise, index) => `
+            <div class="preview-exercise-item">
+              <strong>${index + 1}. ${escapeHtml(exercise.name)}</strong>
+              <span>${escapeHtml(exercise.progressionName || "Progressione manuale")} · ${escapeHtml(exercise.effort)} · ${escapeHtml(exercise.recovery)}</span>
+            </div>
+          `).join("") : `<div class="empty-inline">L'anteprima si riempirà mentre aggiungi gli esercizi.</div>`}
+        </div>`;
+    }
+
+    function operationalWeekModel(exercises = state.sheets[state.currentSheet] || []) {
+      const progress = state.sessions.map((_, weekIndex) => {
+        const completedExercises = exercises.filter(exercise => {
+          const sets = exercise.weekSets?.[weekIndex] || [];
+          return sets.length > 0 && sets.every(set => String(set.reps || "").trim() && String(set.load || "").trim());
+        }).length;
+        const touchedExercises = exercises.filter(exercise => (exercise.weekSets?.[weekIndex] || []).some(set => String(set.load || "").trim())).length;
+        return {
+          filled: completedExercises,
+          completed: exercises.length > 0 && completedExercises === exercises.length,
+          partial: touchedExercises > 0 && completedExercises < exercises.length
+        };
+      });
+      const currentIndex = progress.findIndex(week => !week.completed);
+      const nextIndex = currentIndex >= 0 && currentIndex + 1 < state.sessions.length ? currentIndex + 1 : -1;
+      const selectedIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(state.activeWeekIndex) || 0));
+      return { progress, currentIndex, nextIndex, selectedIndex };
+    }
+
+    function selectOperationalWeek(index) {
+      state.activeWeekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(index) || 0));
+      if (canEditClient()) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderExercises();
+    }
+
+    function renderOperationalWeekNavigator(exercises) {
+      const containers = ["builderWeekNavigator", "operationalWeekNavigator"]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+      if (!containers.length) return;
+      const model = operationalWeekModel(exercises);
+      const allCompleted = exercises.length > 0 && model.progress.every(week => week.completed);
+      const headline = allCompleted
+        ? "Programma completato"
+        : `Settimana in corso: ${model.currentIndex + 1}`;
+      const nextLabel = allCompleted
+        ? "Tutte le settimane hanno i carichi registrati"
+        : model.nextIndex >= 0 ? `Successiva: Settimana ${model.nextIndex + 1}` : "Ultima settimana del programma";
+      const navigatorHtml = `
+        <div class="week-navigator">
+          <div class="week-navigator-head">
+            <strong>${headline}</strong>
+            <span>${nextLabel}</span>
+          </div>
+          <div class="week-buttons">
+            ${state.sessions.map((session, index) => {
+              const week = model.progress[index];
+              const status = week.completed
+                ? "Completata"
+                : index === model.currentIndex ? (week.partial ? "In corso" : "Da iniziare")
+                : index === model.nextIndex ? "Successiva" : "Da fare";
+              const classes = [
+                week.completed ? "completed" : "",
+                index === model.currentIndex && !week.completed ? "current" : "",
+                index === model.nextIndex ? "next" : "",
+                index === model.selectedIndex ? "selected" : ""
+              ].filter(Boolean).join(" ");
+              return `<button class="week-button ${classes}" type="button" data-operational-week="${index}" aria-pressed="${index === model.selectedIndex}">
+                <strong>${escapeHtml(session)}</strong><small>${status}${week.filled ? ` · ${week.filled}/${exercises.length} carichi` : ""}</small>
+              </button>`;
+            }).join("")}
+          </div>
+        </div>`;
+      containers.forEach(container => {
+        container.innerHTML = navigatorHtml;
+        container.querySelectorAll("[data-operational-week]").forEach(button => {
+          button.addEventListener("click", () => selectOperationalWeek(button.dataset.operationalWeek));
+        });
+      });
+    }
+
+    function renderWeekSetEditor(exercise, exerciseIndex, prefix = "builder", compact = false) {
+      ensureExerciseWeekSets(exercise, state.sessions.length);
+      const weekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(state.activeWeekIndex) || 0));
+      const sets = exercise.weekSets[weekIndex] || [];
+      const weekName = state.sessions[weekIndex] || `Settimana ${weekIndex + 1}`;
+      return `
+        <div class="set-editor progress-table ${compact ? "compact" : ""}" data-set-editor="${escapeAttr(exercise.id)}" data-week-index="${weekIndex}">
+          <div class="set-editor-head">
+            <div><strong>${escapeHtml(weekName)}</strong><span> · ${sets.length} serie modificabili singolarmente</span></div>
+            <button class="btn" type="button" onclick="addExerciseSet(${exerciseIndex}, ${weekIndex})"><span class="icon">+</span>Aggiungi serie</button>
+          </div>
+          <div class="set-list">
+            ${sets.map((set, setIndex) => {
+              const previousLoad = set.previousLoad || (setIndex === 0 ? exercise.previousFeedback?.[weekIndex] || "" : "");
+              return `<div class="set-row">
+                <span class="set-number">Serie ${setIndex + 1}</span>
+                <div class="set-field">
+                  <label for="${prefix}-reps-${exerciseIndex}-${weekIndex}-${setIndex}">Ripetizioni</label>
+                  <input id="${prefix}-reps-${exerciseIndex}-${weekIndex}-${setIndex}" class="plan-input" inputmode="numeric" value="${escapeAttr(set.reps)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'reps', this.value)" placeholder="es. 10">
+                </div>
+                <div class="set-field">
+                  <label for="${prefix}-load-${exerciseIndex}-${weekIndex}-${setIndex}">Carico</label>
+                  <input id="${prefix}-load-${exerciseIndex}-${weekIndex}-${setIndex}" class="track-input" value="${escapeAttr(set.load)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'load', this.value)" placeholder="es. 40 kg o BW">
+                </div>
+                <div class="set-field">
+                  <label for="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}">RIR / RPE</label>
+                  <input id="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}" value="${escapeAttr(set.rir)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'rir', this.value)" placeholder="es. 2 oppure RPE 8">
+                </div>
+                <button class="set-remove" type="button" onclick="removeExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex})" ${sets.length <= 1 ? "disabled" : ""} aria-label="Elimina serie ${setIndex + 1}">−</button>
+                ${(set.note || previousLoad) ? `<span class="set-previous ${previousLoad ? "previous-load" : ""}">${set.note ? `Indicazione: ${escapeHtml(set.note)}` : ""}${set.note && previousLoad ? " · " : ""}${previousLoad ? `Carico precedente: ${escapeHtml(previousLoad)}` : ""}</span>` : ""}
+              </div>`;
+            }).join("")}
+          </div>
+        </div>`;
+    }
+
+    function renderSheetPreview() {
+      const client = selectedClient();
+      const exercises = state.sheets[state.currentSheet] || [];
+      const clientName = document.getElementById("previewClientName");
+      const period = document.getElementById("previewPeriodLabel");
+      const details = document.getElementById("previewProgramDetails");
+      const meta = document.getElementById("previewMeta");
+      const tabs = document.getElementById("previewSheetTabs");
+      const stackPreview = document.getElementById("sheetPreviewStack");
+      if (!clientName || !period || !details || !meta || !tabs || !stackPreview) return;
+      const weekModel = operationalWeekModel(exercises);
+      clientName.textContent = client ? fullName(client) : "Nessun cliente selezionato";
+      period.textContent = periodLabel(state.meta.period);
+      document.getElementById("previewClientMeta").textContent = client?.obiettivo
+        ? isReadOnlySelection()
+          ? `Obiettivo: ${client.obiettivo} · consultazione in sola lettura`
+          : `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
+        : isReadOnlySelection()
+          ? "Consultazione in sola lettura."
+          : "Modifiche e carichi vengono salvati automaticamente.";
+      document.getElementById("sheetPreviewTitle").textContent = `Allenamento ${state.currentSheet}`;
+      details.textContent = `${periodLabel(state.meta.period)} · ${state.sessions.length} settimane · ${exercises.length} esercizi`;
+      tabs.innerHTML = state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" type="button" data-preview-sheet="${escapeAttr(key)}">Allenamento ${escapeHtml(key)}</button>`).join("");
+      tabs.querySelectorAll("[data-preview-sheet]").forEach(button => {
+        button.addEventListener("click", () => {
+          state.currentSheet = button.dataset.previewSheet;
+          renderAll();
+        });
+      });
+      meta.innerHTML = `
+        <div><span>Obiettivo</span><strong>${escapeHtml(state.meta.goal || "Da definire")}</strong></div>
+        <div><span>Livello</span><strong>${escapeHtml(state.meta.level || "Da definire")}</strong></div>
+        <div><span>Frequenza</span><strong>${escapeHtml(state.meta.frequency || "Da definire")}</strong></div>
+        <div><span>Riscaldamento</span><strong>${escapeHtml(state.meta.warmup || "Da definire")}</strong></div>`;
+      renderOperationalWeekNavigator(exercises);
+      stackPreview.innerHTML = exercises.length ? exercises.map((exercise, exerciseIndex) => `
+        <article class="readonly-exercise">
+          <div class="readonly-exercise-head">
+            <span class="readonly-number">${exerciseIndex + 1}</span>
+            <strong>${escapeHtml(exercise.name)}</strong>
+            <div class="mini-actions">
+              <span class="exercise-save-badge ${state.localDirty ? "saving" : "saved"}" data-exercise-save="${escapeAttr(exercise.id)}">${state.localDirty ? "Salvataggio..." : "Salvato"}</span>
+              <button class="mini-btn" title="Sposta su" aria-label="Sposta ${escapeAttr(exercise.name)} verso l'alto" onclick="moveExercise(${exerciseIndex}, -1)">↑</button>
+              <button class="mini-btn" title="Sposta giù" aria-label="Sposta ${escapeAttr(exercise.name)} verso il basso" onclick="moveExercise(${exerciseIndex}, 1)">↓</button>
+            </div>
+          </div>
+          <div class="readonly-exercise-body">
+            <div class="operational-exercise-grid">
+              <div class="field">
+                <label for="use-exercise-${exerciseIndex}">Esercizio</label>
+                <select id="use-exercise-${exerciseIndex}" onchange="replaceExerciseFromLibrary(${exerciseIndex}, this.value)">${exerciseLibraryOptions(exercise)}</select>
+              </div>
+              <div class="field">
+                <label for="use-progression-${exerciseIndex}">Progressione</label>
+                <select id="use-progression-${exerciseIndex}" onchange="applyExerciseProgression(${exerciseIndex}, this.value)">${Object.entries(presets).map(([key, preset]) => `<option value="${escapeAttr(key)}" ${key === (exercise.progressionKey || "manual") ? "selected" : ""}>${escapeHtml(preset.title)}</option>`).join("")}</select>
+              </div>
+              <div class="field">
+                <label for="use-effort-${exerciseIndex}">Intensità</label>
+                <select id="use-effort-${exerciseIndex}" onchange="updateExercise(${exerciseIndex}, 'effort', this.value)">${["Facile 2/5", "Media 3/5", "Impegnativa 4/5", "Alta 5/5"].map(value => `<option ${value === exercise.effort ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+              </div>
+              <div class="field">
+                <label for="use-recovery-${exerciseIndex}">Recupero</label>
+                <input id="use-recovery-${exerciseIndex}" value="${escapeAttr(exercise.recovery || "")}" onchange="updateExercise(${exerciseIndex}, 'recovery', this.value)">
+              </div>
+            </div>
+            <div class="field">
+              <label for="use-notes-${exerciseIndex}">Note tecniche</label>
+              <textarea id="use-notes-${exerciseIndex}" onchange="updateExercise(${exerciseIndex}, 'notes', this.value)">${escapeHtml(exercise.notes || "")}</textarea>
+            </div>
+            ${renderWeekSetEditor(exercise, exerciseIndex, "use")}
+          </div>
+        </article>
+      `).join("") : `<div class="empty-focus"><strong>Allenamento vuoto</strong>Vai a “Crea programma” per aggiungere il primo esercizio.</div>`;
+    }
+
+    function renderCompact(exercise, exerciseIndex) {
+      return renderWeekSetEditor(exercise, exerciseIndex, "builder", true);
     }
 
     function renderTable(exercise, exerciseIndex) {
-      const sessionCells = state.sessions.map((session, sessionIndex) => `
-        <th>${escapeHtml(session)}</th>
-      `).join("");
-      const planCells = state.sessions.map((session, sessionIndex) => `
-        <td>
-          <input class="plan-input" value="${escapeAttr(exercise.plan[sessionIndex] || "")}" onchange="updatePlan(${exerciseIndex}, ${sessionIndex}, this.value)" aria-label="Programma ${escapeAttr(session)}">
-          <input class="track-input" value="${escapeAttr(exercise.feedback[sessionIndex] || "")}" onchange="updateFeedback(${exerciseIndex}, ${sessionIndex}, this.value)" placeholder="kg / nota" aria-label="Feedback ${escapeAttr(session)}">
-        </td>
-      `).join("");
-      return `
-        <div class="progress-wrap">
-          <table class="progress-table">
-            <thead>
-              <tr>${sessionCells}<th>Recupero</th><th>Intensita</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                ${planCells}
-                <td><input class="track-input" value="${escapeAttr(exercise.recoveryNote || "")}" onchange="updateExercise(${exerciseIndex}, 'recoveryNote', this.value)" placeholder="nota"></td>
-                <td><input class="track-input" value="${escapeAttr(exercise.effortNote || "")}" onchange="updateExercise(${exerciseIndex}, 'effortNote', this.value)" placeholder="1-5"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
+      return renderWeekSetEditor(exercise, exerciseIndex, "builder");
     }
 
     function renderPresetButtons() {
@@ -2240,15 +3775,42 @@
           state.selectedPreset = button.dataset.preset;
           renderPresetButtons();
           renderPresetPreview();
+          renderExerciseInsertSummary();
         });
       });
     }
 
     function renderPresetPreview() {
+      if (state.selectedPreset === "manual") {
+        appState.manualPlan = state.sessions.map((_, index) => appState.manualPlan[index] || "");
+        presetPreview.innerHTML = state.sessions.map((session, index) => `
+          <div class="light-box"><strong>${escapeHtml(session)}</strong><span>Ripetizioni delle serie separate da “/”</span><input class="manual-plan-input" value="${escapeAttr(appState.manualPlan[index])}" oninput="updateManualProgression(${index}, this.value)" placeholder="Es. 10 / 8 / 6" aria-label="Ripetizioni delle serie ${escapeAttr(session)}"></div>
+        `).join("");
+        return;
+      }
       const plan = buildPlanForSessions(presets[state.selectedPreset].plan);
-      presetPreview.innerHTML = plan.map((value, index) => `
-        <div class="light-box"><strong>${escapeHtml(state.sessions[index])}</strong><span>${escapeHtml(value)}</span></div>
-      `).join("");
+      presetPreview.innerHTML = plan.map((value, index) => renderProgressionWeekPreview(state.sessions[index], value)).join("");
+    }
+
+    function renderProgressionWeekPreview(weekName, planValue) {
+      const sets = setEntriesFromLegacy(planValue, "");
+      return `<div class="light-box"><strong>${escapeHtml(weekName)}</strong>${sets.map((set, index) => `
+        <span>Serie ${index + 1}: ${escapeHtml(set.reps)} ripetizioni${set.rir ? ` · RIR ${escapeHtml(set.rir)}` : ""}${set.note ? ` · ${escapeHtml(set.note)}` : ""}</span>
+      `).join("")}</div>`;
+    }
+
+    function renderExerciseInsertSummary() {
+      const summary = document.getElementById("exerciseInsertSummary");
+      if (!summary) return;
+      const name = document.getElementById("newName")?.value.trim() || "Nuovo esercizio";
+      const group = document.getElementById("newGroup")?.value || "Gruppo da definire";
+      const recovery = document.getElementById("newRecovery")?.value.trim() || "Recupero da definire";
+      const effort = document.getElementById("newEffort")?.value || "Intensità da definire";
+      const preset = presets[state.selectedPreset] || presets.reps;
+      const position = (state.sheets[state.currentSheet] || []).length + 1;
+      summary.innerHTML = `
+        <strong>${escapeHtml(name)} · posizione ${position}</strong>
+        <span>Allenamento ${escapeHtml(state.currentSheet)} · ${escapeHtml(group)} · ${escapeHtml(preset.title)} · ${escapeHtml(effort)} · ${escapeHtml(recovery)}</span>`;
     }
 
     function buildPlanForSessions(basePlan) {
@@ -2261,11 +3823,22 @@
       window.setTimeout(() => toast.classList.remove("show"), 1800);
     }
 
+    function confirmAction(message) {
+      return window.confirm(message);
+    }
+
     function openModal(name = "Goblet squat", group = "Gambe", focusTarget = "exercise") {
-      document.getElementById("newName").value = name;
-      document.getElementById("newGroup").value = group;
+      const found = findExerciseByName(name, group);
+      document.getElementById("newName").value = found?.name || name;
+      document.getElementById("newGroup").value = found?.group || group;
+      document.getElementById("newRecovery").value = found?.recovery || "75 sec";
+      document.getElementById("newEffort").value = "Media 3/5";
+      document.getElementById("newNotes").value = found?.notes || "Movimento controllato, tecnica pulita, evitare compensi.";
+      document.getElementById("exerciseSearch").value = "";
+      renderLibrary();
       renderPresetButtons();
       renderPresetPreview();
+      renderExerciseInsertSummary();
       modal.classList.add("open");
       const targetId = focusTarget === "progressions" ? "progressionPickerField" : "exercisePickerField";
       window.setTimeout(() => {
@@ -2287,7 +3860,9 @@
         recovery: document.getElementById("newRecovery").value.trim() || "75 sec",
         effort: document.getElementById("newEffort").value,
         notes: document.getElementById("newNotes").value.trim(),
-        plan: buildPlanForSessions(preset.plan),
+        plan: presetKey === "manual"
+          ? state.sessions.map((_, index) => appState.manualPlan[index] || "")
+          : buildPlanForSessions(preset.plan),
         progressionName: preset.title,
         progressionKey: presetKey
       });
@@ -2305,13 +3880,14 @@
         data.progressionName || "",
         data.progressionKey || ""
       );
+      attachPreviousHistory(exercise);
       state.sheets[state.currentSheet].push(exercise);
       lastAddedExerciseId = exercise.id;
       renderExercises();
-      autosave();
+      autosave(exercise.id);
       showToast("Esercizio aggiunto e salvato");
       window.setTimeout(() => {
-        document.querySelector(".exercise.fresh")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        document.querySelector(".exercise.fresh")?.scrollIntoView({ block: "center", behavior: "smooth" });
       }, 80);
     }
 
@@ -2324,61 +3900,13 @@
         recovery: found?.recovery || "75 sec",
         effort: "Media 3/5",
         notes: found?.notes || "Note trainer da completare.",
-        plan: buildPlanForSessions(preset.plan),
+        plan: state.selectedPreset === "manual"
+          ? state.sessions.map((_, index) => appState.manualPlan[index] || "")
+          : buildPlanForSessions(preset.plan),
         progressionName: preset.title,
         progressionKey: state.selectedPreset || "reps"
       });
       closeModal();
-      document.getElementById("exerciseStack")?.scrollIntoView({ block: "start", behavior: "smooth" });
-    }
-
-    function templateExercise(name, group, notes, plan, recovery = "75 sec", effort = "Media 3/5", progressionName = "Progressione light studio", progressionKey = "rir") {
-      return makeExercise(name, group, notes, plan, recovery, effort, progressionName, progressionKey);
-    }
-
-    function buildCompleteTemplateState(client) {
-      const next = clientDefaultState(client);
-      next.currentSheet = "A";
-      next.sheetOrder = ["A", "B"];
-      next.sessions = ["Seduta 1", "Seduta 2", "Seduta 3", "Seduta 4"];
-      next.compact = false;
-      next.selectedPreset = "rir";
-      next.meta.goal = client?.obiettivo || "Migliorare postura e mettere massa";
-      next.meta.level = "Intermedio";
-      next.meta.frequency = "2 sedute / settimana";
-      next.meta.warmup = "8 min cyclette + mobilita anche/spalle + 2 serie di avvicinamento";
-      next.meta.generalNotes = "Scheda interna studio: progressione light, tecnica prima del carico. Se il cliente arriva affaticato, mantieni il carico precedente e cura il range.";
-      next.sheets = {
-        A: [
-          templateExercise("Squat multipower", "Gambe", "Focus postura: schiena neutra, ginocchia stabili, profondita controllata.", ["3 x 8 RIR 3", "3 x 9 RIR 3", "4 x 8 RIR 2", "4 x 9 RIR 2"], "90 sec", "Media 3/5"),
-          templateExercise("Chest press", "Petto", "Scapole addotte, spinta fluida, niente compensi lombari.", ["3 x 10", "3 x 11", "4 x 10", "4 x 11"], "75 sec", "Media 3/5"),
-          templateExercise("Lat machine avanti", "Dorso", "Tira con gomiti bassi, petto aperto, pausa breve in chiusura.", ["3 x 10", "3 x 10 +1kg", "3 x 10 +2kg", "4 x 8 +2kg"], "75 sec", "Media 3/5"),
-          templateExercise("Hip thrust", "Glutei", "Retroversione in chiusura, non iperestendere la schiena.", ["3 x 10", "3 x 12", "4 x 10", "4 x 12"], "90 sec", "Media 3/5"),
-          templateExercise("Pallof press", "Core", "Anti-rotazione, bacino fermo, espira in estensione.", ["2 x 10/lato", "2 x 12/lato", "3 x 10/lato", "3 x 12/lato"], "45 sec", "Facile 2/5")
-        ],
-        B: [
-          templateExercise("Stacco rumeno manubri", "Femorali", "Cerniera d'anca, manubri vicini, femorali in controllo.", ["3 x 8", "3 x 9", "3 x 10", "4 x 8"], "90 sec", "Media 3/5"),
-          templateExercise("Leg press 45", "Gambe", "Piedi stabili, discesa controllata, spinta simmetrica.", ["3 x 12", "3 x 12 +5kg", "4 x 10 +5kg", "4 x 12 +5kg"], "90 sec", "Impegnativa 4/5"),
-          templateExercise("Shoulder press manubri", "Spalle", "Evita compenso lombare, traiettoria pulita.", ["3 x 8", "3 x 9", "3 x 10", "4 x 8"], "75 sec", "Media 3/5"),
-          templateExercise("Pulley basso", "Dorso", "Parti dalle scapole, chiudi senza slanciare.", ["3 x 10", "3 x 11", "4 x 10", "4 x 11"], "75 sec", "Media 3/5"),
-          templateExercise("Dead bug", "Core", "Lombare stabile a terra, movimento lento e alternato.", ["2 x 8/lato", "2 x 10/lato", "3 x 8/lato", "3 x 10/lato"], "45 sec", "Facile 2/5")
-        ]
-      };
-      next.lastSavedAt = null;
-      return normalizeState(next);
-    }
-
-    function createCompleteTemplate() {
-      const client = selectedClient();
-      if (!client) {
-        showToast("Seleziona un cliente prima di creare la scheda");
-        return;
-      }
-      state = buildCompleteTemplateState(client);
-      appState.selectedProgramId = "";
-      renderAll();
-      saveState(true);
-      showToast("Scheda completa A/B creata");
       document.getElementById("exerciseStack")?.scrollIntoView({ block: "start", behavior: "smooth" });
     }
 
@@ -2388,10 +3916,13 @@
       document.getElementById("newGroup").value = found?.group || group;
       if (found?.recovery) document.getElementById("newRecovery").value = found.recovery;
       if (found?.notes) document.getElementById("newNotes").value = found.notes;
-      showToast("Esercizio selezionato");
+      renderExerciseInsertSummary();
+      showToast("Esercizio selezionato: controlla l'anteprima e conferma");
     }
 
     function removeExercise(index) {
+      const exercise = state.sheets[state.currentSheet][index];
+      if (!exercise || !confirmAction(`Eliminare “${exercise.name}” dalla scheda ${state.currentSheet}?`)) return;
       state.sheets[state.currentSheet].splice(index, 1);
       renderExercises();
       autosave();
@@ -2418,58 +3949,109 @@
     }
 
     function updateExercise(index, key, value) {
-      state.sheets[state.currentSheet][index][key] = value;
-      renderMetrics();
-      autosave();
+      const exercise = state.sheets[state.currentSheet][index];
+      exercise[key] = value;
+      if (["name", "group", "recovery", "effort", "notes"].includes(key)) renderExercises();
+      else renderMetrics();
+      autosave(exercise.id);
     }
 
     function updatePlan(exerciseIndex, sessionIndex, value) {
-      state.sheets[state.currentSheet][exerciseIndex].plan[sessionIndex] = value;
-      autosave();
+      const exercise = state.sheets[state.currentSheet][exerciseIndex];
+      exercise.plan[sessionIndex] = value;
+      exercise.weekSets[sessionIndex] = setEntriesFromLegacy(value, exercise.feedback[sessionIndex] || "");
+      syncExerciseWeekSummary(exercise, sessionIndex);
+      autosave(exercise.id);
     }
 
     function updateFeedback(exerciseIndex, sessionIndex, value) {
-      state.sheets[state.currentSheet][exerciseIndex].feedback[sessionIndex] = value;
-      autosave();
+      const exercise = state.sheets[state.currentSheet][exerciseIndex];
+      exercise.feedback[sessionIndex] = value;
+      exercise.weekSets[sessionIndex] = setEntriesFromLegacy(exercise.plan[sessionIndex] || "", value);
+      syncExerciseWeekSummary(exercise, sessionIndex);
+      autosave(exercise.id);
+      renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
+    }
+
+    function updateExerciseSet(exerciseIndex, weekIndex, setIndex, key, value) {
+      const exercise = state.sheets[state.currentSheet][exerciseIndex];
+      ensureExerciseWeekSets(exercise, state.sessions.length);
+      const set = exercise.weekSets?.[weekIndex]?.[setIndex];
+      if (!set || !["reps", "load", "rir", "note"].includes(key)) return;
+      set[key] = value;
+      syncExerciseWeekSummary(exercise, weekIndex);
+      autosave(exercise.id);
+      renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
+    }
+
+    function addExerciseSet(exerciseIndex, weekIndex) {
+      const exercise = state.sheets[state.currentSheet][exerciseIndex];
+      ensureExerciseWeekSets(exercise, state.sessions.length);
+      const sets = exercise.weekSets[weekIndex];
+      const previous = sets.at(-1) || {};
+      sets.push(normalizeSetEntry({ reps: previous.reps || "10", load: "", rir: previous.rir || "" }));
+      syncExerciseWeekSummary(exercise, weekIndex);
+      renderExercises();
+      autosave(exercise.id);
+      showToast(`Serie ${sets.length} aggiunta`);
+    }
+
+    function removeExerciseSet(exerciseIndex, weekIndex, setIndex) {
+      const exercise = state.sheets[state.currentSheet][exerciseIndex];
+      ensureExerciseWeekSets(exercise, state.sessions.length);
+      const sets = exercise.weekSets[weekIndex];
+      if (sets.length <= 1) return;
+      sets.splice(setIndex, 1);
+      syncExerciseWeekSummary(exercise, weekIndex);
+      renderExercises();
+      autosave(exercise.id);
+      showToast("Serie eliminata");
     }
 
     function addSession() {
       if (state.sessions.length >= 12) {
-        showToast("Massimo 12 sedute");
+        showToast("Massimo 12 settimane");
         return;
       }
-      state.sessions.push(`Seduta ${state.sessions.length + 1}`);
+      state.sessions.push(`Settimana ${state.sessions.length + 1}`);
       fitAllExercises();
       renderAll();
       autosave();
-      showToast("Seduta aggiunta");
+      showToast("Settimana aggiunta");
     }
 
     function removeLastSession() {
       if (state.sessions.length <= 1) {
-        showToast("Serve almeno una seduta");
+        showToast("Serve almeno una settimana");
         return;
       }
+      const sessionName = state.sessions.at(-1);
+      if (!confirmAction(`Eliminare ${sessionName} e tutti i dati inseriti in quella colonna?`)) return;
       state.sessions.pop();
       fitAllExercises();
       renderAll();
       autosave();
-      showToast("Ultima seduta rimossa");
+      showToast("Ultima settimana rimossa");
     }
 
     function removeSession(index) {
       if (state.sessions.length <= 1) {
-        showToast("Serve almeno una seduta");
+        showToast("Serve almeno una settimana");
         return;
       }
+      const sessionName = state.sessions[index];
+      if (!confirmAction(`Eliminare ${sessionName} e tutti i dati inseriti in quella colonna?`)) return;
       state.sessions.splice(index, 1);
       Object.values(state.sheets).flat().forEach(exercise => {
         exercise.plan.splice(index, 1);
         exercise.feedback.splice(index, 1);
+        exercise.previousFeedback.splice(index, 1);
+        exercise.previousPlan.splice(index, 1);
+        exercise.weekSets?.splice(index, 1);
       });
       renderAll();
       autosave();
-      showToast("Seduta rimossa");
+      showToast("Settimana rimossa");
     }
 
     function nextSheetName() {
@@ -2477,8 +4059,21 @@
       const fromAlphabet = alphabet.find(letter => !state.sheets[letter]);
       if (fromAlphabet) return fromAlphabet;
       let index = state.sheetOrder.length + 1;
-      while (state.sheets[`Scheda ${index}`]) index += 1;
-      return `Scheda ${index}`;
+      while (state.sheets[String(index)]) index += 1;
+      return String(index);
+    }
+
+    function relabelWorkouts(selectedIndex = 0) {
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+      const previousOrder = [...state.sheetOrder];
+      const nextSheets = {};
+      previousOrder.forEach((oldKey, index) => {
+        const nextKey = alphabet[index] || String(index + 1);
+        nextSheets[nextKey] = state.sheets[oldKey] || [];
+      });
+      state.sheetOrder = Object.keys(nextSheets);
+      state.sheets = nextSheets;
+      state.currentSheet = state.sheetOrder[Math.max(0, Math.min(selectedIndex, state.sheetOrder.length - 1))] || "A";
     }
 
     function addSheet(copyFromCurrent = false) {
@@ -2493,21 +4088,23 @@
       state.currentSheet = key;
       renderAll();
       autosave();
-      showToast(copyFromCurrent ? `Scheda duplicata in ${key}` : `Scheda ${key} creata`);
+      showToast(copyFromCurrent ? `Allenamento duplicato in ${key}` : `Allenamento ${key} creato`);
     }
 
     function removeCurrentSheet() {
       if (state.sheetOrder.length <= 1) {
-        showToast("Serve almeno una scheda");
+        showToast("Serve almeno un allenamento");
         return;
       }
       const removed = state.currentSheet;
+      const removedIndex = state.sheetOrder.indexOf(removed);
+      if (!confirmAction(`Eliminare l'allenamento ${removed} con tutti i suoi esercizi?`)) return;
       delete state.sheets[removed];
       state.sheetOrder = state.sheetOrder.filter(key => key !== removed);
-      state.currentSheet = state.sheetOrder[0];
+      relabelWorkouts(Math.min(removedIndex, state.sheetOrder.length - 1));
       renderAll();
       autosave();
-      showToast(`Scheda ${removed} eliminata`);
+      showToast(`Allenamento ${removed} eliminato`);
     }
 
     function duplicateSheet() {
@@ -2524,18 +4121,212 @@
       autosave();
     }
 
-    function newDraft() {
+    async function createAndPersistProgram(nextState, successMessage) {
+      appState.selectedProgramId = "";
+      STORAGE_KEY = storageKeyFor(appState.selectedClientId, "");
+      state = normalizeState(nextState);
+      state.lastSavedAt = null;
+      state.draftProgramId = "";
+      appState.saveMode = "draft";
+      renderAll();
+      autosave();
+      const saved = await saveProgramToSupabase();
+      showView("builderView");
+      showToast(saved ? successMessage : "Bozza aperta e conservata: riprova il salvataggio quando torna la connessione");
+      return saved;
+    }
+
+    async function duplicateProgram() {
       const client = selectedClient();
       if (!client) {
-        showToast("Seleziona un cliente prima di creare una bozza");
+        showToast("Seleziona un cliente prima di duplicare il programma");
         return;
       }
-      appState.selectedProgramId = "";
-      state = clientDefaultState(client);
-      localStorage.removeItem(STORAGE_KEY);
-      renderAll();
-      saveState(true);
-      showToast("Nuova bozza pronta");
+      if (!confirmAction(`Duplicare il programma ${periodLabel(state.meta.period)} di ${fullName(client)} come nuova bozza modificabile?`)) return;
+      const duplicated = normalizeState(clone(state));
+      duplicated.lastSavedAt = null;
+      duplicated.draftProgramId = "";
+      duplicated.sourceProgramId = appState.selectedProgramId || state.sourceProgramId || "";
+      Object.values(duplicated.sheets).flat().forEach(exercise => {
+        exercise.id = id("exercise");
+      });
+      await createAndPersistProgram(duplicated, "Programma duplicato, salvato e aperto");
+    }
+
+    function openNewProgramModal() {
+      const client = selectedClient();
+      if (!client) {
+        showToast("Seleziona un cliente prima di creare un programma");
+        return;
+      }
+      document.getElementById("newProgramClient").textContent = fullName(client);
+      document.getElementById("newProgramPeriod").value = currentPeriodKey();
+      document.getElementById("newProgramWorkouts").value = "1";
+      document.getElementById("newProgramWeeks").value = "4";
+      document.getElementById("newProgramGoal").value = client.obiettivo || "";
+      document.getElementById("newProgramLevel").value = "Intermedio";
+      document.getElementById("newProgramFrequency").value = "2 allenamenti / settimana";
+      document.getElementById("newProgramWarmup").value = "";
+      newProgramModal.classList.add("open");
+      document.getElementById("newProgramPeriod").focus();
+    }
+
+    function closeNewProgramModal() {
+      newProgramModal.classList.remove("open");
+    }
+
+    async function createNewProgramFromInputs() {
+      const client = selectedClient();
+      if (!client) {
+        closeNewProgramModal();
+        showToast("Seleziona un cliente prima di creare un programma");
+        return;
+      }
+      const workoutCount = Math.max(1, Math.min(6, Number(document.getElementById("newProgramWorkouts").value) || 1));
+      const weekCount = Math.max(1, Math.min(12, Number(document.getElementById("newProgramWeeks").value) || 4));
+      const workoutKeys = "ABCDEF".slice(0, workoutCount).split("");
+      const next = clientDefaultState(client);
+      next.currentSheet = "A";
+      next.sheetOrder = workoutKeys;
+      next.sheets = Object.fromEntries(workoutKeys.map(key => [key, []]));
+      next.sessions = Array.from({ length: weekCount }, (_, index) => `Settimana ${index + 1}`);
+      next.meta.period = document.getElementById("newProgramPeriod").value || currentPeriodKey();
+      next.meta.goal = document.getElementById("newProgramGoal").value.trim();
+      next.meta.level = document.getElementById("newProgramLevel").value;
+      next.meta.frequency = document.getElementById("newProgramFrequency").value.trim();
+      next.meta.warmup = document.getElementById("newProgramWarmup").value.trim();
+      next.lastSavedAt = null;
+      const createButton = document.getElementById("createNewProgramBtn");
+      createButton.disabled = true;
+      closeNewProgramModal();
+      try {
+        await createAndPersistProgram(next, `Programma creato con ${workoutCount} allenament${workoutCount === 1 ? "o" : "i"} e ${weekCount} settimane`);
+      } finally {
+        createButton.disabled = false;
+      }
+    }
+
+    async function newMonthFromCurrent() {
+      const client = selectedClient();
+      if (!client) {
+        showToast("Seleziona un cliente prima di creare il mese successivo");
+        return;
+      }
+      if (!confirmAction(`Creare il mese successivo per ${fullName(client)} mantenendo esercizi e progressioni?`)) return;
+
+      const sourcePeriod = state.meta.period || currentPeriodKey();
+      const next = normalizeState(clone(state));
+      next.meta.period = nextPeriodKey(sourcePeriod);
+      next.sourceProgramId = appState.selectedProgramId || state.sourceProgramId || "";
+      next.sourcePeriod = sourcePeriod;
+      next.lastSavedAt = null;
+      next.draftProgramId = "";
+      Object.values(next.sheets).flat().forEach(exercise => {
+        ensureExerciseWeekSets(exercise, next.sessions.length);
+        exercise.previousFeedback = next.sessions.map((_, index) => exercise.feedback?.[index] || exercise.plan?.[index] || exercise.previousFeedback?.[index] || "");
+        exercise.previousPlan = next.sessions.map((_, index) => exercise.plan?.[index] || exercise.previousPlan?.[index] || "");
+        exercise.previousPeriod = sourcePeriod;
+        exercise.weekSets = exercise.weekSets.map(sets => sets.map(set => normalizeSetEntry({
+          ...set,
+          previousLoad: set.load || set.previousLoad || "",
+          load: "",
+          rir: ""
+        })));
+        exercise.feedback = next.sessions.map(() => "");
+        next.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
+        exercise.recoveryNote = "";
+        exercise.effortNote = "";
+      });
+
+      await createAndPersistProgram(next, `${periodLabel(next.meta.period)} creato con i carichi precedenti e salvato`);
+    }
+
+    async function deleteProgram(programId) {
+      if (!requireEditableClient()) return;
+      const program = appState.programs.find(item => item.id === programId);
+      if (!program || !confirmAction(`Archiviare la scheda di ${periodLabel(program.period)}? Potrai ripristinarla in qualsiasi momento.`)) return;
+      try {
+        const archivedAt = new Date().toISOString();
+        const audit = Array.isArray(program.data?.audit_log) ? clone(program.data.audit_log) : [];
+        audit.push({ action: "archiviazione", at: archivedAt, by: appState.currentPt?.id || "", email: appState.currentPt?.email || "" });
+        const archivedData = {
+          ...program.data,
+          archived: true,
+          archived_at: archivedAt,
+          archived_by: appState.currentPt?.id || "",
+          audit_log: audit.slice(-60)
+        };
+        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(program.rowId || programId)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { data: archivedData, updated_at: archivedAt }
+        });
+        const normalized = normalizeProgram({
+          id: program.rowId || programId,
+          cliente_id: program.client_id,
+          data: archivedData,
+          updated_at: archivedAt
+        });
+        const index = appState.programs.findIndex(item => item.id === programId);
+        if (index >= 0) appState.programs.splice(index, 1, normalized);
+        localStorage.removeItem(storageKeyFor(appState.selectedClientId, programId));
+        if (appState.selectedProgramId === programId) {
+          const nextProgram = programsForClient()[0];
+          if (nextProgram) selectProgram(nextProgram.id);
+          else {
+            appState.selectedProgramId = "";
+            STORAGE_KEY = storageKeyFor(appState.selectedClientId, "");
+            state = clientDefaultState(selectedClient());
+            appState.saveMode = "draft";
+            renderAll();
+          }
+        }
+        renderClientList();
+        renderProgramHistory();
+        renderProgramManager();
+        showToast("Scheda archiviata: resta recuperabile");
+      } catch (error) {
+        console.error(error);
+        showToast("Non riesco ad archiviare la scheda. Riprova.");
+      }
+    }
+
+    async function restoreProgram(programId) {
+      if (!requireEditableClient()) return;
+      const program = appState.programs.find(item => item.id === programId);
+      if (!program?.archived || !confirmAction(`Ripristinare la scheda di ${periodLabel(program.period)}?`)) return;
+      try {
+        const restoredAt = new Date().toISOString();
+        const audit = Array.isArray(program.data?.audit_log) ? clone(program.data.audit_log) : [];
+        audit.push({ action: "ripristino", at: restoredAt, by: appState.currentPt?.id || "", email: appState.currentPt?.email || "" });
+        const restoredData = {
+          ...program.data,
+          archived: false,
+          restored_at: restoredAt,
+          restored_by: appState.currentPt?.id || "",
+          audit_log: audit.slice(-60)
+        };
+        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(program.rowId || programId)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { data: restoredData, updated_at: restoredAt }
+        });
+        const normalized = normalizeProgram({
+          id: program.rowId || programId,
+          cliente_id: program.client_id,
+          data: restoredData,
+          updated_at: restoredAt
+        });
+        const index = appState.programs.findIndex(item => item.id === programId);
+        if (index >= 0) appState.programs.splice(index, 1, normalized);
+        renderClientList();
+        renderProgramHistory();
+        renderProgramManager();
+        showToast("Scheda ripristinata");
+      } catch (error) {
+        console.error(error);
+        showToast("Non riesco a ripristinare la scheda. Riprova.");
+      }
     }
 
     function escapeHtml(value) {
@@ -2546,8 +4337,23 @@
       return escapeHtml(value).replace(/`/g, "&#96;");
     }
 
+    function showView(viewId) {
+      const target = document.getElementById(viewId);
+      if (!target?.classList.contains("app-view")) return;
+      appState.activeView = viewId;
+      document.querySelectorAll(".app-view").forEach(view => view.classList.toggle("active", view.id === viewId));
+      document.querySelectorAll(".nav-btn[data-view]").forEach(button => {
+        button.classList.toggle("active", button.dataset.view === viewId);
+      });
+      if (viewId === "programsView") renderProgramManager();
+      if (viewId === "builderView") renderCreationPreview();
+      if (viewId === "sheetView") renderSheetPreview();
+      renderMetrics();
+      renderClientFocus();
+      setEditorAvailability();
+    }
+
     function handleSideNav(button) {
-      document.querySelectorAll(".nav-btn").forEach(item => item.classList.toggle("active", item === button));
       if (button.dataset.navAction === "save") {
         saveProgramToSupabase();
         return;
@@ -2556,8 +4362,7 @@
         openStudioCalendar();
         return;
       }
-      const target = document.getElementById(button.dataset.navTarget);
-      if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
+      if (button.dataset.view) showView(button.dataset.view);
     }
 
     function openStudioCalendar() {
@@ -2566,17 +4371,27 @@
         return;
       }
       const calendarUrl = new URL("https://new-calendar-neacea.netlify.app/");
-      calendarUrl.searchParams.set("pt", "1");
-      calendarUrl.searchParams.set("mode", "pt");
       calendarUrl.searchParams.set("view", "week");
-      calendarUrl.searchParams.set("op", appState.currentPt.id || "");
-      if (appState.currentPt.email) calendarUrl.searchParams.set("email", appState.currentPt.email);
+      if (isAdministrator(appState.currentPt)) {
+        calendarUrl.searchParams.set("mode", "admin");
+      } else {
+        if (!appState.accessToken) {
+          showToast("Sessione calendario non valida: esci e accedi nuovamente con il codice PT");
+          return;
+        }
+        calendarUrl.searchParams.set("pt", "1");
+        calendarUrl.searchParams.set("mode", "pt");
+        calendarUrl.searchParams.set("op", appState.currentPt.id || "");
+        calendarUrl.searchParams.set("access", appState.accessToken);
+        if (appState.currentPt.email) calendarUrl.searchParams.set("email", appState.currentPt.email);
+      }
       window.open(calendarUrl.toString(), "_blank", "noopener");
     }
 
     async function init() {
       const params = new URLSearchParams(window.location.search);
       const email = params.get("email") || "";
+      const accessToken = params.get("access") || "";
       appState.loginOperatorId = params.get("op") || "";
       if (email) document.getElementById("loginEmail").value = email;
       const loginButton = document.getElementById("loginButton");
@@ -2585,13 +4400,24 @@
       sendCodeButton.disabled = true;
       loginButton.textContent = "Carico dati...";
       try {
-        await loadData();
+        await loadOperators();
         if (!appState.operators.length) {
           setLoginMessage("Nessun Personal Trainer configurato nel database.");
+        } else if (accessToken) {
+          loginButton.textContent = "Verifico la sessione...";
+          const verified = await verifyAccessToken(accessToken);
+          const pt = appState.operators.find(operator =>
+            String(operator.id || "") === String(verified.operatorId || "") &&
+            String(operator.email || "").toLowerCase() === String(verified.email || "").toLowerCase()
+          );
+          if (!pt) throw new Error("Il profilo PT collegato alla sessione non e' piu attivo.");
+          await activatePtSession(pt, accessToken);
+          window.history.replaceState(null, "", window.location.pathname);
+          return;
         }
       } catch (error) {
         console.error(error);
-        setLoginMessage("Non riesco a caricare i dati del portale. Riprova tra poco.");
+        setLoginMessage(error.message || "Non riesco a caricare i dati del portale. Riprova tra poco.");
       } finally {
         loginButton.disabled = false;
         sendCodeButton.disabled = false;
@@ -2600,14 +4426,25 @@
       }
     }
 
-    ["goal", "level", "frequency", "warmup", "generalNotes"].forEach(id => {
+    ["period", "goal", "level", "frequency", "warmup", "generalNotes"].forEach(id => {
       document.getElementById(id).addEventListener("change", event => {
         state.meta[id] = event.target.value;
         autosave();
+        if (id === "period") renderProgramHistory();
+        renderCreationPreview();
+        renderSheetPreview();
       });
     });
 
     document.getElementById("exerciseSearch").addEventListener("input", renderLibrary);
+    document.getElementById("clientSearch").addEventListener("input", event => {
+      appState.clientFilter = event.target.value;
+      renderClientList();
+    });
+    document.getElementById("trainerFilter").addEventListener("change", event => {
+      appState.trainerFilter = event.target.value;
+      renderClientList();
+    });
     document.getElementById("inlineLine").addEventListener("change", () => {
       renderInlineBuilder();
     });
@@ -2632,8 +4469,9 @@
       renderArchiveControls(event.target.value, document.getElementById("customExerciseGroup").value);
     });
     document.getElementById("saveCustomExerciseBtn").addEventListener("click", saveCustomExercise);
-    document.getElementById("addExerciseBtn").addEventListener("click", focusInlineBuilder);
-    document.getElementById("completeTemplateBtn").addEventListener("click", createCompleteTemplate);
+    document.getElementById("programHistory").addEventListener("change", event => selectProgram(event.target.value));
+    document.getElementById("newMonthBtn").addEventListener("click", newMonthFromCurrent);
+    document.getElementById("addExerciseBtn").addEventListener("click", () => openModal());
     document.getElementById("addSheetBtn").addEventListener("click", () => addSheet(false));
     document.getElementById("removeSheetBtn").addEventListener("click", removeCurrentSheet);
     document.getElementById("closeModalBtn").addEventListener("click", closeModal);
@@ -2644,11 +4482,20 @@
     document.getElementById("duplicateSheetBtn").addEventListener("click", duplicateSheet);
     document.getElementById("calendarBtn").addEventListener("click", openStudioCalendar);
     document.getElementById("saveBtn").addEventListener("click", saveProgramToSupabase);
-    document.getElementById("resetBtn").addEventListener("click", newDraft);
+    document.getElementById("resetBtn").addEventListener("click", openNewProgramModal);
+    document.getElementById("closeNewProgramBtn").addEventListener("click", closeNewProgramModal);
+    document.getElementById("cancelNewProgramBtn").addEventListener("click", closeNewProgramModal);
+    document.getElementById("createNewProgramBtn").addEventListener("click", createNewProgramFromInputs);
+    document.getElementById("openSheetBtn").addEventListener("click", () => showView("builderView"));
+    document.getElementById("openSelectedSheetBtn").addEventListener("click", () => showView("builderView"));
+    document.getElementById("openSelectedProgramsBtn").addEventListener("click", () => showView("programsView"));
     document.getElementById("loginButton").addEventListener("click", login);
     document.getElementById("sendCodeButton").addEventListener("click", sendAccessCode);
     document.querySelectorAll(".nav-btn").forEach(button => {
       button.addEventListener("click", () => handleSideNav(button));
+    });
+    document.querySelectorAll("[data-go-view]").forEach(button => {
+      button.addEventListener("click", () => showView(button.dataset.goView));
     });
     ["loginEmail", "loginCode"].forEach(id => {
       document.getElementById(id).addEventListener("keydown", event => {
@@ -2664,6 +4511,9 @@
     modal.addEventListener("click", event => {
       if (event.target === modal) closeModal();
     });
+    newProgramModal.addEventListener("click", event => {
+      if (event.target === newProgramModal) closeNewProgramModal();
+    });
 
     document.getElementById("newName").addEventListener("change", event => {
       const found = findExerciseByName(event.target.value, document.getElementById("newGroup").value);
@@ -2672,6 +4522,11 @@
         document.getElementById("newRecovery").value = found.recovery || "75 sec";
         document.getElementById("newNotes").value = found.notes || document.getElementById("newNotes").value;
       }
+      renderExerciseInsertSummary();
+    });
+    ["newName", "newGroup", "newRecovery", "newEffort", "newNotes"].forEach(id => {
+      document.getElementById(id).addEventListener("input", renderExerciseInsertSummary);
+      document.getElementById(id).addEventListener("change", renderExerciseInsertSummary);
     });
 
     document.getElementById("newGroup").innerHTML = groups.map(group => `<option>${escapeHtml(group)}</option>`).join("");

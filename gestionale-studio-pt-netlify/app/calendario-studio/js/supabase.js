@@ -44,6 +44,8 @@ const SupabaseSync = (() => {
       sessionsRemaining: r.sessions_remaining || 0,
       giorniSettimana: Array.isArray(r.giorni_settimana) ? r.giorni_settimana : [],
       packageStart: r.package_start || r.data_inizio || '',
+      packageCycleStart: r.data_conferma || '',
+      acquisitionStart: r.data_inizio || '',
       notes: r.notes || '',
       ptAssegnato: r.pt_assegnato || null,
       tipoServizio: r.tipo_servizio || '',
@@ -78,6 +80,7 @@ const SupabaseSync = (() => {
       sessions_remaining: parseInt(c.sessionsRemaining) || 0,
       giorni_settimana: Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [],
       package_start: c.packageStart || null,
+      data_conferma: c.packageCycleStart || c.package_cycle_start || null,
       notes: c.notes || '',
       pt_assegnato: Object.prototype.hasOwnProperty.call(c, 'ptAssegnato')
         ? (c.ptAssegnato || null)
@@ -164,6 +167,7 @@ const SupabaseSync = (() => {
     const created = [];
 
     clients.forEach(client => {
+      if (client.active === false) return;
       const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
       const total = Number(client.sessionsTotal || 0);
       const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
@@ -281,7 +285,7 @@ const SupabaseSync = (() => {
   async function pullAll() {
     const [clients, operators, appointments] = await Promise.all([
       request('clients', { query: '?select=*&order=active.desc,cognome.asc,nome.asc' }),
-      request('operators', { query: '?select=*&active=eq.true&order=cognome.asc,nome.asc' }),
+      request('operators', { query: '?select=*&order=active.desc,cognome.asc,nome.asc' }),
       request('appointments', { query: '?select=*&order=date.asc,start_time.asc' }),
     ]);
     if (!clients?.error && Array.isArray(clients)) State.saveClients(clients.map(clientFromDb));
@@ -310,12 +314,9 @@ const SupabaseSync = (() => {
     if (!result?.error) return result;
     if (!isMissingPerformedByColumnError(result)) return result;
 
-    // Una prestazione svolta deve conservare l'esecutore. Prima della
-    // migrazione il salvataggio resta bloccato, invece di degradare il dato.
+    // Prima della migrazione si degrada soltanto una seduta non svolta e
+    // soltanto quando Supabase certifica che la nuova colonna non esiste.
     if (body.status === 'fatto' || body.performed_by_operator_id) return result;
-
-    // Compatibilita pre-migrazione consentita solo per sedute non svolte e solo
-    // quando Supabase certifica che la colonna non esiste ancora.
     const legacyBody = { ...body };
     delete legacyBody.performed_by_operator_id;
     return request('appointments', {
@@ -442,16 +443,5 @@ const SupabaseSync = (() => {
     };
   }
 
-  return {
-    pullAll,
-    pushAppointment,
-    pushClient,
-    pushOperator,
-    pushLocalSnapshot,
-    deleteAppointment,
-    ensurePackageAppointments,
-    pullOperatorAvailability,
-    pushOperatorAvailability,
-    isMissingPerformedByColumnError,
-  };
+  return { pullAll, pushAppointment, pushClient, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();
