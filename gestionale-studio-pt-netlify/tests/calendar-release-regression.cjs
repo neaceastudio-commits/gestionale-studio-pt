@@ -34,6 +34,7 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Pagamenti separati dalla vista lezioni', appSource.includes("_setPackageWorkspace(mode = 'lessons')") && appSource.includes('package-finance-only" hidden')],
   ['Rettifica saldo tracciata', appSource.includes('_reconcilePackagePayment(clientId)') && packageLedgerSource.includes('function reconcilePaidTotal')],
   ['Storno incasso tracciato', appSource.includes('_reversePackagePayment(clientId, paymentId)') && packageLedgerSource.includes('function reversePayment')],
+  ['Incassi pacchetto non bloccati da Sheets', appSource.includes('_syncPackageClientAfterPrimarySave(updated, \'incasso pacchetto\')') && !appSource.includes('await Sheets.pushClient(updated);')],
   ['Rollback rinnovo parziale', appSource.includes('_rollbackPackageRenewalRemote')],
   ['Export pagamenti CSV', clientsSource.includes('exportPackagePayments(clientId')],
   ['Separazione cicli', appSource.includes('_confirmCurrentPackageCycle(clientId)')],

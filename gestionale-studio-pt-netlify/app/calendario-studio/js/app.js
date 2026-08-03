@@ -2524,11 +2524,21 @@ const App = {
     App.openPackageOverview(clientId);
   },
 
+  _syncPackageClientAfterPrimarySave(client, label = 'pacchetto') {
+    if (!CONFIG.SHEETS.enabled) return;
+    Promise.resolve(Sheets.pushClient(client)).catch(error => {
+      console.warn(`[Sheets] ${label} non sincronizzato`, error);
+    });
+  },
+
   async _recordPackagePayment(clientId) {
     if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
     const clients = State.getClients();
     const index = clients.findIndex(client => client.id === clientId);
-    if (index < 0) return;
+    if (index < 0) {
+      UI.showToast('Cliente non trovato. Aggiorna e riprova.', 'error');
+      return;
+    }
     const currentClient = clients[index];
     const metrics = Services.getClientSessionMetrics(currentClient);
     try {
@@ -2547,11 +2557,12 @@ const App = {
       if (sync?.error) throw new Error('Il pagamento non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
-      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      App._syncPackageClientAfterPrimarySave(updated, 'incasso pacchetto');
       UI.showToast(`Incasso registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
       Clients.render();
       App._openPackageFinance(clientId);
     } catch (error) {
+      console.warn('[Pacchetto] incasso non registrato', error);
       UI.showToast(error.message || 'Pagamento non registrato', 'error');
     } finally {
       App._packagePaymentBusy = false;
@@ -2562,7 +2573,10 @@ const App = {
     if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
     const clients = State.getClients();
     const index = clients.findIndex(client => client.id === clientId);
-    if (index < 0) return;
+    if (index < 0) {
+      UI.showToast('Cliente non trovato. Aggiorna e riprova.', 'error');
+      return;
+    }
     const currentClient = clients[index];
     const metrics = Services.getClientSessionMetrics(currentClient);
     try {
@@ -2580,11 +2594,12 @@ const App = {
       if (sync?.error) throw new Error('L’importo non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
-      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      App._syncPackageClientAfterPrimarySave(updated, 'importo pacchetto');
       UI.showToast('Importo del ciclo aggiornato', 'success');
       Clients.render();
       App._openPackageFinance(clientId);
     } catch (error) {
+      console.warn('[Pacchetto] importo non aggiornato', error);
       UI.showToast(error.message || 'Importo non aggiornato', 'error');
     } finally {
       App._packagePaymentBusy = false;
@@ -2595,7 +2610,10 @@ const App = {
     if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
     const clients = State.getClients();
     const index = clients.findIndex(client => client.id === clientId);
-    if (index < 0) return;
+    if (index < 0) {
+      UI.showToast('Cliente non trovato. Aggiorna e riprova.', 'error');
+      return;
+    }
     const currentClient = clients[index];
     const metrics = Services.getClientSessionMetrics(currentClient);
     try {
@@ -2618,11 +2636,12 @@ const App = {
       if (sync?.error) throw new Error('La rettifica non è stata sincronizzata');
       clients[index] = updated;
       State.saveClients(clients);
-      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      App._syncPackageClientAfterPrimarySave(updated, 'rettifica pacchetto');
       UI.showToast(`Rettifica registrata · incassato ${App._fmtMoney(result.finance.paid)} · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
       Clients.render();
       App._openPackageFinance(clientId);
     } catch (error) {
+      console.warn('[Pacchetto] rettifica non registrata', error);
       UI.showToast(error.message || 'Rettifica non registrata', 'error');
     } finally {
       App._packagePaymentBusy = false;
@@ -2633,7 +2652,10 @@ const App = {
     if (!App.guardStudioManagement() || App._packagePaymentBusy) return;
     const clients = State.getClients();
     const index = clients.findIndex(client => client.id === clientId);
-    if (index < 0) return;
+    if (index < 0) {
+      UI.showToast('Cliente non trovato. Aggiorna e riprova.', 'error');
+      return;
+    }
     const date = prompt('Data dello storno (AAAA-MM-GG)', App._dateStr(new Date()));
     if (date === null) return;
     const reason = prompt('Motivo dello storno (obbligatorio)', '');
@@ -2659,11 +2681,12 @@ const App = {
       if (sync?.error) throw new Error('Lo storno non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
-      if (CONFIG.SHEETS.enabled) await Sheets.pushClient(updated);
+      App._syncPackageClientAfterPrimarySave(updated, 'storno pacchetto');
       UI.showToast(`Storno registrato · saldo ${App._fmtMoney(result.finance.balance)}`, 'success');
       Clients.render();
       App._openPackageFinance(clientId);
     } catch (error) {
+      console.warn('[Pacchetto] storno non registrato', error);
       UI.showToast(error.message || 'Storno non registrato', 'error');
     } finally {
       App._packagePaymentBusy = false;
