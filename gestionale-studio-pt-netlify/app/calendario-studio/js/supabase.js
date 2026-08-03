@@ -9,6 +9,7 @@ const SupabaseSync = (() => {
   }
 
   async function request(table, { method = 'GET', query = '', body = null, headers = {} } = {}) {
+    const endpoint = url(table, query);
     const r = await fetch(url(table, query), {
       method,
       headers: {
@@ -19,7 +20,11 @@ const SupabaseSync = (() => {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!r.ok) return { error: await r.text() };
+    if (!r.ok) {
+      const error = await r.text();
+      console.warn('[SupabaseSync] richiesta non riuscita', { table, method, query, status: r.status, error });
+      return { error, status: r.status, table, method, query, endpoint };
+    }
     if (r.status === 204) return null;
     const text = await r.text();
     return text ? JSON.parse(text) : null;
@@ -275,25 +280,110 @@ const SupabaseSync = (() => {
     });
   }
 
-  async function pushClient(client) {
-    if (!client) return;
-    const body = clientToDb(client);
-    const res = await request('clients', {
+  const CLIENT_SCHEMA_FALLBACK_COLUMNS = [
+    'nascita',
+    'sesso',
+    'codice_fiscale',
+    'documento',
+    'indirizzo',
+    'contatto_emergenza',
+    'package_types',
+    'package_frequency',
+    'giorni_settimana',
+    'data_conferma',
+    'pt_assegnato',
+    'tipo_servizio',
+    'tipo_abbonamento',
+    'stato_abbonamento',
+    'stato_pagamento',
+    'obiettivo',
+    'professione',
+    'come',
+    'motivazione',
+    'updated_at',
+  ];
+
+  function getMissingColumns(error) {
+    const text = String(error || '');
+    const found = new Set();
+    let match;
+    const patterns = [
+      /Could not find the '([^']+)' column/gi,
+      /column "([^"]+)" of relation "clients" does not exist/gi,
+      /record "new" has no field "([^"]+)"/gi,
+    ];
+    patterns.forEach(pattern => {
+      while ((match = pattern.exec(text))) found.add(match[1]);
+    });
+    return Array.from(found);
+  }
+
+  function isClientSchemaError(error) {
+    const text = String(error || '').toLowerCase();
+    return text.includes('column') || text.includes('schema cache') || text.includes('has no field');
+  }
+
+  function isUpsertConflictError(error) {
+    const text = String(error || '').toLowerCase();
+    return text.includes('on conflict') || text.includes('unique or exclusion constraint');
+  }
+
+  function stripClientColumns(body, columns) {
+    const next = { ...body };
+    columns.forEach(column => delete next[column]);
+    return next;
+  }
+
+  function compactClientBody(body) {
+    return stripClientColumns(body, CLIENT_SCHEMA_FALLBACK_COLUMNS);
+  }
+
+  function postClient(body) {
+    return request('clients', {
       method: 'POST',
       query: '?on_conflict=id',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body,
     });
-    if (!res?.error) return res;
-    if (!String(res.error).includes('column')) return res;
-    const fallback = { ...body };
-    ['nascita', 'sesso', 'codice_fiscale', 'documento', 'indirizzo', 'contatto_emergenza'].forEach(k => delete fallback[k]);
+  }
+
+  function patchClient(body) {
+    if (!body.id) return { error: 'ID cliente mancante per aggiornamento compatibile' };
     return request('clients', {
-      method: 'POST',
-      query: '?on_conflict=id',
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: fallback,
+      method: 'PATCH',
+      query: '?id=eq.' + encodeURIComponent(body.id),
+      headers: { Prefer: 'return=minimal' },
+      body,
     });
+  }
+
+  async function pushClient(client) {
+    if (!client) return;
+    let body = clientToDb(client);
+    let res = await postClient(body);
+    if (!res?.error) return res;
+
+    if (isClientSchemaError(res.error)) {
+      const missingColumns = getMissingColumns(res.error);
+      body = missingColumns.length
+        ? stripClientColumns(body, missingColumns)
+        : compactClientBody(body);
+      res = await postClient(body);
+      if (!res?.error) return res;
+    }
+
+    if (isClientSchemaError(res?.error)) {
+      body = compactClientBody(body);
+      res = await postClient(body);
+      if (!res?.error) return res;
+    }
+
+    if (isUpsertConflictError(res?.error) || res?.status === 400) {
+      const patchRes = await patchClient(body);
+      if (!patchRes?.error) return patchRes;
+    }
+
+    return res;
   }
 
   async function pushOperator(operator) {

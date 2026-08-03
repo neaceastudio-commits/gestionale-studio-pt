@@ -215,7 +215,15 @@ const serviceContext = {
     workHours: { start: '08:00', end: '20:00' },
   },
   console,
-  Date,
+  Date: class FixedDate extends Date {
+    constructor(...args) {
+      super(...(args.length ? args : ['2026-07-01T10:00:00Z']));
+    }
+
+    static now() {
+      return new Date('2026-07-01T10:00:00Z').getTime();
+    }
+  },
   Intl,
 };
 vm.createContext(serviceContext);
