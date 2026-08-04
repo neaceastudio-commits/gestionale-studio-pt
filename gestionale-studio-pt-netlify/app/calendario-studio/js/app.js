@@ -2027,7 +2027,7 @@ const App = {
             <button class="btn" onclick="App._updatePackageCycleAmount('${client.id}')">Aggiorna importo</button>
             <div class="form-group">
               <label>Nuovo incasso €</label>
-              <input id="pkg-payment-amount" class="form-input" type="number" min="0.01" max="${currentFinance.balance.toFixed(2)}" step="0.01" placeholder="${currentFinance.balance.toFixed(2)}" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
+              <input id="pkg-payment-amount" class="form-input" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" value="${currentFinance.balance.toFixed(2)}" data-max-amount="${currentFinance.balance.toFixed(2)}" autocomplete="off" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
             </div>
             <div class="form-group">
               <label>Data incasso</label>
@@ -2046,7 +2046,7 @@ const App = {
               <label>Nota incasso</label>
               <input id="pkg-payment-note" class="form-input" type="text" maxlength="160" placeholder="Facoltativa" ${currentFinance.balance <= 0 ? 'disabled' : ''}>
             </div>
-            <button class="btn-primary" onclick="App._recordPackagePayment('${client.id}')" ${currentFinance.balance <= 0 || packageLedger.parseError ? 'disabled' : ''}>Registra incasso</button>
+            <button id="pkg-payment-submit" class="btn-primary" onclick="App._recordPackagePayment('${client.id}')" ${currentFinance.balance <= 0 || packageLedger.parseError ? 'disabled' : ''}>Registra incasso</button>
           </div>
           <div class="package-movement-area">
             <h5>Movimenti del ciclo</h5>
@@ -2541,10 +2541,19 @@ const App = {
     }
     const currentClient = clients[index];
     const metrics = Services.getClientSessionMetrics(currentClient);
+    const amountInput = document.getElementById('pkg-payment-amount');
+    const submitButton = document.getElementById('pkg-payment-submit');
+    const rawAmount = amountInput?.value ?? '';
+    const normalizedAmount = PackageLedger.parseMoneyInput(rawAmount);
+    const submitLabel = submitButton?.textContent || 'Registra incasso';
     try {
       App._packagePaymentBusy = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Registrazione…';
+      }
       const result = PackageLedger.recordPayment(currentClient, metrics, {
-        amount: document.getElementById('pkg-payment-amount')?.value,
+        amount: normalizedAmount,
         date: document.getElementById('pkg-payment-date')?.value,
         method: document.getElementById('pkg-payment-method')?.value,
         note: document.getElementById('pkg-payment-note')?.value,
@@ -2566,6 +2575,10 @@ const App = {
       UI.showToast(error.message || 'Pagamento non registrato', 'error');
     } finally {
       App._packagePaymentBusy = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = submitLabel;
+      }
     }
   },
 

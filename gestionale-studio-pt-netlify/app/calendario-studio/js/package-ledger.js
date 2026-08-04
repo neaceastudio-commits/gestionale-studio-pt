@@ -14,6 +14,14 @@ const PackageLedger = (() => {
     return Math.round((amount + Number.EPSILON) * 100) / 100;
   }
 
+  function parseMoneyInput(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+    const compact = String(value ?? '').trim().replace(/\s+/g, '');
+    if (!/^\d+(?:[.,]\d{1,2})?$/.test(compact)) return NaN;
+    const amount = Number(compact.replace(',', '.'));
+    return Number.isFinite(amount) ? amount : NaN;
+  }
+
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -373,6 +381,7 @@ const PackageLedger = (() => {
     START,
     END,
     roundMoney,
+    parseMoneyInput,
     normalizeStatus,
     strip,
     parse,
