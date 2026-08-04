@@ -22,6 +22,10 @@ const portalSource = read('app/portale-personal-trainer/index.html');
 const acquisitionSource = read('app/acquisizione/index.html');
 const accessFunctionSource = read('netlify/functions/pt-access-email.js');
 const appleFunctionSource = read('netlify/functions/apple-calendar.js');
+const recordPaymentSource = appSource.slice(
+  appSource.indexOf('async _recordPackagePayment(clientId)'),
+  appSource.indexOf('async _updatePackageCycleAmount(clientId)')
+);
 
 [
   ['Apple Calendar CSS', indexSource.includes('css/apple-calendar.css')],
@@ -35,6 +39,7 @@ const appleFunctionSource = read('netlify/functions/apple-calendar.js');
   ['Rettifica saldo tracciata', appSource.includes('_reconcilePackagePayment(clientId)') && packageLedgerSource.includes('function reconcilePaidTotal')],
   ['Storno incasso tracciato', appSource.includes('_reversePackagePayment(clientId, paymentId)') && packageLedgerSource.includes('function reversePayment')],
   ['Incassi pacchetto non bloccati da Sheets', appSource.includes('_syncPackageClientAfterPrimarySave(updated, \'incasso pacchetto\')') && !appSource.includes('await Sheets.pushClient(updated);')],
+  ['Incasso salvato con PATCH mirato senza upsert', recordPaymentSource.includes('SupabaseSync.updateClientPackageFinance(updated)') && !recordPaymentSource.includes('SupabaseSync.pushClient(updated)')],
   ['Rollback rinnovo parziale', appSource.includes('_rollbackPackageRenewalRemote')],
   ['Export pagamenti CSV', clientsSource.includes('exportPackagePayments(clientId')],
   ['Separazione cicli', appSource.includes('_confirmCurrentPackageCycle(clientId)')],

@@ -7,7 +7,8 @@ const path = require('node:path');
 const htmlPath = path.join(__dirname, '..', 'app', 'acquisizione', 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].at(-1)[1]
-  .replace(/\bcarica\(\);\s*$/, '');
+  .replace(/\bcarica\(\);\s*$/, '')
+  .replace(/\bverifyAcquisitionAccess\(\)\.catch\(showAccessError\);\s*$/, '');
 
 let fetchHandler = async () => response(500, 'fetch non configurato');
 const context = vm.createContext({
@@ -71,6 +72,7 @@ test('un cliente già presente viene aggiornato e non duplicato', async () => {
         nome: 'Emanuela',
         cognome: 'Laconi',
         email: 'ema.laconi@example.com',
+        pt_assegnato: 'op_existing',
         active: true,
       }]);
     }

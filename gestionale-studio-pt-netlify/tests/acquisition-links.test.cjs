@@ -6,7 +6,8 @@ const path = require('node:path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'app', 'acquisizione', 'index.html'), 'utf8');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].at(-1)[1]
-  .replace(/\bcarica\(\);\s*$/, '');
+  .replace(/\bcarica\(\);\s*$/, '')
+  .replace(/\bverifyAcquisitionAccess\(\)\.catch\(showAccessError\);\s*$/, '');
 const context = vm.createContext({ URL, console, setTimeout, clearTimeout });
 vm.runInContext(script, context);
 

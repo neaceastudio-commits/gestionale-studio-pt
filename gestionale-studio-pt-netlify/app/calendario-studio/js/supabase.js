@@ -357,6 +357,26 @@ const SupabaseSync = (() => {
     });
   }
 
+  async function updateClientPackageFinance(client) {
+    if (!client?.id) return { error: 'ID cliente mancante per il registro incassi' };
+    const result = await request('clients', {
+      method: 'PATCH',
+      query: '?id=eq.' + encodeURIComponent(client.id),
+      headers: { Prefer: 'return=representation' },
+      body: {
+        notes: client.notes || '',
+        stato_pagamento: client.statoPagamento || client.stato_pagamento || 'Da pagare',
+        importo: Number(client.importo || 0),
+        updated_at: new Date().toISOString(),
+      },
+    });
+    if (result?.error) return result;
+    if (!Array.isArray(result) || result.length !== 1) {
+      return { error: 'Cliente non trovato durante il salvataggio del registro incassi', status: 404 };
+    }
+    return result[0];
+  }
+
   async function pushClient(client) {
     if (!client) return;
     let body = clientToDb(client);
@@ -481,5 +501,5 @@ const SupabaseSync = (() => {
     };
   }
 
-  return { pullAll, pushAppointment, pushClient, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, pushAppointment, pushClient, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

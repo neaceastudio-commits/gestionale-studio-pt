@@ -2553,7 +2553,7 @@ const App = {
         ...result.client,
         notes: App._withPtAudit(result.client.notes, `incasso pacchetto ${App._fmtMoney(result.finance.paid)} registrato`),
       };
-      const sync = await SupabaseSync.pushClient(updated);
+      const sync = await SupabaseSync.updateClientPackageFinance(updated);
       if (sync?.error) throw new Error('Il pagamento non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
@@ -2590,7 +2590,7 @@ const App = {
         ...result.client,
         notes: App._withPtAudit(result.client.notes, `importo ciclo aggiornato a ${App._fmtMoney(result.finance.total)}`),
       };
-      const sync = await SupabaseSync.pushClient(updated);
+      const sync = await SupabaseSync.updateClientPackageFinance(updated);
       if (sync?.error) throw new Error('L’importo non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
@@ -2632,7 +2632,7 @@ const App = {
           `rettifica incassato (${action} ${App._fmtMoney(Math.abs(result.adjustment))})`
         ),
       };
-      const sync = await SupabaseSync.pushClient(updated);
+      const sync = await SupabaseSync.updateClientPackageFinance(updated);
       if (sync?.error) throw new Error('La rettifica non è stata sincronizzata');
       clients[index] = updated;
       State.saveClients(clients);
@@ -2677,7 +2677,7 @@ const App = {
           `incasso ${App._fmtMoney(result.reversedPayment.amount)} stornato`
         ),
       };
-      const sync = await SupabaseSync.pushClient(updated);
+      const sync = await SupabaseSync.updateClientPackageFinance(updated);
       if (sync?.error) throw new Error('Lo storno non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
