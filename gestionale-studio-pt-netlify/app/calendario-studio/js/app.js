@@ -1642,12 +1642,99 @@ const App = {
     preview.innerHTML = `<strong>${App._escapeHtml(status)}</strong><span>Incassato ${App._fmtMoney(paid)} · saldo ${App._fmtMoney(balance)}</span>`;
   },
 
+  _selectedRenewalDays() {
+    return [...document.querySelectorAll('input[name="pkg-renew-day"]:checked')].map(element => element.value);
+  },
+
+  _onRenewalFrequencyChange() {
+    const frequencySelect = document.getElementById('pkg-renew-frequency');
+    const sessionsInput = document.getElementById('pkg-renew-count');
+    const currentDaysPerWeek = Number(frequencySelect?.getAttribute('data-current-days-per-week') || 0);
+    const currentSessions = Number(frequencySelect?.getAttribute('data-current-sessions') || 0);
+    const nextDaysPerWeek = App._frequencyMaxDaysValue(String(frequencySelect?.value || ''));
+    if (
+      sessionsInput &&
+      currentDaysPerWeek > 0 &&
+      nextDaysPerWeek > 0 &&
+      currentSessions > 0 &&
+      currentSessions % currentDaysPerWeek === 0
+    ) {
+      sessionsInput.value = String((currentSessions / currentDaysPerWeek) * nextDaysPerWeek);
+    }
+    return App._updateRenewalPlanPreview();
+  },
+
+  _renewalPlanValidation() {
+    const frequency = String(document.getElementById('pkg-renew-frequency')?.value || '').trim();
+    const days = App._selectedRenewalDays();
+    const sessions = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
+    const daysPerWeek = App._frequencyMaxDaysValue(frequency);
+
+    if (!frequency) {
+      return { ok: false, frequency, days, sessions, message: 'Seleziona la frequenza del nuovo pacchetto.' };
+    }
+    if (!Number.isInteger(sessions) || sessions <= 0) {
+      return { ok: false, frequency, days, sessions, message: 'Inserisci un numero valido di sedute.' };
+    }
+    if (!days.length) {
+      return { ok: false, frequency, days, sessions, message: 'Seleziona almeno un giorno reale.' };
+    }
+    if (daysPerWeek && days.length !== daysPerWeek) {
+      return {
+        ok: false,
+        frequency,
+        days,
+        sessions,
+        message: `${frequency} richiede esattamente ${daysPerWeek} ${daysPerWeek === 1 ? 'giorno' : 'giorni'}: ne hai selezionati ${days.length}.`,
+      };
+    }
+
+    if (daysPerWeek) {
+      const fullWeeks = Math.floor(sessions / daysPerWeek);
+      const extraSessions = sessions % daysPerWeek;
+      const duration = extraSessions
+        ? `${fullWeeks} ${fullWeeks === 1 ? 'settimana completa' : 'settimane complete'} + ${extraSessions} ${extraSessions === 1 ? 'seduta' : 'sedute'}`
+        : `${fullWeeks} ${fullWeeks === 1 ? 'settimana' : 'settimane'} esatte`;
+      return {
+        ok: true,
+        warning: extraSessions > 0,
+        frequency,
+        days,
+        sessions,
+        message: `${frequency} · ${days.join(', ')} · ${sessions} sedute (${duration}).`,
+      };
+    }
+
+    return {
+      ok: true,
+      warning: false,
+      frequency,
+      days,
+      sessions,
+      message: `${frequency} · ${days.join(', ')} · ${sessions} sedute.`,
+    };
+  },
+
+  _updateRenewalPlanPreview() {
+    const validation = App._renewalPlanValidation();
+    const preview = document.getElementById('pkg-renew-plan-preview');
+    if (preview) {
+      preview.className = `package-renewal-plan-preview ${validation.ok ? (validation.warning ? 'warn' : 'ok') : 'error'}`;
+      preview.textContent = validation.message;
+    }
+    const submitButton = document.getElementById('pkg-renew-submit');
+    if (submitButton) {
+      submitButton.disabled = submitButton.getAttribute('data-ledger-ready') !== 'true' || !validation.ok;
+    }
+    return validation;
+  },
+
   _packageHistoryRows(client, ledger) {
     if (ledger?.parseError) {
-      return `<tr><td colspan="9" class="package-ledger-error">${App._escapeHtml(ledger.parseError)}</td></tr>`;
+      return `<tr><td colspan="10" class="package-ledger-error">${App._escapeHtml(ledger.parseError)}</td></tr>`;
     }
     if (!ledger?.cycles?.length) {
-      return '<tr><td colspan="9" class="text-muted">Nessun ciclo registrato.</td></tr>';
+      return '<tr><td colspan="10" class="text-muted">Nessun ciclo registrato.</td></tr>';
     }
     return [...ledger.cycles].reverse().map((cycle, reverseIndex) => {
       const number = ledger.cycles.length - reverseIndex;
@@ -1657,11 +1744,16 @@ const App = {
       const snapshot = cycle.closedAt
         ? `${Number(cycle.sessionsCompletedAtClose || 0)}/${Number(cycle.sessionsTotal || 0)} fatte`
         : `${Number(cycle.sessionsTotal || 0)} acquistate`;
+      const cycleDays = Array.isArray(cycle.days) ? cycle.days : [];
+      const cyclePlan = cycle.frequency
+        ? `<strong>${App._escapeHtml(cycle.frequency)}</strong><span class="package-cycle-source">${App._escapeHtml(cycleDays.join(', ') || 'Giorni non registrati')}</span>`
+        : `<span class="text-muted">Non registrato</span>${cycleDays.length ? `<span class="package-cycle-source">${App._escapeHtml(cycleDays.join(', '))}</span>` : ''}`;
       return `
         <tr>
           <td><strong>#${number}</strong><span class="package-cycle-source">${cycle.source === 'renewal' ? 'Rinnovo' : 'Importato'}</span></td>
           <td>${App._escapeHtml(App._fmtLongDate(cycle.startDate))}</td>
           <td>${snapshot}</td>
+          <td>${cyclePlan}</td>
           <td>${App._fmtMoney(finance.total)}</td>
           <td>${App._fmtMoney(finance.paid)}</td>
           <td><strong>${App._fmtMoney(finance.balance)}</strong></td>
@@ -1825,10 +1917,28 @@ const App = {
     const hasTotal = metrics.total > 0;
     const today = App._dateStr(new Date());
     const defaultRenewalStart = today;
+    const parsedCurrentFrequency = App._frequencyMaxDaysValue(String(client.packageFrequency || ''));
+    const renewalFrequencies = Array.isArray(CONFIG.FREQUENCIES) && CONFIG.FREQUENCIES.length
+      ? CONFIG.FREQUENCIES
+      : ['1x settimana', '2x settimana', '3x settimana', 'Bisettimanale', 'Mensile', 'Su richiesta'];
+    const renewalFrequency = renewalFrequencies.includes(client.packageFrequency)
+      ? client.packageFrequency
+      : (parsedCurrentFrequency && parsedCurrentFrequency <= 3 ? `${parsedCurrentFrequency}x settimana` : renewalFrequencies[0]);
+    const renewalFrequencyOptions = renewalFrequencies.map(frequency =>
+      `<option value="${App._escapeHtml(frequency)}" ${frequency === renewalFrequency ? 'selected' : ''}>${App._escapeHtml(frequency)}</option>`
+    ).join('');
+    const renewalDefaultAppointment = appointments.find(appointment => appointment.serviceId === serviceId && appointment.date >= today);
+    const renewalDefaultTime = renewalDefaultAppointment?.startTime || '09:00';
+    const renewalDefaultOperatorId = renewalDefaultAppointment?.operatorId || client.ptAssegnato || '';
     const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label package-plan-day">
         <input type="checkbox" name="pkg-plan-day" value="${g}" ${days.includes(g) ? 'checked' : ''} onchange="App._limitPackagePlanDays('${client.id}', this)">
         <span>${g.slice(0, 3)}</span>
+      </label>`).join('');
+    const renewalDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(day => `
+      <label class="checkbox-label package-plan-day">
+        <input type="checkbox" name="pkg-renew-day" value="${day}" ${days.includes(day) ? 'checked' : ''} onchange="App._updateRenewalPlanPreview()">
+        <span>${day.slice(0, 3)}</span>
       </label>`).join('');
 
     const rows = displayAppointments.length ? displayAppointments.map(a => {
@@ -2086,13 +2196,38 @@ const App = {
           <div class="package-section-heading">
             <div>
               <h4>Apri un nuovo rinnovo</h4>
-              <p>Il ciclo attuale viene chiuso nello storico; il nuovo ciclo e il suo pagamento restano separati. Giorni, orario e PT si impostano nella sezione Lezioni.</p>
+              <p>Il ciclo attuale viene chiuso nello storico. Frequenza, giorni, orario, PT e pagamento qui sotto saranno applicati soltanto al nuovo ciclo.</p>
             </div>
             <span class="package-renewal-lock">Solo Direzione</span>
           </div>
-          <div class="package-renewal-plan-link">
-            <span>Vuoi cambiare giorni, orario o PT prima del rinnovo?</span>
-            <button class="btn" type="button" onclick="App._setPackageWorkspace('lessons')">Apri programmazione lezioni</button>
+          <div class="package-renewal-plan-box">
+            <div class="package-renewal-plan-fields">
+              <div class="form-group">
+                <label>Nuova frequenza *</label>
+                <select id="pkg-renew-frequency" class="form-input" data-current-days-per-week="${parsedCurrentFrequency || ''}" data-current-sessions="${hasTotal ? metrics.total : ''}" onchange="App._onRenewalFrequencyChange()">
+                  ${renewalFrequencyOptions}
+                </select>
+                <div class="form-hint">Le sedute si adeguano mantenendo la durata in settimane del ciclo attuale, quando calcolabile.</div>
+              </div>
+              <div class="form-group">
+                <label>Orario del nuovo ciclo *</label>
+                <input id="pkg-renew-time" class="form-input" type="time" value="${renewalDefaultTime}" step="900">
+              </div>
+              <div class="form-group">
+                <label>PT delle nuove sedute</label>
+                <select id="pkg-renew-operator" class="form-input">
+                  <option value="">Mantieni/auto</option>
+                  ${operators.map(operator => `<option value="${App._escapeHtml(operator.id)}" ${operator.id === renewalDefaultOperatorId ? 'selected' : ''}>${App._escapeHtml(`${operator.nome} ${operator.cognome}`)}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label>Giorni reali del nuovo ciclo *</label>
+              <div class="checkbox-grid package-plan-grid package-renewal-days">
+                ${renewalDays}
+              </div>
+            </div>
+            <div id="pkg-renew-plan-preview" class="package-renewal-plan-preview"></div>
           </div>
           <div class="package-renewal-grid">
             <div class="form-group">
@@ -2101,11 +2236,12 @@ const App = {
             </div>
             <div class="form-group">
               <label>Nuove sedute *</label>
-              <input id="pkg-renew-count" class="form-input" type="number" min="1" step="1" value="${hasTotal ? metrics.total : 8}">
+              <input id="pkg-renew-count" class="form-input" type="number" min="1" step="1" value="${hasTotal ? metrics.total : 8}" oninput="App._updateRenewalPlanPreview()">
             </div>
             <div class="form-group">
               <label>Importo concordato € *</label>
               <input id="pkg-renew-amount" class="form-input" type="number" min="0" step="0.01" value="${currentFinance.total.toFixed(2)}" oninput="App._updateRenewalPaymentPreview()">
+              <div class="form-hint">Da verificare manualmente: non cambia in automatico con il numero di sedute.</div>
             </div>
             <div class="form-group">
               <label>Incassato ora €</label>
@@ -2137,9 +2273,9 @@ const App = {
             <div id="pkg-renew-payment-preview" class="package-payment-preview open">
               <strong>Da pagare</strong><span>Incassato ${App._fmtMoney(0)} · saldo ${App._fmtMoney(currentFinance.total)}</span>
             </div>
-            <button id="pkg-renew-submit" class="btn-primary" onclick="App._renewPackageAppointments('${client.id}')" ${packageLedger.parseError ? 'disabled' : ''}>Rinnova e genera sedute</button>
+            <button id="pkg-renew-submit" class="btn-primary" data-ledger-ready="${packageLedger.parseError ? 'false' : 'true'}" onclick="App._renewPackageAppointments('${client.id}')" disabled>Rinnova e genera sedute</button>
           </div>
-          <p>Giorni, orario e PT saranno quelli impostati nella sezione Lezioni. Se una data è in conflitto, il rinnovo viene annullato interamente: non resteranno salvataggi parziali.</p>
+          <p>Le impostazioni del ciclo attuale non cambiano prima della conferma. Se non vengono trovate abbastanza date valide, il rinnovo viene annullato interamente.</p>
         </section>`}
 
         ${App.isPortalPtMode() ? '' : `
@@ -2153,7 +2289,7 @@ const App = {
           </div>
           <div class="package-history-scroll">
             <table class="package-history-table">
-              <thead><tr><th>Ciclo</th><th>Inizio</th><th>Sedute</th><th>Valore</th><th>Incassato</th><th>Saldo</th><th>Stato</th><th>Ultimo incasso</th><th>Mov.</th></tr></thead>
+              <thead><tr><th>Ciclo</th><th>Inizio</th><th>Sedute</th><th>Frequenza e giorni</th><th>Valore</th><th>Incassato</th><th>Saldo</th><th>Stato</th><th>Ultimo incasso</th><th>Mov.</th></tr></thead>
               <tbody>${App._packageHistoryRows(client, packageLedger)}</tbody>
             </table>
           </div>
@@ -2181,6 +2317,7 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+    if (!isArchived && !App.isPortalPtMode()) App._updateRenewalPlanPreview();
   },
 
   _selectedPackagePlanDays() {
@@ -2720,19 +2857,20 @@ const App = {
 
   async _renewPackageAppointments(clientId) {
     if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
-    if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(client => client.id === clientId);
     if (!currentClient) return;
 
-    const days = App._selectedPackagePlanDays();
-    const fromDate = document.getElementById('pkg-renew-start')?.value || App._dateStr(new Date());
-    const time = document.getElementById('pkg-plan-time')?.value || '09:00';
-    const selectedOperator = document.getElementById('pkg-plan-operator')?.value || currentClient.ptAssegnato || null;
-    const renewCount = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
-    if (!days.length) {
-      UI.showToast('Seleziona almeno un giorno reale', 'error');
+    const planValidation = App._updateRenewalPlanPreview();
+    if (!planValidation.ok) {
+      UI.showToast(planValidation.message, 'error');
       return;
     }
+    const frequency = planValidation.frequency;
+    const days = planValidation.days;
+    const fromDate = document.getElementById('pkg-renew-start')?.value || App._dateStr(new Date());
+    const time = document.getElementById('pkg-renew-time')?.value || '09:00';
+    const selectedOperator = document.getElementById('pkg-renew-operator')?.value || currentClient.ptAssegnato || null;
+    const renewCount = planValidation.sessions;
 
     const serviceId = App._packageServiceId(currentClient);
     const service = serviceId ? Services.getService(serviceId) : null;
@@ -2755,6 +2893,7 @@ const App = {
         paymentMethod: document.getElementById('pkg-renew-method')?.value,
         paymentNote: document.getElementById('pkg-renew-note')?.value,
         renewalNote: document.getElementById('pkg-renew-note')?.value,
+        frequency,
         days,
         time,
         operatorId: selectedOperator,
@@ -2776,12 +2915,22 @@ const App = {
       UI.showToast(`Ci sono ${futureToCarry.length} sedute future ma il rinnovo ne prevede ${renewCount}`, 'error');
       return;
     }
+    const futureOutsidePlan = futureToCarry.filter(appointment => !days.includes(App._weekdayName(appointment.date)));
+    if (futureOutsidePlan.length) {
+      UI.showToast(`${futureOutsidePlan.length} sedute future non rispettano i nuovi giorni`, 'error');
+      alert(
+        'Rinnovo non avviato. Sposta la data di inizio dopo le vecchie prenotazioni oppure aggiorna prima queste sedute:\n\n' +
+        futureOutsidePlan.slice(0, 10).map(appointment => `${App._fmtLongDate(appointment.date)} ${appointment.startTime}`).join('\n')
+      );
+      return;
+    }
 
     const operator = selectedOperator ? Services.getOperator(selectedOperator) : null;
     const operatorLabel = operator ? `${operator.nome} ${operator.cognome}` : 'senza PT assegnato';
     const confirmed = confirm(
       `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n\n` +
-      `Nuovo ciclo: ${renewCount} sedute dal ${fromDate}, ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
+      `Nuovo ciclo: ${renewCount} sedute · ${frequency} dal ${fromDate}.\n` +
+      `Giorni: ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
       `Valore: ${App._fmtMoney(renewal.finance.total)} · incassato ora: ${App._fmtMoney(renewal.finance.paid)} · saldo: ${App._fmtMoney(renewal.finance.balance)} (${renewal.finance.status}).\n` +
       `${futureToCarry.length} sedute future saranno trasferite al nuovo ciclo e verranno create esattamente ${renewCount - futureToCarry.length} sedute mancanti.\n\n` +
       `Il ciclo precedente (${metrics.completed}/${metrics.total || 0} fatte) sarà chiuso nello storico.`
@@ -2802,6 +2951,7 @@ const App = {
     }));
     const updatedClient = {
       ...renewal.client,
+      packageFrequency: frequency,
       giorniSettimana: days,
       packageStart: fromDate,
       packageCycleStart: fromDate,

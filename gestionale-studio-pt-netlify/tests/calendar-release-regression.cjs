@@ -34,6 +34,12 @@ const recordPaymentSource = appSource.slice(
   ['Registro rinnovi caricato', indexSource.includes('js/package-ledger.js')],
   ['Rinnovo pacchetto', appSource.includes('_renewPackageAppointments(clientId)')],
   ['Rinnovo con registro economico', appSource.includes('PackageLedger.renew(currentClient, metrics')],
+  ['Frequenza impostata nel rinnovo', appSource.includes('id="pkg-renew-frequency"') && appSource.includes('packageFrequency: frequency')],
+  ['Sedute adeguate alla nuova frequenza', appSource.includes('_onRenewalFrequencyChange()') && appSource.includes('currentSessions / currentDaysPerWeek')],
+  ['Giorni del nuovo ciclo separati dal ciclo corrente', appSource.includes('name="pkg-renew-day"') && appSource.includes('_selectedRenewalDays()')],
+  ['Sedute future fuori dal nuovo piano bloccate', appSource.includes('futureOutsidePlan') && appSource.includes('non rispettano i nuovi giorni')],
+  ['Coerenza frequenza e giorni obbligatoria', packageLedgerSource.includes('richiede esattamente') && packageLedgerSource.includes('frequency: values.frequency')],
+  ['Frequenza conservata nello storico cicli', packageLedgerSource.includes("frequency: String(client?.packageFrequency || '')") && appSource.includes('Frequenza e giorni')],
   ['Incassi separati dal rinnovo', appSource.includes('_recordPackagePayment(clientId)')],
   ['Incasso precaricato nel valore reale del campo', appSource.includes('id="pkg-payment-amount"') && appSource.includes('value="${currentFinance.balance.toFixed(2)}"') && !appSource.includes('placeholder="${currentFinance.balance.toFixed(2)}"')],
   ['Incasso normalizzato prima del registro', recordPaymentSource.includes('PackageLedger.parseMoneyInput(rawAmount)') && recordPaymentSource.includes('amount: normalizedAmount')],
@@ -123,6 +129,32 @@ const context = {
 vm.createContext(context);
 vm.runInContext(`${appSource}\nglobalThis.TestApp = App;`, context);
 const App = context.TestApp;
+const originalGetElementById = document.getElementById;
+const originalQuerySelectorAll = document.querySelectorAll;
+const renewalFields = {
+  'pkg-renew-frequency': {
+    value: '3x settimana',
+    getAttribute(name) {
+      return name === 'data-current-days-per-week' ? '2' : (name === 'data-current-sessions' ? '8' : '');
+    },
+  },
+  'pkg-renew-count': { value: '8' },
+};
+let renewalDayValues = ['Lunedì', 'Mercoledì'];
+document.getElementById = id => renewalFields[id] || originalGetElementById.call(document, id);
+document.querySelectorAll = selector => selector === 'input[name="pkg-renew-day"]:checked'
+  ? renewalDayValues.map(value => ({ value }))
+  : originalQuerySelectorAll.call(document, selector);
+assert('Rinnovo 3x con due giorni bloccato', !App._renewalPlanValidation().ok);
+App._onRenewalFrequencyChange();
+assert('Passaggio 2x da otto sedute a 3x propone dodici sedute', renewalFields['pkg-renew-count'].value === '12');
+renewalDayValues = ['Lunedì', 'Mercoledì', 'Venerdì'];
+renewalFields['pkg-renew-count'].value = '8';
+assert('Rinnovo 3x con otto sedute avvisato', App._renewalPlanValidation().ok && App._renewalPlanValidation().warning);
+renewalFields['pkg-renew-count'].value = '12';
+assert('Rinnovo 3x con dodici sedute coerente', App._renewalPlanValidation().ok && !App._renewalPlanValidation().warning);
+document.getElementById = originalGetElementById;
+document.querySelectorAll = originalQuerySelectorAll;
 App.portalPt = {
   enabled: true,
   authorized: true,

@@ -228,6 +228,10 @@ const Clients = (() => {
           cycle.closedAt || '',
           Number(cycle.sessionsTotal || 0),
           cycle.sessionsCompletedAtClose ?? '',
+          cycle.frequency || '',
+          Array.isArray(cycle.days) ? cycle.days.join(', ') : '',
+          cycle.time || '',
+          cycle.operatorId || '',
           finance.total.toFixed(2),
           finance.paid.toFixed(2),
           finance.balance.toFixed(2),
@@ -248,6 +252,7 @@ const Clients = (() => {
     const headers = [
       'Cliente', 'ID cliente', 'N. ciclo', 'Tipo ciclo', 'ID ciclo', 'Data inizio',
       'Creato il', 'Chiuso il', 'Sedute acquistate', 'Sedute fatte alla chiusura',
+      'Frequenza', 'Giorni', 'Orario', 'ID PT ciclo',
       'Valore ciclo', 'Incassato ciclo', 'Saldo ciclo', 'Stato pagamento',
       'ID movimento', 'Tipo movimento', 'Data movimento', 'Importo movimento', 'Metodo', 'Nota',
     ];

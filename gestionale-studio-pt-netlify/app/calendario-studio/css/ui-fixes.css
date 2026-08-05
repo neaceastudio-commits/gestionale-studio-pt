@@ -602,19 +602,51 @@
   border-color: #a7f3d0;
   background: #f0fdf9;
 }
-.package-renewal-plan-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.package-renewal-plan-box {
+  display: grid;
   gap: 12px;
   margin-bottom: 14px;
   border: 1px solid #bfdbfe;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #eff6ff;
-  padding: 10px 12px;
+  padding: 14px;
   color: #1e3a8a;
   font-size: 11px;
   font-weight: 800;
+}
+.package-renewal-plan-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+}
+.package-renewal-plan-fields .form-group {
+  margin-bottom: 0;
+}
+.package-renewal-days {
+  margin-top: 7px;
+}
+.package-renewal-plan-preview {
+  min-height: 38px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #1e3a8a;
+}
+.package-renewal-plan-preview.ok {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+.package-renewal-plan-preview.warn {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+.package-renewal-plan-preview.error {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
 }
 .package-current-payment-summary {
   display: grid;
@@ -804,7 +836,7 @@
 }
 .package-history-table {
   width: 100%;
-  min-width: 1050px;
+  min-width: 1200px;
   border-collapse: collapse;
 }
 .package-history-table th,
@@ -1000,6 +1032,7 @@
   .package-finance-strip,
   .package-payment-form,
   .package-renewal-grid,
+  .package-renewal-plan-fields,
   .package-adjustment-box {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
@@ -1025,15 +1058,12 @@
     grid-template-columns: 1fr;
   }
   .package-payment-form,
-  .package-renewal-grid {
+  .package-renewal-grid,
+  .package-renewal-plan-fields {
     grid-template-columns: 1fr;
   }
   .package-renewal-note {
     grid-column: auto;
-  }
-  .package-renewal-plan-link {
-    align-items: stretch;
-    flex-direction: column;
   }
   .package-payment-note {
     grid-column: auto;

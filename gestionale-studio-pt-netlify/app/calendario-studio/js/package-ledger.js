@@ -131,6 +131,7 @@ const PackageLedger = (() => {
       openingPaidAmount: isPaid ? total : 0,
       legacyPaymentStatus: rawStatus,
       dueDate: '',
+      frequency: String(client?.packageFrequency || ''),
       days: Array.isArray(client?.giorniSettimana) ? client.giorniSettimana : [],
       time: '',
       operatorId: client?.ptAssegnato || '',
@@ -168,13 +169,23 @@ const PackageLedger = (() => {
     const paidNow = roundMoney(input?.paidNow);
     const startDate = normalizeDate(input?.startDate);
     const paymentDate = normalizeDate(input?.paymentDate);
+    const frequency = String(input?.frequency || '').trim();
+    const days = [...new Set((Array.isArray(input?.days) ? input.days : [])
+      .map(day => String(day || '').trim())
+      .filter(Boolean))];
+    const daysPerWeek = parseInt((frequency.match(/\d+/) || ['0'])[0], 10);
     if (!Number.isInteger(sessions) || sessions <= 0) throw new Error('Inserisci un numero valido di sedute');
     if (!startDate) throw new Error('Inserisci la data di inizio del nuovo pacchetto');
+    if (!frequency) throw new Error('Seleziona la frequenza del nuovo pacchetto');
+    if (!days.length) throw new Error('Seleziona almeno un giorno reale per il nuovo pacchetto');
+    if (daysPerWeek > 0 && days.length !== daysPerWeek) {
+      throw new Error(`La frequenza ${frequency} richiede esattamente ${daysPerWeek} ${daysPerWeek === 1 ? 'giorno' : 'giorni'} a settimana`);
+    }
     if (amount < 0) throw new Error('L’importo del pacchetto non può essere negativo');
     if (paidNow < 0) throw new Error('L’incasso non può essere negativo');
     if (paidNow > amount) throw new Error('L’incasso non può superare l’importo concordato');
     if (paidNow > 0 && !paymentDate) throw new Error('Indica la data del pagamento ricevuto');
-    return { sessions, amount, paidNow, startDate, paymentDate };
+    return { sessions, amount, paidNow, startDate, paymentDate, frequency, days };
   }
 
   function renew(client, metrics, input, options = {}) {
@@ -183,6 +194,10 @@ const PackageLedger = (() => {
     const idFactory = options.idFactory || (() => `pkg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     const ledger = clone(ensure(client, metrics, { now }));
     const previous = currentCycle(ledger);
+    if (previous && !previous.frequency) previous.frequency = String(client?.packageFrequency || '');
+    if (previous && (!Array.isArray(previous.days) || !previous.days.length)) {
+      previous.days = Array.isArray(client?.giorniSettimana) ? [...client.giorniSettimana] : [];
+    }
     if (previous && !previous.closedAt && previous.startDate === values.startDate) {
       throw new Error('Esiste già un ciclo aperto con questa data di inizio');
     }
@@ -219,7 +234,8 @@ const PackageLedger = (() => {
       amount: values.amount,
       openingPaidAmount: 0,
       dueDate: normalizeDate(input?.dueDate),
-      days: Array.isArray(input?.days) ? [...input.days] : [],
+      frequency: values.frequency,
+      days: values.days,
       time: String(input?.time || ''),
       operatorId: String(input?.operatorId || ''),
       note: String(input?.renewalNote || '').trim(),

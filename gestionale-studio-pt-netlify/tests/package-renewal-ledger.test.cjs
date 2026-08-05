@@ -22,6 +22,7 @@ const baseClient = {
   sessionsRemaining: 2,
   statoPagamento: 'Da pagare',
   importo: 200,
+  packageFrequency: '2x settimana',
   giorniSettimana: ['Martedì', 'Giovedì'],
   ptAssegnato: 'pt-1',
   notes: 'Nota clinica da preservare',
@@ -37,6 +38,8 @@ const oldMetrics = {
 const initial = Ledger.ensure(baseClient, oldMetrics, { now: '2026-07-28T10:00:00.000Z' });
 assert.equal(initial.cycles.length, 1);
 assert.equal(initial.cycles[0].source, 'legacy');
+assert.equal(initial.cycles[0].frequency, '2x settimana');
+assert.deepEqual(Array.from(initial.cycles[0].days), ['Martedì', 'Giovedì']);
 assert.deepEqual(JSON.parse(JSON.stringify(Ledger.cycleFinancial(initial.cycles[0]))), {
   total: 200,
   paid: 0,
@@ -45,7 +48,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(Ledger.cycleFinancial(initial.cycles[
 });
 
 const renewed = Ledger.renew(baseClient, oldMetrics, {
-  sessions: 8,
+  sessions: 12,
   startDate: '2026-07-29',
   amount: 320,
   paidNow: 120,
@@ -53,7 +56,8 @@ const renewed = Ledger.renew(baseClient, oldMetrics, {
   dueDate: '2026-08-10',
   paymentMethod: 'Bonifico',
   paymentNote: 'Acconto',
-  days: ['Martedì', 'Giovedì'],
+  frequency: '3x settimana',
+  days: ['Lunedì', 'Mercoledì', 'Venerdì'],
   time: '17:00',
   operatorId: 'pt-1',
 }, {
@@ -64,7 +68,10 @@ const renewed = Ledger.renew(baseClient, oldMetrics, {
 assert.equal(renewed.ledger.cycles.length, 2, 'il rinnovo aggiunge un ciclo senza sostituire il precedente');
 assert.equal(renewed.ledger.cycles[0].sessionsCompletedAtClose, 6);
 assert.equal(renewed.ledger.cycles[0].closedAt, '2026-07-28T11:00:00.000Z');
+assert.equal(renewed.ledger.cycles[0].frequency, '2x settimana', 'la frequenza del vecchio ciclo resta invariata');
 assert.equal(renewed.cycle.id, 'pkg_cycle_2');
+assert.equal(renewed.cycle.frequency, '3x settimana');
+assert.deepEqual(Array.from(renewed.cycle.days), ['Lunedì', 'Mercoledì', 'Venerdì']);
 assert.deepEqual(JSON.parse(JSON.stringify(renewed.finance)), {
   total: 320,
   paid: 120,
@@ -75,6 +82,24 @@ assert.match(renewed.client.notes, /Nota clinica da preservare/);
 assert.match(renewed.client.notes, /\[NEACEA-PACKAGE-LEDGER-V1\]/);
 assert.equal(renewed.client.statoPagamento, 'Parziale');
 assert.equal(renewed.client.importo, 320);
+
+const ledgerWithoutFrequency = JSON.parse(JSON.stringify(initial));
+delete ledgerWithoutFrequency.cycles[0].frequency;
+const migratedRenewal = Ledger.renew({
+  ...baseClient,
+  notes: Ledger.serialize(baseClient.notes, ledgerWithoutFrequency),
+}, oldMetrics, {
+  sessions: 12,
+  startDate: '2026-07-30',
+  amount: 320,
+  paidNow: 0,
+  frequency: '3x settimana',
+  days: ['Lunedì', 'Mercoledì', 'Venerdì'],
+}, {
+  now: '2026-07-29T11:00:00.000Z',
+  idFactory: () => 'pkg_cycle_migrated',
+});
+assert.equal(migratedRenewal.ledger.cycles[0].frequency, '2x settimana', 'il rinnovo completa la frequenza mancante del ciclo aperto');
 
 const parsed = Ledger.parse(renewed.client);
 assert.equal(parsed.cycles.length, 2);
@@ -142,11 +167,22 @@ assert.throws(() => Ledger.recordPayment(paid.client, {}, {
 assert.throws(() => Ledger.updateCurrentAmount(paid.client, {}, 300), /inferiore a quanto già incassato/i);
 
 assert.throws(() => Ledger.renew(renewed.client, {}, {
-  sessions: 8,
+  sessions: 12,
   startDate: '2026-07-29',
   amount: 320,
   paidNow: 0,
+  frequency: '3x settimana',
+  days: ['Lunedì', 'Mercoledì', 'Venerdì'],
 }), /già un ciclo aperto/i);
+
+assert.throws(() => Ledger.renew(baseClient, oldMetrics, {
+  sessions: 8,
+  startDate: '2026-08-01',
+  amount: 320,
+  paidNow: 0,
+  frequency: '3x settimana',
+  days: ['Martedì', 'Giovedì'],
+}), /esattamente 3 giorni/i, '3x con due giorni deve essere bloccato');
 
 const totals = Ledger.summary([paid.client]);
 assert.equal(totals.cycles, 2);
@@ -164,6 +200,8 @@ assert.throws(() => Ledger.renew(malformed, oldMetrics, {
   startDate: '2026-08-01',
   amount: 200,
   paidNow: 0,
+  frequency: '2x settimana',
+  days: ['Martedì', 'Giovedì'],
 }), /non leggibile/i);
 
 // Integrazione ciclo-sedute: un nuovo ciclo con ID non ingloba vecchie
