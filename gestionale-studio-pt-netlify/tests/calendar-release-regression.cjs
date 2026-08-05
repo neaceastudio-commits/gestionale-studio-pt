@@ -38,6 +38,9 @@ const recordPaymentSource = appSource.slice(
   ['Sedute adeguate alla nuova frequenza', appSource.includes('_onRenewalFrequencyChange()') && appSource.includes('currentSessions / currentDaysPerWeek')],
   ['Giorni del nuovo ciclo separati dal ciclo corrente', appSource.includes('name="pkg-renew-day"') && appSource.includes('_selectedRenewalDays()')],
   ['Sedute future fuori dal nuovo piano bloccate', appSource.includes('futureOutsidePlan') && appSource.includes('non rispettano i nuovi giorni')],
+  ['Prima lezione effettiva mostrata prima del rinnovo', appSource.includes('_firstRenewalPlanDate') && appSource.includes('Prima lezione prevista:') && appSource.includes('Decorrenza nuovo ciclo')],
+  ['Conferma mostra la prima lezione dopo i conflitti', appSource.includes('firstEffectiveAppointment') && appSource.includes('Date precedenti saltate per conflitto')],
+  ['Orario del rinnovo scelto esplicitamente', appSource.includes('È l’orario delle lezioni, non l’ora in cui confermi il rinnovo') && !appSource.includes("const renewalDefaultTime = renewalDefaultAppointment?.startTime || '09:00'")],
   ['Coerenza frequenza e giorni obbligatoria', packageLedgerSource.includes('richiede esattamente') && packageLedgerSource.includes('frequency: values.frequency')],
   ['Frequenza conservata nello storico cicli', packageLedgerSource.includes("frequency: String(client?.packageFrequency || '')") && appSource.includes('Frequenza e giorni')],
   ['Incassi separati dal rinnovo', appSource.includes('_recordPackagePayment(clientId)')],
@@ -50,7 +53,11 @@ const recordPaymentSource = appSource.slice(
   ['Incassi pacchetto non bloccati da Sheets', appSource.includes('_syncPackageClientAfterPrimarySave(updated, \'incasso pacchetto\')') && !appSource.includes('await Sheets.pushClient(updated);')],
   ['Incasso salvato con PATCH mirato senza upsert', recordPaymentSource.includes('SupabaseSync.updateClientPackageFinance(updated)') && !recordPaymentSource.includes('SupabaseSync.pushClient(updated)')],
   ['Rollback rinnovo parziale', appSource.includes('_rollbackPackageRenewalRemote')],
+  ['Annullamento ultimo rinnovo disponibile', appSource.includes('_undoLastPackageRenewal(clientId)') && packageLedgerSource.includes('function undoLastRenewal')],
+  ['Annullamento rinnovo protetto da sedute e incassi', packageLedgerSource.includes('sedute già fatte o no-show') && packageLedgerSource.includes('Storna prima gli incassi')],
+  ['Rinnovo annullato conservato nello storico', appSource.includes('Rinnovo annullato') && packageLedgerSource.includes('voidedRenewals')],
   ['Export pagamenti CSV', clientsSource.includes('exportPackagePayments(clientId')],
+  ['Export segnala i rinnovi annullati', clientsSource.includes("cycle.voidedAt ? 'Rinnovo annullato'") && clientsSource.includes("'Motivo annullamento'" )],
   ['Separazione cicli', appSource.includes('_confirmCurrentPackageCycle(clientId)')],
   ['Doppio PT controllato', appSource.includes('_buildForcedAudit(validation, apptData)')],
   ['Storico clienti', clientsSource.includes('renderHistorySummary(clients)')],
@@ -127,8 +134,10 @@ const context = {
   clearTimeout,
 };
 vm.createContext(context);
+vm.runInContext(`${packageLedgerSource}\nglobalThis.TestPackageLedger = PackageLedger;`, context);
 vm.runInContext(`${appSource}\nglobalThis.TestApp = App;`, context);
 const App = context.TestApp;
+const UiLedger = context.TestPackageLedger;
 const originalGetElementById = document.getElementById;
 const originalQuerySelectorAll = document.querySelectorAll;
 const renewalFields = {
@@ -139,6 +148,8 @@ const renewalFields = {
     },
   },
   'pkg-renew-count': { value: '8' },
+  'pkg-renew-start': { value: '2099-07-27' },
+  'pkg-renew-time': { value: '17:00' },
 };
 let renewalDayValues = ['Lunedì', 'Mercoledì'];
 document.getElementById = id => renewalFields[id] || originalGetElementById.call(document, id);
@@ -153,6 +164,68 @@ renewalFields['pkg-renew-count'].value = '8';
 assert('Rinnovo 3x con otto sedute avvisato', App._renewalPlanValidation().ok && App._renewalPlanValidation().warning);
 renewalFields['pkg-renew-count'].value = '12';
 assert('Rinnovo 3x con dodici sedute coerente', App._renewalPlanValidation().ok && !App._renewalPlanValidation().warning);
+renewalFields['pkg-renew-time'].value = '';
+assert('Rinnovo senza orario esplicito bloccato', !App._renewalPlanValidation().ok);
+renewalFields['pkg-renew-time'].value = '17:00';
+assert('Prima data reale calcolata dai giorni scelti', App._firstRenewalPlanDate('2099-07-28', '17:00', ['Mercoledì', 'Venerdì']) === '2099-07-29');
+const undoFixtureClient = {
+  id: 'client-undo-ui',
+  nome: 'Undo',
+  cognome: 'Fixture',
+  packageTypes: ['PT 1:1'],
+  packageFrequency: '2x settimana',
+  giorniSettimana: ['Martedì', 'Giovedì'],
+  packageStart: '2099-07-01',
+  packageCycleStart: '2099-07-01',
+  sessionsTotal: 8,
+  sessionsRemaining: 0,
+  importo: 200,
+  statoPagamento: 'Da pagare',
+  notes: '',
+};
+const undoFixtureRenewal = UiLedger.renew(undoFixtureClient, {
+  total: 8,
+  completed: 8,
+  scheduled: 0,
+  remaining: 0,
+  cycleStart: '2099-07-01',
+}, {
+  sessions: 12,
+  startDate: '2099-07-28',
+  amount: 320,
+  paidNow: 0,
+  frequency: '3x settimana',
+  days: ['Martedì', 'Giovedì', 'Venerdì'],
+}, {
+  now: '2099-07-28T10:00:00.000Z',
+  idFactory: () => 'cycle-undo-ui',
+});
+appointments.push({
+  id: 'undo-created',
+  serviceId: 'pt11',
+  clientIds: [undoFixtureClient.id],
+  date: '2099-07-28',
+  startTime: '17:00',
+  status: 'prenotato',
+  createdAt: Date.parse('2099-07-28T10:00:01.000Z'),
+  notes: 'Rinnovo pacchetto da 2099-07-28\n[CICLO-PACCHETTO 2099-07-28]\n[CICLO-PACCHETTO-ID cycle-undo-ui]',
+}, {
+  id: 'undo-carried',
+  serviceId: 'pt11',
+  clientIds: [undoFixtureClient.id],
+  date: '2099-07-29',
+  startTime: '17:00',
+  status: 'prenotato',
+  createdAt: Date.parse('2099-07-20T10:00:00.000Z'),
+  notes: '[CICLO-PACCHETTO 2099-07-28]\n[CICLO-PACCHETTO-ID cycle-undo-ui]',
+});
+const undoAppointmentPlan = App._packageRenewalUndoAppointmentPlan(
+  { ...undoFixtureRenewal.client, packageTypes: ['PT 1:1'] },
+  undoFixtureRenewal.cycle,
+  undoFixtureRenewal.ledger.cycles[0]
+);
+assert('Ripristino riconosce sedute create e trasferite del rinnovo', undoAppointmentPlan.created.length === 1 && undoAppointmentPlan.restored.length === 1 && undoAppointmentPlan.unknown.length === 0);
+appointments.splice(-2, 2);
 document.getElementById = originalGetElementById;
 document.querySelectorAll = originalQuerySelectorAll;
 App.portalPt = {

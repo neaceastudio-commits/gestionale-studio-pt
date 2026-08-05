@@ -1664,20 +1664,56 @@ const App = {
     return App._updateRenewalPlanPreview();
   },
 
+  _renewalSchedulingStart(fromDate, time) {
+    const cursor = App._parseDate(fromDate);
+    const now = new Date();
+    const today = App._dateStr(now);
+    if (App._dateStr(cursor) < today) {
+      cursor.setTime(App._parseDate(today).getTime());
+    }
+    const timeParts = String(time || '').split(':').map(Number);
+    const timeMinutes = (timeParts[0] * 60) + timeParts[1];
+    const nowMinutes = (now.getHours() * 60) + now.getMinutes();
+    if (App._dateStr(cursor) === today && Number.isFinite(timeMinutes) && timeMinutes <= nowMinutes) {
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return App._dateStr(cursor);
+  },
+
+  _firstRenewalPlanDate(fromDate, time, days) {
+    if (!fromDate || !time || !Array.isArray(days) || !days.length) return '';
+    const cursor = App._parseDate(App._renewalSchedulingStart(fromDate, time));
+    const wanted = new Set(days);
+    for (let guard = 0; guard < 14; guard += 1) {
+      const date = App._dateStr(cursor);
+      if (wanted.has(App._weekdayName(date))) return date;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return '';
+  },
+
   _renewalPlanValidation() {
     const frequency = String(document.getElementById('pkg-renew-frequency')?.value || '').trim();
     const days = App._selectedRenewalDays();
     const sessions = parseInt(document.getElementById('pkg-renew-count')?.value || '0', 10);
     const daysPerWeek = App._frequencyMaxDaysValue(frequency);
+    const fromDate = String(document.getElementById('pkg-renew-start')?.value || '').trim();
+    const time = String(document.getElementById('pkg-renew-time')?.value || '').trim();
 
     if (!frequency) {
       return { ok: false, frequency, days, sessions, message: 'Seleziona la frequenza del nuovo pacchetto.' };
     }
     if (!Number.isInteger(sessions) || sessions <= 0) {
-      return { ok: false, frequency, days, sessions, message: 'Inserisci un numero valido di sedute.' };
+      return { ok: false, frequency, days, sessions, fromDate, time, message: 'Inserisci un numero valido di sedute.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+      return { ok: false, frequency, days, sessions, fromDate, time, message: 'Inserisci la decorrenza del nuovo ciclo.' };
+    }
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      return { ok: false, frequency, days, sessions, fromDate, time, message: 'Scegli esplicitamente l’orario delle nuove sedute.' };
     }
     if (!days.length) {
-      return { ok: false, frequency, days, sessions, message: 'Seleziona almeno un giorno reale.' };
+      return { ok: false, frequency, days, sessions, fromDate, time, message: 'Seleziona almeno un giorno reale.' };
     }
     if (daysPerWeek && days.length !== daysPerWeek) {
       return {
@@ -1685,9 +1721,25 @@ const App = {
         frequency,
         days,
         sessions,
+        fromDate,
+        time,
         message: `${frequency} richiede esattamente ${daysPerWeek} ${daysPerWeek === 1 ? 'giorno' : 'giorni'}: ne hai selezionati ${days.length}.`,
       };
     }
+
+    const firstDate = App._firstRenewalPlanDate(fromDate, time, days);
+    const startsAfterBoundary = firstDate && firstDate !== fromDate;
+    const boundaryDaySelected = days.includes(App._weekdayName(fromDate));
+    const schedulingStart = App._renewalSchedulingStart(fromDate, time);
+    let startExplanation = '';
+    if (startsAfterBoundary && !boundaryDaySelected) {
+      startExplanation = ` Il ${App._fmtLongDate(fromDate)} è la decorrenza, ma non è tra i giorni selezionati.`;
+    } else if (startsAfterBoundary && schedulingStart !== fromDate) {
+      startExplanation = ` Il ${App._fmtLongDate(fromDate)} alle ${time} è già trascorso: non viene creata una lezione nel passato.`;
+    }
+    const firstLesson = firstDate
+      ? ` Prima lezione prevista: ${App._fmtLongDate(firstDate)} alle ${time}, salvo conflitti di disponibilità.`
+      : '';
 
     if (daysPerWeek) {
       const fullWeeks = Math.floor(sessions / daysPerWeek);
@@ -1697,11 +1749,14 @@ const App = {
         : `${fullWeeks} ${fullWeeks === 1 ? 'settimana' : 'settimane'} esatte`;
       return {
         ok: true,
-        warning: extraSessions > 0,
+        warning: extraSessions > 0 || startsAfterBoundary,
         frequency,
         days,
         sessions,
-        message: `${frequency} · ${days.join(', ')} · ${sessions} sedute (${duration}).`,
+        fromDate,
+        time,
+        firstDate,
+        message: `${frequency} · ${days.join(', ')} · ${sessions} sedute (${duration}).${firstLesson}${startExplanation}`,
       };
     }
 
@@ -1711,7 +1766,10 @@ const App = {
       frequency,
       days,
       sessions,
-      message: `${frequency} · ${days.join(', ')} · ${sessions} sedute.`,
+      fromDate,
+      time,
+      firstDate,
+      message: `${frequency} · ${days.join(', ')} · ${sessions} sedute.${firstLesson}${startExplanation}`,
     };
   },
 
@@ -1741,23 +1799,28 @@ const App = {
       const finance = PackageLedger.cycleFinancial(cycle);
       const payments = Array.isArray(cycle.payments) ? cycle.payments : [];
       const lastPayment = payments.length ? payments[payments.length - 1] : null;
-      const snapshot = cycle.closedAt
+      const snapshot = cycle.voidedAt
+        ? `Annullato · ${Number(cycle.sessionsCompletedAtClose || 0)}/${Number(cycle.sessionsTotal || 0)} fatte`
+        : cycle.closedAt
         ? `${Number(cycle.sessionsCompletedAtClose || 0)}/${Number(cycle.sessionsTotal || 0)} fatte`
         : `${Number(cycle.sessionsTotal || 0)} acquistate`;
       const cycleDays = Array.isArray(cycle.days) ? cycle.days : [];
       const cyclePlan = cycle.frequency
         ? `<strong>${App._escapeHtml(cycle.frequency)}</strong><span class="package-cycle-source">${App._escapeHtml(cycleDays.join(', ') || 'Giorni non registrati')}</span>`
         : `<span class="text-muted">Non registrato</span>${cycleDays.length ? `<span class="package-cycle-source">${App._escapeHtml(cycleDays.join(', '))}</span>` : ''}`;
+      const cycleSource = cycle.voidedAt
+        ? `Rinnovo annullato${cycle.voidReason ? `<span class="package-cycle-source">${App._escapeHtml(cycle.voidReason)}</span>` : ''}`
+        : (cycle.source === 'renewal' ? 'Rinnovo' : 'Importato');
       return `
         <tr>
-          <td><strong>#${number}</strong><span class="package-cycle-source">${cycle.source === 'renewal' ? 'Rinnovo' : 'Importato'}</span></td>
+          <td><strong>#${number}</strong><span class="package-cycle-source">${cycleSource}</span></td>
           <td>${App._escapeHtml(App._fmtLongDate(cycle.startDate))}</td>
           <td>${snapshot}</td>
           <td>${cyclePlan}</td>
           <td>${App._fmtMoney(finance.total)}</td>
           <td>${App._fmtMoney(finance.paid)}</td>
           <td><strong>${App._fmtMoney(finance.balance)}</strong></td>
-          <td><span class="package-payment-badge ${App._packagePaymentStatusClass(finance.status)}">${App._escapeHtml(finance.status)}</span></td>
+          <td><span class="package-payment-badge ${cycle.voidedAt ? 'voided' : App._packagePaymentStatusClass(finance.status)}">${cycle.voidedAt ? 'Annullato' : App._escapeHtml(finance.status)}</span></td>
           <td>${lastPayment ? `${App._escapeHtml(App._fmtLongDate(lastPayment.date))}<br><span class="text-muted">${App._escapeHtml(lastPayment.method || 'Non indicato')}</span>` : '—'}</td>
           <td>${payments.length}</td>
         </tr>`;
@@ -1901,6 +1964,10 @@ const App = {
       openingPaidAmount: String(client.statoPagamento || '').toLowerCase() === 'pagato' ? Number(client.importo || 0) : 0,
       payments: [],
     });
+    const canOfferRenewalUndo = currentPackageCycle?.source === 'renewal' && !currentPackageCycle?.voidedAt;
+    const renewalUndoBlocks = [];
+    if (metrics.completed > 0 || metrics.noShow > 0) renewalUndoBlocks.push('ci sono sedute già fatte o no-show');
+    if (currentFinance.paid > 0.009) renewalUndoBlocks.push('prima occorre stornare gli incassi del rinnovo');
     const financialSummary = PackageLedger.summary([client]);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
     const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
@@ -1928,7 +1995,7 @@ const App = {
       `<option value="${App._escapeHtml(frequency)}" ${frequency === renewalFrequency ? 'selected' : ''}>${App._escapeHtml(frequency)}</option>`
     ).join('');
     const renewalDefaultAppointment = appointments.find(appointment => appointment.serviceId === serviceId && appointment.date >= today);
-    const renewalDefaultTime = renewalDefaultAppointment?.startTime || '09:00';
+    const renewalDefaultTime = renewalDefaultAppointment?.startTime || '';
     const renewalDefaultOperatorId = renewalDefaultAppointment?.operatorId || client.ptAssegnato || '';
     const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label package-plan-day">
@@ -2211,7 +2278,8 @@ const App = {
               </div>
               <div class="form-group">
                 <label>Orario del nuovo ciclo *</label>
-                <input id="pkg-renew-time" class="form-input" type="time" value="${renewalDefaultTime}" step="900">
+                <input id="pkg-renew-time" class="form-input" type="time" value="${renewalDefaultTime}" step="900" onchange="App._updateRenewalPlanPreview()" required>
+                <div class="form-hint">È l’orario delle lezioni, non l’ora in cui confermi il rinnovo. Se non ci sono sedute future va scelto esplicitamente.</div>
               </div>
               <div class="form-group">
                 <label>PT delle nuove sedute</label>
@@ -2231,8 +2299,9 @@ const App = {
           </div>
           <div class="package-renewal-grid">
             <div class="form-group">
-              <label>Data inizio *</label>
-              <input id="pkg-renew-start" class="form-input" type="date" value="${defaultRenewalStart}">
+              <label>Decorrenza nuovo ciclo *</label>
+              <input id="pkg-renew-start" class="form-input" type="date" value="${defaultRenewalStart}" onchange="App._updateRenewalPlanPreview()">
+              <div class="form-hint">È la data amministrativa del ciclo; l’anteprima indica la prima lezione effettiva.</div>
             </div>
             <div class="form-group">
               <label>Nuove sedute *</label>
@@ -2276,6 +2345,22 @@ const App = {
             <button id="pkg-renew-submit" class="btn-primary" data-ledger-ready="${packageLedger.parseError ? 'false' : 'true'}" onclick="App._renewPackageAppointments('${client.id}')" disabled>Rinnova e genera sedute</button>
           </div>
           <p>Le impostazioni del ciclo attuale non cambiano prima della conferma. Se non vengono trovate abbastanza date valide, il rinnovo viene annullato interamente.</p>
+        </section>`}
+
+        ${App.isPortalPtMode() || isArchived || !canOfferRenewalUndo ? '' : `
+        <section class="package-panel package-renewal-undo-panel package-finance-only" hidden>
+          <div class="package-section-heading">
+            <div>
+              <h4>Ripristina la situazione precedente</h4>
+              <p>Annulla soltanto l’ultimo rinnovo, riapre il ciclo precedente e rimuove le sedute create dal rinnovo. L’operazione resta visibile nello storico.</p>
+            </div>
+            <button class="btn package-renewal-undo-button" onclick="App._undoLastPackageRenewal('${client.id}')" ${renewalUndoBlocks.length ? 'disabled' : ''}>↩ Annulla ultimo rinnovo</button>
+          </div>
+          <div class="package-renewal-undo-status ${renewalUndoBlocks.length ? 'blocked' : 'ready'}">
+            ${renewalUndoBlocks.length
+              ? `Non disponibile: ${App._escapeHtml(renewalUndoBlocks.join('; '))}.`
+              : 'Disponibile: nessuna seduta del nuovo ciclo è stata consumata e non risultano incassi attivi.'}
+          </div>
         </section>`}
 
         ${App.isPortalPtMode() ? '' : `
@@ -2855,6 +2940,196 @@ const App = {
     }
   },
 
+  _withRenewalUndoSnapshot(client, cycleId, previousClient, carriedAppointments, createdAppointments) {
+    const ledger = PackageLedger.parse(client);
+    if (ledger.parseError) throw new Error(ledger.parseError);
+    const cycle = ledger.cycles.find(item => item.id === cycleId);
+    if (!cycle) throw new Error('Ciclo del rinnovo non trovato');
+    cycle.undo = {
+      capturedAt: new Date().toISOString(),
+      previousClient: {
+        packageFrequency: previousClient.packageFrequency || '',
+        giorniSettimana: Array.isArray(previousClient.giorniSettimana) ? [...previousClient.giorniSettimana] : [],
+        packageStart: previousClient.packageStart || '',
+        packageCycleStart: previousClient.packageCycleStart || '',
+        sessionsTotal: Number(previousClient.sessionsTotal || 0),
+        sessionsRemaining: Number(previousClient.sessionsRemaining || 0),
+        ptAssegnato: previousClient.ptAssegnato || null,
+        active: previousClient.active !== false,
+        statoAbbonamento: previousClient.statoAbbonamento || '',
+      },
+      createdAppointmentIds: createdAppointments.map(appointment => appointment.id),
+      carriedAppointments: carriedAppointments.map(appointment => ({
+        id: appointment.id,
+        notes: String(appointment.notes || ''),
+      })),
+    };
+    ledger.updatedAt = new Date().toISOString();
+    return {
+      ...client,
+      notes: PackageLedger.serialize(client.notes, ledger),
+    };
+  },
+
+  _packageRenewalUndoAppointmentPlan(client, cycle, previousCycle) {
+    const serviceId = App._packageServiceId(client);
+    const cycleAppointments = State.getAppointments().filter(appointment =>
+      appointment.serviceId === serviceId &&
+      Array.isArray(appointment.clientIds) &&
+      appointment.clientIds.includes(client.id) &&
+      PackageLedger.appointmentCycleId(appointment.notes) === cycle.id
+    );
+    const undo = cycle.undo || {};
+    const createdIds = new Set(Array.isArray(undo.createdAppointmentIds) ? undo.createdAppointmentIds : []);
+    const carriedSnapshots = new Map((Array.isArray(undo.carriedAppointments) ? undo.carriedAppointments : [])
+      .map(appointment => [appointment.id, appointment]));
+    const hasSnapshot = createdIds.size > 0 || carriedSnapshots.size > 0;
+    const cycleTimestamp = Date.parse(cycle.createdAt || '');
+    const created = [];
+    const restored = [];
+    const unknown = [];
+
+    cycleAppointments.forEach(appointment => {
+      const generatedByRenewal = new RegExp(`Rinnovo pacchetto da\\s+${cycle.startDate}`, 'i').test(String(appointment.notes || ''));
+      if (createdIds.has(appointment.id) || (!hasSnapshot && generatedByRenewal)) {
+        created.push(appointment);
+        return;
+      }
+      const carriedSnapshot = carriedSnapshots.get(appointment.id);
+      if (carriedSnapshot) {
+        restored.push({ ...appointment, notes: String(carriedSnapshot.notes || '') });
+        return;
+      }
+
+      const rawCreatedAt = appointment.createdAt;
+      const appointmentTimestamp = typeof rawCreatedAt === 'number' ? rawCreatedAt : Date.parse(rawCreatedAt || '');
+      if (!hasSnapshot && Number.isFinite(cycleTimestamp) && Number.isFinite(appointmentTimestamp) && appointmentTimestamp < cycleTimestamp) {
+        restored.push({
+          ...appointment,
+          notes: App._withPackageCycle(appointment.notes, previousCycle.startDate, previousCycle.id),
+        });
+        return;
+      }
+      unknown.push(appointment);
+    });
+
+    return { cycleAppointments, created, restored, unknown };
+  },
+
+  async _undoLastPackageRenewal(clientId) {
+    if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
+    const clients = State.getClients();
+    const clientIndex = clients.findIndex(client => client.id === clientId);
+    if (clientIndex < 0) return;
+    const currentClient = clients[clientIndex];
+    const metrics = Services.getClientSessionMetrics(currentClient);
+    const reason = prompt('Motivo dell’annullamento dell’ultimo rinnovo', 'Rinnovo inserito per errore');
+    if (reason === null) return;
+
+    let rollback;
+    try {
+      rollback = PackageLedger.undoLastRenewal(currentClient, metrics, { reason });
+    } catch (error) {
+      UI.showToast(error.message || 'Rinnovo non annullabile', 'error');
+      return;
+    }
+
+    const plan = App._packageRenewalUndoAppointmentPlan(currentClient, rollback.cycle, rollback.previous);
+    if (plan.unknown.length) {
+      UI.showToast('Rinnovo non annullato: alcune sedute non sono riconoscibili in modo sicuro', 'error');
+      alert('Non è stato modificato nulla. Controlla prima queste sedute nel ciclo corrente:\n\n' +
+        plan.unknown.slice(0, 10).map(appointment => `${App._fmtLongDate(appointment.date)} ${appointment.startTime}`).join('\n'));
+      return;
+    }
+    const changedStatus = plan.cycleAppointments.filter(appointment => appointment.status !== 'prenotato');
+    if (changedStatus.length) {
+      UI.showToast('Rinnovo non annullato: una o più sedute sono già state modificate', 'error');
+      return;
+    }
+
+    const savedPrevious = rollback.cycle.undo?.previousClient || {};
+    const previousRemaining = savedPrevious.sessionsRemaining ?? rollback.previous.sessionsRemainingAtClose;
+    const updatedClient = {
+      ...rollback.client,
+      packageFrequency: savedPrevious.packageFrequency || rollback.previous.frequency || '',
+      giorniSettimana: Array.isArray(savedPrevious.giorniSettimana)
+        ? [...savedPrevious.giorniSettimana]
+        : (Array.isArray(rollback.previous.days) ? [...rollback.previous.days] : []),
+      packageStart: savedPrevious.packageStart || rollback.previous.startDate || '',
+      packageCycleStart: savedPrevious.packageCycleStart || rollback.previous.startDate || '',
+      sessionsTotal: Number(savedPrevious.sessionsTotal ?? rollback.previous.sessionsTotal ?? 0),
+      sessionsRemaining: Number(previousRemaining ?? rollback.previous.sessionsTotal ?? 0),
+      ptAssegnato: savedPrevious.ptAssegnato ?? rollback.previous.operatorId ?? currentClient.ptAssegnato ?? null,
+      active: savedPrevious.active ?? currentClient.active,
+      statoAbbonamento: savedPrevious.statoAbbonamento || currentClient.statoAbbonamento || 'Attivo',
+    };
+
+    const confirmed = confirm(
+      `Annullare l’ultimo rinnovo di ${currentClient.nome} ${currentClient.cognome}?\n\n` +
+      `${plan.created.length} sedute create dal rinnovo saranno eliminate.\n` +
+      `${plan.restored.length} sedute trasferite saranno ricollegate al ciclo precedente.\n` +
+      `Tornerà attivo il piano ${updatedClient.packageFrequency || 'precedente'} · ${(updatedClient.giorniSettimana || []).join(', ') || 'giorni precedenti'}.\n\n` +
+      'Il rinnovo annullato resterà visibile nello storico.'
+    );
+    if (!confirmed) return;
+
+    App._packageRenewalBusy = true;
+    const originalAppointments = plan.cycleAppointments.map(appointment => ({
+      ...appointment,
+      clientIds: [...(appointment.clientIds || [])],
+    }));
+    const restoreRemoteAppointments = async () => {
+      try {
+        const results = await Promise.all(originalAppointments.map(appointment => SupabaseSync.pushAppointment(appointment)));
+        return !results.some(result => result?.error);
+      } catch (_) {
+        return false;
+      }
+    };
+
+    try {
+      const appointmentResults = await Promise.all([
+        ...plan.restored.map(appointment => SupabaseSync.pushAppointment(appointment)),
+        ...plan.created.map(appointment => SupabaseSync.deleteAppointment(appointment.id)),
+      ]);
+      if (appointmentResults.some(result => result?.error)) {
+        await restoreRemoteAppointments();
+        throw new Error('Sincronizzazione delle sedute non riuscita');
+      }
+
+      const clientSync = await SupabaseSync.pushClient(updatedClient);
+      if (clientSync?.error) {
+        await restoreRemoteAppointments();
+        throw new Error('Il cliente non è stato ripristinato: le sedute sono tornate allo stato iniziale');
+      }
+
+      const removedIds = new Set(plan.created.map(appointment => appointment.id));
+      const restoredById = new Map(plan.restored.map(appointment => [appointment.id, appointment]));
+      State.saveAppointments(State.getAppointments()
+        .filter(appointment => !removedIds.has(appointment.id))
+        .map(appointment => restoredById.get(appointment.id) || appointment));
+      State.saveClients(clients.map(client => client.id === clientId ? updatedClient : client));
+      if (CONFIG.SHEETS.enabled) {
+        try {
+          await Sheets.pushClient(updatedClient);
+          plan.restored.forEach(appointment => Sheets.pushAppointment(appointment));
+        } catch (error) {
+          console.warn('[Pacchetto] ripristino completato, mirror Sheets non aggiornato', error);
+        }
+      }
+      Calendar.render();
+      Clients.render();
+      UI.showToast(`Rinnovo annullato · ${plan.created.length} sedute eliminate · ciclo precedente ripristinato`, 'success');
+      App._openPackageFinance(clientId);
+    } catch (error) {
+      console.warn('[Pacchetto] annullamento rinnovo non completato', error);
+      UI.showToast(error.message || 'Rinnovo non annullato', 'error');
+      App._openPackageFinance(clientId);
+    } finally {
+      App._packageRenewalBusy = false;
+    }
+  },
+
   async _renewPackageAppointments(clientId) {
     if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
     const currentClient = State.getClients().find(client => client.id === clientId);
@@ -2867,8 +3142,9 @@ const App = {
     }
     const frequency = planValidation.frequency;
     const days = planValidation.days;
-    const fromDate = document.getElementById('pkg-renew-start')?.value || App._dateStr(new Date());
-    const time = document.getElementById('pkg-renew-time')?.value || '09:00';
+    const fromDate = planValidation.fromDate;
+    const time = planValidation.time;
+    const schedulingStart = App._renewalSchedulingStart(fromDate, time);
     const selectedOperator = document.getElementById('pkg-renew-operator')?.value || currentClient.ptAssegnato || null;
     const renewCount = planValidation.sessions;
 
@@ -2927,15 +3203,6 @@ const App = {
 
     const operator = selectedOperator ? Services.getOperator(selectedOperator) : null;
     const operatorLabel = operator ? `${operator.nome} ${operator.cognome}` : 'senza PT assegnato';
-    const confirmed = confirm(
-      `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n\n` +
-      `Nuovo ciclo: ${renewCount} sedute · ${frequency} dal ${fromDate}.\n` +
-      `Giorni: ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
-      `Valore: ${App._fmtMoney(renewal.finance.total)} · incassato ora: ${App._fmtMoney(renewal.finance.paid)} · saldo: ${App._fmtMoney(renewal.finance.balance)} (${renewal.finance.status}).\n` +
-      `${futureToCarry.length} sedute future saranno trasferite al nuovo ciclo e verranno create esattamente ${renewCount - futureToCarry.length} sedute mancanti.\n\n` +
-      `Il ciclo precedente (${metrics.completed}/${metrics.total || 0} fatte) sarà chiuso nello storico.`
-    );
-    if (!confirmed) return;
 
     App._packageRenewalBusy = true;
     const submitButton = document.getElementById('pkg-renew-submit');
@@ -2949,7 +3216,7 @@ const App = {
       ...appt,
       clientIds: [...(appt.clientIds || [])],
     }));
-    const updatedClient = {
+    let updatedClient = {
       ...renewal.client,
       packageFrequency: frequency,
       giorniSettimana: days,
@@ -2982,7 +3249,7 @@ const App = {
       State.saveAppointments(plannedAppointments);
       const dates = App._suggestPackageDates(updatedClient, Math.max(missing * 10, missing), {
         days,
-        fromDate,
+        fromDate: schedulingStart,
         includeStart: true,
       });
       dates.some(date => {
@@ -3032,6 +3299,43 @@ const App = {
       App._packageRenewalBusy = false;
       UI.showToast(`Rinnovo annullato: trovate ${created.length} date valide su ${missing} necessarie`, 'error');
       alert('Nessun dato è stato salvato. Risolvi i conflitti o cambia giorni/orario:\n' + skipped.slice(0, 12).join('\n'));
+      App._openPackageFinance(clientId);
+      return;
+    }
+
+    const effectiveAppointments = [...carriedAppointments, ...created]
+      .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
+    const firstEffectiveAppointment = effectiveAppointments[0] || null;
+    const skippedSummary = skipped.length
+      ? `\nDate precedenti saltate per conflitto (${skipped.length}):\n${skipped.slice(0, 5).join('\n')}\n`
+      : '';
+    const confirmed = confirm(
+      `Rinnovo pacchetto di ${currentClient.nome} ${currentClient.cognome}.\n\n` +
+      `Nuovo ciclo: ${renewCount} sedute · ${frequency} · decorrenza ${fromDate}.\n` +
+      `Giorni: ${days.join(', ')} alle ${time}, PT ${operatorLabel}.\n` +
+      `Prima lezione effettiva: ${firstEffectiveAppointment ? `${App._fmtLongDate(firstEffectiveAppointment.date)} alle ${firstEffectiveAppointment.startTime}` : 'nessuna'}.\n` +
+      skippedSummary +
+      `Valore: ${App._fmtMoney(renewal.finance.total)} · incassato ora: ${App._fmtMoney(renewal.finance.paid)} · saldo: ${App._fmtMoney(renewal.finance.balance)} (${renewal.finance.status}).\n` +
+      `${futureToCarry.length} sedute future saranno trasferite e ${created.length} nuove sedute saranno create.\n\n` +
+      `Il ciclo precedente (${metrics.completed}/${metrics.total || 0} fatte) sarà chiuso nello storico.`
+    );
+    if (!confirmed) {
+      App._packageRenewalBusy = false;
+      App._openPackageFinance(clientId);
+      return;
+    }
+
+    try {
+      updatedClient = App._withRenewalUndoSnapshot(
+        updatedClient,
+        renewal.cycle.id,
+        currentClient,
+        futureToCarry,
+        created
+      );
+    } catch (error) {
+      App._packageRenewalBusy = false;
+      UI.showToast(error.message || 'Rinnovo annullato: impossibile preparare il ripristino', 'error');
       App._openPackageFinance(clientId);
       return;
     }

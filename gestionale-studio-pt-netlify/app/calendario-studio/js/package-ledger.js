@@ -247,6 +247,52 @@ const PackageLedger = (() => {
     return { client: updated, ledger, cycle, finance: cycleFinancial(cycle) };
   }
 
+  function undoLastRenewal(client, metrics = {}, input = {}, options = {}) {
+    const now = options.now || new Date().toISOString();
+    const reason = String(input?.reason || '').trim();
+    if (!reason) throw new Error('Scrivi il motivo dell’annullamento');
+
+    const ledger = clone(parse(client));
+    if (ledger.parseError) throw new Error(ledger.parseError);
+    const cycle = currentCycle(ledger);
+    if (!cycle || cycle.source !== 'renewal' || cycle.voidedAt) {
+      throw new Error('L’ultimo ciclo corrente non è un rinnovo annullabile');
+    }
+
+    const completed = Number(metrics?.completed || 0);
+    const noShow = Number(metrics?.noShow || 0);
+    if (completed > 0 || noShow > 0) {
+      throw new Error('Non puoi annullare un rinnovo con sedute già fatte o no-show');
+    }
+    const finance = cycleFinancial(cycle);
+    if (finance.paid > 0.009) {
+      throw new Error('Storna prima gli incassi del rinnovo, poi riprova');
+    }
+
+    const cycleIndex = ledger.cycles.findIndex(item => item.id === cycle.id);
+    let previous = null;
+    for (let index = cycleIndex - 1; index >= 0; index -= 1) {
+      if (!ledger.cycles[index].voidedAt) {
+        previous = ledger.cycles[index];
+        break;
+      }
+    }
+    if (!previous) throw new Error('Nessun ciclo precedente da ripristinare');
+
+    cycle.closedAt = cycle.closedAt || now;
+    cycle.voidedAt = now;
+    cycle.voidReason = reason;
+    cycle.sessionsCompletedAtClose = completed;
+    cycle.sessionsScheduledAtClose = Number(metrics?.scheduled || 0);
+    cycle.sessionsRemainingAtClose = Number(metrics?.remaining || 0);
+    previous.closedAt = '';
+    previous.reopenedAt = now;
+    ledger.updatedAt = now;
+
+    const updated = applyToClient(client, ledger);
+    return { client: updated, ledger, cycle, previous, finance: cycleFinancial(previous) };
+  }
+
   function recordPayment(client, metrics, input, options = {}) {
     const now = options.now || new Date().toISOString();
     const idFactory = options.idFactory || (() => `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
@@ -377,14 +423,16 @@ const PackageLedger = (() => {
         finance: cycleFinancial(cycle),
       }));
     });
+    const activeRows = rows.filter(row => !row.cycle.voidedAt);
     return {
       rows,
       cycles: rows.length,
-      renewals: rows.filter(row => row.cycle.source === 'renewal').length,
-      expected: roundMoney(rows.reduce((sum, row) => sum + row.finance.total, 0)),
-      collected: roundMoney(rows.reduce((sum, row) => sum + row.finance.paid, 0)),
-      outstanding: roundMoney(rows.reduce((sum, row) => sum + row.finance.balance, 0)),
-      openCycles: rows.filter(row => !row.cycle.closedAt).length,
+      renewals: activeRows.filter(row => row.cycle.source === 'renewal').length,
+      voidedRenewals: rows.filter(row => row.cycle.source === 'renewal' && row.cycle.voidedAt).length,
+      expected: roundMoney(activeRows.reduce((sum, row) => sum + row.finance.total, 0)),
+      collected: roundMoney(activeRows.reduce((sum, row) => sum + row.finance.paid, 0)),
+      outstanding: roundMoney(activeRows.reduce((sum, row) => sum + row.finance.balance, 0)),
+      openCycles: activeRows.filter(row => !row.cycle.closedAt).length,
     };
   }
 
@@ -407,6 +455,7 @@ const PackageLedger = (() => {
     currentCycle,
     cycleFinancial,
     renew,
+    undoLastRenewal,
     recordPayment,
     updateCurrentAmount,
     reconcilePaidTotal,

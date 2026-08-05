@@ -184,6 +184,51 @@ assert.throws(() => Ledger.renew(baseClient, oldMetrics, {
   days: ['Martedì', 'Giovedì'],
 }), /esattamente 3 giorni/i, '3x con due giorni deve essere bloccato');
 
+const reversibleRenewal = Ledger.renew(baseClient, oldMetrics, {
+  sessions: 12,
+  startDate: '2026-08-05',
+  amount: 320,
+  paidNow: 0,
+  frequency: '3x settimana',
+  days: ['Martedì', 'Giovedì', 'Venerdì'],
+  time: '13:00',
+  operatorId: 'pt-1',
+}, {
+  now: '2026-08-05T10:00:00.000Z',
+  idFactory: () => 'pkg_cycle_reversible',
+});
+const undoneRenewal = Ledger.undoLastRenewal(reversibleRenewal.client, {
+  total: 12,
+  completed: 0,
+  scheduled: 12,
+  remaining: 12,
+  noShow: 0,
+}, {
+  reason: 'Rinnovo inserito per errore',
+}, {
+  now: '2026-08-05T11:00:00.000Z',
+});
+assert.equal(undoneRenewal.cycle.voidedAt, '2026-08-05T11:00:00.000Z');
+assert.equal(undoneRenewal.cycle.voidReason, 'Rinnovo inserito per errore');
+assert.equal(Ledger.currentCycle(undoneRenewal.ledger).source, 'legacy', 'il ciclo precedente viene riaperto');
+assert.equal(undoneRenewal.client.importo, 200, 'il valore economico torna al ciclo precedente');
+assert.equal(undoneRenewal.client.statoPagamento, 'Da pagare');
+const undoneTotals = Ledger.summary([undoneRenewal.client]);
+assert.equal(undoneTotals.cycles, 2, 'il rinnovo annullato resta nello storico');
+assert.equal(undoneTotals.renewals, 0, 'il rinnovo annullato non entra nei rinnovi attivi');
+assert.equal(undoneTotals.voidedRenewals, 1);
+assert.equal(undoneTotals.expected, 200, 'il rinnovo annullato non altera i totali economici');
+assert.throws(() => Ledger.undoLastRenewal(reversibleRenewal.client, {
+  completed: 1,
+  scheduled: 11,
+  remaining: 11,
+}, { reason: 'Tentativo non sicuro' }), /sedute già fatte/i);
+assert.throws(() => Ledger.undoLastRenewal(renewed.client, {
+  completed: 0,
+  scheduled: 12,
+  remaining: 12,
+}, { reason: 'Tentativo con incasso' }), /storna prima gli incassi/i);
+
 const totals = Ledger.summary([paid.client]);
 assert.equal(totals.cycles, 2);
 assert.equal(totals.renewals, 1);
