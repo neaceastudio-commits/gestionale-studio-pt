@@ -1787,3 +1787,41 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Vista clienti: mantieni separati riepilogo sedute, gestione e azioni. */
+.client-table-card {
+  overflow-x: auto;
+}
+.client-data-table {
+  min-width: 1460px;
+}
+.client-data-table th:nth-child(1),
+.client-data-table td:nth-child(1) { width: 18%; }
+.client-data-table th:nth-child(2),
+.client-data-table td:nth-child(2) { width: 13%; }
+.client-data-table th:nth-child(3),
+.client-data-table td:nth-child(3) { width: 12%; }
+.client-data-table th:nth-child(4),
+.client-data-table td:nth-child(4) { width: 8%; }
+.client-data-table th:nth-child(5),
+.client-data-table td:nth-child(5) { width: 16%; }
+.client-data-table th:nth-child(6),
+.client-data-table td:nth-child(6) { width: 21%; }
+.client-data-table th:nth-child(7),
+.client-data-table td:nth-child(7) { width: 176px; }
+.client-data-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.client-data-table .session-mini {
+  flex: 1 0 100%;
+  min-width: 0;
+  line-height: 1.35;
+  white-space: normal;
+}
+.client-data-table .package-status,
+.client-data-table .client-history-status {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}

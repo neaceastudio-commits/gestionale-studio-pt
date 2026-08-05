@@ -18,6 +18,7 @@ const supabaseSource = read('app/calendario-studio/js/supabase.js');
 const servicesSource = read('app/calendario-studio/js/services.js');
 const packageLedgerSource = read('app/calendario-studio/js/package-ledger.js');
 const clientsSource = read('app/calendario-studio/js/clients.js');
+const uiFixesSource = read('app/calendario-studio/css/ui-fixes.css');
 const portalSource = read('app/portale-personal-trainer/index.html');
 const acquisitionSource = read('app/acquisizione/index.html');
 const accessFunctionSource = read('netlify/functions/pt-access-email.js');
@@ -74,6 +75,7 @@ const recordPaymentSource = appSource.slice(
   ['Trasferimento aggiorna proprietà e sedute future', appSource.includes('ptAssegnato: newOperator.id') && appSource.includes('SupabaseSync.pushAppointment(change.after)')],
   ['Sedute condivise protette dal trasferimento', appSource.includes('appointments.filter(appt => appt.clientIds.length > 1)')],
   ['Comando trasferimento nascosto ai PT', clientsSource.includes("ptMode ? '' : `<button class=\"btn-icon-sm\" title=\"Trasferisci cliente a un altro PT\"")],
+  ['Riepiloghi clienti contenuti nelle proprie colonne', clientsSource.includes('data-table client-data-table') && uiFixesSource.includes('.client-data-table .session-mini') && uiFixesSource.includes('white-space: normal;')],
   ['Token PT firmato', accessFunctionSource.includes('function signAccessToken')],
   ['Funzione Apple Calendar', appleFunctionSource.includes('exports.handler') && appleFunctionSource.includes('BEGIN:VCALENDAR')],
 ].forEach(([label, condition]) => assert(label, condition));

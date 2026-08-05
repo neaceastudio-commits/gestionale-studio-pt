@@ -339,8 +339,8 @@ const Clients = (() => {
         </div>
       </div>
       ${showingHistory ? renderHistorySummary(clients) : renderManagementSummary(clients)}
-      <div class="card">
-        <table class="data-table">
+      <div class="card client-table-card">
+        <table class="data-table client-data-table">
           <thead>
             <tr>
               <th>Cliente</th>
