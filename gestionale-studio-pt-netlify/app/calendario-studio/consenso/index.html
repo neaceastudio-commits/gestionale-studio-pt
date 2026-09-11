@@ -106,6 +106,7 @@
       font-weight: 700;
       outline: none;
     }
+    .value { overflow-wrap: anywhere; }
     .value.multiline {
       white-space: pre-wrap;
       line-height: 1.48;
@@ -206,9 +207,16 @@
         box-shadow: none;
       }
       button { display: none; }
+      .grid, .signature-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .field, .consent-row, .signature, .signature-grid { break-inside: avoid; page-break-inside: avoid; }
+      h2 { break-after: avoid; page-break-after: avoid; }
+      p, li { orphans: 3; widows: 3; }
+      .editable-section { padding-right: 0; }
+      .consent-row { padding-right: 9px; }
+      [contenteditable="true"] { outline: none !important; background: transparent !important; }
       @page { size: A4; margin: 14mm 13mm; }
     }
-    @media (max-width: 900px) {
+    @media screen and (max-width: 900px) {
       .toolbar { position: static; }
       .page { width: calc(100vw - 24px); padding: 18px; margin: 12px; }
       .grid, .signature-grid { grid-template-columns: 1fr; }
@@ -224,11 +232,13 @@
     <div class="toolbar-actions">
       <button onclick="addConsentRow()">+ Riga consenso</button>
       <button onclick="addTextSection()">+ Paragrafo</button>
-      <button class="primary" onclick="window.print()">Stampa</button>
+      <button id="print-button" class="primary" onclick="window.print()" disabled>Stampa</button>
     </div>
   </div>
 
   <div id="status" class="loading">Caricamento dati cliente...</div>
+
+  <div id="data-review" class="loading screen-only" role="status" hidden></div>
 
   <main id="doc" class="page" style="display:none">
     <header>
@@ -264,7 +274,7 @@
 
     <section id="anamnesis-section">
       <h2 contenteditable="true">3. Riepilogo dei dati comunicati in anamnesi</h2>
-      <div id="anamnesis-empty" class="anamnesis-empty">Nessuna anamnesi collegata al cliente.</div>
+      <div id="anamnesis-empty" class="anamnesis-empty screen-only">Nessuna anamnesi collegata al cliente.</div>
       <div class="grid">
         <div class="field" data-anamnesis-field><span class="label">Sesso</span><span id="anamnesis-sex" class="value" contenteditable="true"></span></div>
         <div class="field" data-anamnesis-field><span class="label">Professione</span><span id="anamnesis-profession" class="value" contenteditable="true"></span></div>
@@ -278,8 +288,8 @@
         <div class="field" data-anamnesis-field><span class="label">Disponibilità e orari</span><span id="anamnesis-schedule" class="value multiline" contenteditable="true"></span></div>
         <div class="field" data-anamnesis-field><span class="label">Come ha conosciuto lo studio</span><span id="anamnesis-source" class="value" contenteditable="true"></span></div>
         <div class="field" data-anamnesis-field><span class="label">Cosa non ha funzionato in precedenza</span><span id="anamnesis-previous" class="value multiline" contenteditable="true"></span></div>
+        <div class="field full" data-anamnesis-field><span class="label">Dati del genitore o tutore</span><span id="anamnesis-guardian" class="value multiline" contenteditable="true"></span></div>
         <div class="field full" data-anamnesis-field><span class="label">Patologie, farmaci, infortuni, limitazioni, stress, sonno e altre note dichiarate</span><span id="anamnesis-health" class="value multiline" contenteditable="true"></span></div>
-        <div class="field full" data-anamnesis-field><span class="label">Proposta, follow-up e note operative</span><span id="anamnesis-operational" class="value multiline" contenteditable="true"></span></div>
       </div>
     </section>
 
@@ -423,25 +433,65 @@
       return hasValue(value) ? String(value).replace(/\\n/g, '\n').trim() : '';
     }
 
-    function noteValue(source, labels) {
-      const lines = normalizeText(source).split('\n').map(line => line.trim()).filter(Boolean);
-      for (const label of labels) {
-        const prefix = label.toLowerCase() + ':';
-        const line = lines.find(item => item.toLowerCase().startsWith(prefix));
-        if (line) return line.slice(prefix.length).trim();
+    function cleanClientText(value) {
+      return normalizeText(value)
+        .replace(/\[NEACEA-[A-Z0-9-]+\][\s\S]*?(?:\[\/NEACEA-[A-Z0-9-]+\]|$)/g, '')
+        .replace(/\[ANAMNESI_(?:PT_REPORT|COACHING)\][\s\S]*?(?:\[\/ANAMNESI_(?:PT_REPORT|COACHING)\]|$)/g, '')
+        .replace(/\[ANAMNESI_CLIENTE[^\]]*\|\s*Nutrizione[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]/gi, '')
+        .replace(/^.*\[(?:ACQUISIZIONE_SEZIONE|ACQUISIZIONE-ID|PT[-_]AUDIT|PT_OWNER|ANAMNESI_RICEVUTA|TRASFERIMENTO PT|CICLO-PACCHETTO(?:-ID)?|FORZA-PT11|STORICO-FORZA-PT11)\b[^\]]*\].*$/gm, '')
+        .replace(/\[\/?ANAMNESI_CLIENTE[^\]]*\]/g, '')
+        .replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function noteFields(source) {
+      const fields = {};
+      const labels = new Set(['data di nascita', 'codice fiscale', 'documento', 'indirizzo', 'indirizzo per fattura', 'cap', 'comune', 'provincia', 'contatto emergenza', 'dati fatturazione', 'servizi richiesti', 'obiettivo', 'obiettivo libero', 'tempistica', 'motivazione', 'esperienza', 'attività / inattività', 'attività fisica', 'sport', 'frequenza desiderata', 'disponibilità', 'orari', 'come ha conosciuto lo studio', 'cosa non ha funzionato', 'professione', 'sesso', 'note cliente', 'patologie', 'farmaci', 'infortuni', 'limitazioni', 'stress', 'sonno', 'proposta', 'follow-up', 'dati minore/tutore', 'cliente minorenne', 'genitore/tutore', 'rapporto col minore', 'telefono tutore', 'email tutore', 'cf tutore', 'note tutore']);
+      let key = '';
+      for (const line of cleanClientText(source).split('\n')) {
+        const heading = line.match(/^([^:]{1,70}):\s*(.*)$/);
+        if (heading && labels.has(heading[1].trim().toLocaleLowerCase('it-IT'))) {
+          key = heading[1].trim().toLocaleLowerCase('it-IT');
+          fields[key] = heading[2].trim();
+        } else if (key && line.trim()) {
+          fields[key] += (fields[key] ? '\n' : '') + line.trim();
+        }
       }
-      return '';
+      return fields;
+    }
+
+    function noteValue(source, labels) {
+      const fields = noteFields(source);
+      return firstValue(...labels.map(label => fields[label.toLocaleLowerCase('it-IT')]));
+    }
+
+    function ptReport(source) {
+      const blocks = [...String(source || '').matchAll(/\[ANAMNESI_PT_REPORT\]\s*([\s\S]*?)\s*\[\/ANAMNESI_PT_REPORT\]/g)];
+      if (!blocks.length) return null;
+      try {
+        const report = JSON.parse(blocks.at(-1)[1]);
+        return report && typeof report === 'object' && !Array.isArray(report) ? report : null;
+      } catch { return null; }
+    }
+
+    function acquisitionProfile(acquisition) {
+      if (!acquisition) return null;
+      const report = ptReport(acquisition.impressioni);
+      return report ? { ...acquisition, ...report, id: acquisition.id, impressioni: acquisition.impressioni } : acquisition;
+    }
+
+    function fromNotes(profile, acquisition, labels) {
+      return firstValue(noteValue(profile.notes, labels), noteValue(acquisition?.impressioni, labels));
     }
 
     function setText(id, value) {
       const el = document.getElementById(id);
-      if (el) el.textContent = hasValue(value) ? String(value) : '';
+      if (el) el.textContent = cleanClientText(value);
     }
 
     function setAnamnesisText(id, value) {
       const el = document.getElementById(id);
       if (!el) return false;
-      const text = normalizeText(value);
+      const text = cleanClientText(value);
       el.textContent = text;
       const field = el.closest('[data-anamnesis-field]');
       if (field) field.classList.toggle('is-empty', !text);
@@ -449,34 +499,32 @@
     }
 
     function buildAddress(profile, acquisition) {
-      const sourceNotes = firstValue(acquisition && acquisition.impressioni, profile.notes);
-      const street = firstValue(
-        profile.indirizzo,
-        acquisition && acquisition.indirizzo,
-        noteValue(sourceNotes, ['Indirizzo per fattura', 'Indirizzo'])
-      );
+      const acq = acquisition || {};
+      const street = firstValue(profile.indirizzo, acq.indirizzo, fromNotes(profile, acq, ['Indirizzo per fattura', 'Indirizzo']));
       const locality = [
-        firstValue(profile.cap, acquisition && acquisition.cap, noteValue(sourceNotes, ['CAP'])),
-        firstValue(profile.comune, acquisition && acquisition.comune, noteValue(sourceNotes, ['Comune'])),
-        firstValue(profile.provincia, acquisition && acquisition.provincia, noteValue(sourceNotes, ['Provincia'])),
+        firstValue(profile.cap, acq.cap, fromNotes(profile, acq, ['CAP'])),
+        firstValue(profile.comune, acq.comune, fromNotes(profile, acq, ['Comune'])),
+        firstValue(profile.provincia, acq.provincia, fromNotes(profile, acq, ['Provincia'])),
       ].filter(hasValue).join(' ');
+      // Il Calendario può avere già salvato l'indirizzo completo in un solo campo.
+      if (locality && normalizeText(street).toLowerCase().endsWith(locality.toLowerCase())) return street;
       return [street, locality].filter(hasValue).join(', ');
     }
 
     function fillDocument(profile, acquisition, operator, consent) {
+      acquisition = acquisitionProfile(acquisition) || ptReport(profile.notes);
       const consentData = consent && consent.data ? consent.data : {};
-      const fullName = [profile.nome, profile.cognome].filter(hasValue).join(' ');
+      const fullName = [firstValue(profile.nome, acquisition?.nome), firstValue(profile.cognome, acquisition?.cognome)].filter(hasValue).join(' ');
       const opName = operator ? [operator.nome, operator.cognome].filter(hasValue).join(' ') : '';
-      const sourceNotes = firstValue(acquisition && acquisition.impressioni, profile.notes);
 
       setText('client-name', fullName);
-      setText('client-birth', fmtDate(firstValue(profile.nascita, acquisition && acquisition.nascita)));
-      setText('client-tax', firstValue(profile.codice_fiscale, acquisition && acquisition.codice_fiscale, noteValue(sourceNotes, ['Codice fiscale'])));
+      setText('client-birth', fmtDate(firstValue(profile.nascita, acquisition && acquisition.nascita, fromNotes(profile, acquisition, ['Data di nascita']))));
+      setText('client-tax', firstValue(profile.codice_fiscale, profile.codiceFiscale, acquisition?.codice_fiscale, fromNotes(profile, acquisition, ['Codice fiscale'])));
       setText('client-phone', firstValue(profile.telefono, acquisition && acquisition.telefono));
       setText('client-email', firstValue(profile.email, consent && consent.email, acquisition && acquisition.email));
-      setText('client-doc', firstValue(profile.documento, acquisition && acquisition.documento, noteValue(sourceNotes, ['Documento'])));
+      setText('client-doc', firstValue(profile.documento, acquisition && acquisition.documento, fromNotes(profile, acquisition, ['Documento'])));
       setText('client-address', buildAddress(profile, acquisition));
-      setText('client-emergency', firstValue(profile.contatto_emergenza, acquisition && acquisition.contatto_emergenza, noteValue(sourceNotes, ['Contatto emergenza'])));
+      setText('client-emergency', firstValue(profile.contatto_emergenza, profile.contattoEmergenza, acquisition?.contatto_emergenza, fromNotes(profile, acquisition, ['Contatto emergenza'])));
       setText('pt-name', opName);
       setText('readable-name', fullName);
       setText('operator-readable', opName);
@@ -493,44 +541,57 @@
     }
 
     function fillAnamnesis(profile, acquisition) {
-      const acq = acquisition || {};
-      const notes = [];
-      const acquisitionNotes = normalizeText(acq.impressioni);
-      const clientNotes = normalizeText(profile.notes);
-      if (acquisitionNotes) notes.push(acquisitionNotes);
-      else if (clientNotes) notes.push(clientNotes);
-
-      const operational = [
-        hasValue(acq.proposta) ? 'Proposta: ' + acq.proposta : '',
-        hasValue(acq.followup) ? 'Follow-up: ' + fmtDate(String(acq.followup).slice(0, 10)) : '',
-      ].filter(hasValue).join('\n');
-
-      const fields = [
-        setAnamnesisText('anamnesis-sex', firstValue(acq.sesso, profile.sesso)),
-        setAnamnesisText('anamnesis-profession', firstValue(acq.professione, profile.professione)),
-        setAnamnesisText('anamnesis-goal', [
-          hasValue(acq.servizi) ? 'Servizi richiesti: ' + acq.servizi : '',
-          hasValue(acq.obiettivo) ? 'Obiettivo: ' + acq.obiettivo : '',
-          hasValue(acq.obiettivo_libero) ? acq.obiettivo_libero : '',
-          !hasValue(acq.obiettivo) && hasValue(profile.obiettivo) ? 'Obiettivo: ' + profile.obiettivo : '',
-        ].filter(hasValue).join('\n')),
-        setAnamnesisText('anamnesis-timing', acq.tempistica),
-        setAnamnesisText('anamnesis-motivation', hasValue(acq.motivazione) ? acq.motivazione + '/10' : profile.motivazione),
-        setAnamnesisText('anamnesis-experience', acq.esperienza),
-        setAnamnesisText('anamnesis-activity', firstValue(acq.inattivo, acq.attivita)),
-        setAnamnesisText('anamnesis-sport', acq.sport),
-        setAnamnesisText('anamnesis-frequency', firstValue(acq.sessioni_pref, profile.package_frequency, profile.sessioni_pref)),
-        setAnamnesisText('anamnesis-schedule', acq.orari),
-        setAnamnesisText('anamnesis-source', firstValue(acq.come, profile.come)),
-        setAnamnesisText('anamnesis-previous', acq.non_funzionato),
-        setAnamnesisText('anamnesis-health', notes.join('\n\n')),
-        setAnamnesisText('anamnesis-operational', operational),
+      const acq = acquisitionProfile(acquisition) || ptReport(profile.notes) || {};
+      const report = ptReport(acquisition?.impressioni) || ptReport(profile.notes);
+      const note = (...labels) => fromNotes(profile, acq, labels);
+      const healthFields = [
+        ['Note cliente', 'note'], ['Patologie', 'patologie'], ['Farmaci', 'farmaci'],
+        ['Infortuni', 'infortuni'], ['Limitazioni', 'limitazioni'], ['Stress', 'stress'], ['Sonno', 'sonno'],
       ];
-
+      const health = healthFields.map(([label, key]) => {
+        const value = report && Object.hasOwn(report, key) ? report[key] : firstValue(acq[key], profile[key], note(label));
+        return hasValue(value) ? label + ': ' + value : '';
+      }).filter(hasValue).join('\n');
+      const motivation = firstValue(acq.motivazione, profile.motivazione, note('Motivazione'));
+      const fields = [
+        setAnamnesisText('anamnesis-sex', firstValue(profile.sesso, acq.sesso, note('Sesso'))),
+        setAnamnesisText('anamnesis-profession', firstValue(profile.professione, acq.professione, note('Professione'))),
+        setAnamnesisText('anamnesis-goal', [...new Set([
+          firstValue(acq.servizi, note('Servizi richiesti')),
+          firstValue(acq.obiettivo, profile.obiettivo, note('Obiettivo')),
+          firstValue(acq.obiettivo_libero, note('Obiettivo libero')),
+        ].filter(hasValue))].join('\n')),
+        setAnamnesisText('anamnesis-timing', firstValue(acq.tempistica, note('Tempistica'))),
+        setAnamnesisText('anamnesis-motivation', hasValue(motivation) ? String(motivation).replace(/\/10$/, '') + '/10' : ''),
+        setAnamnesisText('anamnesis-experience', firstValue(acq.esperienza, note('Esperienza'))),
+        setAnamnesisText('anamnesis-activity', firstValue(acq.inattivo, acq.attivita, note('Attività / inattività', 'Attività fisica'))),
+        setAnamnesisText('anamnesis-sport', firstValue(acq.sport, note('Sport'))),
+        setAnamnesisText('anamnesis-frequency', firstValue(acq.sessioni_pref, profile.package_frequency, profile.sessioni_pref, note('Frequenza desiderata'))),
+        setAnamnesisText('anamnesis-schedule', firstValue(acq.orari, note('Disponibilità', 'Orari'))),
+        setAnamnesisText('anamnesis-source', firstValue(acq.come, profile.come, note('Come ha conosciuto lo studio'))),
+        setAnamnesisText('anamnesis-previous', firstValue(acq.non_funzionato, note('Cosa non ha funzionato'))),
+        setAnamnesisText('anamnesis-health', health),
+        setAnamnesisText('anamnesis-guardian', [
+          ['Genitore/tutore', 'tutore_nome'], ['Rapporto col minore', 'tutore_rapporto'],
+          ['Telefono tutore', 'tutore_telefono'], ['Email tutore', 'tutore_email'],
+          ['CF tutore', 'tutore_codice_fiscale'], ['Note tutore', 'note_tutore'],
+        ].map(([label, key]) => {
+          const value = firstValue(acq[key], profile[key], note(label));
+          return hasValue(value) ? label + ': ' + value : '';
+        }).filter(hasValue).join('\n')),
+      ];
       const count = fields.filter(Boolean).length;
       const empty = document.getElementById('anamnesis-empty');
       if (empty) empty.hidden = count > 0;
       return count;
+    }
+
+    function showDataReview(message = '') {
+      const required = [['client-birth', 'data di nascita'], ['client-tax', 'codice fiscale'], ['client-phone', 'telefono'], ['client-email', 'email'], ['client-address', 'indirizzo'], ['client-emergency', 'contatto di emergenza']];
+      const missing = required.filter(([id]) => !hasValue(document.getElementById(id)?.textContent)).map(([,label]) => label);
+      const review = document.getElementById('data-review');
+      review.textContent = [message, missing.length ? 'Dati non presenti: ' + missing.join(', ') + '. Puoi completarli nei campi del modulo prima di stampare.' : '', 'Le modifiche scritte in questo modulo valgono per questa stampa e non aggiornano la scheda cliente.'].filter(Boolean).join(' ');
+      review.hidden = false;
     }
 
     async function getClient(id) {
@@ -545,30 +606,35 @@
       return rows[0] || null;
     }
 
+    function samePerson(profile, row) {
+      const norm = v => String(v || '').trim().toLocaleLowerCase('it-IT');
+      const phone = v => String(v || '').replace(/[^0-9]/g, '').replace(/^0039|^39(?=\d{10}$)/, '');
+      const tax = obj => norm(firstValue(obj.codice_fiscale, obj.codiceFiscale, noteValue(obj.notes || obj.impressioni, ['Codice fiscale'])));
+      const sameName = norm(profile.nome) && norm(profile.cognome) && norm(profile.nome) === norm(row.nome) && norm(profile.cognome) === norm(row.cognome);
+      if (tax(profile) && tax(row) && tax(profile) !== tax(row)) return false;
+      if (hasValue(profile.nascita) && hasValue(row.nascita) && profile.nascita !== row.nascita) return false;
+      return Boolean((tax(profile) && tax(profile) === tax(row)) || (sameName && (
+        (hasValue(profile.email) && norm(profile.email) === norm(row.email)) ||
+        (hasValue(profile.telefono) && phone(profile.telefono) === phone(row.telefono)) ||
+        (hasValue(profile.nascita) && profile.nascita === row.nascita)
+      )));
+    }
+
     async function findAcquisition(profile) {
       if (!profile) return null;
+      const links = [...String(profile.notes || '').matchAll(/\[ACQUISIZIONE-ID\s+([a-zA-Z0-9_-]+)\]/g)];
+      if (links.length) {
+        const rows = await sb('acquisizioni', '?select=*&id=eq.' + encodeURIComponent(links.at(-1)[1]) + '&limit=1');
+        if (rows[0]) return rows[0];
+      }
       const attempts = [];
-      if (hasValue(profile.email)) {
-        attempts.push('email=ilike.' + encodeURIComponent(String(profile.email).trim()));
-      }
-      if (hasValue(profile.telefono)) {
-        attempts.push('telefono=eq.' + encodeURIComponent(String(profile.telefono).trim()));
-      }
-      if (hasValue(profile.nome) && hasValue(profile.cognome)) {
-        attempts.push(
-          'nome=ilike.' + encodeURIComponent(String(profile.nome).trim()) +
-          '&cognome=ilike.' + encodeURIComponent(String(profile.cognome).trim())
-        );
-      }
-
+      if (hasValue(profile.email)) attempts.push('email=eq.' + encodeURIComponent(String(profile.email).trim()));
+      if (hasValue(profile.telefono)) attempts.push('telefono=eq.' + encodeURIComponent(String(profile.telefono).trim()));
+      if (hasValue(profile.nome) && hasValue(profile.cognome)) attempts.push('nome=ilike.' + encodeURIComponent(String(profile.nome).trim()) + '&cognome=ilike.' + encodeURIComponent(String(profile.cognome).trim()));
       for (const filters of attempts) {
-        const rows = await sb('acquisizioni', '?select=*&' + filters + '&order=data_acquisizione.desc&limit=5');
-        if (!rows.length) continue;
-        const exact = rows.find(row =>
-          (!hasValue(profile.nascita) || row.nascita === profile.nascita) &&
-          (!hasValue(profile.telefono) || !hasValue(row.telefono) || row.telefono === profile.telefono)
-        );
-        return exact || rows[0];
+        const rows = await sb('acquisizioni', '?select=*&' + filters + '&order=data_acquisizione.desc&limit=20');
+        const exact = rows.find(row => samePerson(profile, acquisitionProfile(row)));
+        if (exact) return exact;
       }
       return null;
     }
@@ -635,6 +701,8 @@
 
         fillDocument(profile, acquisition, operator, consent);
         fillAnamnesis(profile, acquisition);
+        showDataReview(acquisition ? '' : 'Nessuna anamnesi collegata con corrispondenza certa.');
+        document.getElementById('print-button').disabled = false;
         status.style.display = 'none';
         document.getElementById('doc').style.display = 'block';
       } catch (err) {

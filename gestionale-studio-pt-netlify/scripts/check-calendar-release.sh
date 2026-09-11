@@ -15,8 +15,10 @@ node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
 node tests/package-payment-persistence.test.cjs
 node tests/acquisition-existing-client.test.cjs
+node tests/acquisition-nutrition-section.test.cjs
 node tests/acquisition-links.test.cjs
 node tests/consent-anamnesis-regression.cjs
+node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
@@ -31,8 +33,10 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     tests/package-payment-prefill.test.cjs
     tests/package-payment-persistence.test.cjs
     tests/acquisition-existing-client.test.cjs
+    tests/acquisition-nutrition-section.test.cjs
     tests/acquisition-links.test.cjs
     tests/consent-anamnesis-regression.cjs
+    tests/consent-data-integrity.test.cjs
     scripts/check-calendar-release.sh
   )
   if ! git diff --quiet -- "${critical_paths[@]}" || ! git diff --cached --quiet -- "${critical_paths[@]}"; then

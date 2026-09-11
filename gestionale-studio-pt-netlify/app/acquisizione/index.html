@@ -431,6 +431,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
     <button class="filter-btn" onclick="setFiltro('pronti',this)">Pronti</button>
     <button class="filter-btn" onclick="setFiltro('interessati',this)">Interessati</button>
     <button class="filter-btn" onclick="setFiltro('valutazione',this)">In valutazione</button>
+    <button class="filter-btn" onclick="setFiltro('nutrizione',this)">Nutrizione <span id="nutrition-count"></span></button>
     <button class="filter-btn" onclick="setFiltro('convertiti',this)">Archivio convertiti</button>
   </div>
 
@@ -564,6 +565,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
         <button class="btn-ghost" onclick="showView('lista')" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">← Lista</button>
         <button class="btn-ghost" id="btn-modifica-scheda" onclick="apriModifica()" style="font-size:11px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">✏ Modifica</button>
         <button class="btn-primary" id="btn-anamnesi-scheda" onclick="inviaAnamnesi()" style="font-size:11px;background:#fff;color:var(--blue)">↗ Invia anamnesi</button>
+        <button class="btn-primary" id="btn-sposta-nutrizione" onclick="spostaSezioneAcquisizione()">Sposta in Nutrizione</button>
         <button class="btn-confirm" id="btn-conferma-scheda" onclick="apriConferma()">Attiva cliente →</button>
         <button class="btn-danger" id="btn-elimina-scheda" onclick="confElimina()">Elimina</button>
       </div>
@@ -584,6 +586,43 @@ const ACQUISITION_SESSION_KEY='neacea-acquisition-session-v1';
 let acquisizioni=[],staffAll=[],confAppointments=[],filtro='attivi',chips={stato:'Interessato'},servizi={pt:true,nut:false,coach:false},idCorrente=null,isEdit=false,initialized=false,idConferma=null,clienteEsistenteConferma=null,confermaLookupToken=0,toastTimer=null;
 let accessState={authorized:false,mode:'pt',operatorId:'',email:'',accessLevel:'pt',expiresAt:0};
 
+const NUTRITION_SECTION_MARKER='[ACQUISIZIONE_SEZIONE] Nutrizione';
+function isNutritionSection(acq){return /^\[ACQUISIZIONE_SEZIONE\] Nutrizione\s*$/m.test(String(acq?.impressioni||''))}
+function isActivePtLead(acq){return acq.stato!=='Convertito'&&!isNutritionSection(acq)}
+function withAcquisitionSection(notes,nutrition){
+  const clean=String(notes||'').replace(/^\[ACQUISIZIONE_SEZIONE\].*(?:\n|$)/gm,'').trim();
+  return[clean,nutrition?NUTRITION_SECTION_MARKER:''].filter(Boolean).join('\n');
+}
+async function moveAcquisitionSection(id,nutrition){
+  if(isPtRestricted())return{error:'Spostamento riservato alla Direzione'};
+  const rows=await sb('acquisizioni',{query:'?select=id,impressioni,stato,updated_at&id=eq.'+encodeURIComponent(id)+'&limit=1'});
+  if(rows?.error)return rows;
+  const current=rows?.[0];
+  if(!current)return{error:'Acquisizione non trovata'};
+  if(current.stato==='Convertito')return{error:'Il cliente è già stato attivato'};
+  const notes=withAcquisitionSection(current.impressioni,nutrition);
+  const version=current.updated_at?'&updated_at=eq.'+encodeURIComponent(current.updated_at):'&updated_at=is.null';
+  const result=await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(id)+version,headers:{Prefer:'return=representation'},body:{impressioni:notes,updated_at:new Date().toISOString()}});
+  if(result?.error)return result;
+  if(!Array.isArray(result)||result.length!==1||result[0].id!==id||isNutritionSection(result[0])!==nutrition)return{error:'Spostamento non confermato. Aggiorna la lista e riprova.'};
+  const index=acquisizioni.findIndex(c=>c.id===id);
+  if(index>=0)acquisizioni[index]={...acquisizioni[index],...acqFromDb(result[0])};
+  return{success:true};
+}
+async function spostaSezioneAcquisizione(){
+  if(denyPtOperation())return;
+  const current=acquisizioni.find(c=>c.id===idCorrente);if(!current)return;
+  const nutrition=!isNutritionSection(current);
+  const button=document.getElementById('btn-sposta-nutrizione');button.disabled=true;
+  try{
+    const result=await moveAcquisitionSection(current.id,nutrition);
+    if(result?.error)throw new Error(result.error);
+    renderStats();renderLista();showView('lista');
+    showToast(nutrition?'Spostato nella sezione Nutrizione':'Riportato nella lista PT','success');
+  }catch(error){showToast(error.message||'Spostamento non riuscito','error')}
+  finally{button.disabled=false}
+}
+
 function isPtRestricted(){return accessState.authorized&&accessState.mode==='pt'}
 function acquisitionOwnerId(acq){
   const match=String(acq?.impressioni||'').match(/^\[PT_OWNER\]\s+([^|\n]+)(?:\|\s*([^\n]+))?$/m);
@@ -595,7 +634,7 @@ function isOwnPtAcquisition(acq){
   return owner.operatorId===String(accessState.operatorId||'')||owner.email===String(accessState.email||'').toLowerCase()
 }
 function stripPtTracking(value){
-  return String(value||'').replace(/^\[(?:PT_OWNER|PT_AUDIT)\].*$/gm,'').replace(/\n{3,}/g,'\n\n').trim()
+  return String(value||'').replace(/^\[(?:PT_OWNER|PT_AUDIT|ACQUISIZIONE_SEZIONE)\].*$/gm,'').replace(/\n{3,}/g,'\n\n').trim()
 }
 function withPtAudit(value,action,existingValue=''){
   const existing=String(existingValue||'');
@@ -663,6 +702,9 @@ function acquisitionAddress(acq){
 }
 function buildClientAnamnesisNotes(acq){
   return[
+    acq?.id&&'[ACQUISIZIONE-ID '+acq.id+']',
+    acq?.nascita&&'Data di nascita: '+acq.nascita,
+    acq?.sesso&&'Sesso: '+acq.sesso,
     acq?.codiceFiscale&&'Codice fiscale: '+acq.codiceFiscale,
     acq?.documento&&'Documento: '+acq.documento,
     acquisitionAddress(acq)&&'Indirizzo: '+acquisitionAddress(acq),
@@ -693,10 +735,23 @@ function stripMissingConsentColumns(body){
   ['codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'].forEach(k=>delete fallback[k]);
   return fallback;
 }
-function stripMissingClientColumns(body){
-  const fallback={...body};
-  ['nascita','sesso','codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'].forEach(k=>delete fallback[k]);
-  return fallback
+function stripMissingClientColumns(body,error){
+  const message=String(error||'');
+  const column=message.match(/Could not find the '([^']+)' column/i)?.[1]||message.match(/column "([^"]+)" of relation "clients" does not exist/i)?.[1];
+  const optional=['nascita','sesso','codice_fiscale','documento','indirizzo','cap','comune','provincia','contatto_emergenza'];
+  if(!column||!optional.includes(column)||!Object.hasOwn(body,column))return null;
+  const fallback={...body};delete fallback[column];return fallback;
+}
+async function saveAcquisitionClient(options){
+  let body={...options.body};
+  for(let attempt=0;attempt<10;attempt++){
+    const result=await sb('clients',{...options,body});
+    if(!result?.error)return result;
+    const fallback=stripMissingClientColumns(body,result.error);
+    if(!fallback)return result;
+    body=fallback;
+  }
+  return{error:'Schema cliente non compatibile: dati non trasferiti'};
 }
 function normEmail(value){return String(value||'').trim().toLowerCase()}
 function normPhone(value){return String(value||'').replace(/\D/g,'')}
@@ -896,6 +951,8 @@ async function apiFetch(p){
       p.impressioni=withPtAudit(p.impressioni,p.id?'AGGIORNATO':'CREATO',existing?.impressioni||'');
     }
     const body=acqToDb(p);
+    const existingSection=acquisizioni.find(c=>c.id===p.id);
+    body.impressioni=withAcquisitionSection(body.impressioni,isNutritionSection(existingSection));
     let res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body});
     if(res?.error&&String(res.error).toLowerCase().includes('column')){
       res=await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:stripMissingConsentColumns(body)});
@@ -906,6 +963,7 @@ async function apiFetch(p){
   if(p.action==='confermaCliente'){
     if(isPtRestricted())return{error:'Attivazione cliente riservata alla Direzione'};
     const acq=acquisizioni.find(x=>x.id===p.id);if(!acq)return{error:'Prospect non trovato'};
+    if(isNutritionSection(acq))return{error:'Riporta prima la persona nella lista PT per attivarla nel Calendario'};
     const sessionsTotal=parseInt(p.sessioni_totali)||0;
     const sessioniPref=p.tipoAbbonamento==='Pacchetto 2'?'1×':(acq.sessioni_pref||'');
     const packageType=p.packageType||'PT 1:1';
@@ -915,10 +973,7 @@ async function apiFetch(p){
       const currentPt=existingClient.pt_assegnato||existingClient.ptAssegnato||existingClient.trainer_id||'';
       if(!currentPt&&p.ptId)patch.pt_assegnato=p.ptId;
       patch.notes=mergeAnamnesisNotes(existingClient.notes,patch.notes);
-      let update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:patch});
-      if(update?.error&&String(update.error).toLowerCase().includes('column')){
-        update=await sb('clients',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:stripMissingClientColumns(patch)});
-      }
+      const update=await saveAcquisitionClient({method:'PATCH',query:'?id=eq.'+encodeURIComponent(existingClient.id),headers:{Prefer:'return=minimal'},body:patch});
       if(update?.error)return update;
       const archived=await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
       if(archived?.error)return archived;
@@ -926,11 +981,7 @@ async function apiFetch(p){
     }
     const clientId='c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
     const body={id:clientId,nome:acq.nome||'',cognome:acq.cognome||'',nascita:acq.nascita||null,sesso:acq.sesso||'',email:acq.email||'',telefono:acq.telefono||'',codice_fiscale:acq.codiceFiscale||'',documento:acq.documento||'',indirizzo:acq.indirizzo||'',cap:acq.cap||'',comune:acq.comune||'',provincia:acq.provincia||'',contatto_emergenza:acq.contattoEmergenza||'',package_types:[packageType],package_frequency:sessioniPref,sessions_total:sessionsTotal,sessions_remaining:Math.max(0,sessionsTotal-(parseInt(p.sessioni_usate)||0)),giorni_settimana:p.giorniSettimana||[],package_start:p.dataInizio||null,notes:buildClientAnamnesisNotes(acq),active:true,tipo_servizio:servizioDaPacchetto(packageType),tipo_abbonamento:p.tipoAbbonamento||'',data_inizio:p.dataInizio||null,stato_abbonamento:'Attivo',stato_pagamento:p.statoPagamento||'Da pagare',importo:parseFloat(p.importo)||0,pt_assegnato:p.ptId||null,obiettivo:acq.obiettivoLibero||acq.obiettivo||'',professione:acq.professione||'',come:acq.come||'',motivazione:acq.motivazione?parseInt(acq.motivazione):null,sessioni_pref:sessioniPref,updated_at:new Date().toISOString()};
-    let ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body});
-    if(ins?.error&&String(ins.error).toLowerCase().includes('column')){
-      const fallback=stripMissingClientColumns(body);
-      ins=await sb('clients',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
-    }
+    const ins=await saveAcquisitionClient({method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body});
     if(ins?.error)return ins;
     await sb('acquisizioni',{method:'PATCH',query:'?id=eq.'+encodeURIComponent(p.id),headers:{Prefer:'return=minimal'},body:{stato:'Convertito',updated_at:new Date().toISOString()}});
     return{success:true,clientId,appuntamentiCreati:0};
@@ -947,7 +998,7 @@ async function carica(){
     if(ops.error)throw new Error(ops.error);
     acquisizioni=d.acquisizioni||[];staffAll=ops.staff||[];initialized=true;
     renderStats();renderLista();
-    const attive=acquisizioni.filter(c=>c.stato!=='Convertito').length;
+    const attive=acquisizioni.filter(isActivePtLead).length;
     const archiviate=acquisizioni.filter(c=>c.stato==='Convertito').length;
     document.getElementById('lista-sub').textContent=acquisizioni.length===0?'Nessun lead registrato — aggiungi il primo contatto':attive+' attiv'+(attive===1?'o':'i')+' · '+archiviate+' archiviat'+(archiviate===1?'o':'i');
     showToast('Aggiornato ✓','success');
@@ -955,7 +1006,8 @@ async function carica(){
 }
 
 function renderStats(){
-  const attive=acquisizioni.filter(c=>c.stato!=='Convertito');
+  const attive=acquisizioni.filter(isActivePtLead);
+  const nutritionCount=document.getElementById('nutrition-count');if(nutritionCount)nutritionCount.textContent=acquisizioni.filter(isNutritionSection).length;
   const t=attive.length;const pronti=attive.filter(c=>c.stato==='Pronto a iniziare').length;const int=attive.filter(c=>c.stato==='Interessato').length;
   const oggi=new Date();oggi.setHours(23,59,59,999);
   const follow=attive.filter(c=>c.followup&&new Date(c.followup+'T00:00:00')<=oggi&&c.stato!=='Pronto a iniziare');
@@ -966,8 +1018,8 @@ function renderStats(){
 
 function renderDashPanels(follow){
   const byDate=(a,b)=>String(a.followup||'9999').localeCompare(String(b.followup||'9999'));
-  const recenti=acquisizioni.filter(c=>c.stato!=='Convertito').sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
-  const pronti=acquisizioni.filter(c=>c.stato==='Pronto a iniziare').slice(0,4);
+  const recenti=acquisizioni.filter(isActivePtLead).sort((a,b)=>new Date(b.dataAcquisizione||0)-new Date(a.dataAcquisizione||0)).slice(0,4);
+  const pronti=acquisizioni.filter(c=>isActivePtLead(c)&&c.stato==='Pronto a iniziare').slice(0,4);
   fillDash('dash-follow',[...follow].sort(byDate).slice(0,4),'Nessun follow-up urgente',c=>fmtData(c.followup));
   fillDash('dash-pronti',pronti,'Nessun cliente pronto',c=>c.sessioni_pref||'da definire');
   fillDash('dash-recenti',recenti,'Nessun prospect ancora',c=>fmtData(c.dataAcquisizione));
@@ -986,6 +1038,8 @@ function renderLista(){
   const q=document.getElementById('search').value.toLowerCase();
   const f=acquisizioni.filter(c=>{
     const m=((c.nome||'')+(c.cognome||'')+(c.email||'')+(c.telefono||'')).toLowerCase().includes(q);if(!m)return false;
+    if(filtro==='nutrizione')return isNutritionSection(c);
+    if(isNutritionSection(c))return false;
     if(filtro==='convertiti')return c.stato==='Convertito';
     if(c.stato==='Convertito')return false;
     if(filtro==='pronti')return c.stato==='Pronto a iniziare';if(filtro==='interessati')return c.stato==='Interessato';if(filtro==='valutazione')return c.stato==='In valutazione';return true;
@@ -993,8 +1047,8 @@ function renderLista(){
   const grid=document.getElementById('grid');
   if(!f.length){
     const isArchive=filtro==='convertiti';
-    const emptyTitle=q?'Nessun risultato':isArchive?'Archivio vuoto':'Nessun prospect attivo';
-    const emptySub=q?'Prova a cambiare la ricerca':isArchive?'I clienti convertiti appariranno qui':'Usa “Nuovo lead” per registrare il primo contatto';
+    const emptyTitle=q?'Nessun risultato':filtro==='nutrizione'?'Nessun contatto spostato in Nutrizione':isArchive?'Archivio vuoto':'Nessun prospect attivo';
+    const emptySub=q?'Prova a cambiare la ricerca':filtro==='nutrizione'?'Apri una scheda e usa “Sposta in Nutrizione”':isArchive?'I clienti convertiti appariranno qui':'Usa “Nuovo lead” per registrare il primo contatto';
     grid.innerHTML=`<div class="empty-state"><div class="empty-icon">${isArchive?'✓':'📋'}</div><div class="empty-text">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;return
   }
   const sm={'Pronto a iniziare':'badge-pronto','Interessato':'badge-int','In valutazione':'badge-val','Non convinto':'badge-non','Convertito':'badge-pronto'};
@@ -1002,7 +1056,7 @@ function renderLista(){
     const ini=((c.nome||'')[0]||'').toUpperCase()+((c.cognome||'')[0]||'').toUpperCase();
     const contatto=c.telefono||c.email||'';const srv=normSrv(c.servizi);const receipts=anamnesiReceipts(c.impressioni);
     const srvB=srv.map(s=>s==='PT'?'<span class="badge badge-pt">🏋️ PT</span>':s.toLowerCase().includes('coach')?'<span class="badge badge-coach">💻 Coaching</span>':'<span class="badge badge-nut">🥗 Nutrizione</span>').join('');
-    const isNew=isNuovo(c.dataAcquisizione);const sc=sm[c.stato]||'badge-val';const isPronto=c.stato==='Pronto a iniziare';
+    const isNew=isNuovo(c.dataAcquisizione);const sc=sm[c.stato]||'badge-val';const isPronto=isActivePtLead(c)&&c.stato==='Pronto a iniziare';
     return`<div class="prospect-card" onclick="apriScheda('${c.id}')">
       <div class="card-top"><div class="avatar">${escapeHtml(ini)}</div><div class="card-badges">${srvB}${receipts.length?'<span class="badge badge-anamnesi">✓ Anamnesi</span>':''}${isNew?'<span class="badge badge-new">Nuovo</span>':''}</div></div>
       <div class="card-name">${escapeHtml(c.nome||'')} ${escapeHtml(c.cognome||'')}</div>
@@ -1094,7 +1148,9 @@ function apriScheda(id){
   if(visibleLeadNote(c.impressioni))h+=`<div class="sch-block full"><div class="sb-title">Nota interna</div><div class="sch-nota">${escapeHtml(visibleLeadNote(c.impressioni)).replaceAll('\n','<br>')}</div></div>`;
   const leadOwner=acquisitionOwnerId(c);
   document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione)+(leadOwner?' · Inserito da '+(leadOwner.email||leadOwner.operatorId):'');
-  const confirmBtn=document.getElementById('btn-conferma-scheda');if(confirmBtn)confirmBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
+  const confirmBtn=document.getElementById('btn-conferma-scheda');if(confirmBtn)confirmBtn.style.display=c.stato==='Convertito'||isNutritionSection(c)?'none':'inline-block';
+  const moveBtn=document.getElementById('btn-sposta-nutrizione');
+  if(moveBtn){moveBtn.style.display=isPtRestricted()||c.stato==='Convertito'?'none':'inline-block';moveBtn.textContent=isNutritionSection(c)?'Riporta nella lista PT':'Sposta in Nutrizione';}
   const anamnesiBtn=document.getElementById('btn-anamnesi-scheda');if(anamnesiBtn)anamnesiBtn.style.display=c.stato==='Convertito'?'none':'inline-block';
   if(confirmBtn&&isPtRestricted())confirmBtn.style.display='none';
   const deleteBtn=document.getElementById('btn-elimina-scheda');if(deleteBtn)deleteBtn.style.display=isPtRestricted()?'none':'inline-block';

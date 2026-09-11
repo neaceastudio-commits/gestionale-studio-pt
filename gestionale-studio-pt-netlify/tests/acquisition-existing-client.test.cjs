@@ -205,3 +205,26 @@ test('la finestra distingue chiaramente cliente esistente e cliente nuovo', () =
   assert.match(html, /Aggiorna e archivia/);
   assert.match(html, /Operazione bloccata per evitare la creazione accidentale di un doppione/);
 });
+
+test('un campo di indirizzo non supportato non elimina nascita e codice fiscale', async () => {
+  setAcquisition();
+  const writes = [];
+  fetchHandler = async (url, options = {}) => {
+    if ((!options.method || options.method === 'GET') && String(url).includes('/clients?')) return response(200, []);
+    if (String(url).includes('/clients?')) {
+      const body = JSON.parse(options.body); writes.push(body);
+      for (const field of ['cap', 'comune', 'provincia']) {
+        if (field in body) return response(400, { message: `Could not find the '${field}' column of 'clients' in the schema cache` });
+      }
+    }
+    return response(204);
+  };
+  const result = await evaluate("apiFetch({action:'confermaCliente',id:'acq_test',sessioni_totali:8,packageType:'PT 1:1'})");
+  assert.equal(result.success, true);
+  assert.equal(writes.length, 4);
+  assert.equal(writes.at(-1).nascita, '1988-04-12');
+  assert.equal(writes.at(-1).codice_fiscale, 'LCNMNL88D52B354R');
+  assert.equal(writes.at(-1).contatto_emergenza, 'Mario 3330000000');
+  assert.match(writes.at(-1).notes, /\[ACQUISIZIONE-ID acq_test\]/);
+  assert.match(writes.at(-1).notes, /09100 Cagliari CA/);
+});
