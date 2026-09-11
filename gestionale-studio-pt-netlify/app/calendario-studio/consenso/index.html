@@ -207,7 +207,18 @@
         box-shadow: none;
       }
       button { display: none; }
-      .grid, .signature-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      /* Inline blocks keep each label/value together when Safari paginates. */
+      .grid { display: block; font-size: 0; }
+      .grid > .field {
+        display: inline-block;
+        vertical-align: top;
+        width: 49%;
+        margin: 0 1% 8px 0;
+        font-size: 12px;
+      }
+      .grid > .field.full { display: block; width: 99%; }
+      .grid > .field.is-empty { display: none; }
+      .signature-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
       .field, .consent-row, .signature, .signature-grid { break-inside: avoid; page-break-inside: avoid; }
       h2 { break-after: avoid; page-break-after: avoid; }
       p, li { orphans: 3; widows: 3; }
