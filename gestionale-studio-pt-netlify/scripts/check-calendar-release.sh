@@ -10,6 +10,7 @@ node --check app/calendario-studio/js/clients.js
 node --check netlify/functions/pt-access-email.js
 node --check netlify/functions/apple-calendar.js
 node tests/calendar-release-regression.cjs
+node tests/package-cycle-confirmation.test.cjs
 node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
 node tests/package-payment-persistence.test.cjs
@@ -25,6 +26,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/pt-access-email.js
     netlify/functions/apple-calendar.js
     tests/calendar-release-regression.cjs
+    tests/package-cycle-confirmation.test.cjs
     tests/package-renewal-ledger.test.cjs
     tests/package-payment-prefill.test.cjs
     tests/package-payment-persistence.test.cjs

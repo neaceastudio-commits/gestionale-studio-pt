@@ -2465,13 +2465,21 @@ const App = {
       sessionsRemaining: metrics.remaining,
       notes: App._withPtAudit(client.notes, 'ciclo pacchetto confermato'),
     };
-    const result = await SupabaseSync.pushClient(updated);
+    let result;
+    try {
+      result = await SupabaseSync.confirmClientPackageCycle(updated);
+    } catch (error) {
+      UI.showToast('Ciclo non salvato: controlla la connessione e riprova', 'error');
+      return;
+    }
     if (result?.error) {
       UI.showToast('Ciclo non salvato: riprova', 'error');
       return;
     }
-    clients[idx] = updated;
-    State.saveClients(clients);
+    const latestClients = State.getClients();
+    const latestIdx = latestClients.findIndex(c => c.id === clientId);
+    if (latestIdx >= 0) latestClients[latestIdx] = { ...latestClients[latestIdx], ...result };
+    State.saveClients(latestClients);
     Calendar.render();
     UI.showToast('Ciclo corrente separato dallo storico', 'success');
     App.openPackageOverview(clientId);

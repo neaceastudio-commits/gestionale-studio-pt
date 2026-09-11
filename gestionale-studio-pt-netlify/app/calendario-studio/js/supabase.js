@@ -30,6 +30,18 @@ const SupabaseSync = (() => {
     return text ? JSON.parse(text) : null;
   }
 
+  // Conserva la decorrenza anche negli schemi storici senza data_conferma.
+  function cycleStartFromNotes(notes) {
+    return String(notes || '').match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/i)?.[1] || '';
+  }
+
+  function clientNotesWithCycle(c) {
+    const notes = String(c.notes || '');
+    const start = c.packageCycleStart ?? c.package_cycle_start ?? cycleStartFromNotes(notes);
+    const clean = notes.replace(/\n?\[CICLO-PACCHETTO\s+\d{4}-\d{2}-\d{2}\]/gi, '').trim();
+    return [clean, start ? `[CICLO-PACCHETTO ${String(start).slice(0, 10)}]` : ''].filter(Boolean).join('\n');
+  }
+
   function clientFromDb(r) {
     return {
       id: r.id,
@@ -49,7 +61,7 @@ const SupabaseSync = (() => {
       sessionsRemaining: r.sessions_remaining || 0,
       giorniSettimana: Array.isArray(r.giorni_settimana) ? r.giorni_settimana : [],
       packageStart: r.package_start || r.data_inizio || '',
-      packageCycleStart: r.data_conferma || '',
+      packageCycleStart: cycleStartFromNotes(r.notes) || r.data_conferma || '',
       acquisitionStart: r.data_inizio || '',
       notes: r.notes || '',
       ptAssegnato: r.pt_assegnato || null,
@@ -86,7 +98,7 @@ const SupabaseSync = (() => {
       giorni_settimana: Array.isArray(c.giorniSettimana) ? c.giorniSettimana : [],
       package_start: c.packageStart || null,
       data_conferma: c.packageCycleStart || c.package_cycle_start || null,
-      notes: c.notes || '',
+      notes: clientNotesWithCycle(c),
       ...(c.ptAssegnato !== undefined || c.pt_assegnato !== undefined
         ? { pt_assegnato: c.ptAssegnato || c.pt_assegnato || null }
         : {}),
@@ -377,6 +389,34 @@ const SupabaseSync = (() => {
     return result[0];
   }
 
+  async function confirmClientPackageCycle(client) {
+    if (!client?.id || !client.packageCycleStart) return { error: 'Cliente o decorrenza del ciclo mancante' };
+    const body = {
+      data_conferma: client.packageCycleStart,
+      notes: clientNotesWithCycle(client),
+      sessions_total: Number(client.sessionsTotal),
+      sessions_remaining: Number(client.sessionsRemaining),
+    };
+    const save = () => request('clients', {
+      method: 'PATCH',
+      query: '?id=eq.' + encodeURIComponent(client.id),
+      headers: { Prefer: 'return=representation' },
+      body,
+    });
+    let result = await save();
+    if (result?.error && getMissingColumns(result.error).includes('data_conferma')) {
+      delete body.data_conferma;
+      result = await save();
+    }
+    if (result?.error) return result;
+    const row = Array.isArray(result) && result.length === 1 ? result[0] : null;
+    if (!row || row.id !== client.id || cycleStartFromNotes(row.notes) !== String(client.packageCycleStart).slice(0, 10)
+      || Number(row.sessions_total) !== body.sessions_total || Number(row.sessions_remaining) !== body.sessions_remaining) {
+      return { error: 'Il server non ha confermato il salvataggio del ciclo' };
+    }
+    return clientFromDb(row);
+  }
+
   async function pushClient(client) {
     if (!client) return;
     let body = clientToDb(client);
@@ -501,5 +541,5 @@ const SupabaseSync = (() => {
     };
   }
 
-  return { pullAll, pushAppointment, pushClient, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();
