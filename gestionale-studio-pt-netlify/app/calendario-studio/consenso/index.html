@@ -243,7 +243,7 @@
     <div class="toolbar-actions">
       <button onclick="addConsentRow()">+ Riga consenso</button>
       <button onclick="addTextSection()">+ Paragrafo</button>
-      <button id="print-button" class="primary" onclick="window.print()" disabled>Stampa</button>
+      <button id="print-button" class="primary" onclick="printConsent()" disabled>Stampa</button>
     </div>
   </div>
 
@@ -648,6 +648,53 @@
         if (exact) return exact;
       }
       return null;
+    }
+
+    function printConsent() {
+      if (document.getElementById('print-button').disabled) return;
+      const target = window.open('', '_blank');
+      if (!target) {
+        window.alert('Consenti l’apertura della finestra di stampa e premi nuovamente Stampa.');
+        return;
+      }
+      // A static document avoids printing Safari's live editable content.
+      const copy = document.getElementById('doc').cloneNode(true);
+      copy.querySelectorAll('button, script, iframe, object, embed').forEach(el => el.remove());
+      [copy, ...copy.querySelectorAll('*')].forEach(el => {
+        el.removeAttribute('contenteditable');
+        el.removeAttribute('tabindex');
+        [...el.attributes].filter(attr => attr.name.startsWith('on')).forEach(attr => el.removeAttribute(attr.name));
+      });
+      target.document.open();
+      target.document.write('<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Consenso informato PT — stampa</title></head><body></body></html>');
+      const style = target.document.createElement('style');
+      style.textContent = document.querySelector('style').textContent;
+      target.document.head.appendChild(style);
+      const toolbar = target.document.createElement('div');
+      toolbar.className = 'toolbar';
+      const message = target.document.createElement('span');
+      message.textContent = 'Consenso pronto per la stampa';
+      const button = target.document.createElement('button');
+      button.textContent = 'Stampa';
+      button.className = 'primary';
+      button.disabled = true;
+      button.onclick = () => target.print();
+      toolbar.append(message, button);
+      target.document.body.append(toolbar, target.document.importNode(copy, true));
+      target.addEventListener('load', async () => {
+        await target.document.fonts.ready;
+        await Promise.all([...target.document.images].map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        })));
+        target.requestAnimationFrame(() => target.requestAnimationFrame(() => {
+          button.disabled = false;
+          target.focus();
+          target.print();
+        }));
+      }, { once: true });
+      target.document.close();
+      // Keep the window alive after the dialog: Safari may still be spooling.
     }
 
     function removeBlock(btn) {
