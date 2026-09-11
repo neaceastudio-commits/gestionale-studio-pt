@@ -2046,7 +2046,7 @@ const App = {
           <td><span class="role-tag">${cycleLabel}</span></td>
           <td>
             ${!canEditRow ? '<span class="client-history-readonly">Solo lettura</span>' : `<div class="package-row-actions">
-              <button class="btn-icon-sm" title="Salva questa riga" onclick="App._updatePackageAppointmentRow('${a.id}')">✓</button>
+              <button class="btn" title="Salva soltanto questa seduta" onclick="App._updatePackageAppointmentRow('${a.id}')">Salva seduta</button>
               <button class="btn-icon-sm" title="Modifica completa" onclick="UI.closeModal();App._renderAppointmentModal('${a.id}','${a.date}')">✏️</button>
               ${App.isPortalPtMode() ? '' : `<button class="btn-icon-sm danger" title="Elimina appuntamento" onclick="App._deletePackageAppointment('${a.id}')">🗑</button>`}
             </div>`}
@@ -2121,11 +2121,11 @@ const App = {
 
         <div class="package-overview-grid package-lessons-only">
           <section class="package-panel">
-            <h4>Giornate acquistate</h4>
+            <h4>Giorni abituali del pacchetto</h4>
             <div class="day-chip-row">
               ${days.length ? days.map(day => `<span>${day}</span>`).join('') : '<em>Nessun giorno impostato</em>'}
             </div>
-            <p>Queste sono le giornate reali usate per generare le prossime sedute. L'acquisizione resta nello storico iniziale.</p>
+            <p>Questi giorni servono per proporre le sedute. Puoi cambiare data e orario di ogni singolo appuntamento, anche in giorni diversi, senza modificare il pacchetto.</p>
           </section>
 
           ${isArchived ? '' : `<section class="package-panel">
@@ -2148,7 +2148,10 @@ const App = {
           <h4>Cliente nello storico</h4>
           <p>Anagrafica, lezioni e conteggi sono conservati. Non è possibile programmare o modificare sedute finché il cliente non viene riattivato.</p>
         </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
-          <h4>Cambio giorni/orari futuri</h4>
+          <h4>Modifica singole sedute</h4>
+          <p>Per spostare una sola lezione Personal, cambia la sua data e il suo orario nell’elenco e premi “Salva seduta”. Le altre lezioni mantengono i loro orari.</p>
+          <button type="button" class="btn-primary" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Vai alle singole sedute</button>
+          <h4>Cambio di tutte le sedute future</h4>
           <div class="package-reschedule-grid">
             <div>
               <label>Nuovi giorni reali</label>
@@ -2381,7 +2384,8 @@ const App = {
         </section>`}
 
         <section class="package-panel package-lessons-only">
-          <h4>Appuntamenti collegati</h4>
+          <h4 id="pkg-single-sessions">Singole sedute: date e orari</h4>
+          <p>Data e ora sono indipendenti per ogni riga. Puoi scegliere anche giorni diversi da quelli del pacchetto; restano i controlli sulla disponibilità del PT, del cliente e della sala.</p>
           <table class="package-timeline-table">
             <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Ciclo</th><th>Azioni</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -3418,28 +3422,40 @@ const App = {
     }
 
     const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus };
-    const validation = Services.canBookAppointment(patch);
+    const validation = Services.canBookAppointment(patch, { strictPackageDays: false });
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
       App._openConflictOverview(patch, validation.errors, { returnPackageClientId: appt.clientIds?.[0] || null });
       return;
     }
 
-    const saved = Services.updateAppointment(apptId, {
+    const updated = {
+      ...appt,
       date: nextDate,
       startTime: nextTime,
       operatorId: nextOperatorId,
       status: nextStatus,
       notes: App._withPtAudit(appt.notes, 'seduta aggiornata dal quadro pacchetto'),
-    });
+    };
+    let result;
+    try {
+      result = await SupabaseSync.pushAppointment(updated);
+    } catch (error) {
+      UI.showToast('Seduta non salvata: controlla la connessione e riprova', 'error');
+      return;
+    }
+    if (result?.error) {
+      UI.showToast('Seduta non salvata: riprova', 'error');
+      return;
+    }
+    const saved = Services.updateAppointment(apptId, updated);
     if (appt.status !== 'fatto' && saved.status === 'fatto') App._consumeClientSessions(saved);
-    await SupabaseSync.pushAppointment(saved);
     if (appt.status === 'fatto' && saved.status !== 'fatto' && App._recalculateClientSessions) {
       await App._recalculateClientSessions(saved.clientIds || []);
     }
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
     Calendar.render();
-    UI.showToast('Appuntamento aggiornato', 'success');
+    UI.showToast('Singola seduta aggiornata', 'success');
     const clientId = saved?.clientIds?.[0];
     if (clientId) App.openPackageOverview(clientId);
   },
