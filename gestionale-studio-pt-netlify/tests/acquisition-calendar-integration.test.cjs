@@ -21,7 +21,7 @@ assert.ok(integration.includes('scheduleClientPackage({'));
 
 assert.ok(scheduler.includes("sessionsRemainingChanged: false"));
 assert.ok(scheduler.includes("status: 'prenotato'"));
-assert.ok(scheduler.includes("await supabaseRequest('rpc/calendar_commit_package'"));
+assert.ok(scheduler.includes("await supabaseRequest('rpc/calendar_audit_write'"));
 assert.ok(!scheduler.includes('sessions_remaining:') || scheduler.includes('sessionsRemaining: Number(client.sessions_remaining'));
 
 assert.ok(planner.includes('toSchedule: Math.max(0, remaining - scheduled)'));

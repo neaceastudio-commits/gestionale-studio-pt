@@ -254,8 +254,8 @@ exports.handler = async event => {
     }
 
     const rows = plan.created.map(appt => toDbAppointment(appt, { ...clientCycle(clientRow), startDate: clientCycle(clientRow).startDate || startDate }));
-    const committed = await supabaseRequest('rpc/calendar_commit_package', {
-      method: 'POST', body: { p_revision: snapshot.revision, p_client_id: clientId, p_rows: rows },
+    const committed = await supabaseRequest('rpc/calendar_audit_write', {
+      method: 'POST', body: { p_actor_id: session.operatorId, p_actor_role: 'owner', p_source: 'acquisition', p_request_id: crypto.randomUUID(), p_operation: 'package', p_payload: { revision: snapshot.revision, clientId, rows } },
     });
     if (!committed?.success) return response(409, { success: false, error: 'Il calendario o le disponibilità sono cambiati. Riprova la pianificazione.', code: 'calendar_changed' });
     if (!Array.isArray(committed.appointmentIds) || committed.appointmentIds.length !== rows.length) throw new Error('Conferma salvataggio incompleta: riprova la pianificazione');

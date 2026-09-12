@@ -74,6 +74,8 @@ const row = (id, client = 'test', op = 'pt') => ({ id, service_id:'pt11', client
     console.log('PASS PostgreSQL: invoker privileges and denied RLS updates fail without partial writes');
     await db.client.query('alter table clients disable row level security');
     await seed(db.client);
+    await db.client.query("insert into operators(id,nome,cognome,email,roles) values('owner','Direzione','SIM','owner@example.test',array['owner']); create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators; grant select on operator_effective_roles to service_role");
+    await db.client.query(require('node:fs').readFileSync(require('node:path').join(__dirname,'../supabase/migrations/20260912212042_calendar_activity_audit.sql'),'utf8'));
     process.env.PT_ACCESS_SECRET='local-test'; process.env.SUPABASE_SERVICE_ROLE_KEY='local-test';
     const {handler}=require('../netlify/functions/schedule-client-package');
     const crypto=require('node:crypto');
@@ -85,7 +87,7 @@ const row = (id, client = 'test', op = 'pt') => ({ id, service_id:'pt11', client
       if(name==='operator_effective_roles') data=[{operator_id:'owner',system_roles:['owner']}];
       else {
         const connection=await db.connection();
-        try { data=await rpc(connection,name,JSON.parse(options.body||'{}')); } finally {await connection.end();}
+        try { await connection.query('set role service_role'); data=await rpc(connection,name,JSON.parse(options.body||'{}')); } finally {await connection.end();}
       }
       return {ok:true,status:200,text:async()=>JSON.stringify(data)};
     };
@@ -96,6 +98,7 @@ const row = (id, client = 'test', op = 'pt') => ({ id, service_id:'pt11', client
       assert.equal((await db.client.query('select count(*)::int n from appointments')).rows[0].n,8);
       assert.equal((await db.client.query("select sessions_remaining n from clients where id='test'")).rows[0].n,8);
       assert.equal(JSON.parse((await handler(request)).body).plan.created,0);
+      assert.equal((await db.client.query("select count(*)::int n from calendar_audit_log where action='package_appointment_created'")).rows[0].n,8);
       console.log('PASS actual scheduler handler with concurrent PostgreSQL connections: exactly 8 rows, retry creates 0');
     } finally {global.fetch=originalFetch;}
   } finally { await b.end(); await db.close(); }

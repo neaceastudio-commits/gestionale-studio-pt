@@ -10,6 +10,7 @@ const root = path.resolve(__dirname, '..');
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only';
 process.env.PT_ACCESS_SECRET = 'local-simulation-only';
 const { handler } = require('../netlify/functions/schedule-client-package');
+const acquisitionAudit = require('../netlify/functions/acquisition-calendar-activity').handler;
 const payload = Buffer.from(JSON.stringify({ email: 'owner@example.test', operatorId: 'owner', accessLevel: 'owner', exp: Date.now() + 3600000 })).toString('base64url');
 const token = payload + '.' + crypto.createHmac('sha256', process.env.PT_ACCESS_SECRET).update(payload).digest('base64url');
 let lead = { id: 'test-lead', nome: 'Cliente', cognome: 'SIMULATO', email: 'client@example.test', servizi: 'PT', sessioni_pref: '2×', stato: 'Pronto a iniziare', impressioni: '', data_acquisizione: '2026-09-12' };
@@ -21,7 +22,12 @@ const json = data => ({ ok: true, status: 200, text: async () => JSON.stringify(
 function database(url, method = 'GET', body) {
   const u = new URL(url), table = u.pathname.split('/').pop();
   if (table === 'calendar_planning_snapshot') return { revision: 'simulated', clients, appointments, operators:[operator], availability };
-  if (table === 'calendar_commit_package') {
+  if (table === 'calendar_audit_write' && body.p_operation === 'client') {
+    for(const row of body.p_payload.rows) { const existing=clients.find(c=>c.id===row.id); if(existing)Object.assign(existing,row);else clients.push(row); }
+    return body.p_payload.rows;
+  }
+  if (table === 'calendar_audit_write' && body.p_operation === 'package') {
+    body={p_rows:body.p_payload.rows};
     if (!failed && failure === 'beforeCommit') { failed=true; throw Error('simulated before commit'); }
     appointments.push(...body.p_rows);
     if (!failed && failure === 'afterCommit') { failed=true; throw Error('simulated lost response'); }
@@ -54,6 +60,10 @@ global.fetch = async (url, options = {}) => {
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
+      if (url.pathname.includes('acquisition-calendar-activity')) {
+        const result=await acquisitionAudit({httpMethod:request.method(),body:request.postData()});
+        return route.fulfill({status:result.statusCode,contentType:'application/json',body:result.body});
+      }
       if (url.pathname.includes('schedule-client-package')) {
         const result = await handler({ httpMethod: request.method(), body: request.postData() });
         return route.fulfill({ status: result.statusCode, contentType: 'application/json', body: result.body });
