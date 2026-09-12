@@ -282,6 +282,25 @@ const SupabaseSync = (() => {
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
   }
 
+  async function saveAppointmentAtomic(appt, before = null) {
+    const result = await request('rpc/calendar_save_appointment', {
+      method: 'POST', body: { p_appointment: appointmentToDb(appt), p_expected: before ? appointmentToDb(before) : null },
+    });
+    if (result?.error) return result;
+    const row = result?.appointment;
+    const expectedClients = [...new Set([...(before?.clientIds || []), ...(appt.clientIds || [])])];
+    if (!row || row.id !== appt.id || row.status !== appt.status || !Array.isArray(result.clients)
+      || expectedClients.some(id => !result.clients.some(c => c.id === id))) {
+      return { error: 'Conferma del salvataggio incompleta. Ricarica il calendario prima di riprovare.' };
+    }
+    const saved = appointmentFromDb(row);
+    const rows = State.getAppointments().filter(a => a.id !== saved.id);
+    State.saveAppointments([...rows, saved]);
+    const clients = new Map(result.clients.map(c => [c.id, clientFromDb(c)]));
+    State.saveClients(State.getClients().map(c => clients.get(c.id) || c));
+    return { appointment: saved, clients: [...clients.values()] };
+  }
+
   async function pushAppointment(appt) {
     if (!appt) return;
     return request('appointments', {
@@ -541,5 +560,5 @@ const SupabaseSync = (() => {
     };
   }
 
-  return { pullAll, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

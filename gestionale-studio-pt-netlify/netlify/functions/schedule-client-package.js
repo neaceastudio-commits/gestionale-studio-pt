@@ -4,9 +4,7 @@ const crypto = require('crypto');
 const planner = require('./lib/package-calendar-planner');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-  || process.env.SUPABASE_KEY
-  || 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const ALLOWED_SERVICES = new Set(['pt11', 'pt12', 'circuit']);
 const OWNER_ROLES = new Set(['admin', 'administrator', 'amministratore', 'owner', 'titolare', 'super_admin', 'direzione']);
@@ -59,6 +57,7 @@ function isOwnerOperator(operator) {
 }
 
 async function supabaseRequest(table, { method = 'GET', query = '', body = null, prefer = '' } = {}) {
+  if (!SUPABASE_KEY) throw new Error('Chiave server Supabase non configurata');
   const result = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}${query}`, {
     method,
     headers: {
@@ -130,10 +129,11 @@ function publicClient(client) {
   };
 }
 
-function toDbAppointment(appt, { startDate, now = new Date() } = {}) {
+function toDbAppointment(appt, { startDate, cycleId, now = new Date() } = {}) {
   const id = `a_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
   const notes = [
     `[CICLO-PACCHETTO ${String(startDate || appt.date || '').slice(0, 10)}]`,
+    cycleId ? `[CICLO-PACCHETTO-ID ${cycleId}]` : '',
     String(appt.notes || '').trim(),
   ].filter(Boolean).join('\n');
   return {
@@ -152,23 +152,12 @@ function toDbAppointment(appt, { startDate, now = new Date() } = {}) {
   };
 }
 
-async function loadClient(clientId) {
-  const rows = await supabaseRequest('clients', {
-    query: `?select=id,nome,cognome,active,package_types,sessions_total,sessions_remaining,pt_assegnato,package_start,data_inizio&id=eq.${encodeURIComponent(clientId)}&limit=1`,
-  });
-  return Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
-}
-
-async function loadAppointments() {
-  const appointments = [];
-  const pageSize = 500;
-  for (let offset = 0; ; offset += pageSize) {
-    const query = `?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status,notes&status=neq.annullato&order=date.asc,start_time.asc,id.asc&limit=${pageSize}&offset=${offset}`;
-    const rows = await supabaseRequest('appointments', { query });
-    if (!Array.isArray(rows)) throw new Error('Risposta appuntamenti non valida');
-    appointments.push(...rows);
-    if (rows.length < pageSize) return appointments;
-  }
+function clientCycle(client) {
+  const notes = String(client.notes || '');
+  const block = notes.match(/\[NEACEA-PACKAGE-LEDGER-V1\]\s*([\s\S]*?)\s*\[\/NEACEA-PACKAGE-LEDGER-V1\]/);
+  const cycles = block ? JSON.parse(block[1]).cycles : [];
+  const cycle = [...(cycles || [])].reverse().find(c => !c.closedAt) || cycles?.at(-1);
+  return { startDate: cycle?.startDate || notes.match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/)?.[1] || client.data_conferma || client.package_start || client.data_inizio || '', cycleId: cycle?.id || '' };
 }
 
 function planSummary(plan) {
@@ -207,7 +196,10 @@ exports.handler = async event => {
       return response(400, { success: false, error: 'Cliente, data inizio, servizio e pianificazione sono obbligatori' });
     }
 
-    const clientRow = await loadClient(clientId);
+    // One database snapshot is used for planning and checked again under lock at commit.
+    const snapshot = await supabaseRequest('rpc/calendar_planning_snapshot', { method: 'POST', body: {} });
+    if (!snapshot || !snapshot.revision || !Array.isArray(snapshot.clients) || !Array.isArray(snapshot.appointments) || !Array.isArray(snapshot.operators) || !Array.isArray(snapshot.availability)) throw new Error('Snapshot calendario non valido');
+    const clientRow = snapshot.clients.find(c => String(c.id) === clientId);
     if (!clientRow || clientRow.active === false) {
       return response(404, { success: false, error: 'Cliente attivo non trovato' });
     }
@@ -220,7 +212,7 @@ exports.handler = async event => {
       return response(409, { success: false, error: 'Assegna un PT prima di programmare le sedute' });
     }
 
-    const appointments = await loadAppointments();
+    const appointments = snapshot.appointments;
     const client = {
       id: clientRow.id,
       active: clientRow.active !== false,
@@ -235,6 +227,7 @@ exports.handler = async event => {
       serviceId,
       operatorId: effectiveOperatorId,
       startDate,
+      operators: snapshot.operators, availability: snapshot.availability, clients: snapshot.clients,
     });
 
     const summary = planSummary(plan);
@@ -260,12 +253,12 @@ exports.handler = async event => {
       });
     }
 
-    const rows = plan.created.map(appt => toDbAppointment(appt, { startDate }));
-    await supabaseRequest('appointments', {
-      method: 'POST',
-      body: rows,
-      prefer: 'return=representation',
+    const rows = plan.created.map(appt => toDbAppointment(appt, { ...clientCycle(clientRow), startDate: clientCycle(clientRow).startDate || startDate }));
+    const committed = await supabaseRequest('rpc/calendar_commit_package', {
+      method: 'POST', body: { p_revision: snapshot.revision, p_client_id: clientId, p_rows: rows },
     });
+    if (!committed?.success) return response(409, { success: false, error: 'Il calendario o le disponibilità sono cambiati. Riprova la pianificazione.', code: 'calendar_changed' });
+    if (!Array.isArray(committed.appointmentIds) || committed.appointmentIds.length !== rows.length) throw new Error('Conferma salvataggio incompleta: riprova la pianificazione');
 
     return response(200, {
       success: true,

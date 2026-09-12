@@ -1,44 +1,49 @@
-# Prova Acquisizione → Calendario con dati simulati
+# PR #8 — verifiche pre-rilascio del 12 settembre 2026
 
-Verifica del 12 settembre 2026 sul branch `feature/apple-calendar-import-step1`, PR #8 ancora Draft.
+Branch: `feature/apple-calendar-import-step1`. Nessun merge, deploy o accesso in scrittura al Supabase dello Studio. Questo resoconto sostituisce quello della prima prova del commit 3363497.
 
-## Risultato
+## Esito
 
-Il test apre in Chrome la pagina reale `app/acquisizione/index-calendar-test.html`, configura un cliente simulato PT 1:1 da 8 sedute (martedì 17:00 / giovedì 18:00) e preme “Attiva e trasferisci”. Esegue la funzione `schedule-client-package` con il database sostituito da dati in memoria. Ogni richiesta del browser è intercettata e ogni fetch del backend è sostituita: nessuna scrittura o lettura del database reale.
+| Area | Correzione | Verifica |
+| --- | --- | --- |
+| Disponibilità PT | Ruolo compatibile, operatore attivo, orari dichiarati in `operator_availability`, copertura dell'intera seduta e orario Studio 07–21. Disponibilità assente: nessuna prenotazione automatica. | Fasce adiacenti, buchi tra fasce, PT inattivo/non abilitato, sovrapposizione e blocchi agenda. |
+| Capienza sala | Conteggio dei partecipanti attivi effettivi per PT 1:2/Circuit e massimo contemporaneo, senza sommare due gruppi in intervalli disgiunti. | Sala da 6 persone, gruppi parziali, clienti inattivi e annullati. Stessa regola nel Calendario e nel pianificatore. |
+| Concorrenza pianificazione | Snapshot coerente del database e controllo della sua revisione sotto lock prima dell'inserimento atomico dell'intero pacchetto. Una modifica a clienti, appuntamenti, operatori o disponibilità invalida il piano. | Due connessioni PostgreSQL concorrenti, chiamate concorrenti al vero handler, scrittura esterna equivalente a REST, cambiamento disponibilità, rollback del batch. Esattamente 8 sedute; ripetizione: 0 aggiunte. |
+| Recupero attivazione | Intenzione salvata localmente prima dell'attivazione; riconciliazione del cliente e pulsante “Completa le sedute” per riprendere anche dopo ricarica. Non ripete l'attivazione se il cliente è già presente. | Browser Chrome: errore prima del commit e risposta persa dopo il commit, ricarica e ripresa. Un cliente e 8 sedute, senza duplicati. |
+| Stato Fatto | Appuntamento e variazione del residuo in una transazione. Controllo della versione precedente, retry idempotente, aggiornamento locale solo dopo conferma valida. | Codice reale `App` → `SupabaseSync` → adattatore REST locale → PostgreSQL → nuova sessione e rilettura. Fatto 8→7; doppio invio resta 7; no-show/annullamento ripristinano 8. |
 
-Verificati:
-- un solo cliente attivato e acquisizione archiviata;
-- esattamente 8 appuntamenti assegnati al PT scelto;
-- residuo salvato ancora 8 dopo la pianificazione;
-- metriche reali del Calendario: 7 residue dopo aver impostato una seduta Fatto;
-- spostamento senza variazione del residuo;
-- annullamento che libera una sola seduta programmabile, residuo sempre 7;
-- creazione della sostituzione e blocco di ulteriori sedute, anche scegliendo una data iniziale successiva;
-- conteggio degli appuntamenti anche oltre la prima pagina REST;
-- rifiuto delle date impossibili e delle sessioni senza segreto server configurato.
+I comandi rapidi, la modale e la riga del quadro pacchetto usano il salvataggio atomico. Il test della creazione dalla modale copre anche la perdita della risposta: l'ID della bozza resta uguale e il retry non crea un secondo appuntamento.
 
-Il completamento e lo spostamento sono simulati sullo stato in memoria; viene eseguito il calcolo del Calendario, ma questa prova non certifica la persistenza remota del comando Fatto. Il valore salvato del residuo viene aggiornato esplicitamente nella fixture prima di ripianificare.
+Un errore nella scrittura del residuo o dell'appuntamento annulla tutta la transazione. Risposta vuota/non valida, errore di connessione e risposta persa non producono un falso messaggio di successo. I cicli precedenti e i servizi non PT non consumano sedute del ciclo corrente. Il contatore salvato conserva le sedute già usate prima dell'importazione: il salvataggio applica soltanto la variazione effettiva della seduta.
 
-## Esecuzione
+## Prove eseguite
 
-Controlli senza dipendenze aggiuntive:
+- `scripts/check-package-calendar.sh`: sintassi, regressioni di integrazione, pianificatore, ruoli, disponibilità, capienza e protocollo del server.
+- `tests/calendar-postgres.test.cjs`: migrazione SQL eseguita su PostgreSQL 18.4 temporaneo, due connessioni indipendenti, conflitti, rollback, cicli, privilegi/RLS e vero handler del pianificatore. Nessun mock delle transazioni SQL.
+- `tests/calendar-status-persistence.test.cjs`: comandi dell'applicazione e conversioni reali dei dati; soltanto il trasporto HTTP viene sostituito da query al database locale. La rilettura usa una nuova istanza dello stato del Calendario. Non assegna manualmente il residuo per simulare Fatto.
+- `tests/acquisition-calendar-browser.cjs`: pagina reale di test nel browser, tutte le richieste intercettate; scenari normale, errore pre-commit, risposta persa post-commit. Il controllo storico delle metriche in questo test resta in memoria; la prova di persistenza completa è quella PostgreSQL separata.
+- `scripts/check-calendar-release.sh`: regressioni del Calendario. Il controllo del workspace segnala le modifiche preesistenti non committate; il controllo del contenuto committato viene eseguito separatamente.
+
+Esecuzione base:
 
 ```sh
 bash scripts/check-package-calendar.sh
 ```
 
-Prova completa nel browser, con Playwright già installato:
+Per includere PostgreSQL locale impostare `CALENDAR_POSTGRES_TEST=1` e `EMBEDDED_POSTGRES_MODULE` al file `embedded-postgres/dist/index.js` di un'installazione locale della versione `18.4.0-beta.17`. Il test crea un cluster temporaneo su `127.0.0.1`, con soli dati fittizi, e lo arresta al termine.
 
-```sh
-CALENDAR_BROWSER_TEST=1 PLAYWRIGHT_MODULE=/percorso/node_modules/playwright CHROME_PATH='/percorso/Chrome' bash scripts/check-package-calendar.sh
-```
+Per il browser impostare `CALENDAR_BROWSER_TEST=1`, `PLAYWRIGHT_MODULE` al pacchetto Playwright disponibile e, se necessario, `CHROME_PATH`. Lo script esegue automaticamente i tre scenari. Screenshot configurabile con `CALENDAR_QA_SCREENSHOT` (default `/tmp/neacea-calendar-simulation.png`).
 
-Lo screenshot viene salvato in `/tmp/neacea-calendar-simulation.png`; il percorso è configurabile con `CALENDAR_QA_SCREENSHOT`.
+## Condizioni di rilascio ancora esterne
 
-## Stato del rilascio
+La persistenza è verificata end-to-end **sul database locale**, non sul Supabase online né sul suo PostgREST. Non è possibile certificare una scrittura remota reale senza eseguirla; il divieto dell'utente è stato rispettato.
 
-Nessun deploy, merge o cambiamento a Supabase eseguito durante questa verifica. Le modifiche preesistenti al Portale PT e all'Anamnesi restano fuori da questo intervento.
+È pronta, ma NON applicata, la migrazione `supabase/migrations/20260912151523_calendar_prerelease_atomic.sql`. Prima di un futuro rilascio occorrerà verificarne la compatibilità con lo schema e i privilegi effettivi dello Studio e applicarla con autorizzazione esplicita, prima di distribuire funzioni e interfaccia. In assenza delle RPC il nuovo codice segnala errore: non torna al vecchio inserimento non atomico.
 
-Netlify `new-calendar-neacea` pubblica soltanto `app/calendario-studio`; i branch deploy sono disabilitati. La pagina Acquisizione di test appartiene a una cartella diversa e non è inclusa nel publish del Calendario. Inoltre entrambe le pagine usano ancora il database Studio: una preview non costituisce un database isolato.
+Il pianificatore richiede `SUPABASE_SECRET_KEY` o `SUPABASE_SERVICE_ROLE_KEY` solo sul server, oltre al segreto delle sessioni già previsto. Le RPC di snapshot/commit sono riservate al ruolo server; il salvataggio dell'appuntamento usa `SECURITY INVOKER`, senza nuovi permessi sulle tabelle o modifiche alle policy RLS. Verificati anche rifiuto degli accessi anonimi al pianificatore e rollback quando RLS impedisce l'aggiornamento del cliente.
 
-Prima del rilascio reale restano da verificare disponibilità PT e regole di sala rispetto al calendario corrente, richieste concorrenti (la lettura seguita da inserimento non è una transazione atomica), ripresa dopo errore successivo all'attivazione e persistenza completa dello stato Fatto. Questi casi non sono coperti dalla prova simulata e la PR resta Draft.
+I lock serializzano le pianificazioni e impediscono che scritture concorrenti cambino i dati tra verifica e commit. Non aggiungono vincoli globali di prenotazione ai percorsi legacy che continuano a scrivere direttamente in `appointments` dopo la transazione: questi restano soggetti alle proprie validazioni. La migrazione usa lock brevi a livello tabella (timeout 5 secondi), adeguati al volume dello Studio ma da rivalutare se il traffico cresce.
+
+La ripresa dell'attivazione è conservata nel browser e legata all'operatore: non è una coda condivisa tra dispositivi. La cancellazione dello storage locale elimina la richiesta pendente, non i dati già salvati. Il residuo/numero di sedute viene comunque riletto dal server a ogni tentativo.
+
+Netlify non è stato modificato. La PR resta Draft; nessun push o pubblicazione è incluso in questa fase di verifica.

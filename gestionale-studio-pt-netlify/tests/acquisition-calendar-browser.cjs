@@ -7,16 +7,26 @@ const crypto = require('node:crypto');
 const vm = require('node:vm');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only';
 process.env.PT_ACCESS_SECRET = 'local-simulation-only';
 const { handler } = require('../netlify/functions/schedule-client-package');
 const payload = Buffer.from(JSON.stringify({ email: 'owner@example.test', operatorId: 'owner', accessLevel: 'owner', exp: Date.now() + 3600000 })).toString('base64url');
 const token = payload + '.' + crypto.createHmac('sha256', process.env.PT_ACCESS_SECRET).update(payload).digest('base64url');
 let lead = { id: 'test-lead', nome: 'Cliente', cognome: 'SIMULATO', email: 'client@example.test', servizi: 'PT', sessioni_pref: '2×', stato: 'Pronto a iniziare', impressioni: '', data_acquisizione: '2026-09-12' };
 const operator = { id: 'test-pt', nome: 'PT', cognome: 'SIMULATO', active: true, roles: ['pt'] };
-let clients = [], appointments = [], backendCalls = 0;
+let clients = [], appointments = [], backendCalls = 0, failed = false;
+const failure = process.env.CALENDAR_FAILURE || '';
+const availability = [{operator_id:'test-pt',day_key:'tue',slots:['17:00-18:00']},{operator_id:'test-pt',day_key:'thu',slots:['18:00-19:00']}];
 const json = data => ({ ok: true, status: 200, text: async () => JSON.stringify(data) });
 function database(url, method = 'GET', body) {
   const u = new URL(url), table = u.pathname.split('/').pop();
+  if (table === 'calendar_planning_snapshot') return { revision: 'simulated', clients, appointments, operators:[operator], availability };
+  if (table === 'calendar_commit_package') {
+    if (!failed && failure === 'beforeCommit') { failed=true; throw Error('simulated before commit'); }
+    appointments.push(...body.p_rows);
+    if (!failed && failure === 'afterCommit') { failed=true; throw Error('simulated lost response'); }
+    return {success:true,appointmentIds:body.p_rows.map(a=>a.id)};
+  }
   if (table === 'operator_effective_roles') return [{ operator_id: 'owner', email: 'owner@example.test', active: true, system_roles: ['owner'] }];
   if (table === 'operators') return [operator];
   if (table === 'acquisizioni') { if (method === 'PATCH') lead = { ...lead, ...body }; return [lead]; }
@@ -71,7 +81,18 @@ global.fetch = async (url, options = {}) => {
     assert.match(await frame.locator('#conf-schedule-summary').innerText(), /Martedì 17:00.*Giovedì 18:00/);
     await page.screenshot({ path: process.env.CALENDAR_QA_SCREENSHOT || '/tmp/neacea-calendar-simulation.png', fullPage: true });
     await frame.locator('#btn-conf').click();
-    await frame.locator('#mo-conferma').waitFor({ state: 'hidden' });
+    if (failure) {
+      await frame.locator('#calendar-pending button').waitFor({state:'visible'});
+      await page.waitForFunction(() => document.querySelector('#app').contentDocument.querySelector('#btn-conf').disabled === false);
+      await page.reload();
+      const resumed = page.frameLocator('#app');
+      await resumed.locator('#calendar-pending button').waitFor({state:'visible'});
+      await resumed.locator('#calendar-pending button').click();
+      await resumed.locator('#calendar-pending').waitFor({state:'hidden'});
+      assert.equal(clients.length,1, 'resume must not activate a duplicate client');
+    } else {
+      await frame.locator('#mo-conferma').waitFor({ state: 'hidden' });
+    }
     assert.equal(clients.length, 1);
     assert.equal(lead.stato, 'Convertito');
     assert.equal(appointments.length, 8);
@@ -102,6 +123,6 @@ global.fetch = async (url, options = {}) => {
     assert.equal(clients[0].sessions_remaining, 7);
     assert.deepEqual(errors, []);
     assert.ok(backendCalls > 0);
-    console.log('PASS browser + backend simulato: attivazione, 8 sedute, residuo 8→7 con Fatto, spostamento, annullamento e blocco oltre pacchetto. Nessuna richiesta reale.');
+    console.log('PASS browser ' + (failure || 'normal') + ' + backend simulato: attivazione, 8 sedute, residuo 8→7 con Fatto, spostamento, annullamento e blocco oltre pacchetto. Nessuna richiesta reale.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

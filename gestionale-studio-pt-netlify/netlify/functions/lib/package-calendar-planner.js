@@ -134,12 +134,13 @@ function schedulingAllowance(client, appointments = [], options = {}) {
   };
 }
 
-function roomLoadFor(appt) {
+function roomLoadFor(appt, clients) {
   const meta = SERVICE_META[appointmentServiceId(appt)] || {};
-  return Number(meta.roomLoad || 0);
+  const ids = appointmentClientIds(appt).filter(id => !clients || clients.some(c => String(c.id) === id && c.active !== false));
+  return Math.min(Number(meta.roomLoad || 0), ids.length);
 }
 
-function slotConflicts(candidate, appointments = [], { roomCapacity = ROOM_CAPACITY } = {}) {
+function slotConflicts(candidate, appointments = [], { roomCapacity = ROOM_CAPACITY, clients } = {}) {
   const conflicts = [];
   const clientId = appointmentClientIds(candidate)[0] || '';
   const operatorId = appointmentOperatorId(candidate);
@@ -147,7 +148,8 @@ function slotConflicts(candidate, appointments = [], { roomCapacity = ROOM_CAPAC
   const meta = SERVICE_META[serviceId] || { room: null, roomLoad: 0 };
 
   const sameDay = (Array.isArray(appointments) ? appointments : []).filter(appt =>
-    appointmentStatus(appt) !== 'annullato' && String(appt.date || '') === String(candidate.date || '')
+    appointmentStatus(appt) !== 'annullato' && String(appt.date || '') === String(candidate.date || '') &&
+    (appointmentServiceId(appt) === 'blocco' || !clients || appointmentClientIds(appt).some(id => clients.some(c => String(c.id) === id && c.active !== false)))
   );
 
   const operatorConflict = operatorId && sameDay.find(appt =>
@@ -161,16 +163,43 @@ function slotConflicts(candidate, appointments = [], { roomCapacity = ROOM_CAPAC
   if (clientConflict) conflicts.push({ type: 'client', appointment: clientConflict });
 
   if (meta.room) {
-    const load = sameDay
-      .filter(appt => (SERVICE_META[appointmentServiceId(appt)] || {}).room === meta.room && overlaps(candidate, appt))
-      .reduce((sum, appt) => sum + roomLoadFor(appt), 0);
+    // Peak simultaneous occupancy, not the sum of disjoint overlapping slots.
+    const start = timeToMin(candidate.startTime || candidate.start_time);
+    const end = start + Number(candidate.durationMin || candidate.duration_min || 60);
+    const events = sameDay.filter(appt => (SERVICE_META[appointmentServiceId(appt)] || {}).room === meta.room && overlaps(candidate, appt));
+    const boundaries = [start, ...events.map(appt => timeToMin(appt.startTime || appt.start_time)).filter(t => t > start && t < end)];
+    const load = Math.max(0, ...boundaries.map(t => events.filter(appt => {
+      const a = timeToMin(appt.startTime || appt.start_time);
+      return a <= t && t < a + Number(appt.durationMin || appt.duration_min || 60);
+    }).reduce((sum, appt) => sum + roomLoadFor(appt, clients), 0)));
     const max = Number(roomCapacity?.[meta.room] || 0);
-    if (max > 0 && load + Number(meta.roomLoad || 0) > max) {
-      conflicts.push({ type: 'room_capacity', load, add: Number(meta.roomLoad || 0), max });
+    if (max > 0 && load + roomLoadFor(candidate, clients) > max) {
+      conflicts.push({ type: 'room_capacity', load, add: roomLoadFor(candidate, clients), max });
     }
   }
 
   return conflicts;
+}
+
+function operatorCanWork(operator, candidate, availability) {
+  if (!operator || operator.active === false) return false;
+  const roles = [...(operator.roles || []), ...(operator.system_roles || []), ...(operator.legacy_roles || []), operator.role || ''].map(r => String(r).toLowerCase());
+  if (!roles.some(r => ['pt', 'personal_trainer', 'personal trainer', ...(candidate.serviceId === 'circuit' ? ['circuit'] : [])].includes(r))) return false;
+  const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][parseDate(candidate.date).getDay()];
+  const rows = availability.filter(r => String(r.operator_id) === String(operator.id) && r.day_key === day);
+  const ranges = rows.flatMap(r => Array.isArray(r.slots) ? r.slots : []).map(slot => {
+    const [a, b] = String(slot).split('-');
+    return normalizeTime(a) && normalizeTime(b) ? [timeToMin(a), timeToMin(b)] : null;
+  }).filter(Boolean).sort((a, b) => a[0] - b[0]);
+  let covered = timeToMin(candidate.startTime);
+  const end = covered + candidate.durationMin;
+  if (covered < 7 * 60 || end > 21 * 60) return false;
+  for (const [a, b] of ranges) {
+    if (a > covered) break;
+    if (b > covered) covered = b;
+    if (covered >= end) return true;
+  }
+  return false;
 }
 
 function candidateFor({ clientId, operatorId, serviceId, date, time, index, total }) {
@@ -197,6 +226,7 @@ function planPackageAppointments({
   startDate,
   maxLookaheadDays = 370,
   roomCapacity = ROOM_CAPACITY,
+  operators, availability = [], clients,
 } = {}) {
   if (!client?.id) return { ok: false, code: 'missing_client', created: [], skipped: [] };
   if (client.active === false) return { ok: false, code: 'inactive_client', created: [], skipped: [] };
@@ -236,7 +266,8 @@ function planPackageAppointments({
         index: sequence,
         total: allowance.total || allowance.remaining,
       });
-      const conflicts = slotConflicts(candidate, working, { roomCapacity });
+      const conflicts = slotConflicts(candidate, working, { roomCapacity, clients });
+      if (operators && !operatorCanWork(operators.find(op => String(op.id) === String(operatorId)), candidate, availability)) conflicts.push({ type: 'operator_unavailable' });
       if (conflicts.length) {
         skipped.push({ date: dateValue, time: slot.time, conflicts });
         continue;
@@ -282,6 +313,7 @@ function appointmentSequence(appt, client, appointments = [], { serviceId = '', 
 
 module.exports = {
   SERVICE_META,
+  operatorCanWork,
   appointmentSequence,
   futureScheduledAppointments,
   normalizeSchedule,

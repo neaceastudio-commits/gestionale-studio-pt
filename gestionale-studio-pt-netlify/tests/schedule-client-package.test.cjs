@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const crypto = require('node:crypto');
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'local-test-only';
 const { handler, _test } = require('../netlify/functions/schedule-client-package');
 function token(secret) {
   const payload = Buffer.from(JSON.stringify({ email: 'owner@example.test', operatorId: 'owner', accessLevel: 'owner', exp: Date.now() + 3600000 })).toString('base64url');
@@ -18,14 +19,12 @@ test('conteggia le prenotazioni oltre la prima pagina e precedenti alla data sce
   const calls = [];
   const unrelated = Array.from({ length: 500 }, (_, i) => ({ id: `other-${i}`, date: '2026-09-01', status: 'prenotato', client_ids: ['other'], service_id: 'pt11' }));
   global.fetch = async (url, options) => {
-    assert.equal(options.method, 'GET', 'pacchetto già completo: nessuna scrittura');
+    assert.ok(!String(url).includes('calendar_commit_package'), 'pacchetto già completo: nessuna scrittura');
     const u = new URL(url); calls.push(u);
     let data;
     if (u.pathname.endsWith('/operator_effective_roles')) data = [{ operator_id: 'owner', system_roles: ['owner'] }];
-    else if (u.pathname.endsWith('/clients')) data = [{ id: 'test', active: true, package_types: ['PT 1:1'], sessions_total: 8, sessions_remaining: 8, pt_assegnato: 'pt' }];
-    else if (u.pathname.endsWith('/appointments')) {
-      assert.equal(u.searchParams.has('date'), false);
-      data = u.searchParams.get('offset') === '0' ? unrelated : Array.from({ length: 8 }, (_, i) => ({ id: `test-${i}`, date: '2026-09-15', status: 'prenotato', client_ids: ['test'], service_id: 'pt11' }));
+    else if (u.pathname.endsWith('/calendar_planning_snapshot')) {
+      data = { revision:'test', clients:[{ id:'test', active:true, package_types:['PT 1:1'], sessions_total:8, sessions_remaining:8, pt_assegnato:'pt' }], operators:[{id:'pt',roles:['PT']}], availability:[], appointments:[...unrelated,...Array.from({length:8},(_,i)=>({id:`test-${i}`,date:'2026-09-15',status:'prenotato',client_ids:['test'],service_id:'pt11'}))] };
     } else throw Error('Unexpected URL');
     return { ok: true, text: async () => JSON.stringify(data) };
   };
@@ -33,6 +32,6 @@ test('conteggia le prenotazioni oltre la prima pagina e precedenti alla data sce
     const result = await handler({ httpMethod: 'POST', body: JSON.stringify({ accessToken: token('local-test'), clientId: 'test', serviceId: 'pt11', startDate: '2026-10-20', schedule: [{ weekday: 'Martedì', time: '17:00' }] }) });
     assert.equal(result.statusCode, 200);
     assert.equal(JSON.parse(result.body).plan.created, 0);
-    assert.equal(calls.filter(u => u.pathname.endsWith('/appointments')).length, 2);
+    assert.equal(calls.filter(u => u.pathname.endsWith('/calendar_planning_snapshot')).length, 1);
   } finally { global.fetch = originalFetch; if (previousSecret === undefined) delete process.env.PT_ACCESS_SECRET; else process.env.PT_ACCESS_SECRET = previousSecret; }
 });

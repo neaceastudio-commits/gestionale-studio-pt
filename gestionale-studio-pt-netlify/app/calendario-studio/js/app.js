@@ -788,7 +788,7 @@ const App = {
   },
 
   // ── SALVA APPUNTAMENTO ───────────────────────────────
-  _saveAppointment(apptId) {
+  async _saveAppointment(apptId) {
     const svcId   = document.getElementById('appt-service')?.value;
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
@@ -874,20 +874,16 @@ const App = {
     }
     apptData.notes = notes;
 
-    let saved;
-    if (apptId) {
-      saved = Services.updateAppointment(apptId, apptData);
-      if (before?.status !== 'fatto' && saved?.status === 'fatto') App._consumeClientSessions(saved);
-      UI.showToast('Appuntamento aggiornato', 'success');
-    } else {
-      saved = Services.addAppointment(apptData);
-      if (saved?.status === 'fatto') App._consumeClientSessions(saved);
-      UI.showToast('Appuntamento creato', 'success');
+    const form = document.getElementById('appt-service');
+    if (!apptId) {
+      form.dataset.calendarDraftId = form.dataset.calendarDraftId || State.genId('a');
     }
-
+    const draftToSave = { ...before, ...apptData, id: apptId || form.dataset.calendarDraftId };
+    const saved = await App._persistAppointment(draftToSave, before);
+    if (!saved) return;
+    UI.showToast(apptId ? 'Appuntamento aggiornato' : 'Appuntamento creato', 'success');
     UI.closeModal();
     Calendar.render();
-    SupabaseSync.pushAppointment(saved);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
   },
 
@@ -1005,13 +1001,22 @@ const App = {
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (appt) App._renderDetailModal(appt);
   },
-  _markDone(apptId) {
+  async _persistAppointment(appt, before) {
+    try {
+      const result = await SupabaseSync.saveAppointmentAtomic(appt, before);
+      if (result?.error || !result?.appointment) throw new Error(result?.error || 'Conferma mancante');
+      return result.appointment;
+    } catch (_) {
+      UI.showToast('Salvataggio non confermato. Ricarica il calendario e riprova.', 'error');
+      return null;
+    }
+  },
+  async _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
-    if (!App.guardPortalEdit('appointment', before)) return;
-    const doneAppt = Services.updateAppointment(apptId, { status: 'fatto', notes: App._withPtAudit(before?.notes, 'segnato come fatto') });
-    if (before?.status !== 'fatto') App._consumeClientSessions(doneAppt);
+    if (!before || !App.guardPortalEdit('appointment', before)) return;
+    const doneAppt = await App._persistAppointment({ ...before, status: 'fatto', notes: App._withPtAudit(before.notes, 'segnato come fatto') }, before);
+    if (!doneAppt) return;
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
-    SupabaseSync.pushAppointment(doneAppt);
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(doneAppt);
   },
   _consumeClientSessions(appt) {
@@ -1036,27 +1041,18 @@ const App = {
   },
   async _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
-    if (!App.guardPortalEdit('appointment', before)) return;
-    const nsAppt = Services.updateAppointment(apptId, { status: 'noshow', notes: App._withPtAudit(before?.notes, 'segnato come no-show') });
-    await SupabaseSync.pushAppointment(nsAppt);
-    if (before?.status === 'fatto' && App._recalculateClientSessions) {
-      await App._recalculateClientSessions(before.clientIds || []);
-    }
+    if (!before || !App.guardPortalEdit('appointment', before)) return;
+    const nsAppt = await App._persistAppointment({ ...before, status: 'noshow', notes: App._withPtAudit(before?.notes, 'segnato come no-show') }, before);
+    if (!nsAppt) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
     UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
   },
   async _markCancelled(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
-    if (!App.guardPortalEdit('appointment', before)) return;
+    if (!before || !App.guardPortalEdit('appointment', before)) return;
     if (!confirm('Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
-    const cancelled = Services.updateAppointment(apptId, {
-      status: 'annullato',
-      notes: App._withPtAudit(before?.notes, 'appuntamento annullato'),
-    });
-    await SupabaseSync.pushAppointment(cancelled);
-    if (before?.status === 'fatto' && App._recalculateClientSessions) {
-      await App._recalculateClientSessions(before.clientIds || []);
-    }
+    const cancelled = await App._persistAppointment({ ...before, status: 'annullato', notes: App._withPtAudit(before?.notes, 'appuntamento annullato') }, before);
+    if (!cancelled) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);
     UI.closeModal();
     UI.showToast('Appuntamento annullato e conservato nello storico', 'success');
@@ -3437,22 +3433,8 @@ const App = {
       status: nextStatus,
       notes: App._withPtAudit(appt.notes, 'seduta aggiornata dal quadro pacchetto'),
     };
-    let result;
-    try {
-      result = await SupabaseSync.pushAppointment(updated);
-    } catch (error) {
-      UI.showToast('Seduta non salvata: controlla la connessione e riprova', 'error');
-      return;
-    }
-    if (result?.error) {
-      UI.showToast('Seduta non salvata: riprova', 'error');
-      return;
-    }
-    const saved = Services.updateAppointment(apptId, updated);
-    if (appt.status !== 'fatto' && saved.status === 'fatto') App._consumeClientSessions(saved);
-    if (appt.status === 'fatto' && saved.status !== 'fatto' && App._recalculateClientSessions) {
-      await App._recalculateClientSessions(saved.clientIds || []);
-    }
+    const saved = await App._persistAppointment(updated, appt);
+    if (!saved) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
     Calendar.render();
     UI.showToast('Singola seduta aggiornata', 'success');

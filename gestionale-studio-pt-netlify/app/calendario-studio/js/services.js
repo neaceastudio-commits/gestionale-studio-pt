@@ -304,15 +304,15 @@ const Services = (() => {
 
   function getRoomLoadAt(date, startTime, durationMin, roomId, excludeId = null) {
     const slot = { date, startTime, durationMin, bufferMin: 0 };
-    return State.getAppointments()
+    const start = timeToMin(startTime);
+    const end = start + Number(durationMin || 60);
+    const appointments = State.getAppointments()
       .filter(a => a.id !== excludeId && a.date === date && a.status !== 'annullato' && isAppointmentVisible(a))
-      .filter(a => {
-        const svc = getService(a.serviceId);
-        return svc?.room === roomId && overlaps(slot, a, false);
-      })
-      .reduce((sum, a) => {
-        return sum + appointmentRoomLoad(a);
-      }, 0);
+      .filter(a => getService(a.serviceId)?.room === roomId && overlaps(slot, a, false));
+    const boundaries = [start, ...appointments.map(a => timeToMin(a.startTime)).filter(t => t > start && t < end)];
+    return Math.max(0, ...boundaries.map(t => appointments
+      .filter(a => timeToMin(a.startTime) <= t && t < effectiveEnd(a, false))
+      .reduce((sum, a) => sum + appointmentRoomLoad(a), 0)));
   }
 
   function canBookAppointment(appt, options = {}) {

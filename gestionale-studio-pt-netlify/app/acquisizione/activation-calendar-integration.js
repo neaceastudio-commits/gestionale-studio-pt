@@ -15,6 +15,63 @@
     }
   }
 
+  const PENDING_KEY = 'neacea-package-pending-v1';
+  let busy = false;
+  function ownerId() { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}').operatorId || ''; } catch (_) { return ''; } }
+  function pendingPlans() { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}'); }
+  function remember(plan) {
+    const plans = pendingPlans(); plans[plan.leadId] = plan;
+    localStorage.setItem(PENDING_KEY, JSON.stringify(plans));
+    renderPending();
+  }
+  function forget(leadId) {
+    const plans = pendingPlans(); delete plans[leadId];
+    localStorage.setItem(PENDING_KEY, JSON.stringify(plans)); renderPending();
+  }
+  function renderPending() {
+    let panel = document.getElementById('calendar-pending');
+    if (!panel) { panel = document.createElement('div'); panel.id = 'calendar-pending'; panel.style.cssText = 'position:fixed;bottom:50px;right:16px;z-index:10000;background:white;padding:12px;max-width:320px;border:1px solid #c9a84c;border-radius:12px'; document.body.appendChild(panel); }
+    panel.replaceChildren();
+    let plans;
+    try { plans = Object.values(pendingPlans()).filter(p => p.ownerId === ownerId()); } catch (_) { panel.textContent = 'Pianificazione sospesa: archivio locale non leggibile.'; return; }
+    panel.hidden = !plans.length;
+    for (const plan of plans) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Completa le sedute'; button.disabled = busy;
+      button.onclick = async () => {
+        if (busy) return; busy = true; renderPending();
+        try { await finishPlan(plan); showToast('Sedute programmate · residuo invariato', 'success'); await carica(); }
+        catch (e) { showToast('Sedute da completare: ' + e.message, 'error'); }
+        finally { busy = false; renderPending(); }
+      };
+      const text = document.createElement('p'); text.textContent = 'Attivazione in sospeso · ' + plan.schedule.map(s => s.weekday + ' ' + s.time).join(' / ');
+      panel.append(text, button);
+    }
+  }
+  async function finishPlan(plan) {
+    if (plan.ownerId !== ownerId()) throw new Error('Accedi con il profilo che ha avviato la pianificazione');
+    if (!plan.clientId) {
+      // Reconcile an activation whose response was lost before repeating it.
+      const lead = acquisizioni.find(a => a.id === plan.leadId);
+      if (!lead) throw new Error('Ricarica le acquisizioni per recuperare il cliente');
+      const existing = await findClientForAcquisition(lead);
+      if (existing) plan.clientId = existing.id;
+      else {
+        const activation = await apiFetch(plan.activation);
+        if (!activation?.success || !activation.clientId) throw new Error(activation?.error || 'Attivazione non confermata');
+        plan.clientId = activation.clientId;
+      }
+      remember(plan);
+    }
+    const scheduled = await scheduleClientPackage(plan);
+    // Archiving is idempotent and is retried if its response was lost.
+    const archived = await sb('acquisizioni', { method: 'PATCH', query: '?id=eq.' + encodeURIComponent(plan.leadId), headers: { Prefer: 'return=representation' }, body: { stato: 'Convertito', updated_at: new Date().toISOString() } });
+    if (archived?.error || !Array.isArray(archived) || !archived.some(a => a.id === plan.leadId && a.stato === 'Convertito')) throw new Error('Sedute salvate, archiviazione da confermare');
+    forget(plan.leadId);
+    return scheduled;
+  }
+  const originalLoad = carica;
+  carica = async function () { try { return await originalLoad(); } finally { renderPending(); } };
+
   function currentLead() {
     return acquisizioni.find(item => item.id === idConferma) || null;
   }
@@ -200,6 +257,15 @@
   const originalExecute = eseguiConferma;
   eseguiConferma = async function integratedExecuteConfirmation() {
     ensureScheduleUi();
+    if (busy) return;
+    const pending = pendingPlans()[idConferma];
+    if (pending) {
+      busy = true;
+      try { await finishPlan(pending); closeMo('mo-conferma'); await carica(); }
+      catch (e) { showToast('Sedute da completare: ' + e.message, 'error'); }
+      finally { busy = false; renderPending(); }
+      return;
+    }
 
     if (clienteEsistenteConferma) {
       return originalExecute();
@@ -245,42 +311,29 @@
       btn.innerHTML = confermaButtonLabel(); btn.disabled = false; return;
     }
 
+    busy = true;
     try {
-      const activation = await apiFetch({
-        action: 'confermaCliente',
-        id: idConferma,
-        packageType,
-        ptId,
-        tipoAbbonamento,
-        dataInizio: startDate,
-        sessioni_totali: sessioniTotali,
+      const activationInput = {
+        action: 'confermaCliente', id: idConferma, packageType, ptId, tipoAbbonamento,
+        dataInizio: startDate, sessioni_totali: sessioniTotali,
         sessioni_usate: document.getElementById('conf-sess-used').value || 0,
-        giorniSettimana,
-        importo: document.getElementById('conf-importo').value || 0,
+        giorniSettimana, importo: document.getElementById('conf-importo').value || 0,
         statoPagamento: document.getElementById('conf-pagamento').value,
-      });
-
-      if (!activation?.success) throw new Error(activation?.error || 'Attivazione cliente non riuscita');
-
-      let scheduled = { success: true, skipped: true, plan: { created: 0 } };
+      };
+      let scheduled = { plan: { created: 0 } };
       if (needsPlan) {
-        try {
-          scheduled = await scheduleClientPackage({
-            clientId: activation.clientId,
-            packageType,
-            ptId,
-            startDate,
-            schedule,
-          });
-        } catch (scheduleError) {
-          showToast(`Cliente attivato · sedute da completare: ${scheduleError.message}`, 'error');
-          const idx = acquisizioni.findIndex(item => item.id === idConferma);
-          if (idx >= 0) acquisizioni[idx] = { ...acquisizioni[idx], stato: 'Convertito' };
-          renderStats();
-          btn.innerHTML = confermaButtonLabel();
-          btn.disabled = false;
-          return;
+        const plan = { leadId: idConferma, ownerId: ownerId(), clientId: null, packageType, ptId, startDate, schedule, activation: activationInput };
+        // Persist before the first remote side effect; storage failure blocks activation.
+        remember(plan);
+        try { scheduled = await finishPlan(plan); }
+        catch (scheduleError) {
+          if (plan.clientId) showToast(`Cliente attivato · sedute da completare: ${scheduleError.message}`, 'error');
+          else showToast(`Attivazione da completare: ${scheduleError.message}`, 'error');
+          renderPending(); return;
         }
+      } else {
+        const activation = await apiFetch(activationInput);
+        if (!activation?.success) throw new Error(activation?.error || 'Attivazione non riuscita');
       }
 
       const created = Number(scheduled?.plan?.created || 0);
@@ -297,10 +350,12 @@
     } catch (error) {
       showToast(`Errore: ${error.message || error}`, 'error');
     } finally {
+      busy = false; renderPending();
       btn.innerHTML = confermaButtonLabel();
       btn.disabled = false;
     }
   };
 
   ensureScheduleUi();
+  renderPending();
 })();
