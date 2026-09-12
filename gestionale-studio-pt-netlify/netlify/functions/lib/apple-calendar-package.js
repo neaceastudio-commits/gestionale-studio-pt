@@ -29,28 +29,15 @@ function packageInfo(client, appointments, today) {
   const current = rows.filter(a => inCycle(a, ctx)).sort(order);
   const completed = current.filter(a => a.status === 'fatto').length;
   const future = current.filter(a => a.status === 'prenotato' && a.date >= today);
-  const remaining = Math.max(0, Number(client.sessions_remaining) || 0);
-  const rawTotal = Number(client.sessions_total) || 0;
-  let total = rawTotal;
-  const previousCompleted = rows.filter(a => a.status === 'fatto').length - completed;
-  if (ctx.inferredFromAppointment && previousCompleted > 0 && rawTotal > 0) {
-    let inferred = Math.max(completed + future.length, remaining + completed);
-    if (rawTotal % 4 === 0 && inferred > 0 && inferred < rawTotal && inferred % 4 !== 0) inferred = Math.ceil(inferred / 4) * 4;
-    if (inferred > 0) total = Math.min(rawTotal, inferred);
-  }
-  // Failed/cancelled and stale bookings do not reserve a package position.
-  const numbered = current.filter(a => a.status === 'fatto' || (a.status === 'prenotato' && a.date >= today));
-  const position = a => {
-    if (!inCycle(a, ctx) || total <= 0 || a.status === 'annullato') return null;
-    if (a.status === 'prenotato' && a.date < today) return null;
-    const n = numbered.filter(b => order(b, a) < 0).length + 1;
-    return n <= total ? { n, total } : null;
-  };
+  // The stored counters are authoritative: never infer progress from appointments.
+  const remaining = Number(client.sessions_remaining) || 0;
+  const total = Number(client.sessions_total) || 0;
+  const progress = { n: total - remaining, total };
   const planned = current.filter(a => ['fatto', 'prenotato'].includes(a.status));
   const slots = [...new Set(planned.map(a => `${new Date(a.date + 'T12:00:00Z').getUTCDay()} ${String(a.start_time).slice(0, 5)}`))].sort((a,b) => ((Number(a[0])+6)%7)-((Number(b[0])+6)%7) || a.localeCompare(b));
   const days = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
   const toSchedule = Math.max(0, remaining - future.length);
-  return { ctx, total, remaining, completed, scheduled: future.length, toSchedule, position,
+  return { ctx, total, remaining, completed, scheduled: future.length, toSchedule, progress,
     schedule: slots.map(s => `${days[Number(s[0])]} ${s.slice(2)}`),
     endDate: toSchedule === 0 && planned.length ? planned.map(a => a.date).sort().at(-1) : null };
 }

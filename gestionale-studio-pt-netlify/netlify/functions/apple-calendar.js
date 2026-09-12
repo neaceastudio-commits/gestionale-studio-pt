@@ -154,8 +154,8 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
       const client = clientMap.get(id);
       return { name: personName(client), info: PT.has(row.service_id) ? packageInfo(client, appointments, today) : null };
     });
-    const positions = people.map(p => p.info?.position(row));
-    const common = positions.length && positions.every(p => p && p.n === positions[0]?.n && p.total === positions[0]?.total) ? positions[0] : null;
+    const progresses = people.map(p => p.info?.progress);
+    const common = progresses.length && progresses.every(p => p && p.n === progresses[0]?.n && p.total === progresses[0]?.total) ? progresses[0] : null;
     const titleService = row.status === 'noshow' ? '⚠ NO-SHOW' : `${row.status === 'fatto' ? '✓ ' : ''}${service.label}`;
     const summary = [titleService, clientNames.join(', '), common ? `${common.n}/${common.total}` : ''].filter(Boolean).join(' · ');
     const formatDate = value => value ? value.split('-').reverse().join('/') : 'Da definire';
@@ -163,9 +163,9 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
     const description = [
       'NEACEA STUDIO',
       ...people.flatMap(({ name, info }) => {
-        const pos = info?.position(row);
+        const progress = info?.progress;
         return [`Cliente: ${name}`, `Servizio: ${service.label}`, `Personal Trainer: ${operatorName || '—'}`,
-          ...(info ? [`Seduta: ${pos ? `${pos.n} di ${pos.total}` : 'Non numerabile nel ciclo corrente'}`] : []),
+          ...(info ? [`Sedute completate: ${progress.n} di ${progress.total}`] : []),
           `Stato: ${row.status === 'prenotato' ? 'Prenotata' : STATUS_LABELS[row.status] || '—'}`,
           ...(info ? ['', 'Pacchetto', `Sedute residue: ${info.remaining}`, `Future già programmate: ${info.scheduled}`,
             `Ancora da programmare: ${info.toSchedule}`, '', 'Programmazione abituale',

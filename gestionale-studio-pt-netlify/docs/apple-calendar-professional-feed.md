@@ -3,13 +3,13 @@
 Endpoint e token esistenti restano invariati. Nessun CalDAV, import, RRULE o scrittura.
 Richiede `SUPABASE_SECRET_KEY` oppure `SUPABASE_SERVICE_ROLE_KEY`; le chiavi pubbliche non sono accettate come fallback. Tutte le letture REST sono paginate.
 
-## Pacchetti e numerazione
+## Pacchetti e progresso salvato
 
-L'adattatore `lib/apple-calendar-package.js` segue la selezione del ciclo di `Services`: registro/ID, data confermata, marcatori delle sedute, data di acquisizione. I test confrontano direttamente i risultati con il codice browser. Anche la normalizzazione dei totali dei vecchi rinnovi segue il Calendario.
+L'adattatore `lib/apple-calendar-package.js` segue la selezione del ciclo di `Services`: registro/ID, data confermata, marcatori delle sedute, data di acquisizione. I test confrontano direttamente i risultati con il codice browser.
 
 Il residuo esposto è **sessions_remaining salvato**, senza correzioni, anche se storico e contatore sono disallineati. Le future programmate sono le prenotazioni del ciclo dalla data odierna di Roma; da programmare = max(0, residuo salvato − future), coerente con l'autorizzazione del pianificatore.
 
-La posizione è ordinata per data, ora e ID tra Fatto e prenotazioni future del ciclo. Annullati e no-show non occupano una posizione: un no-show mostra la posizione che avrebbe occupato, condivisa con la seduta sostitutiva successiva. Le prenotazioni passate ancora aperte, gli eventi di cicli precedenti e le posizioni oltre il totale non ricevono una frazione inventata. Nei gruppi, una frazione comune compare solo se tutti i clienti attivi hanno la medesima posizione e totale; altrimenti il dettaglio resta individuale.
+La frazione mostra esclusivamente **X = sessions_total − sessions_remaining**, **Y = sessions_total**, usando i valori salvati senza normalizzazione dei vecchi rinnovi. È il progresso corrente del cliente, identico su tutti i suoi eventi, non la posizione dell'appuntamento. La descrizione riporta «Sedute completate: X di Y». Con 8 totali e 8 residue, anche 8 prenotazioni mostrano tutte 0/8; dopo il salvataggio del residuo a 7 mostrano 1/8. Prenotazioni, no-show, spostamenti e annullamenti non cambiano il progresso. Solo una variazione del residuo già salvata dalla logica esistente cambia X, anche all'indietro dopo il ripristino di una seduta Fatto annullata. Nei gruppi, il titolo contiene una frazione comune solo se progresso e totale coincidono per tutti i clienti; la descrizione mantiene sempre il dettaglio individuale.
 
 Giorni/orari sono le combinazioni distinte delle sedute Fatto/prenotate del ciclo, non `orario_preferito`. Fine prevista è l'ultima data pianificata solo quando non restano sedute da programmare; altrimenti è «Da definire». Nessuna estrapolazione di ricorrenze.
 

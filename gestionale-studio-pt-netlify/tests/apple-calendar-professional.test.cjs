@@ -14,20 +14,41 @@ const unfold = s => s.replace(/\r\n /g,'');
 const render = (r=rows,c=[client],options={}) => unfold(buildCalendar(r,c,[operator],{now,...options}).body);
 const event = (ics,id) => ics.split('BEGIN:VEVENT').find(s=>s.includes(`UID:${id}@`));
 
-test('current package: positions, stored remaining, future, distinct times, end date',()=>{
+test('current package: saved progress, stored remaining, future, distinct times, end date',()=>{
  const info=pkg.packageInfo(client,rows,'2026-09-14');
- assert.deepEqual(info.position(rows[2]),{n:3,total:8});
+ assert.deepEqual(info.progress,{n:2,total:8});
  assert.equal(info.remaining,6);assert.equal(info.scheduled,6);assert.equal(info.toSchedule,0);
  assert.deepEqual(info.schedule,['Martedì 17:00','Giovedì 18:00']);assert.equal(info.endDate,'2026-10-01');
- const ics=render();assert.match(event(ics,'sim-2'),/SUMMARY:PT 1:1 · Veronica Corona · 3\/8/);
- for(const text of ['Seduta: 3 di 8','Sedute residue: 6','Future già programmate: 6','Ancora da programmare: 0','Fine ciclo prevista: 01/10/2026','LOCATION:NEACEA Studio'])assert.ok(event(ics,'sim-2').includes(text));
+ const ics=render();assert.match(event(ics,'sim-2'),/SUMMARY:PT 1:1 · Veronica Corona · 2\/8/);
+ for(const text of ['Sedute completate: 2 di 8','Sedute residue: 6','Future già programmate: 6','Ancora da programmare: 0','Fine ciclo prevista: 01/10/2026','LOCATION:NEACEA Studio'])assert.ok(event(ics,'sim-2').includes(text));
  assert.equal(pkg.packageInfo({...client,sessions_remaining:8},rows,'2026-09-14').remaining,8);
  const incomplete=pkg.packageInfo({...client,sessions_remaining:8},rows,'2026-09-14');assert.equal(incomplete.toSchedule,2);assert.equal(incomplete.endDate,null);
 });
 
+test('progress depends exclusively on saved counters through all appointment transitions',()=>{
+ const c={...client,sessions_remaining:8};
+ const future=rows.map((a,i)=>({...a,date:`2026-10-${String(i+1).padStart(2,'0')}`,status:'prenotato'}));
+ function check(rows,remaining,x){
+  const snapshot=JSON.stringify({rows,c});
+  const ics=render(rows,[{...c,sessions_remaining:remaining}]);
+  const summaries=ics.split('\r\n').filter(line=>line.startsWith('SUMMARY:'));
+  assert.ok(summaries.length>0);assert.ok(summaries.every(line=>line.endsWith(`${x}/8`)));
+  assert.equal((ics.match(new RegExp(`Sedute completate: ${x} di 8`,'g'))||[]).length,summaries.length);
+  assert.ok(!ics.includes('Seduta:'));assert.equal(JSON.stringify({rows,c}),snapshot);
+ }
+ check(future,8,0); // Eight planned sessions do not consume the balance.
+ const done=future.map((a,i)=>i===0?{...a,status:'fatto'}:a);
+ check(done,8,0); // Even a changed status cannot override the stored counter.
+ check(done,7,1); // Existing atomic Fatto logic has persisted remaining=7.
+ check(done.map((a,i)=>i===1?{...a,status:'noshow'}:a),7,1);
+ check(done.map((a,i)=>i===1?{...a,status:'annullato'}:a),7,1);
+ check(done.map((a,i)=>i===1?{...a,date:'2026-11-01',start_time:'19:00'}:a),7,1);
+ check(done.map((a,i)=>i===0?{...a,status:'annullato'}:a),8,0); // Restored balance.
+});
+
 test('statuses, cancellation, stable UID after move/status change and no recurrence',()=>{
  const original=JSON.stringify(rows);const r=[...rows,{...rows[2],id:'cancel',status:'annullato'},{...rows[2],id:'no',date:'2026-09-14',status:'noshow'}];
- const ics=render(r);assert.match(event(ics,'sim-0'),/SUMMARY:✓ PT 1:1 · Veronica Corona · 1\/8/);assert.match(event(ics,'no'),/SUMMARY:⚠ NO-SHOW · Veronica Corona · 3\/8/);assert.ok(!ics.includes('UID:cancel@'));assert.ok(!ics.includes('RRULE'));
+ const ics=render(r);assert.match(event(ics,'sim-0'),/SUMMARY:✓ PT 1:1 · Veronica Corona · 2\/8/);assert.match(event(ics,'no'),/SUMMARY:⚠ NO-SHOW · Veronica Corona · 2\/8/);assert.ok(!ics.includes('UID:cancel@'));assert.ok(!ics.includes('RRULE'));
  assert.equal(pkg.packageInfo(client,r,'2026-09-14').remaining,6);assert.equal(pkg.packageInfo(client,r,'2026-09-14').scheduled,6);
  const moved=render([{...rows[2],date:'2026-09-30',status:'fatto'}]);assert.ok(moved.includes('UID:sim-2@calendar.neacea.it'));assert.equal(JSON.stringify(rows),original);
 });
@@ -38,9 +59,9 @@ test('per-PT feed exports assigned PT services with active participants only; ge
  const general=render(extra,[client,inactive]);assert.ok(general.includes('UID:nutri@'));assert.ok(general.includes('UID:block@'));
 });
 
-test('different participant package positions never receive a common fraction',()=>{
- const second={...client,id:'second',nome:'Elena',cognome:'Test',sessions_total:12,sessions_remaining:12};const group={...rows[2],id:'group',service_id:'pt12',client_ids:[client.id,second.id]};
- const ics=render([...rows.filter(r=>r.id!==rows[2].id),group],[client,second]);const ev=event(ics,'group');assert.match(ev,/SUMMARY:PT 1:2 · Veronica Corona\\, Elena Test\r\n/);assert.ok(ev.includes('Seduta: 3 di 8'));assert.ok(ev.includes('Seduta: 1 di 12'));
+test('different participant package progresses never receive a common fraction',()=>{
+ const second={...client,id:'second',nome:'Elena',cognome:'Test',sessions_total:8,sessions_remaining:8};const group={...rows[2],id:'group',service_id:'pt12',client_ids:[client.id,second.id]};
+ const ics=render([...rows.filter(r=>r.id!==rows[2].id),group],[client,second]);const ev=event(ics,'group');assert.match(ev,/SUMMARY:PT 1:2 · Veronica Corona\\, Elena Test\r\n/);assert.ok(ev.includes('Sedute completate: 2 di 8'));assert.ok(ev.includes('Sedute completate: 0 di 8'));
  assert.ok(render([{...group,service_id:'circuit'}],[client,second]).includes('SUMMARY:Circuit ·'));
 });
 
@@ -71,7 +92,7 @@ test('cycle membership matches production Services for legacy, renewal IDs, pers
  const r=[...rows,{...rows[0],id:'old',date:'2026-08-01',notes:'[CICLO-PACCHETTO 2026-08-01]'}, {...rows[0],id:'new',notes:'[CICLO-PACCHETTO-ID new-cycle]'}, {...rows[0],id:'wrong',notes:'[CICLO-PACCHETTO-ID old-cycle]'}];
  browser.State.getAppointments=()=>r.map(a=>({...a,clientIds:a.client_ids,serviceId:a.service_id,startTime:a.start_time}));
  for(const c of variants){const bc={...c,sessionsTotal:c.sessions_total,sessionsRemaining:c.sessions_remaining,packageCycleStart:c.notes.match(/\[CICLO-PACCHETTO (\d{4}-\d{2}-\d{2})\]/)?.[1]||c.data_conferma||'',acquisitionStart:c.data_inizio,packageStart:c.package_start};const ctx=pkg.context(c,r);assert.equal(ctx.start,browser.Services.getPackageCycleContext(bc).start);for(const a of browser.State.getAppointments())assert.equal(pkg.inCycle(a,ctx),browser.Services.appointmentInCurrentPackageCycle(a,bc));}
- const info=pkg.packageInfo({...client,notes:ledger},r,'2026-09-14');assert.equal(info.completed,1);assert.equal(info.position(r.find(a=>a.id==='old')),null);assert.equal(info.position(r.find(a=>a.id==='wrong')),null);
+ const info=pkg.packageInfo({...client,notes:ledger},r,'2026-09-14');assert.equal(info.completed,1);assert.deepEqual(info.progress,{n:2,total:8});
 });
 
 test('handler: private server key only, GET pagination, token protection, no mutation methods',async()=>{
