@@ -51,3 +51,9 @@ Whitelist operativa: ID, data/ora/durata/buffer, servizio, PT, partecipanti, sta
 Test locali con fetch intercettato e PostgreSQL temporaneo: firma/ruoli, falsificazione attore, atomici e rollback, pacchetti, disponibilità/no-op, privilegi, filtri, UI Direzione e regressioni. Nessun test scrive nel Supabase reale.
 
 Il rollout richiede autorizzazione separata: allineare le Functions con chiave server e segreto sessione, coordinare Portale/Calendario/Acquisizione, adattare eventuali scrittori legacy, applicare solo dopo il controllo dei prerequisiti. `CALENDAR_SYSTEM_AUDIT_SECRET` serve solo se si abilita l'endpoint delle automazioni. Nessun deploy o merge incluso in questo lavoro.
+
+## Integrazione fix disponibilità
+
+Integrato integralmente il comportamento del commit `48a16e379cc3283515b0076586d599acd28ed0bc`: avvio solo GET, remoto autorevole anche vuoto, cache offline solo UI, Salva senza modifiche senza POST e confronto remoto normalizzato delle sole righe editate. Il trasporto delle scritture resta il gateway autenticato; se manca, la disponibilità non viene scritta direttamente via REST. SQL ricontrolla le differenze nella transazione audit: un no-op manuale non crea log, quello di sistema è identificato, entrambi lasciano invariati i timestamp.
+
+La suite availability usa il codice reale del gateway con trasporto simulato. I test PostgreSQL verificano attore, audit della riga modificata e conservazione completa delle righe/timestamp per i no-op manuali e di sistema.
