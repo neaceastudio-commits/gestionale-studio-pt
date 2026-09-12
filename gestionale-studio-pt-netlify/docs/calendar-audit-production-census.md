@@ -17,7 +17,7 @@ La scansione comprende tutti i file tracciati JS/HTML/SQL/script, wrapper REST g
 | Portale PT production | app/portale-personal-trainer/index.html openCalendar | delega scritture al Calendario | token trasportato anche da Direzione | sì nel Calendario | OK_AUDITED | rilasciare link aggiornato |
 | Portale PT production | sb/archivio esercizi/schede | tabelle programmi/esercizi, non entità censite | accesso esistente | fuori ambito di questa migration | READ_ONLY | rispetto alle cinque entità; non è un audit generale dei programmi |
 | Cruscotto | app/cruscotto-pt/index.html saveClientAdmin/savePayment/quickPay | clients PATCH e assegnazione PT | Direzione verificata, server ricava attore | sì via StudioAudit | OK_AUDITED | pubblicare questo root, incluso studio-audit-access.js |
-| Centrale | app/portale-pt-fase1/index.html stessi tre chiamanti | clients PATCH e assegnazione PT | Direzione verificata | sì via StudioAudit | OK_AUDITED | pubblicare root corretto, incluso compensation-engine.js |
+| Centrale | app/portale-pt-fase1/index.html stessi tre chiamanti | clients PATCH e assegnazione PT | Direzione verificata | sì via StudioAudit | OK_AUDITED | pubblicare root corretto con studio-audit-access.js |
 | Studio gateway | netlify/functions/studio-calendar-activity.js | client/assignment attraverso endpoint comune | ownerOnly server | sì | OK_AUDITED | Function nel sito Calendario; CORS con token, nessun segreto nei siti statici |
 | Gateway | calendar-activity.js, acquisition-calendar-activity.js, lib/calendar-audit-endpoint.js | save/delete/client/operator/availability/assignment | HMAC + identità/ruoli DB | sì | OK_AUDITED | chiave server e segreto sessione coerenti già censiti |
 | Assegnazioni | calendar_audit_write + calendar_audit_set_assignment | trainer_client_assignments e clients.pt_assegnato | Direzione/segretaria; aggiornamento cliente autorizzato | sì, unica transazione | OK_AUDITED | nessun POST public; righe identiche invariate |
@@ -58,3 +58,7 @@ Le nuove pagine Studio chiamano la Function centrale sul Calendario: non richied
 ## Verifiche riproducibili
 
 `bash scripts/check-calendar-audit.sh` sul contenuto committato include availability, autenticazione/falsificazione, censimento dei root production, PostgreSQL audit/rollback/privilegi/privacy/assegnazioni, browser Cruscotto+Centrale, Acquisizione e release Calendario. Aggiungere i test PostgreSQL atomici e concorrenza del calendario. Tutte le mutazioni dei test usano PostgreSQL temporaneo o fetch simulato.
+
+## Perimetro del candidato ripulito
+
+Esclusi da entrambi i root gli sviluppi compensi/PT, incluse tariffe locali, UI onorari e compensation-engine.js. Restano i tre scrittori cliente autenticati e l’agenda production in sola lettura. Nessun backfill o trasferimento automatico dei dati esistenti: lo storico sarà trasferito manualmente da Gianluca. Nessuna modifica a migrazioni o servizi esterni durante questa pulizia.
