@@ -14,10 +14,11 @@ exports.start = async () => {
   await cluster.initialise(); await cluster.start();
   const client = cluster.getPgClient(); await client.connect();
   await client.query(`
-    create role anon; create role authenticated; create role service_role;
+    create role anon; create role authenticated; create role service_role bypassrls;
     create table clients(id text primary key, nome text, cognome text, active boolean default true,
       package_types text[], sessions_total int, sessions_remaining int, pt_assegnato text, package_start date,
       data_inizio date, data_conferma date, notes text default '', updated_at timestamptz default now());
+    create table trainer_client_assignments(id text primary key, trainer_id text not null, client_id text not null, assigned_by text, assignment_source text default 'manual',active boolean default true,notes text default '',created_at timestamptz default now(),updated_at timestamptz default now(),ended_at timestamptz,unique(trainer_id,client_id));
     create table operators(id text primary key, nome text, cognome text, email text, active boolean default true, roles text[]);
     create table operator_availability(operator_id text, day_key text, slots jsonb, updated_at timestamptz default now(), primary key(operator_id,day_key));
     create table appointments(id text primary key, service_id text, client_ids text[], operator_id text, date date,

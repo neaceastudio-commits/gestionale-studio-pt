@@ -26,8 +26,9 @@ begin
  select coalesce(jsonb_object_agg(key,value),'{}') into result from jsonb_each(row_data)
  where key=any(case kind when 'appointments' then array['id','date','start_time','duration_min','buffer_min','service_id','operator_id','client_ids','status']
  when 'operator_availability' then array['operator_id','day_key','slots']
+ when 'trainer_client_assignments' then array['id','trainer_id','client_id','assigned_by','assignment_source','active','ended_at']
  when 'operators' then array['id','nome','cognome','active','roles']
- else array['id','sessions_total','sessions_remaining','pt_assegnato','package_start','data_inizio','data_conferma','active','package_types'] end);
+ else array['id','sessions_total','sessions_remaining','pt_assegnato','package_start','data_inizio','data_conferma','active','package_types','package_frequency','giorni_settimana','tipo_servizio','tipo_abbonamento','stato_abbonamento'] end);
  if kind in ('clients','appointments') then
   result:=result||jsonb_build_object('cycle_start',substring(coalesce(row_data->>'notes','') from '\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]'),'cycle_id',substring(coalesce(row_data->>'notes','') from '\[CICLO-PACCHETTO-ID\s+([a-zA-Z0-9_-]+)\]'));
  end if;
@@ -51,18 +52,20 @@ begin
  b:=case when TG_OP='INSERT' then null else public.calendar_audit_fields(TG_TABLE_NAME,to_jsonb(old)) end;
  a:=case when TG_OP='DELETE' then null else public.calendar_audit_fields(TG_TABLE_NAME,to_jsonb(new)) end;
  -- Client notes/clinical/economic fields are deliberately outside the audit.
- if TG_TABLE_NAME='clients' and TG_OP='UPDATE' and a=b then return new; end if;
  ctx:=nullif(current_setting('neacea.audit_context',true),'')::jsonb;
  if current_setting('role',true) is distinct from 'service_role' or ctx is null then
    raise exception using errcode='42501',message='Verified calendar audit context required';
  end if;
+ if TG_TABLE_NAME='clients' and TG_OP='UPDATE' and (to_jsonb(new)-'updated_at')=(to_jsonb(old)-'updated_at') then return new; end if;
  if TG_TABLE_NAME='operator_availability' then
   eid:=coalesce(a,b)->>'operator_id'||':'||(coalesce(a,b)->>'day_key');ids:='[]';
   actions:=array[case when a=b then 'availability_noop' else 'availability_changed' end];
+ elsif TG_TABLE_NAME='trainer_client_assignments' then
+  eid:=coalesce(a,b)->>'id';ids:=jsonb_build_array(coalesce(a,b)->>'client_id');actions:=array['trainer_assignment_changed'];
  elsif TG_TABLE_NAME='operators' then
   eid:=coalesce(a,b)->>'id';ids:='[]';actions:=array['operator_profile_changed'];
  elsif TG_TABLE_NAME='clients' then
-  eid:=coalesce(a,b)->>'id';ids:=jsonb_build_array(eid);actions:=array['client_package_changed'];
+  eid:=coalesce(a,b)->>'id';ids:=jsonb_build_array(eid);actions:=array[case when a=b then 'client_details_changed' else 'client_package_changed' end];
  else
   eid:=coalesce(a,b)->>'id';select coalesce(jsonb_agg(distinct value),'[]') into ids from jsonb_array_elements(coalesce(a->'client_ids','[]')||coalesce(b->'client_ids','[]'));
   if TG_OP='INSERT' then actions:=array[case when ctx->>'operation'='package' then 'package_appointment_created' else 'appointment_created' end];
@@ -81,7 +84,7 @@ begin
  end if;
  foreach item in array actions loop
   insert into public.calendar_audit_log(actor_operator_id,actor_name,actor_email,actor_role,action,entity_type,entity_id,client_ids,before_data,after_data,source,request_id,metadata)
-  values(ctx->>'id',ctx->>'name',ctx->>'email',ctx->>'role',item,TG_TABLE_NAME,eid,ids,b,a,ctx->>'source',(ctx->>'request_id')::uuid,jsonb_build_object('automatic',ctx->>'source'='system','noop',a=b));
+  values(ctx->>'id',ctx->>'name',ctx->>'email',ctx->>'role',item,TG_TABLE_NAME,eid,ids,b,a,ctx->>'source',(ctx->>'request_id')::uuid,jsonb_build_object('automatic',ctx->>'source'='system','noop',a=b and TG_TABLE_NAME<>'clients'));
  end loop;
  if TG_OP='DELETE' then return old; else return new; end if;
 end; $$;
@@ -90,12 +93,36 @@ create trigger calendar_audit_availability after insert or update or delete on p
 create trigger calendar_audit_operators after insert or update or delete on public.operators for each row execute function public.calendar_audit_capture();
 create trigger calendar_audit_clients after insert or update or delete on public.clients for each row execute function public.calendar_audit_capture();
 
+create trigger calendar_audit_assignments after insert or update or delete on public.trainer_client_assignments for each row execute function public.calendar_audit_capture();
+alter table public.trainer_client_assignments enable row level security;
+revoke insert,update,delete,truncate on public.trainer_client_assignments from public,anon,authenticated;
+revoke truncate on public.trainer_client_assignments from service_role;
+
 -- Direct REST and legacy RPC mutations must not bypass audit. All writes go through the service gateway.
 revoke insert,update,delete,truncate on public.appointments,public.operator_availability,public.clients,public.operators from public,anon,authenticated;
 revoke truncate on public.appointments,public.operator_availability,public.clients,public.operators from service_role;
 -- Role assignments must not be editable through the public Data API.
 do $$begin if to_regclass('public.operator_system_roles') is not null then execute 'revoke insert,update,delete,truncate on public.operator_system_roles from public,anon,authenticated';end if;end$$;
 revoke execute on function public.calendar_save_appointment(jsonb,jsonb) from anon,authenticated;
+
+-- Internal operation: relation and client update share the caller's audit context.
+create function public.calendar_audit_set_assignment(p_client text,p_trainer text,p_actor text)
+returns void language plpgsql security invoker set search_path='' as $$
+begin
+ if current_setting('role',true)<>'service_role' or nullif(current_setting('neacea.audit_context',true),'') is null then raise exception 'Verified assignment context required';end if;
+ if not exists(select 1 from public.clients where id=p_client) then raise exception 'Client missing';end if;
+ if p_trainer is not null and not exists(select 1 from public.operators where id=p_trainer and active) then raise exception 'Active operator required';end if;
+ update public.trainer_client_assignments set active=false,ended_at=clock_timestamp(),updated_at=clock_timestamp()
+ where client_id=p_client and active and trainer_id is distinct from p_trainer;
+ if p_trainer is not null then
+  insert into public.trainer_client_assignments(id,trainer_id,client_id,assigned_by,assignment_source,active,notes)
+  values('tca_audit_'||md5(p_client||':'||p_trainer),p_trainer,p_client,p_actor,'manual',true,'')
+  on conflict(trainer_id,client_id) do update set active=true,assigned_by=excluded.assigned_by,ended_at=null,updated_at=clock_timestamp()
+  where not trainer_client_assignments.active;
+ end if;
+end; $$;
+revoke all on function public.calendar_audit_set_assignment(text,text,text) from public,anon,authenticated;
+grant execute on function public.calendar_audit_set_assignment(text,text,text) to service_role;
 
 create function public.calendar_audit_write(p_actor_id text,p_actor_role text,p_source text,p_request_id uuid,p_operation text,p_payload jsonb)
 returns jsonb language plpgsql security invoker set search_path='' as $$
@@ -149,12 +176,19 @@ begin
    insert into public.operator_availability(operator_id,day_key,slots,updated_at) values(r->>'operator_id',r->>'day_key',slots,clock_timestamp())
    on conflict(operator_id,day_key) do update set slots=excluded.slots,updated_at=excluded.updated_at;
   end loop;result:='[]';
+ elsif p_operation='assignment' then
+  if p_actor_role not in ('owner','secretary') then raise exception 'Assignment requires direction or secretary';end if;
+  target:=p_payload->>'clientId';k:=nullif(p_payload->>'trainerId','');
+  perform public.calendar_audit_set_assignment(target,k,p_actor_id);
+  update public.clients set pt_assegnato=k,updated_at=clock_timestamp() where id=target and pt_assegnato is distinct from k;
+  result:=jsonb_build_object('success',true);
  elsif p_operation in ('client','operator') then
   if p_operation='operator' and p_actor_role<>'owner' then raise exception 'Operator changes require direction';end if;
   target:=case p_operation when 'operator' then 'operators' else 'clients' end;
   -- Existing client editor fields are stored unchanged, but only operational fields reach the audit.
   for r in select value from jsonb_array_elements(p_payload->'rows') loop
    if nullif(r->>'id','') is null then raise exception 'Client id required';end if;
+   execute format('select to_jsonb(t) from public.%I t where id=$1',target) into oldrow using r->>'id';
    if p_actor_role='pt' then
     select to_jsonb(c) into oldrow from public.clients c where c.id=r->>'id';
     if oldrow->>'pt_assegnato' is distinct from p_actor_id or (r ? 'pt_assegnato' and r->>'pt_assegnato' is distinct from p_actor_id) then raise exception 'Client belongs to another PT';end if;
@@ -166,6 +200,7 @@ begin
    select array_agg(key order by key) into fields from jsonb_object_keys(r) key;
    select string_agg(format('%I',f),','),string_agg(format('%I=excluded.%I',f,f),',') filter(where f<>'id') into cols,updates from unnest(fields) f;
    execute format('insert into public.%I(%s) select %s from jsonb_populate_record(null::public.%I,$1) on conflict(id) do update set %s returning to_jsonb(%I.*)',target,cols,cols,target,updates,target) into result using r;
+   if p_operation='client' and r ? 'pt_assegnato' and oldrow->>'pt_assegnato' is distinct from nullif(r->>'pt_assegnato','') then perform public.calendar_audit_set_assignment(r->>'id',nullif(r->>'pt_assegnato',''),p_actor_id);end if;
    results:=results||jsonb_build_array(result);
   end loop;result:=results;
  else raise exception 'Unsupported audit operation';end if;

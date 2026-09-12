@@ -547,29 +547,7 @@ const SupabaseSync = (() => {
     });
   }
 
-  async function pushLocalSnapshot(snapshot = {}) {
-    const operators = Array.isArray(snapshot.operators) ? snapshot.operators : [];
-    const clients = Array.isArray(snapshot.clients) ? snapshot.clients : [];
-    const appointments = Array.isArray(snapshot.appointments) ? snapshot.appointments : [];
-    const errors = [];
-
-    const collect = label => result => {
-      if (result?.error) errors.push({ label, error: result.error });
-      return result;
-    };
-
-    await Promise.all(operators.map(op => pushOperator(op).then(collect('operator:' + op.id))));
-    await Promise.all(clients.map(client => pushClient(client).then(collect('client:' + client.id))));
-    await Promise.all(appointments.map(appt => pushAppointment(appt).then(collect('appointment:' + appt.id))));
-
-    return {
-      operators: operators.length,
-      clients: clients.length,
-      appointments: appointments.length,
-      errors,
-      success: errors.length === 0,
-    };
-  }
+  async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
   return { pullAll, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

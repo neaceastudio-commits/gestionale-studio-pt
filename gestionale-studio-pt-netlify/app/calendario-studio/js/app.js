@@ -3571,24 +3571,7 @@ const App = {
           <button class="act-btn primary" onclick="State.exportData();UI.showToast('File scaricato','success')">Esporta JSON</button>
         </div>
 
-        <div class="data-action-row">
-          <div class="data-action-info">
-            <div class="data-action-title">⬆ Importa dati</div>
-            <div class="data-action-sub">Carica un file JSON precedentemente esportato</div>
-          </div>
-          <label class="act-btn primary" style="cursor:pointer">
-            Importa JSON
-            <input type="file" accept=".json" style="display:none" onchange="App._importFile(this)">
-          </label>
-        </div>
-
-        <div class="data-action-row" style="border-color:#2563EB;background:rgba(37,99,235,.06)">
-          <div class="data-action-info">
-            <div class="data-action-title">⇧ Porta il locale su Supabase</div>
-            <div class="data-action-sub">Invia a Supabase i dati presenti in questo browser prima di rileggerli dal database</div>
-          </div>
-          <button class="act-btn primary" onclick="App.syncLocalToSupabase({ silent:false, refresh:true })">Sincronizza ora</button>
-        </div>
+        <p>Importazione e sincronizzazione dell’archivio locale disabilitate.</p>
 
         ${hasBackup ? `
         <div class="data-action-row" style="border-color:var(--green);background:var(--green-pale)">
@@ -3625,16 +3608,7 @@ const App = {
     UI.openModal(html);
   },
 
-  async _importFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-    State.importData(file).then(async res => {
-      await App.syncLocalToSupabase({ silent: true, refresh: false });
-      UI.closeModal();
-      Calendar.render();
-      UI.showToast(`Importati e caricati su Supabase: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
-    }).catch(err => UI.showToast('Errore importazione: ' + err.message, 'error'));
-  },
+  async _importFile() { UI.showToast('Importazione locale disabilitata', 'error'); return {error:'Importazione locale disabilitata'}; },
 
   _restoreBackup() {
     if (!confirm('Ripristinare il backup? I dati attuali verranno sovrascritti.')) return;
@@ -3674,32 +3648,7 @@ const App = {
     }
   },
 
-  async syncLocalToSupabase({ silent = true, refresh = false } = {}) {
-    const snapshot = {
-      operators: State.getOperators(),
-      clients: State.getClients(),
-      appointments: State.getAppointments(),
-    };
-    const total = snapshot.operators.length + snapshot.clients.length + snapshot.appointments.length;
-    if (!total) return { operators: 0, clients: 0, appointments: 0, success: true, errors: [] };
-
-    try {
-      const res = await SupabaseSync.pushLocalSnapshot(snapshot);
-      localStorage.setItem('neacea_last_push_to_supabase', new Date().toISOString());
-      if (res.errors?.length) {
-        console.warn('[Supabase] alcune righe locali non sono state caricate:', res.errors);
-        if (!silent) UI.showToast(`${res.errors.length} elementi locali non caricati su Supabase`, 'error');
-      } else if (!silent) {
-        UI.showToast(`Locale caricato su Supabase: ${res.appointments} appuntamenti, ${res.clients} clienti, ${res.operators} staff`, 'success');
-      }
-      if (refresh) await App.refreshFromSupabase({ silent: true });
-      return res;
-    } catch (err) {
-      console.warn('[Supabase] push locale non riuscito:', err);
-      if (!silent) UI.showToast('Caricamento locale su Supabase non riuscito', 'error');
-      return { success: false, errors: [{ label: 'syncLocalToSupabase', error: String(err?.message || err) }] };
-    }
-  },
+  async syncLocalToSupabase() { return {success:false,error:'Sincronizzazione locale disabilitata'}; },
 
   // ── INIT ─────────────────────────────────────────────
   async init() {

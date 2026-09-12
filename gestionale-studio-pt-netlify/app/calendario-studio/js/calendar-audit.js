@@ -27,7 +27,7 @@ window.CalendarAudit = (() => {
     }
     return result;
   }
-  const labels={appointment_created:'Creata seduta',package_appointment_created:'Creata seduta da pacchetto',appointment_moved:'Spostata seduta',operator_changed:'Cambiato PT',service_changed:'Cambiato servizio',marked_done:'Segnata Fatto',done_reverted:'Ripristinata seduta Fatto',appointment_cancelled:'Annullata seduta',marked_noshow:'No-show',appointment_deleted:'Eliminata seduta',appointment_updated:'Aggiornata seduta',status_changed:'Cambiato stato',appointment_noop:'Nessuna modifica',availability_changed:'Disponibilità PT',availability_noop:'Disponibilità invariata',client_package_changed:'Aggiornato pacchetto cliente',operator_profile_changed:'Aggiornato operatore'};
+  const labels={appointment_created:'Creata seduta',package_appointment_created:'Creata seduta da pacchetto',appointment_moved:'Spostata seduta',operator_changed:'Cambiato PT',service_changed:'Cambiato servizio',marked_done:'Segnata Fatto',done_reverted:'Ripristinata seduta Fatto',appointment_cancelled:'Annullata seduta',marked_noshow:'No-show',appointment_deleted:'Eliminata seduta',appointment_updated:'Aggiornata seduta',status_changed:'Cambiato stato',appointment_noop:'Nessuna modifica',availability_changed:'Disponibilità PT',availability_noop:'Disponibilità invariata',client_details_changed:'Aggiornati dati cliente',trainer_assignment_changed:'Assegnazione PT',client_package_changed:'Aggiornato pacchetto cliente',operator_profile_changed:'Aggiornato operatore'};
   function element(tag,text){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e}
   function dateInput(value){const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
   function open(){
@@ -50,7 +50,7 @@ window.CalendarAudit = (() => {
       if(!rows.length&&!append)output.append(element('p','Nessuna attività nel periodo.'));
       for(const row of rows){const names=(row.client_ids||[]).map(id=>{const c=State.getClients().find(c=>c.id===id);return c?`${c.nome} ${c.cognome}`:id}).join(', ');
         const b=row.before_data||{},a=row.after_data||{};const changes=Array.from(new Set([...Object.keys(b),...Object.keys(a)])).filter(k=>JSON.stringify(b[k])!==JSON.stringify(a[k])).map(k=>`${k}: ${JSON.stringify(b[k]??'—')} → ${JSON.stringify(a[k]??'—')}`).join(' · ');
-        const item=element('p',`${new Date(row.created_at).toLocaleString('it-IT')} · ${row.actor_name} · ${labels[row.action]||row.action} · ${names} · ${changes||'Nessuna variazione'} · ${row.source}`);output.append(item);cursor=String(row.id);
+        const item=element('p',`${new Date(row.created_at).toLocaleString('it-IT')} · ${row.actor_name} · ${labels[row.action]||row.action} · ${names} · ${changes||(row.action==='client_details_changed'?'Dettagli non riportati nel registro':'Nessuna variazione')} · ${row.source}`);output.append(item);cursor=String(row.id);
       }more.hidden=rows.length<100;
     }
     for(const [label,days] of [['Oggi',0],['Ultimi 7 giorni',6]]){const b=element('button',label);b.type='button';b.onclick=()=>{const now=new Date();inputs.to.value=dateInput(now);now.setDate(now.getDate()-days);inputs.from.value=dateInput(now);load()};form.append(b)}

@@ -249,11 +249,7 @@
       border-radius: var(--radius-sm);
       background: #fff;
       padding: 9px 10px;
-      cursor: pointer;
-    }
-    .appt-row:hover {
-      border-color: var(--blue-light);
-      background: #fbfdff;
+      cursor: default;
     }
     .appt-time {
       color: var(--text);
@@ -425,6 +421,43 @@
       background: var(--red-pale);
       color: var(--red);
     }
+    .calendar-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+    .agenda-head-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+    }
+    .agenda-readonly {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      border: 1px solid #c8d9e7;
+      border-radius: var(--radius-sm);
+      background: #f7fbfe;
+      padding: 11px 12px;
+    }
+    .agenda-readonly strong {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .agenda-readonly span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text2);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -514,6 +547,318 @@
     .input:focus {
       border-color: var(--blue-light);
       box-shadow: 0 0 0 3px rgba(58, 95, 128, .12);
+    }
+    .compensation-panel {
+      margin-bottom: 18px;
+      border-top: 4px solid var(--gold);
+    }
+    .compensation-intro {
+      margin-bottom: 16px;
+      border: 1px solid #eadcae;
+      border-radius: var(--radius-sm);
+      background: #fffaf0;
+      padding: 14px 16px;
+    }
+    .compensation-intro strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .compensation-intro p {
+      margin: 0;
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+    .honorarium-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .honorarium-control {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--blue-xpale);
+      padding: 14px;
+    }
+    .honorarium-control label,
+    .honorarium-step-title {
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .honorarium-control small {
+      color: var(--text2);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .month-navigator {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) 40px;
+      gap: 7px;
+    }
+    .month-button,
+    .month-select,
+    .honorarium-operator-select {
+      width: 100%;
+      height: 42px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .month-select,
+    .honorarium-operator-select { padding: 0 10px; }
+    .honorarium-current-operator {
+      display: flex;
+      align-items: center;
+      min-height: 42px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .month-button {
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .month-button:hover { border-color: var(--blue-light); color: var(--blue); }
+    .operator-capabilities {
+      display: grid;
+      grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr);
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 18px;
+      border: 1px solid #c8d9e7;
+      border-radius: var(--radius-sm);
+      background: #f7fbfe;
+      padding: 14px 16px;
+    }
+    .operator-capabilities strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+    }
+    .capability-label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    .capability-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .capability-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 27px;
+      border: 1px solid #bfd2e2;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--blue);
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 900;
+    }
+    .capability-chip.role {
+      border-color: #e4cf8a;
+      background: #fff9e8;
+      color: #806118;
+    }
+    .honorarium-step-title {
+      margin: 0 0 9px 2px;
+      color: var(--text);
+      font-size: 11px;
+    }
+    .compensation-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .compensation-metric {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--blue-xpale);
+      padding: 13px 14px;
+    }
+    .compensation-metric span {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .compensation-metric strong {
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .rates-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .rates-table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+    }
+    .rates-table th,
+    .rates-table td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .rates-table tr:last-child td { border-bottom: 0; }
+    .rates-table th {
+      background: var(--blue-xpale);
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    .rates-table td {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .service-name strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .service-name small {
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .rate-input,
+    .rate-select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--text);
+      padding: 0 9px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      outline: none;
+    }
+    .rate-input:focus,
+    .rate-select:focus {
+      border-color: var(--blue-light);
+      box-shadow: 0 0 0 3px rgba(58, 95, 128, .1);
+    }
+    .rate-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .rate-check input { width: 17px; height: 17px; accent-color: var(--green); }
+    .rate-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .rate-status {
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .rate-status.success { color: var(--green); }
+    .rate-status.error { color: var(--red); }
+    .compensation-grids {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .ledger-box {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      overflow: hidden;
+    }
+    .ledger-title {
+      border-bottom: 1px solid var(--border);
+      background: var(--blue-xpale);
+      padding: 11px 13px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .ledger-list { display: grid; }
+    .ledger-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding: 11px 13px;
+    }
+    .ledger-row:last-child { border-bottom: 0; }
+    .ledger-row strong {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .ledger-row small {
+      color: var(--text3);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .ledger-money {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 900;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .ledger-warning {
+      display: block;
+      margin-top: 3px;
+      color: var(--red);
+      font-size: 9px;
+      font-weight: 900;
     }
     .meeting-grid {
       display: grid;
@@ -614,18 +959,21 @@
       .topbar, .hero { align-items: stretch; flex-direction: column; }
       .top-actions { width: 100%; }
       .select-pt { flex: 1; min-width: 0; }
-      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .layout, .admin-grid, .meeting-grid { grid-template-columns: 1fr; }
+      .metrics, .compensation-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout, .admin-grid, .meeting-grid, .compensation-grids { grid-template-columns: 1fr; }
+      .honorarium-controls, .operator-capabilities { grid-template-columns: 1fr; }
       .anamnesis-grid { grid-template-columns: 1fr; }
       .anamnesis-field.wide { grid-column: auto; }
       .main { width: min(100vw - 24px, 760px); margin-top: 24px; }
     }
     @media (max-width: 560px) {
       h1 { font-size: 28px; }
-      .metrics { grid-template-columns: 1fr; }
+      .metrics, .compensation-metrics { grid-template-columns: 1fr; }
       .panel-head { align-items: stretch; flex-direction: column; }
       .search { width: 100%; }
       .row { flex-direction: column; }
+      .rate-actions { align-items: stretch; flex-direction: column; }
+      .agenda-readonly { align-items: stretch; flex-direction: column; }
     }
   </style>
 </head>
@@ -634,7 +982,7 @@
     <div class="brand">Neacea <span>Resoconto Studio PT</span></div>
     <div class="top-actions">
       <select id="operatorSelect" class="select-pt" onchange="render()">
-        <option value="">Tutti i PT</option>
+        <option value="">Tutti gli operatori</option>
       </select>
       <select id="paymentSelect" class="select-pt" onchange="render()">
         <option value="">Tutti i pagamenti</option>
@@ -679,6 +1027,75 @@
       </div>
     </section>
 
+    <section class="panel compensation-panel">
+      <div class="panel-head">
+        <div class="panel-title">Onorari operatori</div>
+        <div class="tag gold">Direzione</div>
+      </div>
+      <div class="panel-body">
+        <div class="compensation-intro">
+          <strong>Quanto ha maturato ogni persona nel mese?</strong>
+          <p>Scegli mese e operatore. Vedrai soltanto i servizi che quella persona può svolgere secondo i ruoli del Calendario. Ogni appuntamento segnato come “Fatto” applica l’onorario impostato qui.</p>
+        </div>
+
+        <div class="honorarium-controls">
+          <div class="honorarium-control">
+            <label for="compensationMonth">1 · Scegli il mese</label>
+            <div class="month-navigator">
+              <button class="month-button" type="button" onclick="changeCompensationMonth(-1)" aria-label="Mese precedente">‹</button>
+              <select id="compensationMonth" class="month-select" onchange="renderCompensation()"></select>
+              <button class="month-button" type="button" onclick="changeCompensationMonth(1)" aria-label="Mese successivo">›</button>
+            </div>
+            <small>Il riepilogo considera gli appuntamenti registrati nel Calendario in questo mese.</small>
+          </div>
+          <div class="honorarium-control">
+            <label>2 · Operatore analizzato</label>
+            <div id="honorariumCurrentOperator" class="honorarium-current-operator">Seleziona un operatore dal menu in alto</div>
+            <small>È sempre lo stesso operatore scelto nel filtro generale: i due dati non possono più divergere.</small>
+          </div>
+        </div>
+
+        <div id="operatorCapabilities" class="operator-capabilities"></div>
+
+        <div id="compensationMetrics" class="compensation-metrics"></div>
+
+        <div class="honorarium-step-title">3 · Definisci l’onorario per ogni servizio consentito</div>
+        <div class="rates-wrap">
+          <table class="rates-table">
+            <thead>
+              <tr>
+                <th>Servizio dal Calendario</th>
+                <th>Criterio</th>
+                <th>Onorario</th>
+                <th>No-show pagato</th>
+                <th>Conteggia</th>
+              </tr>
+            </thead>
+            <tbody id="serviceRatesRows"></tbody>
+          </table>
+        </div>
+
+        <div class="rate-actions">
+          <div id="serviceRatesStatus" class="rate-status">Gli onorari sono separati per persona e salvati su questo dispositivo.</div>
+          <div class="row">
+            <button class="small-btn" type="button" onclick="resetServiceRates()">Azzera questo operatore</button>
+            <button class="small-btn primary" type="button" onclick="saveServiceRates()">Salva onorari</button>
+          </div>
+        </div>
+
+        <div class="compensation-grids">
+          <div class="ledger-box">
+            <div class="ledger-title" id="serviceLedgerTitle">Dettaglio dell’operatore selezionato</div>
+            <div id="serviceCompensationList" class="ledger-list"></div>
+          </div>
+          <div class="ledger-box">
+            <div class="ledger-title">Riepilogo del mese · tutti gli operatori</div>
+            <div id="operatorCompensationList" class="ledger-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="layout">
       <div class="panel">
         <div class="panel-head">
@@ -693,9 +1110,19 @@
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Agenda studio</div>
-          <div class="tag" id="todayLabel"></div>
+          <div class="agenda-head-actions">
+            <div class="tag" id="todayLabel"></div>
+            <div class="tag green">Solo lettura</div>
+          </div>
         </div>
         <div class="panel-body">
+          <div class="agenda-readonly">
+            <div>
+              <strong>Gli appuntamenti si modificano solo dal Calendario</strong>
+              <span>Questo cruscotto legge l’agenda per analisi e onorari, ma non scrive nella tabella appuntamenti.</span>
+            </div>
+            <a class="small-btn primary calendar-link" href="https://new-calendar-neacea.netlify.app/" target="_blank" rel="noopener">Apri Calendario</a>
+          </div>
           <div id="appointmentsList" class="appt-list"><div class="empty"><span class="loader"></span></div></div>
         </div>
       </div>
@@ -777,16 +1204,20 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
+  <script src="compensation-engine.js"></script>
+  <script src="studio-audit-access.js"></script>
   <script>
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
     const SERVICE_LABELS = {
       pt11: 'PT 1:1',
       pt12: 'PT 1:2',
-      circuit: 'Circuit',
-      nutrizione: 'Nutrizione',
-      check: 'Check',
-      visbody: 'Valutazione',
+      circuit: 'Circuit Training',
+      ct: 'Circuit Training',
+      coaching: 'Coaching',
+      nutrizione: 'Nutrizione · Prima visita',
+      check: 'Nutrizione · Check',
+      visbody: 'Visbody',
       baiobit: 'Baiobit',
       blocco: 'Blocco'
     };
@@ -801,9 +1232,11 @@
       clients: [],
       appointments: [],
       acquisitions: [],
+      serviceRates: [],
       operatorId: '',
       payment: ''
     };
+    const SERVICE_RATES_STORAGE_KEY = 'neacea-operator-honoraria-v2';
 
     function endpoint(table, query = '') {
       return SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/' + table + query;
@@ -820,19 +1253,7 @@
       return res.json();
     }
     async function supabaseWrite(table, query, body, method = 'PATCH') {
-      const res = await fetch(endpoint(table, query), {
-        method,
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: 'Bearer ' + SUPABASE_KEY,
-          'Content-Type': 'application/json',
-          Prefer: 'return=representation'
-        },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const text = await res.text();
-      return text ? JSON.parse(text) : null;
+      return StudioAudit.write(table, query, body, method);
     }
     function escapeAttr(value) {
       return String(value ?? '').replace(/"/g, '&quot;');
@@ -898,6 +1319,277 @@
     }
     function money(value) {
       return Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    }
+    function moneyPrecise(value) {
+      return Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    function safeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+    function currentMonthValue() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function loadServiceRates() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SERVICE_RATES_STORAGE_KEY) || 'null');
+        return NeaceaCompensation.normalizeRates(saved);
+      } catch (error) {
+        console.warn('Onorari non leggibili, uso una configurazione vuota.', error);
+        return [];
+      }
+    }
+    function monthOffset(value, offset) {
+      const [year, month] = String(value || currentMonthValue()).split('-').map(Number);
+      const date = new Date(year, (month || 1) - 1 + offset, 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function monthLabel(value) {
+      const [year, month] = String(value || currentMonthValue()).split('-').map(Number);
+      return new Date(year, (month || 1) - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    }
+    function populateCompensationMonths() {
+      const select = document.getElementById('compensationMonth');
+      if (!select) return;
+      const selected = select.value || currentMonthValue();
+      const months = new Set([selected, currentMonthValue()]);
+      for (let offset = -24; offset <= 6; offset += 1) months.add(monthOffset(currentMonthValue(), offset));
+      state.appointments.forEach(appointment => {
+        const value = String(appointment?.date || '').slice(0, 7);
+        if (/^\d{4}-\d{2}$/.test(value)) months.add(value);
+      });
+      select.innerHTML = [...months]
+        .sort((a, b) => b.localeCompare(a))
+        .map(value => `<option value="${value}">${safeHtml(monthLabel(value))}</option>`)
+        .join('');
+      select.value = selected;
+    }
+    function changeCompensationMonth(direction) {
+      const select = document.getElementById('compensationMonth');
+      if (!select) return;
+      const next = monthOffset(select.value || currentMonthValue(), direction);
+      if (![...select.options].some(option => option.value === next)) {
+        const option = new Option(monthLabel(next), next);
+        select.add(option);
+      }
+      select.value = next;
+      renderCompensation();
+    }
+    function operatorRolesForDisplay(operator) {
+      const raw = Array.isArray(operator?.roles) ? operator.roles : String(operator?.roles || '').split(',');
+      return raw.map(role => String(role || '').trim()).filter(Boolean);
+    }
+    function selectedHonorariumOperator() {
+      const selectedId = document.getElementById('operatorSelect')?.value || '';
+      return state.operators.find(operator => String(operator.id) === String(selectedId)) || null;
+    }
+    function renderHonorariumCurrentOperator() {
+      const target = document.getElementById('honorariumCurrentOperator');
+      if (!target) return;
+      const operator = selectedHonorariumOperator();
+      target.textContent = operator ? fullName(operator) : 'Seleziona un operatore dal menu in alto';
+      setServiceRatesStatus(
+        operator ? `Stai configurando gli onorari di ${fullName(operator)}.` : 'Seleziona un operatore dal menu generale in alto.'
+      );
+    }
+    function ratesForOperator(operator) {
+      if (!operator) return [];
+      return NeaceaCompensation.defaultRates(operator).map(defaultRate => {
+        const saved = state.serviceRates.find(rate =>
+          String(rate.operatorId) === String(operator.id) && rate.serviceId === defaultRate.serviceId
+        );
+        return NeaceaCompensation.normalizeRates([{ ...defaultRate, ...(saved || {}), operatorId: String(operator.id) }])[0];
+      });
+    }
+    function mergeOperatorRates(rates, operatorId) {
+      const clean = NeaceaCompensation.normalizeRates(rates);
+      state.serviceRates = NeaceaCompensation.normalizeRates([
+        ...state.serviceRates.filter(rate => String(rate.operatorId) !== String(operatorId)),
+        ...clean
+      ]);
+    }
+    function renderOperatorCapabilities() {
+      const target = document.getElementById('operatorCapabilities');
+      if (!target) return;
+      const operator = selectedHonorariumOperator();
+      if (!operator) {
+        target.innerHTML = '<div><strong>Vista complessiva dello studio</strong><span class="muted">Per impostare o controllare un onorario individuale, scegli la persona dal menu generale in alto.</span></div>';
+        return;
+      }
+      const roles = operatorRolesForDisplay(operator);
+      const services = NeaceaCompensation.servicesForOperator(operator);
+      target.innerHTML = `
+        <div>
+          <span class="capability-label">Operatore selezionato</span>
+          <strong>${safeHtml(fullName(operator))}</strong>
+          <div class="capability-chips">${roles.map(role => `<span class="capability-chip role">${safeHtml(role)}</span>`).join('')}</div>
+        </div>
+        <div>
+          <span class="capability-label">Può svolgere dal Calendario</span>
+          <div class="capability-chips">${services.length ? services.map(service => `<span class="capability-chip">${safeHtml(service.label)}</span>`).join('') : '<span class="muted">Nessun servizio conteggiabile assegnato a questi ruoli.</span>'}</div>
+        </div>
+      `;
+    }
+    function setServiceRatesStatus(message, type = '') {
+      const target = document.getElementById('serviceRatesStatus');
+      if (!target) return;
+      target.textContent = message;
+      target.className = `rate-status ${type}`.trim();
+    }
+    function renderServiceRateRows() {
+      const body = document.getElementById('serviceRatesRows');
+      if (!body) return;
+      const operator = selectedHonorariumOperator();
+      const rates = ratesForOperator(operator);
+      if (!operator || !rates.length) {
+        body.innerHTML = `<tr><td colspan="5"><div class="empty">${operator ? 'Nessun servizio configurabile per questo operatore.' : 'Seleziona un operatore dal menu generale in alto per impostare gli onorari.'}</div></td></tr>`;
+        return;
+      }
+      body.innerHTML = rates.map(rate => `
+        <tr data-service-rate="${escapeAttr(rate.serviceId)}">
+          <td class="service-name">
+            <strong>${safeHtml(rate.label)}</strong>
+            <small>Abilitato dai ruoli del Calendario</small>
+          </td>
+          <td>
+            <select class="rate-select" data-rate-field="basis" onchange="previewServiceRates()">
+              <option value="session" ${rate.basis === 'session' ? 'selected' : ''}>Per prestazione</option>
+              <option value="hour" ${rate.basis === 'hour' ? 'selected' : ''}>Per ora</option>
+            </select>
+          </td>
+          <td><input class="rate-input" data-rate-field="amount" type="number" min="0" step="0.01" value="${escapeAttr(rate.amount)}" aria-label="Onorario ${escapeAttr(rate.label)}" oninput="previewServiceRates()"></td>
+          <td><label class="rate-check"><input data-rate-field="payNoShow" type="checkbox" ${rate.payNoShow ? 'checked' : ''} onchange="previewServiceRates()"> Includi</label></td>
+          <td><label class="rate-check"><input data-rate-field="active" type="checkbox" ${rate.active ? 'checked' : ''} onchange="previewServiceRates()"> Sì</label></td>
+        </tr>
+      `).join('');
+    }
+    function collectServiceRates() {
+      const operator = selectedHonorariumOperator();
+      if (!operator) return [];
+      const currentRates = ratesForOperator(operator);
+      return [...document.querySelectorAll('[data-service-rate]')].map(row => {
+        const serviceId = row.dataset.serviceRate;
+        const current = currentRates.find(rate => rate.serviceId === serviceId) || {};
+        return {
+          operatorId: String(operator.id),
+          serviceId,
+          label: current.label || serviceId,
+          basis: row.querySelector('[data-rate-field="basis"]')?.value || 'session',
+          amount: Math.max(0, Number(row.querySelector('[data-rate-field="amount"]')?.value || 0)),
+          studioValue: Math.max(0, Number(current.studioValue || 0)),
+          payNoShow: Boolean(row.querySelector('[data-rate-field="payNoShow"]')?.checked),
+          active: Boolean(row.querySelector('[data-rate-field="active"]')?.checked),
+          configured: true
+        };
+      });
+    }
+    function validateServiceRates(rates) {
+      rates.forEach(rate => {
+        if (!Number.isFinite(rate.amount) || !Number.isFinite(rate.studioValue)) throw new Error(`Valore non valido per ${rate.label}`);
+        if (rate.basis === 'percent' && rate.amount > 100) throw new Error(`La percentuale di ${rate.label} non può superare il 100%`);
+      });
+    }
+    function previewServiceRates() {
+      try {
+        const operator = selectedHonorariumOperator();
+        const rates = collectServiceRates();
+        validateServiceRates(rates);
+        mergeOperatorRates(rates, operator.id);
+        setServiceRatesStatus(`Modifiche di ${fullName(operator)} non ancora salvate.`, '');
+        renderCompensation();
+      } catch (error) {
+        setServiceRatesStatus(error.message || String(error), 'error');
+      }
+    }
+    function saveServiceRates() {
+      try {
+        const operator = selectedHonorariumOperator();
+        if (!operator) throw new Error('Seleziona un operatore.');
+        const rates = collectServiceRates();
+        validateServiceRates(rates);
+        mergeOperatorRates(rates, operator.id);
+        localStorage.setItem(SERVICE_RATES_STORAGE_KEY, JSON.stringify(state.serviceRates));
+        setServiceRatesStatus(`Onorari di ${fullName(operator)} salvati · ${new Date().toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}`, 'success');
+        renderCompensation();
+      } catch (error) {
+        setServiceRatesStatus(error.message || String(error), 'error');
+      }
+    }
+    function resetServiceRates() {
+      const operator = selectedHonorariumOperator();
+      if (!operator || !window.confirm(`Azzerare gli onorari di ${fullName(operator)}?`)) return;
+      mergeOperatorRates(NeaceaCompensation.defaultRates(operator), operator.id);
+      renderServiceRateRows();
+      renderCompensation();
+      setServiceRatesStatus(`Onorari di ${fullName(operator)} azzerati. Salva per confermare.`, 'success');
+    }
+    function renderLedgerRows(rows, type) {
+      if (!rows.length) return '<div class="empty">Nessuna prestazione conteggiabile nel mese selezionato.</div>';
+      return rows.map(row => `
+        <div class="ledger-row">
+          <div>
+            <strong>${safeHtml(type === 'operator' ? row.operatorName : row.serviceLabel)}</strong>
+            <small>${row.sessions} prestazioni · ${Number(row.hours || 0).toLocaleString('it-IT', { maximumFractionDigits: 1 })} ore conteggiate</small>
+            ${row.unconfigured ? `<span class="ledger-warning">${row.unconfigured} prestazioni senza onorario impostato</span>` : ''}
+          </div>
+          <div class="ledger-money">${moneyPrecise(row.compensation)}</div>
+        </div>
+      `).join('');
+    }
+    function renderCompensation() {
+      if (!window.NeaceaCompensation) return;
+      const monthInput = document.getElementById('compensationMonth');
+      if (!monthInput) return;
+      if (!monthInput.value) monthInput.value = currentMonthValue();
+      const operator = selectedHonorariumOperator();
+      const metrics = document.getElementById('compensationMetrics');
+      const studioLedger = NeaceaCompensation.buildMonthlyLedger(
+        state.appointments,
+        state.operators,
+        state.serviceRates,
+        monthInput.value
+      );
+      if (!operator) {
+        metrics.innerHTML = `
+          <div class="compensation-metric"><span>Prestazioni studio</span><strong>${studioLedger.totals.performed}</strong></div>
+          <div class="compensation-metric"><span>Ore complessive</span><strong>${Number(studioLedger.totals.workedMinutes / 60).toLocaleString('it-IT', { maximumFractionDigits: 1 })}</strong></div>
+          <div class="compensation-metric"><span>Onorari maturati</span><strong>${moneyPrecise(studioLedger.totals.compensation)}</strong></div>
+          <div class="compensation-metric"><span>Senza onorario</span><strong>${studioLedger.totals.unconfigured}</strong></div>
+        `;
+        document.getElementById('serviceLedgerTitle').textContent = `Dettaglio operatore · ${monthLabel(monthInput.value)}`;
+        document.getElementById('serviceCompensationList').innerHTML = '<div class="empty">Seleziona un operatore dal menu generale in alto.</div>';
+        document.getElementById('operatorCompensationList').innerHTML = renderLedgerRows(studioLedger.operators, 'operator');
+        return;
+      }
+      const operatorLedger = NeaceaCompensation.buildMonthlyLedger(
+        state.appointments,
+        state.operators,
+        state.serviceRates,
+        monthInput.value,
+        operator.id
+      );
+      metrics.innerHTML = `
+        <div class="compensation-metric"><span>Prestazioni fatte</span><strong>${operatorLedger.totals.performed}</strong></div>
+        <div class="compensation-metric"><span>Ore svolte</span><strong>${Number(operatorLedger.totals.workedMinutes / 60).toLocaleString('it-IT', { maximumFractionDigits: 1 })}</strong></div>
+        <div class="compensation-metric"><span>Onorario maturato</span><strong>${moneyPrecise(operatorLedger.totals.compensation)}</strong></div>
+        <div class="compensation-metric"><span>Senza onorario</span><strong>${operatorLedger.totals.unconfigured}</strong></div>
+      `;
+      document.getElementById('serviceLedgerTitle').textContent = `Dettaglio di ${fullName(operator)} · ${monthLabel(monthInput.value)}`;
+      document.getElementById('serviceCompensationList').innerHTML = renderLedgerRows(operatorLedger.services, 'service');
+      document.getElementById('operatorCompensationList').innerHTML = renderLedgerRows(studioLedger.operators, 'operator');
+    }
+    function initCompensation() {
+      state.serviceRates = loadServiceRates();
+      populateCompensationMonths();
+      renderHonorariumCurrentOperator();
+      renderOperatorCapabilities();
+      renderServiceRateRows();
+      renderCompensation();
     }
     function paymentStatus(client) {
       return client.stato_pagamento || 'Da pagare';
@@ -999,11 +1691,15 @@
         .map(op => `<option value="${op.id}">${fullName(op)}</option>`)
         .join('');
       const current = select.value;
-      select.innerHTML = `<option value="">Tutti i PT</option>${options}`;
+      select.innerHTML = `<option value="">Tutti gli operatori</option>${options}`;
       if ([...select.options].some(opt => opt.value === current)) select.value = current;
     }
     function render() {
       renderOperatorSelect();
+      populateCompensationMonths();
+      renderHonorariumCurrentOperator();
+      renderOperatorCapabilities();
+      renderServiceRateRows();
       const opId = document.getElementById('operatorSelect')?.value || '';
       const op = state.operators.find(item => item.id === opId) || null;
       document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
@@ -1030,6 +1726,7 @@
       renderAlerts(clients, appts);
       renderAnamnesis(clients);
       renderMeetingStats(clients, filteredAllAppointments());
+      renderCompensation();
     }
     function renderClients(clients) {
       const list = document.getElementById('clientsList');
@@ -1076,7 +1773,7 @@
         const statusClass = status === 'fatto' ? 'green' : status === 'noshow' ? 'gold' : '';
         const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
         return `
-          <article class="appt-row" onclick="openAppointment('${appt.id}')">
+          <article class="appt-row">
             <div class="appt-time">${String(appt.start_time || '').slice(0, 5)}</div>
             <div class="appt-main">
               <div class="appt-title">${fmtDate(appt.date)} · ${(appt.client_ids || []).map(clientFullName).join(', ') || 'Cliente non assegnato'}</div>
@@ -1208,34 +1905,6 @@
         </div>
       `);
     }
-    function openAppointment(apptId) {
-      const appt = state.appointments.find(a => a.id === apptId);
-      if (!appt) return;
-      const service = SERVICE_LABELS[appt.service_id] || appt.service_id || 'Servizio';
-      const statusOptions = Object.entries(STATUS_LABELS).map(([key, label]) => `<option value="${key}" ${appt.status === key ? 'selected' : ''}>${label}</option>`).join('');
-      modal(`
-        <div class="modal-head">
-          <div>
-            <div class="modal-title">${service}</div>
-            <div class="muted">${(appt.client_ids || []).map(clientFullName).join(', ') || 'Cliente non assegnato'} · ${operatorName(appt.operator_id)}</div>
-          </div>
-          <button class="close-btn" onclick="closeModal()">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="field"><label>Data</label><input id="appt-date-edit" class="input" type="date" value="${appt.date || ''}"></div>
-            <div class="field"><label>Ora</label><input id="appt-time-edit" class="input" type="time" value="${String(appt.start_time || '').slice(0, 5)}"></div>
-            <div class="field"><label>Stato</label><select id="appt-status-edit" class="input">${statusOptions}</select></div>
-            <div class="field"><label>PT</label><select id="appt-operator-edit" class="input">${operatorOptions(appt.operator_id || '')}</select></div>
-          </div>
-          <div class="field"><label>Note</label><input id="appt-notes-edit" class="input" value="${escapeAttr(appt.notes || '')}"></div>
-        </div>
-        <div class="modal-foot">
-          <button class="small-btn" onclick="closeModal()">Annulla</button>
-          <button class="small-btn primary" onclick="saveAppointmentAdmin('${appt.id}')">Salva appuntamento</button>
-        </div>
-      `);
-    }
     async function saveClientAdmin(clientId) {
       const body = {
         stato_pagamento: document.getElementById('edit-pay-status')?.value || 'Da pagare',
@@ -1265,19 +1934,6 @@
         importo: amount,
         updated_at: new Date().toISOString()
       });
-      closeModal();
-      await loadData();
-    }
-    async function saveAppointmentAdmin(apptId) {
-      const body = {
-        date: document.getElementById('appt-date-edit')?.value,
-        start_time: document.getElementById('appt-time-edit')?.value,
-        status: document.getElementById('appt-status-edit')?.value || 'prenotato',
-        operator_id: document.getElementById('appt-operator-edit')?.value || null,
-        notes: document.getElementById('appt-notes-edit')?.value || '',
-        updated_at: new Date().toISOString()
-      };
-      await supabaseWrite('appointments', '?id=eq.' + encodeURIComponent(apptId), body);
       closeModal();
       await loadData();
     }
@@ -1458,6 +2114,7 @@
         document.getElementById('appointmentsList').innerHTML = '<div class="empty">Agenda non disponibile.</div>';
       }
     }
+    initCompensation();
     loadData();
   </script>
 </body>

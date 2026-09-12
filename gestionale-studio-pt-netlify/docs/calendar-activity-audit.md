@@ -16,7 +16,7 @@ Le operazioni PT sono limitate agli appuntamenti assegnati, alle proprie disponi
 
 RLS attiva, privilegi diretti rimossi e trigger che rifiuta UPDATE/DELETE/TRUNCATE sul registro. L'inserimento avviene solo dai trigger; la lettura è una RPC service-only con verifica del ruolo Direzione. Filtri server per periodo, attore, cliente, azione, origine e cursore; pagine da 100 righe.
 
-I trigger su appointments, operator_availability, clients e operators richiedono il contesto della RPC autenticata. Revoca delle scritture pubbliche e delle vecchie RPC anonime: un client vecchio viene bloccato, non continua a scrivere senza audit. Anche i ruoli operatore non sono più modificabili con la chiave pubblica.
+I trigger su appointments, operator_availability, clients, operators e trainer_client_assignments richiedono il contesto della RPC autenticata. Revoca delle scritture pubbliche e delle vecchie RPC anonime: un client vecchio viene bloccato, non continua a scrivere senza audit. Anche i ruoli operatore non sono più modificabili con la chiave pubblica.
 
 ## Operazioni coperte e atomicità
 
@@ -37,11 +37,11 @@ Whitelist operativa: ID, data/ora/durata/buffer, servizio, PT, partecipanti, sta
 ## Vie laterali e limiti espliciti
 
 1. **Vecchi REST/RPC su appuntamenti e disponibilità:** bloccati dalla migration, anche usando service_role senza contesto. Non sono un bypass silenzioso.
-2. **Altre pagine/Functions del Portale non aggiornate in questo branch:** eventuali scritture operative dirette su clients/operators vengono bloccate. Prima del rilascio coordinato serve censire e adattare quegli utilizzatori: non applicare la migration isolatamente.
-3. **Dati cliente non operativi** (anagrafica, clinica, contabilità/notes senza cambi ai campi operativi): non vengono registrati in questo registro. Aggiornamenti server privilegiati di quei soli campi possono ancora avvenire senza audit calendario; richiedono un registro distinto se desiderato.
+2. **Scrittori production:** Calendario, Acquisizione, Cruscotto e Centrale usano il gateway. Il Portale trasporta la sessione anche per Direzione. Le varianti legacy non pubblicate restano bloccate: vedere il censimento completo in `calendar-audit-production-census.md`. Non applicare la migration isolatamente ai vecchi deploy.
+3. **Dati cliente non operativi:** ogni modifica effettiva richiede contesto verificato e genera `client_details_changed` quando la whitelist operativa resta identica. Il registro identifica attore/cliente/azione, ma non conserva valori economici, clinici o note libere.
 4. **Assegnazioni ruoli attraverso strumenti amministrativi/server privilegiati:** l'accesso pubblico è revocato, ma questi cambi non costituiscono ancora un registro sicurezza completo.
 5. **Superuser/owner DB o credenziale service_role compromessa:** restano autorità fidate. Un amministratore può disabilitare trigger o passare una diversa identità al gateway; questo registro non è una prova antimanomissione contro l'amministratore del database.
-6. **localStorage/import JSON e modifiche UI non confermate:** non sono transazioni del database e non generano log. Gli errori remoti vengono segnalati e viene tentata la rilettura; offline lo stato locale non va interpretato come salvataggio remoto.
+6. **Import JSON e sincronizzazione locale massiva:** disabilitati sia nella UI sia nelle funzioni richiamabili. **Modifiche UI non confermate:** non sono transazioni del database e non generano log. Gli errori remoti vengono segnalati e viene tentata la rilettura; offline lo stato locale non va interpretato come salvataggio remoto.
 7. **Google Sheets/Apps Script:** integrazione disabilitata in CONFIG, non strumentata da questo audit. Riattivarla aprirebbe un archivio parallelo non coperto.
 8. **source è l'endpoint server attraversato**, non una prova crittografica della pagina aperta nel browser. Chi possiede una sessione valida può chiamare l'endpoint autorizzato, ma non falsificare actor name/email.
 9. **Storico precedente alla migration:** non ricostruibile retroattivamente. Nessuna attribuzione inventata della vecchia riscrittura delle disponibilità.
@@ -50,10 +50,16 @@ Whitelist operativa: ID, data/ora/durata/buffer, servizio, PT, partecipanti, sta
 
 Test locali con fetch intercettato e PostgreSQL temporaneo: firma/ruoli, falsificazione attore, atomici e rollback, pacchetti, disponibilità/no-op, privilegi, filtri, UI Direzione e regressioni. Nessun test scrive nel Supabase reale.
 
-Il rollout richiede autorizzazione separata: allineare le Functions con chiave server e segreto sessione, coordinare Portale/Calendario/Acquisizione, adattare eventuali scrittori legacy, applicare solo dopo il controllo dei prerequisiti. `CALENDAR_SYSTEM_AUDIT_SECRET` serve solo se si abilita l'endpoint delle automazioni. Nessun deploy o merge incluso in questo lavoro.
+Il rollout richiede autorizzazione separata: allineare le Functions con chiave server e segreto sessione, coordinare Portale/Calendario/Acquisizione, pubblicare anche i due root Studio aggiornati, applicare solo dopo il controllo dei prerequisiti. `CALENDAR_SYSTEM_AUDIT_SECRET` serve solo se si abilita l'endpoint delle automazioni. Nessun deploy o merge incluso in questo lavoro.
 
 ## Integrazione fix disponibilità
 
 Integrato integralmente il comportamento del commit `48a16e379cc3283515b0076586d599acd28ed0bc`: avvio solo GET, remoto autorevole anche vuoto, cache offline solo UI, Salva senza modifiche senza POST e confronto remoto normalizzato delle sole righe editate. Il trasporto delle scritture resta il gateway autenticato; se manca, la disponibilità non viene scritta direttamente via REST. SQL ricontrolla le differenze nella transazione audit: un no-op manuale non crea log, quello di sistema è identificato, entrambi lasciano invariati i timestamp.
 
 La suite availability usa il codice reale del gateway con trasporto simulato. I test PostgreSQL verificano attore, audit della riga modificata e conservazione completa delle righe/timestamp per i no-op manuali e di sistema.
+
+## Chiusura blocker production
+
+La whitelist clienti comprende anche `package_frequency`, `giorni_settimana`, `tipo_servizio`, `tipo_abbonamento`, `stato_abbonamento`. Le assegnazioni passano da `calendar_audit_write` (`assignment` oppure modifica cliente `pt_assegnato`) e dalla helper service-only `calendar_audit_set_assignment`: relazione, cliente e audit condividono transazione e lock. Assegnazioni identiche non aggiornano timestamp né log. Nessun nuovo permesso per soli Nutrizione/Valutazioni.
+
+Cruscotto e Centrale usano `studio-audit-access.js` e il gateway centrale `studio-calendar-activity`, riservato a Direzione verificata. Accesso via sessione oppure email/codice già emesso dal Portale PT. Nessun fallback REST; nessuna nuova chiave nei due siti statici. Le pagine sono riallineate al contenuto production censito (compresa la UI compensi); il relativo motore JS è incluso in entrambi i root. `saveClientAdmin`, `savePayment`, `quickPay` inviano esclusivamente aggiornamenti cliente al gateway.
