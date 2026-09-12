@@ -9,6 +9,10 @@ const SupabaseSync = (() => {
   }
 
   async function request(table, { method = 'GET', query = '', body = null, headers = {} } = {}) {
+    if (method !== 'GET' && typeof window !== 'undefined' && window.CalendarAudit && ['appointments','clients','operators','operator_availability','rpc/calendar_save_appointment'].includes(table)) {
+      return window.CalendarAudit.write(table, { method, query, body });
+    }
+    if (method !== 'GET' && table === 'operator_availability') return {error:'Gateway audit non disponibile: disponibilità non salvata'};
     const endpoint = url(table, query);
     const r = await fetch(url(table, query), {
       method,
@@ -516,13 +520,20 @@ const SupabaseSync = (() => {
   }
 
   async function pushOperatorAvailability(data) {
+    // Re-read before an explicit save. If comparison fails, do not write blindly.
+    const remote = await pullOperatorAvailability();
+    if (remote?.error) return remote;
+    const normalize = slots => [...new Set((Array.isArray(slots) ? slots : [])
+      .map(slot => String(slot).trim()).filter(Boolean))].sort();
     const rows = [];
     Object.entries(data || {}).forEach(([operatorId, days]) => {
       Object.entries(days || {}).forEach(([dayKey, value]) => {
+        const slots = normalize(value?.slots);
+        if (JSON.stringify(slots) === JSON.stringify(normalize(remote?.[operatorId]?.[dayKey]?.slots))) return;
         rows.push({
           operator_id: operatorId,
           day_key: dayKey,
-          slots: Array.isArray(value?.slots) ? value.slots : [],
+          slots,
           updated_at: new Date().toISOString(),
         });
       });
@@ -536,29 +547,7 @@ const SupabaseSync = (() => {
     });
   }
 
-  async function pushLocalSnapshot(snapshot = {}) {
-    const operators = Array.isArray(snapshot.operators) ? snapshot.operators : [];
-    const clients = Array.isArray(snapshot.clients) ? snapshot.clients : [];
-    const appointments = Array.isArray(snapshot.appointments) ? snapshot.appointments : [];
-    const errors = [];
-
-    const collect = label => result => {
-      if (result?.error) errors.push({ label, error: result.error });
-      return result;
-    };
-
-    await Promise.all(operators.map(op => pushOperator(op).then(collect('operator:' + op.id))));
-    await Promise.all(clients.map(client => pushClient(client).then(collect('client:' + client.id))));
-    await Promise.all(appointments.map(appt => pushAppointment(appt).then(collect('appointment:' + appt.id))));
-
-    return {
-      operators: operators.length,
-      clients: clients.length,
-      appointments: appointments.length,
-      errors,
-      success: errors.length === 0,
-    };
-  }
+  async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
   return { pullAll, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

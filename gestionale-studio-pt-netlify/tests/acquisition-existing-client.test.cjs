@@ -13,12 +13,25 @@ const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].at(-1)[1]
 let fetchHandler = async () => response(500, 'fetch non configurato');
 const context = vm.createContext({
   URL,
+  URLSearchParams,
   console,
   setTimeout,
   clearTimeout,
-  fetch: (...args) => fetchHandler(...args),
+  fetch: async (url, options = {}) => {
+    if (String(url).includes('/.netlify/functions/acquisition-calendar-activity')) {
+      const input=JSON.parse(options.body);
+      assert.equal(input.accessToken,'SIM_VERIFIED');assert.equal(input.operation,'client');
+      const row=input.payload.rows[0], method=input.payload.method;
+      // Model the authenticated gateway while retaining existing client-field regression checks.
+      const result=await fetchHandler('https://simulation.test/rest/v1/clients?'+(method==='PATCH'?'id=eq.'+row.id:'on_conflict=id'),{method,body:JSON.stringify(row)});
+      const text=await result.text();let value=null;try{value=text?JSON.parse(text):null}catch{value=text}
+      return {json:async()=>result.ok?value:{error:typeof value==='object'?value.message:value}};
+    }
+    return fetchHandler(url,options);
+  },
 });
 vm.runInContext(script, context);
+vm.runInContext("accessState.token='SIM_VERIFIED'",context);
 
 function evaluate(source) {
   return vm.runInContext(source, context);

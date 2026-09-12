@@ -664,6 +664,7 @@ async function verifyAcquisitionAccess(){
   const ownerMode=requestedMode==='owner'&&result.accessLevel==='owner';
   accessState={
     authorized:true,
+    token,
     mode:ownerMode?'owner':'pt',
     operatorId:String(result.operatorId||''),
     email:String(result.email||'').toLowerCase(),
@@ -689,6 +690,12 @@ function showAccessError(error){
 
 function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
 async function sb(table,{method='GET',query='',body=null,headers={}}={}){
+  if(table==='clients'&&method!=='GET'){
+    const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');
+    const rows=(Array.isArray(body)?body:[body]).map(row=>({...row,id:row?.id||id}));
+    const result=await fetch('/.netlify/functions/acquisition-calendar-activity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:accessState.token,operation:'client',payload:{rows,method}})});
+    return result.json();
+  }
   const r=await fetch(sbUrl(table,query),{method,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',...headers},body:body?JSON.stringify(body):undefined});
   if(!r.ok)return{error:await r.text()};if(r.status===204)return null;const text=await r.text();return text?JSON.parse(text):null;
 }

@@ -4395,6 +4395,8 @@
       }
       const calendarUrl = new URL("https://new-calendar-neacea.netlify.app/");
       calendarUrl.searchParams.set("view", "week");
+      if (!appState.accessToken) { showToast("Rientra con il codice per una sessione calendario verificata"); return; }
+      calendarUrl.searchParams.set("access", appState.accessToken);
       if (isAdministrator(appState.currentPt)) {
         calendarUrl.searchParams.set("mode", "admin");
       } else {
