@@ -1,5 +1,12 @@
 # PR #8 — verifiche pre-rilascio del 12 settembre 2026
 
+## Integrazione nella pagina di produzione
+
+`app/acquisizione/index.html` ora carica direttamente, una sola volta e dopo il codice principale, `activation-calendar-integration.js?v=1`. `index-calendar-test.html` è soltanto un redirect di compatibilità che conserva query e hash. Il funzionamento reale non richiede iframe o iniezione del wrapper. Il test browser apre direttamente `index.html` e prova sia il percorso normale sia i recuperi dopo errore prima/dopo commit. La logica di pianificazione, conteggio, persistenza atomica e conflitti resta invariata.
+
+La migrazione è stata successivamente applicata al Supabase reale come `calendar_prerelease_atomic` (versione remota `20260912160303`); il test reale sul commit `1e9d589` è passato e tutti i dati TEST sono stati rimossi, con conteggi 17/333/5/36 e impronte originali identiche. Per questa integrazione HTML le verifiche usano esclusivamente database locale e richieste browser intercettate. Le sezioni successive conservano il resoconto storico: i riferimenti alla migrazione non applicata e alla pagina wrapper descrivono le fasi precedenti.
+
+
 Branch: `feature/apple-calendar-import-step1`. Nessun merge, deploy o accesso in scrittura al Supabase dello Studio. Questo resoconto sostituisce quello della prima prova del commit 3363497.
 
 ## Esito

@@ -65,8 +65,9 @@ global.fetch = async (url, options = {}) => {
       }
       return route.fulfill({ status: 204, body: '' });
     });
-    await page.goto('http://calendar-simulation.test/index-calendar-test.html?mode=owner&access=' + encodeURIComponent(token));
-    const frame = page.frameLocator('#app');
+    await page.goto('http://calendar-simulation.test/index.html?mode=owner&access=' + encodeURIComponent(token));
+    const frame = page;
+    assert.equal(await page.locator('script[data-neacea-calendar-integration]').count(), 1);
     await frame.locator('.prospect-card .card-name').click();
     await frame.locator('#btn-conferma-scheda').click();
     await frame.locator('#conf-new-client-fields').waitFor({ state: 'visible' });
@@ -83,9 +84,9 @@ global.fetch = async (url, options = {}) => {
     await frame.locator('#btn-conf').click();
     if (failure) {
       await frame.locator('#calendar-pending button').waitFor({state:'visible'});
-      await page.waitForFunction(() => document.querySelector('#app').contentDocument.querySelector('#btn-conf').disabled === false);
+      await page.waitForFunction(() => document.querySelector('#btn-conf').disabled === false);
       await page.reload();
-      const resumed = page.frameLocator('#app');
+      const resumed = page;
       await resumed.locator('#calendar-pending button').waitFor({state:'visible'});
       await resumed.locator('#calendar-pending button').click();
       await resumed.locator('#calendar-pending').waitFor({state:'hidden'});
@@ -123,6 +124,6 @@ global.fetch = async (url, options = {}) => {
     assert.equal(clients[0].sessions_remaining, 7);
     assert.deepEqual(errors, []);
     assert.ok(backendCalls > 0);
-    console.log('PASS browser ' + (failure || 'normal') + ' + backend simulato: attivazione, 8 sedute, residuo 8→7 con Fatto, spostamento, annullamento e blocco oltre pacchetto. Nessuna richiesta reale.');
+    console.log('PASS browser ' + (failure || 'normal') + ' + pagina production + backend simulato: attivazione, 8 sedute, residuo 8→7 con Fatto, spostamento, annullamento e blocco oltre pacchetto. Nessuna richiesta reale.');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

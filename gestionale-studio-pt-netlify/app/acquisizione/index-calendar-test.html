@@ -3,32 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Acquisizione + Calendario — Test NEACEA</title>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f0f3f5}
-#app{border:0;width:100%;height:100%;display:block}
-#badge{position:fixed;right:14px;bottom:14px;z-index:9999;background:#1c3144;color:white;padding:8px 12px;border-radius:999px;font:700 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:.88}
-</style>
+<title>Acquisizione — NEACEA</title>
 </head>
 <body>
-<iframe id="app" title="NEACEA Acquisizione test"></iframe>
-<div id="badge">TEST · pianificazione pacchetto attiva</div>
+<p><a href="./index.html">Apri Acquisizione</a></p>
 <script>
-(() => {
-  const frame = document.getElementById('app');
-  const params = window.location.search || '';
-  frame.src = './index.html' + params;
-  frame.addEventListener('load', () => {
-    const doc = frame.contentDocument;
-    if (!doc || doc.querySelector('script[data-neacea-calendar-integration]')) return;
-    const script = doc.createElement('script');
-    script.src = './activation-calendar-integration.js';
-    script.dataset.neaceaCalendarIntegration = '1';
-    script.onload = () => console.info('[NEACEA TEST] integrazione acquisizione-calendario caricata');
-    script.onerror = () => console.error('[NEACEA TEST] integrazione acquisizione-calendario non caricata');
-    doc.body.appendChild(script);
-  });
-})();
+// Compatibilità con i vecchi link: l'integrazione è nella pagina production.
+window.location.replace('./index.html' + window.location.search + window.location.hash);
 </script>
 </body>
 </html>
