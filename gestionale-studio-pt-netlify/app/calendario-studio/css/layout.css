@@ -7,11 +7,12 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  height: var(--topbar-h);
+  min-height: var(--topbar-h);
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 22px;
+  gap: 8px;
+  padding: 10px 14px;
   background: var(--blue);
   color: #fff;
   box-shadow: 0 1px 8px rgba(28,49,68,.18);
@@ -19,15 +20,14 @@
 .topbar-brand { font-size: 20px; font-weight: 800; letter-spacing: .01em; white-space: nowrap; }
 .topbar-sub { color: rgba(255,255,255,.68); font-weight: 700; white-space: nowrap; }
 .topbar-divider { width: 1px; height: 26px; background: rgba(255,255,255,.18); flex: 0 0 auto; }
-.topbar-tabs { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.topbar-tabs::-webkit-scrollbar { display: none; }
+.topbar-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; max-width: 100%; flex: 0 0 auto; }
 .topbar-tab {
   border: 1px solid transparent;
   background: transparent;
   color: rgba(255,255,255,.66);
-  padding: 9px 13px;
+  padding: 8px 7px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
@@ -38,7 +38,8 @@
   background: rgba(255,255,255,.16);
   border-color: rgba(255,255,255,.18);
 }
-.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+.topbar-right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; flex: 0 0 auto; }
+.topbar .topbar-btn { padding: 8px 10px; font-size: 12px; }
 .main-content { max-width: 1280px; margin: 0 auto; padding: 28px 24px 44px; }
 .view-panel { display: none; }
 .view-panel.active { display: block; }
