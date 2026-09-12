@@ -18,6 +18,7 @@ if [[ "${CALENDAR_BROWSER_TEST:-0}" == "1" ]]; then
   done
 fi
 if [[ "${CALENDAR_POSTGRES_TEST:-0}" == "1" ]]; then
+  node tests/calendar-save-concurrency.test.cjs
   node tests/calendar-postgres.test.cjs
   node tests/calendar-status-persistence.test.cjs
 fi

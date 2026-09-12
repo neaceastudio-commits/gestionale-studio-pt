@@ -47,3 +47,16 @@ I lock serializzano le pianificazioni e impediscono che scritture concorrenti ca
 La ripresa dell'attivazione è conservata nel browser e legata all'operatore: non è una coda condivisa tra dispositivi. La cancellazione dello storage locale elimina la richiesta pendente, non i dati già salvati. Il residuo/numero di sedute viene comunque riletto dal server a ogni tentativo.
 
 Netlify non è stato modificato. La PR resta Draft; nessun push o pubblicazione è incluso in questa fase di verifica.
+
+
+## Chiusura concorrenza dei salvataggi distinti
+
+La stessa migrazione non ancora applicata ora riesegue in `calendar_save_appointment` i controlli PT, tutti i clienti e capienza, dopo il lock e prima di qualsiasi aggiornamento di appuntamento/residuo. Due salvataggi con ID distinti non possono superare insieme la validazione. Il perdente riceve SQLSTATE `23P01`, senza dati personali nel messaggio. La regola vale anche per spostamenti, cambi partecipanti e riattivazioni; una ripetizione identica già salvata resta una risposta idempotente senza scritture.
+
+La capienza SQL riproduce la configurazione attuale: PT 6, Nutrizione 1, Visbody 1; Baiobit e blocchi senza carico sala. Conta i partecipanti attivi dei gruppi e il picco contemporaneo, ignora annullati/appuntamenti senza partecipanti attivi, mantiene i blocchi operatore e consente sedute adiacenti senza buffer. La mappa SQL va aggiornata insieme a `config.js` se cambiano servizi o capienze. Il precedente override JavaScript PT 1:1 non permette di aggirare il controllo SQL.
+
+`tests/calendar-save-concurrency.test.cjs` usa due connessioni PostgreSQL e verifica l'attesa reale in `pg_locks`. Per ciascuno dei tre conflitti prova sia inserimento sia modifica: il primo salvataggio resta aperto, il secondo attende e, dopo il commit, viene rifiutato. Il confronto integrale di appuntamenti e clienti, timestamp inclusi, dimostra che il perdente non cambia nulla. I candidati usano Fatto per verificare anche l'assenza di consumi parziali. Coperti inoltre confini adiacenti, capienza esatta 6 su intervalli disgiunti, annullamento/riattivazione e blocchi.
+
+Il controllo richiede READ COMMITTED, per rileggere dopo l'attesa del lock; altre modalità sono rifiutate. Non usa SECURITY DEFINER e non modifica privilegi o RLS. Se RLS è attiva, accetta soltanto una policy SELECT permissiva applicabile con `USING (true)` e nessuna policy SELECT restrittiva applicabile: senza questa prova di visibilità completa rifiuta il salvataggio, perché potrebbero esistere conflitti nascosti. Anche policy logicamente equivalenti ma non riconoscibili come `true` vengono rifiutate prudentemente. Testate visibilità completa, filtrata e restrittiva. La compatibilità delle policy reali resta una condizione prima del rilascio; non disabilitare RLS per aggirare il controllo.
+
+Rieseguiti con successo suite base, nuovo test concorrente, suite PostgreSQL preesistente e persistenza UI→PostgreSQL. Le scritture legacy dirette restano fuori da questa RPC: la correzione garantisce i salvataggi atomici qui verificati, non aggiunge un trigger globale. Nessuna migrazione, merge o deploy eseguito.

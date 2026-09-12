@@ -91,7 +91,7 @@ create or replace function public.calendar_save_appointment(p_appointment jsonb,
 returns jsonb language plpgsql volatile security invoker set search_path = '' as $$
 declare old_row public.appointments; new_row public.appointments; expected_row public.appointments;
   c public.clients; touched jsonb := '[]'::jsonb; old_json jsonb; new_json jsonb;
-  delta integer; affected integer; existed boolean;
+  delta integer; affected integer; existed boolean; conflicts record;
 begin
   perform set_config('lock_timeout', '5s', true);
   lock table public.appointments, public.clients in share row exclusive mode;
@@ -115,6 +115,79 @@ begin
   if exists(select 1 from jsonb_array_elements_text(coalesce(old_json->'client_ids','[]'::jsonb) || coalesce(new_json->'client_ids','[]'::jsonb)) cid
     where not exists(select 1 from public.clients x where x.id::text=cid)) then
     raise exception 'Client missing or inaccessible';
+  end if;
+  -- READ COMMITTED is required: after waiting for the lock, each VOLATILE
+  -- statement must see the preceding writer's commit, not a transaction snapshot.
+  if current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'Calendar save requires READ COMMITTED';
+  end if;
+  if new_row.status <> 'annullato' then
+    if new_row.date is null or new_row.start_time is null or coalesce(new_row.duration_min,0) <= 0
+       or new_row.service_id is null or new_row.service_id not in
+         ('pt11','pt12','circuit','nutrizione','check','visbody','baiobit','blocco') then
+      raise exception 'Invalid appointment slot/service';
+    end if;
+    -- Fail closed if RLS could hide another booking or active participant.
+    -- This does not bypass RLS or grant any additional privilege.
+    if exists (
+      select 1 from (values ('public.appointments'::regclass),('public.clients'::regclass)) t(rel)
+      where row_security_active(t.rel) and (
+        not exists (select 1 from pg_catalog.pg_policy p where p.polrelid=t.rel
+          and p.polcmd in ('r','*') and p.polpermissive
+          and pg_get_expr(p.polqual,p.polrelid) = 'true'
+          and exists(select 1 from unnest(p.polroles) role_id
+            where case when role_id=0 then true else pg_has_role(current_user,role_id,'USAGE') end))
+        or exists (select 1 from pg_catalog.pg_policy p where p.polrelid=t.rel
+          and p.polcmd in ('r','*') and not p.polpermissive
+          and exists(select 1 from unnest(p.polroles) role_id
+            where case when role_id=0 then true else pg_has_role(current_user,role_id,'USAGE') end))
+      )
+    ) then
+      raise exception 'Calendar conflict validation requires complete calendar visibility';
+    end if;
+    with services(id,room,max_load) as (values
+      ('pt11','pt',1),('pt12','pt',2),('circuit','pt',6),
+      ('nutrizione','nutri',1),('check','nutri',1),('visbody','valut',1),
+      ('baiobit',null,0),('blocco',null,0)
+    ), slots as (
+      select a.* from public.appointments a
+        where a.id <> new_row.id and a.date = new_row.date and a.status <> 'annullato'
+      union all select new_row.*
+    ), visible as (
+      select a.id, a.operator_id, a.client_ids, s.room,
+        extract(epoch from a.start_time::time)/60 as lo,
+        extract(epoch from a.start_time::time)/60 + a.duration_min as hi,
+        least(s.max_load, participants.n) as room_load
+      from slots a join services s on s.id = a.service_id
+      cross join lateral (select count(*)::int n from public.clients participant
+        where participant.active is distinct from false and to_jsonb(a.client_ids) @> jsonb_build_array(participant.id)) participants
+      where a.service_id = 'blocco' or participants.n > 0
+    ), candidate as (select * from visible where id = new_row.id),
+    overlapping as (
+      select v.* from visible v, candidate n
+      where v.id <> n.id and v.lo < n.hi and n.lo < v.hi
+    ), boundaries as (
+      select lo as t from candidate
+      union select o.lo from overlapping o, candidate n where o.lo > n.lo and o.lo < n.hi
+    )
+    select
+      exists(select 1 from overlapping o, candidate n
+        where nullif(n.operator_id::text,'') is not null and o.operator_id = n.operator_id) as operator_conflict,
+      exists(select 1 from overlapping o, candidate n,
+        lateral jsonb_array_elements_text(to_jsonb(n.client_ids)) cid
+        where to_jsonb(o.client_ids) @> jsonb_build_array(cid)) as client_conflict,
+      exists(select 1 from boundaries b, candidate n where n.room is not null and
+        n.room_load + (select coalesce(sum(o.room_load),0) from overlapping o
+          where o.room = n.room and o.lo <= b.t and b.t < o.hi)
+        > case n.room when 'pt' then 6 else 1 end) as room_conflict
+    into conflicts;
+    if conflicts.operator_conflict then
+      raise exception using errcode='23P01', message='Calendar conflict: operator occupied';
+    elsif conflicts.client_conflict then
+      raise exception using errcode='23P01', message='Calendar conflict: client occupied';
+    elsif conflicts.room_conflict then
+      raise exception using errcode='23P01', message='Calendar conflict: room capacity exceeded';
+    end if;
   end if;
   -- Compute counter deltas before changing cycle inference or the appointment.
   for c in select * from public.clients x where
