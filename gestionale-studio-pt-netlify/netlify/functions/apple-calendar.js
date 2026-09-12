@@ -159,6 +159,7 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
     const titleService = row.status === 'noshow' ? '⚠ NO-SHOW' : `${row.status === 'fatto' ? '✓ ' : ''}${service.label}`;
     const summary = [titleService, clientNames.join(', '), common ? `${common.n}/${common.total}` : ''].filter(Boolean).join(' · ');
     const formatDate = value => value ? value.split('-').reverse().join('/') : 'Da definire';
+    const note = operationalNote(row.notes);
     const description = [
       'NEACEA STUDIO',
       ...people.flatMap(({ name, info }) => {
@@ -170,8 +171,8 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
             `Ancora da programmare: ${info.toSchedule}`, '', 'Programmazione abituale',
             ...(info.schedule.length ? info.schedule : ['—']), `Fine ciclo prevista: ${formatDate(info.endDate)}`] : []), ''];
       }),
-      `Note operative: ${operationalNote(row.notes)}`, '', 'Gestione NEACEA',
-      'Modificare data/orario senza creare nuove ricorrenze.',
+      ...(note !== '—' ? [`Note operative: ${note}`, ''] : []), 'Gestione NEACEA',
+      'Data e orario gestiti dal Calendario NEACEA.',
     ].join('\n');
     const updated = row.updated_at || now;
 

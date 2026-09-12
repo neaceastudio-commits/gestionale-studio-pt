@@ -46,9 +46,21 @@ test('different participant package positions never receive a common fraction',(
 
 test('free text and sensitive fields never enter ICS, including unsafe marked notes',()=>{
  const sensitive='telefono PRIVATE_PHONE email PRIVATE_EMAIL indirizzo PRIVATE_ADDRESS patologie PRIVATE_MEDICAL farmaci PRIVATE_DRUG anamnesi PRIVATE_HISTORY importo PRIVATE_MONEY stato pagamento PRIVATE_PAYMENT';
- const r=rows.map(r=>({...r,notes:sensitive+'\n[NOTA-OPERATIVA] '+sensitive}));const ics=render(r);assert.ok(!ics.includes('PRIVATE_'));assert.ok(ics.includes('Note operative: —'));
+ const r=rows.map(r=>({...r,notes:sensitive+'\n[NOTA-OPERATIVA] '+sensitive}));const ics=render(r);assert.ok(!ics.includes('PRIVATE_'));assert.ok(!ics.includes('Note operative:'));
  assert.equal(operationalNote('[NOTA-OPERATIVA] Portare scarpe pulite'),'Portare scarpe pulite');assert.equal(operationalNote('[NOTA-OPERATIVA] Portare scarpe pulite e PRIVATE_MEDICAL'),'—');
  const injection=render([{...rows[0],notes:'\r\nRRULE:FREQ=DAILY\r\nATTENDEE:PRIVATE_EMAIL'}]);assert.ok(!injection.includes('RRULE'));assert.ok(!injection.includes('PRIVATE_EMAIL'));
+});
+
+test('description omits missing/invalid notes and preserves allowed operational notes',()=>{
+ for(const notes of [undefined, '', 'Testo libero', '[NOTA-OPERATIVA] Non ammessa']) {
+  const ics=render([{...rows[2],notes}]);
+  assert.ok(!ics.includes('Note operative:'));
+  assert.ok(ics.includes('Gestione NEACEA\\nData e orario gestiti dal Calendario NEACEA.'));
+  assert.ok(!ics.includes('Modificare data/orario'));
+ }
+ const ics=render([{...rows[2],notes:'[NOTA-OPERATIVA] Portare scarpe pulite'}]);
+ assert.ok(ics.includes('Note operative: Portare scarpe pulite'));
+ assert.ok(!ics.includes('Note operative: —'));
 });
 
 test('cycle membership matches production Services for legacy, renewal IDs, persisted/inferred starts',()=>{

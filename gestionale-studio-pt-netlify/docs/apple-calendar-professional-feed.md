@@ -25,7 +25,9 @@ Le note operative sono **a vocabolario chiuso**, su una riga autonoma:
 - `[NOTA-OPERATIVA] Portare scarpe pulite`
 - `[NOTA-OPERATIVA] Presentarsi 5 minuti prima`
 
-Qualsiasi altro testo, anche preceduto dal marcatore, viene scartato. Nessuna esportazione diretta di appointments.notes. Questo evita che un marcatore renda esportabili note personali o cliniche arbitrarie.
+Qualsiasi altro testo, anche preceduto dal marcatore, viene scartato. Se non esiste una nota ammessa, la riga «Note operative» viene omessa interamente. Nessuna esportazione diretta di appointments.notes. Questo evita che un marcatore renda esportabili note personali o cliniche arbitrarie.
+
+Il blocco finale riporta: «Gestione NEACEA» e «Data e orario gestiti dal Calendario NEACEA.».
 
 ## Verifica locale
 
