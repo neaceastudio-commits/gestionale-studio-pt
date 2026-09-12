@@ -15,7 +15,10 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
    return reply(200,await db('rpc/calendar_audit_read',{method:'POST',body:{p_actor_id:actor.id,p_filters:input.filters||{}}}));
   }
   if(!['save','delete','availability','client','operator','assignment'].includes(input.operation))return reply(400,{error:'Operazione non valida'});
-  const result=await db('rpc/calendar_audit_write',{method:'POST',body:{p_actor_id:actor.id,p_actor_role:actor.role,p_source:source,p_request_id:crypto.randomUUID(),p_operation:input.operation,p_payload:input.payload||{}}});
+  const payload={...(input.payload||{})};
+  // JSON null is not SQL NULL: omit the absent optimistic-lock snapshot on create.
+  if(input.operation==='save' && payload.expected===null)delete payload.expected;
+  const result=await db('rpc/calendar_audit_write',{method:'POST',body:{p_actor_id:actor.id,p_actor_role:actor.role,p_source:source,p_request_id:crypto.randomUUID(),p_operation:input.operation,p_payload:payload}});
   return reply(200,result);
  }catch(error){return reply(error.status===403?403:409,{error:error.message||'Salvataggio non eseguito'})}
 };
