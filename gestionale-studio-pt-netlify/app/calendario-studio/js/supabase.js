@@ -9,6 +9,9 @@ const SupabaseSync = (() => {
   }
 
   async function request(table, { method = 'GET', query = '', body = null, headers = {} } = {}) {
+    if (method !== 'GET' && typeof window !== 'undefined' && window.CalendarAudit && ['appointments','clients','operators','operator_availability','rpc/calendar_save_appointment'].includes(table)) {
+      return window.CalendarAudit.write(table, { method, query, body });
+    }
     const endpoint = url(table, query);
     const r = await fetch(url(table, query), {
       method,

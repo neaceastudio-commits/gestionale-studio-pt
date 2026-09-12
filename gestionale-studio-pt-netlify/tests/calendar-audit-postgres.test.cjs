@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {start,seed,rpc}=require('./helpers/calendar-postgres.cjs');
+(async()=>{const db=await start();const c=db.client;try{
+ await seed(c);await c.query("insert into operators(id,nome,cognome,email,roles) values('owner','Direzione','SIM','owner@example.test',array['owner']); create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators; grant select on operator_effective_roles to service_role");
+ await c.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260912212042_calendar_activity_audit.sql'),'utf8'));
+ const write=async(op,payload,actor='pt',role='pt',source='calendar')=>{await c.query('set role service_role');try{return (await c.query('select calendar_audit_write($1,$2,$3,$4,$5,$6) result',[actor,role,source,crypto.randomUUID(),op,JSON.stringify(payload)])).rows[0].result}finally{await c.query('reset role')}};
+ const read=async actor=>{await c.query('set role service_role');try{return (await c.query("select calendar_audit_read($1,'{}') result",[actor])).rows[0].result}finally{await c.query('reset role')}};
+ const row={id:'a',service_id:'pt11',client_ids:['test'],operator_id:'pt',date:'2026-09-15',start_time:'17:00:00',duration_min:60,buffer_min:10,status:'prenotato',notes:'PRIVATE_CLINICAL [CICLO-PACCHETTO 2026-09-15]'};
+ let r=await write('save',{appointment:row});assert.equal((await read('owner'))[0].actor_email,'pt@example.test');assert.equal((await read('owner'))[0].action,'appointment_created');
+ r=await write('save',{appointment:{...r.appointment,status:'fatto'},expected:r.appointment});assert.equal(r.clients[0].sessions_remaining,7);let logs=await read('owner');assert.ok(logs.some(l=>l.action==='marked_done'));assert.ok(logs.some(l=>l.entity_type==='clients'&&l.after_data.sessions_remaining===7));assert.ok(!JSON.stringify(logs).includes('PRIVATE_CLINICAL'));
+ const done=r.appointment;r=await write('save',{appointment:{...done,date:'2026-09-17',start_time:'18:00:00'},expected:done});assert.ok((await read('owner')).some(l=>l.action==='appointment_moved'));
+ r=await write('save',{appointment:{...r.appointment,status:'annullato'},expected:r.appointment});assert.equal(r.clients[0].sessions_remaining,8);logs=await read('owner');assert.ok(logs.some(l=>l.action==='done_reverted'));assert.ok(logs.some(l=>l.action==='appointment_cancelled'));
+ const n=logs.length;
+ await c.query("create function fail_audit() returns trigger language plpgsql as $$begin raise exception 'SIM_AUDIT_FAILURE';end$$;create trigger fail_audit before insert on calendar_audit_log for each row execute function fail_audit()");
+ await assert.rejects(write('save',{appointment:{...r.appointment,status:'fatto'},expected:r.appointment}),/SIM_AUDIT_FAILURE/);assert.equal((await c.query("select status from appointments where id='a'")).rows[0].status,'annullato');assert.equal((await c.query("select sessions_remaining from clients where id='test'")).rows[0].sessions_remaining,8);assert.equal((await read('owner')).length,n);await c.query('drop trigger fail_audit on calendar_audit_log');
+ const snap=await rpc(c,'calendar_planning_snapshot');await write('package',{revision:snap.revision,clientId:'test',rows:[{...row,id:'package'}]},'owner','owner','acquisition');assert.ok((await read('owner')).some(l=>l.action==='package_appointment_created'&&l.source==='acquisition'));
+ await write('availability',{rows:[{operator_id:'pt',day_key:'tue',slots:['17:00-18:00']}]},null,'system','system');assert.equal((await read('owner'))[0].action,'availability_noop');assert.equal((await read('owner'))[0].actor_name,'Sistema');
+ await write('availability',{rows:[{operator_id:'pt',day_key:'tue',slots:['18:00-19:00']}]});assert.equal((await read('owner'))[0].action,'availability_changed');
+ const packageCount=(await read('owner')).length;const snapshot2=await rpc(c,'calendar_planning_snapshot');
+ await assert.rejects(write('package',{revision:snapshot2.revision,clientId:'test',rows:[{...row,id:'duplicate',date:'2026-09-17',start_time:'18:00'},{...row,id:'duplicate',date:'2026-09-17',start_time:'18:00'}]},'owner','owner','acquisition'));
+ assert.equal((await read('owner')).length,packageCount);assert.equal((await c.query("select count(*)::int n from appointments where id='duplicate'")).rows[0].n,0);
+ await write('save',{appointment:{...r.appointment,status:'noshow'},expected:r.appointment});assert.ok((await read('owner')).some(l=>l.action==='marked_noshow'));
+ await write('delete',{id:'a'});assert.ok((await read('owner')).some(l=>l.action==='appointment_deleted'));
+ await c.query('set role service_role');const filtered=(await c.query("select calendar_audit_read('owner',$1) result",[JSON.stringify({source:'acquisition',client:'test',action:'package_appointment_created'})])).rows[0].result;await c.query('reset role');assert.equal(filtered.length,1);
+ await assert.rejects(read('pt'),/Direction only/);await assert.rejects(write('save',{appointment:row},'pt2'),/another PT/);
+ for(const role of ['anon','authenticated','service_role']){await c.query('set role '+role);for(const sql of ['delete from calendar_audit_log','update calendar_audit_log set action=\'fake\'','truncate calendar_audit_log'])await assert.rejects(c.query(sql));await c.query('reset role')}
+ await c.query('set role anon');await assert.rejects(c.query("update operator_availability set slots='[]'"));await assert.rejects(c.query("update appointments set status='fatto'"));await c.query('reset role');
+ await c.query('set role service_role');await assert.rejects(c.query("update appointments set status='fatto'"),/context required/);await c.query('reset role');
+ console.log('PASS PostgreSQL audit: verified actor, atomic Fatto/balance/audit, rollback, move/cancel/package, system/noop, privacy, append-only and bypass rejection');
+}finally{await db.close()}})().catch(e=>{console.error(e);process.exitCode=1});

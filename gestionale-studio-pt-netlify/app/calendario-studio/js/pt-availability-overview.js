@@ -171,7 +171,7 @@
       if (localHasRows) {
         const merged = remoteHasRows ? mergeAvailability(remote, availabilityCache) : availabilityCache;
         saveAvailability(merged);
-        await pushAvailabilityToSupabase(merged);
+        // Cache is UI-only. Audited writes require an explicit Save.
       } else if (remoteHasRows) {
         saveAvailability(remote);
         renderStaffIfActive();

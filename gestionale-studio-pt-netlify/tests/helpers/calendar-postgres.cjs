@@ -37,7 +37,7 @@ exports.seed = async client => {
     ('pt','tue','["17:00-18:00"]'),('pt','thu','["18:00-19:00"]'),('pt2','tue','["17:00-18:00"]');`);
 };
 exports.rpc = async (client, name, body = {}) => {
-  const specs = { calendar_planning_snapshot: [], calendar_commit_package: ['p_revision','p_client_id','p_rows'], calendar_save_appointment: ['p_appointment','p_expected'] };
+  const specs = { calendar_audit_write: ['p_actor_id','p_actor_role','p_source','p_request_id','p_operation','p_payload'], calendar_planning_snapshot: [], calendar_commit_package: ['p_revision','p_client_id','p_rows'], calendar_save_appointment: ['p_appointment','p_expected'] };
   const keys = specs[name]; if (!keys) throw Error('Unexpected RPC ' + name);
   const values = keys.map(k => typeof body[k] === 'object' && body[k] !== null ? JSON.stringify(body[k]) : body[k]);
   const r = await client.query(`select public.${name}(${keys.map((_, i) => '$' + (i + 1)).join(',')}) as result`, values);
