@@ -516,13 +516,20 @@ const SupabaseSync = (() => {
   }
 
   async function pushOperatorAvailability(data) {
+    // Re-read before an explicit save. If comparison fails, do not write blindly.
+    const remote = await pullOperatorAvailability();
+    if (remote?.error) return remote;
+    const normalize = slots => [...new Set((Array.isArray(slots) ? slots : [])
+      .map(slot => String(slot).trim()).filter(Boolean))].sort();
     const rows = [];
     Object.entries(data || {}).forEach(([operatorId, days]) => {
       Object.entries(days || {}).forEach(([dayKey, value]) => {
+        const slots = normalize(value?.slots);
+        if (JSON.stringify(slots) === JSON.stringify(normalize(remote?.[operatorId]?.[dayKey]?.slots))) return;
         rows.push({
           operator_id: operatorId,
           day_key: dayKey,
-          slots: Array.isArray(value?.slots) ? value.slots : [],
+          slots,
           updated_at: new Date().toISOString(),
         });
       });

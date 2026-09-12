@@ -29,6 +29,8 @@
   let lastSearchFilters = null;
   let availabilityCache = null;
   let availabilitySyncStarted = false;
+  let pendingAvailabilityChanges = {};
+  let availabilitySaveInFlight = false;
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -108,24 +110,8 @@
     localStorage.setItem(AVAILABILITY_KEY, JSON.stringify(data));
   }
 
-  function hasAvailabilityRows(data) {
-    return Object.values(data || {}).some(days =>
-      Object.values(days || {}).some(value => Array.isArray(value?.slots) && value.slots.length)
-    );
-  }
-
-  function mergeAvailability(base, incoming) {
-    const merged = { ...(base || {}) };
-    Object.entries(incoming || {}).forEach(([opKey, days]) => {
-      merged[opKey] = { ...(merged[opKey] || {}) };
-      Object.entries(days || {}).forEach(([day, value]) => {
-        const current = Array.isArray(merged[opKey][day]?.slots) ? merged[opKey][day].slots : [];
-        const next = Array.isArray(value?.slots) ? value.slots : [];
-        const slots = [...new Set([...current, ...next])].filter(Boolean).sort();
-        merged[opKey][day] = { ...(merged[opKey][day] || {}), ...(value || {}), slots };
-      });
-    });
-    return merged;
+  function normalizedSlots(slots) {
+    return [...new Set((slots || []).map(s => String(s).trim()).filter(Boolean))].sort();
   }
 
   function loadAvailability() {
@@ -166,14 +152,10 @@
     try {
       const remote = await SupabaseSync.pullOperatorAvailability();
       if (remote?.error) throw new Error(remote.error);
-      const localHasRows = hasAvailabilityRows(availabilityCache);
-      const remoteHasRows = hasAvailabilityRows(remote);
-      if (localHasRows) {
-        const merged = remoteHasRows ? mergeAvailability(remote, availabilityCache) : availabilityCache;
-        saveAvailability(merged);
-        await pushAvailabilityToSupabase(merged);
-      } else if (remoteHasRows) {
-        saveAvailability(remote);
+      // Remote state is authoritative, including an empty table. Local cache is
+      // only an offline UI fallback; opening the page must never upload it.
+      if (!staffEditorDirty && !availabilitySaveInFlight && !Object.keys(pendingAvailabilityChanges).length) {
+        saveAvailability(remote || {});
         renderStaffIfActive();
         renderAvailabilityIfActive();
       }
@@ -301,16 +283,21 @@
     return staffEditorOpen || staffEditorDirty;
   }
 
-  function saveStaffAvailability() {
+  async function saveStaffAvailability() {
+    if (availabilitySaveInFlight) return;
     const data = loadAvailability();
     document.querySelectorAll('[data-pt-staff-day]').forEach(dayWrap => {
       const opKey = dayWrap.getAttribute('data-operator-key');
       const day = dayWrap.getAttribute('data-day');
       if (!opKey || !day) return;
+      const slots = normalizedSlots([...dayWrap.querySelectorAll('[data-pt-hour-slot]:checked')].map(input => input.value));
+      const before = normalizedSlots(savedSlotsForDay(data[opKey]?.[day] || {}));
+      if (JSON.stringify(slots) !== JSON.stringify(before)) {
+        pendingAvailabilityChanges[opKey] = pendingAvailabilityChanges[opKey] || {};
+        pendingAvailabilityChanges[opKey][day] = { slots };
+      }
       data[opKey] = data[opKey] || {};
-      data[opKey][day] = {
-        slots: [...dayWrap.querySelectorAll('[data-pt-hour-slot]:checked')].map(input => input.value)
-      };
+      data[opKey][day] = { slots };
     });
     saveAvailability(data);
     staffEditorOpen = true;
@@ -319,7 +306,17 @@
     renderAvailabilityIfActive();
     const msg = document.getElementById('pt-staff-save-result');
     if (msg) msg.textContent = 'Disponibilita salvata.';
-    pushAvailabilityToSupabase(data, msg);
+    if (!Object.keys(pendingAvailabilityChanges).length) {
+      if (msg) msg.textContent = 'Nessuna modifica alla disponibilita.';
+      return;
+    }
+    availabilitySaveInFlight = true;
+    try {
+      const result = await pushAvailabilityToSupabase(pendingAvailabilityChanges, msg);
+      if (result.success) pendingAvailabilityChanges = {};
+    } finally {
+      availabilitySaveInFlight = false;
+    }
   }
 
   function savedSlotsForDay(saved) {
