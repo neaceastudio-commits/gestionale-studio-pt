@@ -18,7 +18,8 @@ exports.start = async () => {
     create table clients(id text primary key, nome text, cognome text, active boolean default true,
       package_types text[], sessions_total int, sessions_remaining int, pt_assegnato text, package_start date,
       data_inizio date, data_conferma date, notes text default '', updated_at timestamptz default now());
-    create table trainer_client_assignments(id text primary key, trainer_id text not null, client_id text not null, assigned_by text, assignment_source text default 'manual',active boolean default true,notes text default '',created_at timestamptz default now(),updated_at timestamptz default now(),ended_at timestamptz,unique(trainer_id,client_id));
+    create table trainer_client_assignments(id text primary key, trainer_id text not null, client_id text not null, assigned_by text, assignment_source text default 'manual',active boolean default true,notes text default '',created_at timestamptz default now(),updated_at timestamptz default now(),ended_at timestamptz);
+    create unique index trainer_client_assignments_active_unique on trainer_client_assignments(trainer_id,client_id) where active is true;
     create table operators(id text primary key, nome text, cognome text, email text, active boolean default true, roles text[]);
     create table operator_availability(operator_id text, day_key text, slots jsonb, updated_at timestamptz default now(), primary key(operator_id,day_key));
     create table appointments(id text primary key, service_id text, client_ids text[], operator_id text, date date,

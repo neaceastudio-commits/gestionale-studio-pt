@@ -3,6 +3,7 @@ const {start,seed,rpc}=require('./helpers/calendar-postgres.cjs');
 (async()=>{const db=await start();const c=db.client;try{
  await seed(c);await c.query("insert into operators(id,nome,cognome,email,roles) values('owner','Direzione','SIM','owner@example.test',array['owner']); create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators; grant select on operator_effective_roles to service_role");
  await c.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260912212042_calendar_activity_audit.sql'),'utf8'));
+ await c.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260912225335_calendar_audit_assignment_partial_unique.sql'),'utf8'));
  const write=async(op,payload,actor='pt',role='pt',source='calendar')=>{await c.query('set role service_role');try{return (await c.query('select calendar_audit_write($1,$2,$3,$4,$5,$6) result',[actor,role,source,crypto.randomUUID(),op,JSON.stringify(payload)])).rows[0].result}finally{await c.query('reset role')}};
  const read=async actor=>{await c.query('set role service_role');try{return (await c.query("select calendar_audit_read($1,'{}') result",[actor])).rows[0].result}finally{await c.query('reset role')}};
  const row={id:'a',service_id:'pt11',client_ids:['test'],operator_id:'pt',date:'2026-09-15',start_time:'17:00:00',duration_min:60,buffer_min:10,status:'prenotato',notes:'PRIVATE_CLINICAL [CICLO-PACCHETTO 2026-09-15]'};
