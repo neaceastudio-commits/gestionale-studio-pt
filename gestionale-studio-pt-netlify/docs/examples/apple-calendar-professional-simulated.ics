@@ -1,0 +1,163 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//NEACEA//Calendario Gestionale//IT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:NEACEA — Alessandro Pirisi
+X-WR-TIMEZONE:Europe/Rome
+X-APPLE-CALENDAR-COLOR:#17314A
+REFRESH-INTERVAL;VALUE=DURATION:PT15M
+X-PUBLISHED-TTL:PT15M
+BEGIN:VEVENT
+UID:sim-0@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260901T170000
+DTEND;TZID=Europe/Rome:20260901T180000
+SUMMARY:✓ PT 1:1 · Veronica Corona · 1/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 1 di 8\nStato: Fatto\n\nPacche
+ tto\nSedute residue: 6\nFuture già programmate: 6\nAncora da programmare
+ : 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine cicl
+ o prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nGesti
+ one NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-1@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260903T180000
+DTEND;TZID=Europe/Rome:20260903T190000
+SUMMARY:✓ PT 1:1 · Veronica Corona · 2/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 2 di 8\nStato: Fatto\n\nPacche
+ tto\nSedute residue: 6\nFuture già programmate: 6\nAncora da programmare
+ : 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine cicl
+ o prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nGesti
+ one NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-2@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260915T170000
+DTEND;TZID=Europe/Rome:20260915T180000
+SUMMARY:PT 1:1 · Veronica Corona · 3/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 3 di 8\nStato: Prenotata\n\nPa
+ cchetto\nSedute residue: 6\nFuture già programmate: 6\nAncora da program
+ mare: 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine 
+ ciclo prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nG
+ estione NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-3@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260917T180000
+DTEND;TZID=Europe/Rome:20260917T190000
+SUMMARY:PT 1:1 · Veronica Corona · 4/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 4 di 8\nStato: Prenotata\n\nPa
+ cchetto\nSedute residue: 6\nFuture già programmate: 6\nAncora da program
+ mare: 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine 
+ ciclo prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nG
+ estione NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-4@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260922T170000
+DTEND;TZID=Europe/Rome:20260922T180000
+SUMMARY:PT 1:1 · Veronica Corona · 5/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 5 di 8\nStato: Prenotata\n\nPa
+ cchetto\nSedute residue: 6\nFuture già programmate: 6\nAncora da program
+ mare: 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine 
+ ciclo prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nG
+ estione NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-5@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260924T180000
+DTEND;TZID=Europe/Rome:20260924T190000
+SUMMARY:PT 1:1 · Veronica Corona · 6/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 6 di 8\nStato: Prenotata\n\nPa
+ cchetto\nSedute residue: 6\nFuture già programmate: 6\nAncora da program
+ mare: 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine 
+ ciclo prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nG
+ estione NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-6@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20260929T170000
+DTEND;TZID=Europe/Rome:20260929T180000
+SUMMARY:PT 1:1 · Veronica Corona · 7/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 7 di 8\nStato: Prenotata\n\nPa
+ cchetto\nSedute residue: 6\nFuture già programmate: 6\nAncora da program
+ mare: 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine 
+ ciclo prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nG
+ estione NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:sim-7@calendar.neacea.it
+DTSTAMP:20260914T120000Z
+LAST-MODIFIED:20260912T120000Z
+SEQUENCE:1789214400
+DTSTART;TZID=Europe/Rome:20261001T180000
+DTEND;TZID=Europe/Rome:20261001T190000
+SUMMARY:PT 1:1 · Veronica Corona · 8/8
+DESCRIPTION:NEACEA STUDIO\nCliente: Veronica Corona\nServizio: PT 1:1\nPe
+ rsonal Trainer: Alessandro Pirisi\nSeduta: 8 di 8\nStato: Prenotata\n\nPa
+ cchetto\nSedute residue: 6\nFuture già programmate: 6\nAncora da program
+ mare: 0\n\nProgrammazione abituale\nMartedì 17:00\nGiovedì 18:00\nFine 
+ ciclo prevista: 01/10/2026\n\nNote operative: Portare un asciugamano\n\nG
+ estione NEACEA\nModificare data/orario senza creare nuove ricorrenze.
+LOCATION:NEACEA Studio
+CATEGORIES:PT 1:1
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

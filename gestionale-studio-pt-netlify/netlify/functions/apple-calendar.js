@@ -1,9 +1,8 @@
 const crypto = require('crypto');
+const { PT, packageInfo, operationalNote } = require('./lib/apple-calendar-package');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-  || process.env.SUPABASE_KEY
-  || 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TIMEZONE = 'Europe/Rome';
 
 const SERVICES = {
@@ -13,7 +12,7 @@ const SERVICES = {
   check: { label: 'Check Nutrizionale', room: 'Sala Nutrizione' },
   visbody: { label: 'Visbody', room: 'Area Valutazioni' },
   baiobit: { label: 'Baiobit', room: 'NEACEA' },
-  circuit: { label: 'Circuit Training', room: 'Sala PT' },
+  circuit: { label: 'Circuit', room: 'Sala PT' },
   blocco: { label: 'Blocco agenda', room: 'NEACEA' },
 };
 
@@ -48,35 +47,28 @@ function safeTokenMatch(provided, expected) {
 }
 
 async function supabaseRows(table, select, extra = {}) {
-  const params = new URLSearchParams({ select, ...extra });
-  const result = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}?${params}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      Accept: 'application/json',
-    },
-  });
-  if (!result.ok) {
-    const detail = await result.text();
-    throw new Error(`Supabase ${table}: ${result.status} ${detail.slice(0, 180)}`);
+  const rows = [];
+  // Continue to an empty page, even when the server caps results below our limit.
+  for (let offset = 0; ; ) {
+    const params = new URLSearchParams({ select, order: 'id.asc', ...extra, limit: '1000', offset: String(offset) });
+    const result = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}?${params}`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Accept: 'application/json' },
+    });
+    if (!result.ok) throw new Error(`Supabase ${table}: ${result.status}`);
+    const page = await result.json();
+    if (!Array.isArray(page)) throw new Error('Invalid calendar response');
+    if (!page.length) return rows;
+    rows.push(...page);
+    offset += page.length;
   }
-  return result.json();
 }
 
 function calendarText(value) {
   return String(value ?? '')
     .replace(/\\/g, '\\\\')
-    .replace(/\r?\n/g, '\\n')
+    .replace(/\r\n|\r|\n/g, '\\n')
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,');
-}
-
-function cleanNotes(value) {
-  return String(value || '')
-    .split(/\r?\n/)
-    .filter(line => !/^\[(?:CICLO-PACCHETTO|ALLINEATO CONTEGGIO|FORZATURA DOPPIO PT 1:1)/i.test(line.trim()))
-    .join('\n')
-    .trim();
 }
 
 function foldLine(line) {
@@ -132,10 +124,11 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
   const calendarName = selectedOperator ? `NEACEA — ${personName(selectedOperator) || 'PT'}` : 'NEACEA — Studio';
 
   const visible = (appointments || []).filter(row => {
-    if (row.status === 'annullato') return false;
+    if (!row.id || row.status === 'annullato') return false;
+    if (operatorId && !PT.has(row.service_id)) return false;
     if (operatorId && String(row.operator_id || '') !== String(operatorId)) return false;
     const clientIds = Array.isArray(row.client_ids) ? row.client_ids.map(String) : [];
-    return clientIds.length === 0 || clientIds.some(id => clientMap.has(id));
+    return (!operatorId && clientIds.length === 0) || clientIds.some(id => clientMap.has(id));
   });
 
   const lines = [
@@ -156,20 +149,35 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
     const clientIds = Array.isArray(row.client_ids) ? row.client_ids.map(String) : [];
     const clientNames = clientIds.map(id => personName(clientMap.get(id))).filter(Boolean);
     const operatorName = personName(operatorMap.get(String(row.operator_id || '')));
-    const summaryBase = clientNames.length ? `${service.label} — ${clientNames.join(', ')}` : service.label;
-    const summary = `${STATUS_TITLE_PREFIXES[row.status] || ''}${summaryBase}`;
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: TIMEZONE }).format(now);
+    const people = clientIds.filter(id => clientMap.has(id)).map(id => {
+      const client = clientMap.get(id);
+      return { name: personName(client), info: PT.has(row.service_id) ? packageInfo(client, appointments, today) : null };
+    });
+    const positions = people.map(p => p.info?.position(row));
+    const common = positions.length && positions.every(p => p && p.n === positions[0]?.n && p.total === positions[0]?.total) ? positions[0] : null;
+    const titleService = row.status === 'noshow' ? '⚠ NO-SHOW' : `${row.status === 'fatto' ? '✓ ' : ''}${service.label}`;
+    const summary = [titleService, clientNames.join(', '), common ? `${common.n}/${common.total}` : ''].filter(Boolean).join(' · ');
+    const formatDate = value => value ? value.split('-').reverse().join('/') : 'Da definire';
     const description = [
-      `Prestazione: ${service.label}`,
-      clientNames.length ? `Cliente/i: ${clientNames.join(', ')}` : '',
-      operatorName ? `PT/operatore: ${operatorName}` : '',
-      `Stato: ${STATUS_LABELS[row.status] || row.status || 'Prenotato'}`,
-      cleanNotes(row.notes) ? `Note: ${cleanNotes(row.notes)}` : '',
-    ].filter(Boolean).join('\n');
+      'NEACEA STUDIO',
+      ...people.flatMap(({ name, info }) => {
+        const pos = info?.position(row);
+        return [`Cliente: ${name}`, `Servizio: ${service.label}`, `Personal Trainer: ${operatorName || '—'}`,
+          ...(info ? [`Seduta: ${pos ? `${pos.n} di ${pos.total}` : 'Non numerabile nel ciclo corrente'}`] : []),
+          `Stato: ${row.status === 'prenotato' ? 'Prenotata' : STATUS_LABELS[row.status] || '—'}`,
+          ...(info ? ['', 'Pacchetto', `Sedute residue: ${info.remaining}`, `Future già programmate: ${info.scheduled}`,
+            `Ancora da programmare: ${info.toSchedule}`, '', 'Programmazione abituale',
+            ...(info.schedule.length ? info.schedule : ['—']), `Fine ciclo prevista: ${formatDate(info.endDate)}`] : []), ''];
+      }),
+      `Note operative: ${operationalNote(row.notes)}`, '', 'Gestione NEACEA',
+      'Modificare data/orario senza creare nuove ricorrenze.',
+    ].join('\n');
     const updated = row.updated_at || now;
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${calendarText(String(row.id || crypto.randomUUID()))}@calendar.neacea.it`,
+      `UID:${calendarText(String(row.id))}@calendar.neacea.it`,
       `DTSTAMP:${utcStamp(now)}`,
       `LAST-MODIFIED:${utcStamp(updated)}`,
       `SEQUENCE:${sequenceFor(row)}`,
@@ -177,7 +185,7 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
       `DTEND;TZID=${TIMEZONE}:${addMinutes(row.date, row.start_time, row.duration_min || 60)}`,
       `SUMMARY:${calendarText(summary)}`,
       `DESCRIPTION:${calendarText(description)}`,
-      `LOCATION:${calendarText(service.room)}`,
+      'LOCATION:NEACEA Studio',
       `CATEGORIES:${calendarText(service.label)}`,
       'STATUS:CONFIRMED',
       'TRANSP:OPAQUE',
@@ -207,10 +215,12 @@ exports.handler = async event => {
     return response(401, 'Codice calendario non valido', { 'Content-Type': 'text/plain; charset=utf-8' });
   }
 
+  if (!SUPABASE_KEY) return response(503, 'Chiave server calendario non configurata');
+
   try {
     const [appointments, clients, operators] = await Promise.all([
-      supabaseRows('appointments', 'id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes,updated_at', { order: 'date.asc,start_time.asc' }),
-      supabaseRows('clients', 'id,nome,cognome,active'),
+      supabaseRows('appointments', 'id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes,updated_at', { order: 'date.asc,start_time.asc,id.asc' }),
+      supabaseRows('clients', 'id,nome,cognome,active,sessions_total,sessions_remaining,data_inizio,data_conferma,package_start,notes'),
       supabaseRows('operators', 'id,nome,cognome,active'),
     ]);
     const operatorId = String(event.queryStringParameters?.operatorId || '').trim();
@@ -223,7 +233,7 @@ exports.handler = async event => {
     };
     return response(200, event.httpMethod === 'HEAD' ? '' : calendar.body, headers);
   } catch (error) {
-    console.error('[apple-calendar]', error);
+    console.error('[apple-calendar] Lettura calendario fallita');
     return response(502, 'Calendario temporaneamente non disponibile', { 'Content-Type': 'text/plain; charset=utf-8' });
   }
 };
@@ -232,7 +242,7 @@ exports._test = {
   addMinutes,
   buildCalendar,
   calendarText,
-  cleanNotes,
+  operationalNote,
   foldLine,
   safeTokenMatch,
 };
