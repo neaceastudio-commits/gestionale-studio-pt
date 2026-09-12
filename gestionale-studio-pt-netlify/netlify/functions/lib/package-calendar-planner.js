@@ -46,10 +46,11 @@ function dateString(date) {
 }
 
 function parseDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null;
   const parts = String(value || '').slice(0, 10).split('-').map(Number);
   if (parts.length !== 3 || parts.some(value => !Number.isFinite(value))) return null;
   const date = new Date(parts[0], parts[1] - 1, parts[2]);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) || dateString(date) !== value ? null : date;
 }
 
 function timeToMin(value) {
@@ -78,7 +79,7 @@ function normalizeSchedule(schedule = []) {
     const key = `${weekday}|${time}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    normalized.push({ weekday, time, sourceDay: String(item?.weekday ?? item?.day || '') });
+    normalized.push({ weekday, time, sourceDay: String(item?.weekday ?? item?.day ?? '') });
   }
   return normalized.sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time));
 }
@@ -123,7 +124,8 @@ function futureScheduledAppointments(client, appointments = [], { serviceId = ''
 
 function schedulingAllowance(client, appointments = [], options = {}) {
   const remaining = storedRemaining(client);
-  const scheduled = futureScheduledAppointments(client, appointments, options).length;
+  // Moving the requested start date must not hide sessions already reserved.
+  const scheduled = futureScheduledAppointments(client, appointments, { serviceId: options.serviceId }).length;
   return {
     remaining,
     scheduled,
@@ -210,7 +212,7 @@ function planPackageAppointments({
   }
 
   const baseDone = Math.max(0, allowance.total - allowance.remaining);
-  const existingFuture = futureScheduledAppointments(client, appointments, { serviceId, fromDate: dateString(start) })
+  const existingFuture = futureScheduledAppointments(client, appointments, { serviceId })
     .sort((a, b) => `${a.date} ${a.start_time || a.startTime || ''}`.localeCompare(`${b.date} ${b.start_time || b.startTime || ''}`));
   const working = [...appointments];
   const created = [];

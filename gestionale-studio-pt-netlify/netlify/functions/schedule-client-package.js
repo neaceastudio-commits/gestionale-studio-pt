@@ -25,12 +25,12 @@ function response(statusCode, payload) {
 }
 
 function accessSecret() {
-  return process.env.PT_ACCESS_SECRET || process.env.RESEND_API_KEY || 'neacea2026studio';
+  return process.env.PT_ACCESS_SECRET || process.env.RESEND_API_KEY || '';
 }
 
 function verifyAccessToken(token) {
   const [payload, signature] = String(token || '').split('.');
-  if (!payload || !signature) return null;
+  if (!payload || !signature || !accessSecret()) return null;
   const expected = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
   const actualBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
@@ -159,11 +159,16 @@ async function loadClient(clientId) {
   return Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
 }
 
-async function loadAppointments(fromDate) {
-  const from = String(fromDate || '').slice(0, 10);
-  const query = `?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status,notes&date=gte.${encodeURIComponent(from)}&status=neq.annullato&order=date.asc,start_time.asc`;
-  const rows = await supabaseRequest('appointments', { query });
-  return Array.isArray(rows) ? rows : [];
+async function loadAppointments() {
+  const appointments = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const query = `?select=id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status,notes&status=neq.annullato&order=date.asc,start_time.asc,id.asc&limit=${pageSize}&offset=${offset}`;
+    const rows = await supabaseRequest('appointments', { query });
+    if (!Array.isArray(rows)) throw new Error('Risposta appuntamenti non valida');
+    appointments.push(...rows);
+    if (rows.length < pageSize) return appointments;
+  }
 }
 
 function planSummary(plan) {
@@ -215,7 +220,7 @@ exports.handler = async event => {
       return response(409, { success: false, error: 'Assegna un PT prima di programmare le sedute' });
     }
 
-    const appointments = await loadAppointments(startDate);
+    const appointments = await loadAppointments();
     const client = {
       id: clientRow.id,
       active: clientRow.active !== false,
