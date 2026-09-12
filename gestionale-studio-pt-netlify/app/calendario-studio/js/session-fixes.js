@@ -28,31 +28,8 @@
     return App._recalculateClientSessions(appt.clientIds);
   };
 
-  const recalcIfPackageSession = function (appt) {
-    if (appt && Services.serviceUsesPackageSessions(appt.serviceId)) App._consumeClientSessions(appt);
-  };
-
-  const originalSaveAppointment = App._saveAppointment?.bind(App);
-  if (originalSaveAppointment) {
-    App._saveAppointment = function (apptId) {
-      const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
-      const result = originalSaveAppointment(apptId);
-      const after = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
-      if (before && after && before.status !== after.status) recalcIfPackageSession(after);
-      return result;
-    };
-  }
-
-  const originalMarkNoShow = App._markNoShow?.bind(App);
-  if (originalMarkNoShow) {
-    App._markNoShow = function (apptId) {
-      const before = State.getAppointments().find(a => a.id === apptId);
-      const result = originalMarkNoShow(apptId);
-      const after = State.getAppointments().find(a => a.id === apptId);
-      if (before?.status === 'fatto') recalcIfPackageSession(after || before);
-      return result;
-    };
-  }
+  // Status edits now persist appointment and balance in one database transaction.
+  // Do not launch an independent balance write before that transaction completes.
 
   ['_addParticipant', '_removeParticipant'].forEach(method => {
     const original = App[method]?.bind(App);
