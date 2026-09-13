@@ -10,9 +10,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   });
   await page.goto('https://audit-simulation.test/?access=SIM_TOKEN');
   await page.evaluate(()=>{window.State={getOperators:()=>[{id:'op',nome:'PT',cognome:'SIMULATO'}],getClients:()=>[{id:'client',nome:'CLIENTE',cognome:'SIMULATO'}]};window.UI={openModal:html=>document.querySelector('#modal').innerHTML=html,closeModal(){},showToast(){}}});
+  await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'../app/calendario-studio/js/calendar-audit-view.js'),'utf8')});
   await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'../app/calendario-studio/js/calendar-audit.js'),'utf8')});await page.evaluate(()=>document.dispatchEvent(new Event('DOMContentLoaded')));
   if(role==='owner'){
-   await page.getByRole('button',{name:'Registro attività',exact:true}).click();await page.getByText(/Spostata seduta/).last().waitFor();
+   await page.getByRole('button',{name:'Registro attività',exact:true}).click();await page.getByText(/Seduta spostata/).last().waitFor();
    assert.ok((await page.locator('#calendar-audit-view').innerText()).includes('17:00'));assert.ok((await page.locator('#calendar-audit-view').innerText()).includes('18:00'));
    await page.getByRole('button',{name:'Ultimi 7 giorni'}).click();await page.getByLabel('Origine').selectOption('system');await page.getByRole('button',{name:'Filtra',exact:true}).click();await page.waitForFunction(()=>true);
    await page.waitForTimeout(50);assert.ok(calls.some(c=>c.operation==='list'&&c.filters.source==='system'&&c.filters.from&&c.filters.to));
