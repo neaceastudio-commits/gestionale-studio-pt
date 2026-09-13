@@ -45,7 +45,7 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
  await store.setJSON('lease',{until:0});
  // Dedicated bootstrap snapshot, including protected future states, with a historical creation boundary.
  const bootstrapStore=new Store,bootstrapObjects=new Map;let version=0;
- const bootstrapCal={verify:async()=>{},read:async h=>structuredClone(bootstrapObjects.get(h)||null),put:async(h,ics,tag)=>{assert.equal(bootstrapObjects.get(h)?.etag,tag);bootstrapObjects.set(h,{ics,etag:String(++version)})},delete:async h=>bootstrapObjects.delete(h)};
+ const bootstrapCal={inventory:async()=>[...bootstrapObjects.keys()],verify:async()=>{},read:async h=>structuredClone(bootstrapObjects.get(h)||null),put:async(h,ics,tag)=>{assert.equal(bootstrapObjects.get(h)?.etag,tag);bootstrapObjects.set(h,{ics,etag:String(++version)})},delete:async h=>bootstrapObjects.delete(h)};
  env.APPLE_CALDAV_START_AT=new Date(Date.parse(created)+60000).toISOString();
  const bs=core.service({env,db,cal:bootstrapCal,store:bootstrapStore});const snap=JSON.stringify(await row());
  assert.deepEqual(await bs.bootstrapPreview(),{found:1,linked:0,toCreate:1});const job=await bs.bootstrapStart();assert.deepEqual(job.ids,['TEST_CLOUD']);

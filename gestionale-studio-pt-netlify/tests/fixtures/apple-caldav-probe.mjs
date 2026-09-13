@@ -16,10 +16,9 @@ export default async request=>{
   if(b.operation==='read'){
    if(!a)return Response.json({deleted:true});
    const unfolded=a.ics.replace(/\r?\n[ \t]/g,'');
-   phase='UID count';const r=await cal.request(cal.base,'REPORT','<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:prop-filter name="UID"><c:text-match collation="i;ascii-casemap">'+b.id+'@calendar.neacea.it</c:text-match></c:prop-filter></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>',{Depth:'1','Content-Type':'application/xml'});
-   if(r.status!==207){phase='UID count HTTP '+r.status;throw Error('Probe count failed')}
-   const xml=await r.text();const matches=[...xml.matchAll(/<(?:[\w-]+:)?response(?:\s[^>]*)?>/g)];
-   return Response.json({...core.parse(a.ics),etag:a.etag,count:matches.length,professional:unfolded.includes(' · 0/8')&&unfolded.includes('Sedute completate: 0 di 8')&&!unfolded.includes('RRULE:')});
+   phase='collection inventory';const hrefs=await cal.inventory();let count=0;
+   for(const h of hrefs){const candidate=await cal.read(h);if(candidate&&candidate.ics.replace(/\r?\n[ \t]/g,'').includes('UID:'+b.id+'@calendar.neacea.it\r\n'))count++;}
+   return Response.json({...core.parse(a.ics),etag:a.etag,count,professional:unfolded.includes(' · 0/8')&&unfolded.includes('Sedute completate: 0 di 8')&&!unfolded.includes('RRULE:')});
   }
   if(!a||core.parse(a.ics).uid!==b.id+'@calendar.neacea.it'||!(n.status==='prenotato'||(b.operation==='cleanup'&&n.status==='annullato')))return new Response('',{status:409});
   if(b.operation==='move18')await cal.put(href,core.rewrite(a.ics,{...core.parse(a.ics).slot,start_time:'18:00'}),a.etag);

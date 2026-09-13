@@ -30,6 +30,7 @@ class CalDAV{
  url(href){const u=new URL(href,this.base),base=new URL(this.base),r=decodeURIComponent(u.pathname.slice(base.pathname.length));need(u.origin===base.origin&&u.pathname.startsWith(base.pathname)&&r&&!r.includes('/')&&!['.','..'].includes(r)&&!u.search&&!u.hash,'Outside dedicated collection');return u.href}
  async request(url,method='GET',body,headers={}){const r=await this.fetcher(url,{method,body,headers:{...this.headers,...headers},redirect:'error',signal:AbortSignal.timeout(12000)});return r}
  async verify(){const r=await this.request(this.base,'PROPFIND','<d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:resourcetype/></d:prop></d:propfind>',{Depth:'0','Content-Type':'application/xml'});need(r.status===207,'CalDAV verification failed');const xml=await r.text();need(!/<!DOCTYPE|<!ENTITY/i.test(xml)&&XMLValidator.validate(xml)===true,'Invalid DAV XML');const tree=new XMLParser({removeNSPrefix:true,ignoreAttributes:false}).parse(xml);const responses=list(tree.multistatus?.response);const props=responses.flatMap(x=>list(x.propstat)).filter(p=>String(p.status).includes(' 200 '));need(props.length===1&&props[0].prop?.displayname===NAME&&Object.hasOwn(props[0].prop?.resourcetype||{},'calendar'),'Wrong dedicated calendar');}
+ async inventory(){const r=await this.request(this.base,'PROPFIND','<d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>',{Depth:'1','Content-Type':'application/xml'});need(r.status===207,'Collection inventory failed');const xml=await r.text();need(!/<!DOCTYPE|<!ENTITY/i.test(xml)&&XMLValidator.validate(xml)===true,'Invalid DAV XML');const tree=new XMLParser({removeNSPrefix:true,ignoreAttributes:false}).parse(xml);return list(tree.multistatus?.response).filter(x=>new URL(x.href,this.base).pathname!==new URL(this.base).pathname).map(x=>this.url(x.href));}
  async read(href){const r=await this.request(this.url(href));if(r.status===404)return null;need(r.status===200,'CalDAV read failed; not a deletion');const etag=r.headers.get('etag');need(etag&&!etag.startsWith('W/'),'Strong ETag required');return {etag,ics:await r.text()}}
  async put(href,ics,etag){const r=await this.request(this.url(href),'PUT',ics,{'Content-Type':'text/calendar; charset=utf-8',...(etag?{'If-Match':etag}:{'If-None-Match':'*'})});need([200,201,204].includes(r.status),'Conditional Apple write refused')}
  async delete(href,etag){const r=await this.request(this.url(href),'DELETE',undefined,{'If-Match':etag});need([200,204].includes(r.status),'Conditional Apple delete refused')}
@@ -92,11 +93,16 @@ function service({env=process.env,db=auth.db,store,cal=new CalDAV(env),now=Date.
   job.complete=job.index===job.ids.length;await store.setJSON('bootstrap-v1',job);return job;
  })}
  async function reconcile(){return locked(async check=>{
-  const rows=(await allAppointments()).filter(futureEligible),report={found:rows.length,linked:0,verified:0,missing:[],mismatch:[]},seen=new Set;
-  for(let i=0;i<rows.length;i+=8){check();await Promise.all(rows.slice(i,i+8).map(async n=>{const m=await store.get(key(n.id),{type:'json'});if(!m||m.stage!=='linked'){report.missing.push(n.id);return}report.linked++;
-   if(m.calendar!==env.APPLE_CALDAV_URL||seen.has(m.href)){report.mismatch.push(n.id);return}seen.add(m.href);
-   const a=await cal.read(m.href);if(!a||parse(a.ics).uid!==n.id+'@calendar.neacea.it'||parse(a.ics).marker!==m.marker||!eq(parse(a.ics).slot,slot(n)))report.mismatch.push(n.id);else report.verified++;
-  }))}return report;
+  const rows=(await allAppointments()).filter(futureEligible),report={found:rows.length,linked:0,verified:0,managedEvents:0,duplicates:0,missing:[],mismatch:[]},expected=new Map,seen=new Set,counts=new Map;
+  for(const n of rows){const m=await store.get(key(n.id),{type:'json'});if(!m||m.stage!=='linked'){report.missing.push(n.id);continue}report.linked++;expected.set(n.id+'@calendar.neacea.it',{n,m});if(m.calendar!==env.APPLE_CALDAV_URL||seen.has(m.href))report.mismatch.push(n.id);seen.add(m.href)}
+  const hrefs=await cal.inventory();
+  for(let i=0;i<hrefs.length;i+=8){check();await Promise.all(hrefs.slice(i,i+8).map(async href=>{
+   const a=await cal.read(href);if(!a)return;let ap;try{ap=parse(a.ics)}catch{return}const pair=expected.get(ap.uid);if(!pair)return;
+   report.managedEvents++;counts.set(ap.uid,(counts.get(ap.uid)||0)+1);const {n,m}=pair;
+   if(cal.url?cal.url(m.href)!==cal.url(href):m.href!==href)return;
+   if(ap.marker!==m.marker||!eq(ap.slot,slot(n)))report.mismatch.push(n.id);else report.verified++;
+  }))}
+  report.duplicates=[...counts.values()].reduce((s,n)=>s+Math.max(0,n-1),0);for(const [uid,{n}] of expected)if(!counts.get(uid))report.missing.push(n.id);return report;
  })}
  return {run,bootstrapPreview,bootstrapStart,bootstrapRun,bootstrapStatus:async()=>{config();await actor();return store.get('bootstrap-v1',{type:'json'})},reconcile,linkStatus,link:id=>locked(async check=>{need(typeof id==='string'&&id.length>0&&id.length<=160,'Appointment ID required');need(manualEligible(await read(id)),'Only future PT appointments can be linked');await provision(id,check,true);return {linked:true,eligible:true}}),provision:id=>locked(check=>provision(id,check)),status:async()=>({enabled:env.APPLE_CALDAV_SYNC_ENABLED==='true',lastRun:await store.get('last-run',{type:'json'})}),removeMapping:id=>locked(async()=>{const e=await store.getWithMetadata(key(id),{type:'json'});need(id.startsWith('TEST_'),'Only controlled TEST mapping cleanup');if(e){need(!await cal.read(e.data.href),'Apple fixture still present');await store.delete(key(id))}})};
 }
