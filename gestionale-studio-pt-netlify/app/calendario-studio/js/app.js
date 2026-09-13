@@ -255,9 +255,10 @@ const App = {
     ).join('');
 
     // Durata: select per circuit, readonly per altri
-    const durField = svc?.durationOptions?.length
+    const durationOptions = window.CalendarFlex?.enabled ? CalendarFlex.durations : svc?.durationOptions;
+    const durField = durationOptions?.length
       ? `<select id="appt-duration" class="form-input" onchange="App._onSlotChange()">
-           ${svc.durationOptions.map(v=>`<option value="${v}" ${(appt?.durationMin||svc.durationMin)===v?'selected':''}>${v} min</option>`).join('')}
+           ${durationOptions.map(v=>`<option value="${v}" ${(appt?.durationMin||svc.durationMin)===v?'selected':''}>${v} min</option>`).join('')}
          </select>`
       : `<input type="number" id="appt-duration" class="form-input" value="${appt?.durationMin||svc?.durationMin||60}"
                readonly style="background:var(--bg);color:var(--text3);cursor:not-allowed">`;
@@ -473,8 +474,9 @@ const App = {
     // Aggiorna durata
     const group = document.getElementById('duration-group');
     if (group) {
-      if (svc.durationOptions?.length) {
-        const opts = svc.durationOptions.map(v=>`<option value="${v}">${v} min</option>`).join('');
+      const durationOptions = window.CalendarFlex?.enabled ? CalendarFlex.durations : svc.durationOptions;
+      if (durationOptions?.length) {
+        const opts = durationOptions.map(v=>`<option value="${v}">${v} min</option>`).join('');
         group.innerHTML = `<label>Durata</label><select id="appt-duration" class="form-input" onchange="App._onSlotChange()">${opts}</select>`;
       } else {
         group.innerHTML = `<label>Durata</label>
@@ -518,7 +520,7 @@ const App = {
     const overrideBox = document.getElementById('operator-overlap-override');
     const overrideInput = document.getElementById('appt-force-operator-overlap');
     const overrideCopy = document.getElementById('operator-overlap-copy');
-    const overrideEligible = !App.isPortalPtMode() && baseValidation.operatorOverrideEligible;
+    const overrideEligible = !window.CalendarFlex?.enabled && !App.isPortalPtMode() && baseValidation.operatorOverrideEligible;
 
     if (overrideBox) overrideBox.hidden = !overrideEligible;
     if (!overrideEligible && overrideInput) overrideInput.checked = false;
@@ -537,7 +539,9 @@ const App = {
       : baseValidation;
     const validEl = document.getElementById('slot-validation');
     if (validEl) {
-      if (validation.ok) {
+      if (validation.ok && validation.warnings?.length) {
+        validEl.innerHTML = `<div class="form-warning">⚠ ${validation.warnings.map(App._escapeHtml).join(' · ')} — salvataggio consentito</div>`;
+      } else if (validation.ok) {
         let roomInfo = '';
         if (svc?.room) {
           const load = Services.getRoomLoadAt(date, time, dur, svc.room, apptId);
@@ -789,6 +793,7 @@ const App = {
 
   // ── SALVA APPUNTAMENTO ───────────────────────────────
   async _saveAppointment(apptId) {
+    await window.CalendarFlex?.refresh();
     const svcId   = document.getElementById('appt-service')?.value;
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
@@ -827,7 +832,7 @@ const App = {
 
     const draft = { ...apptData, id: apptId || null };
     const baseValidation = Services.canBookAppointment(draft);
-    const forceRequested = !!document.getElementById('appt-force-operator-overlap')?.checked;
+    const forceRequested = !window.CalendarFlex?.enabled && !!document.getElementById('appt-force-operator-overlap')?.checked;
     const forceApproved = forceRequested && baseValidation.operatorOverrideEligible;
     const continuingAuthorizedOverlap = !!(
       sameSlot &&
@@ -3653,6 +3658,7 @@ const App = {
 
   // ── INIT ─────────────────────────────────────────────
   async init() {
+    await window.CalendarFlex?.ready;
     State.init();
     await App.refreshFromSupabase({ silent: true, force: true });
     await App._initPortalPtMode();

@@ -676,7 +676,7 @@
     Calendar.__ptAvailabilityHookedV4 = true;
   }
 
-  window.PTAvailabilityOverview = { toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
+  window.PTAvailabilityOverview = { getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();

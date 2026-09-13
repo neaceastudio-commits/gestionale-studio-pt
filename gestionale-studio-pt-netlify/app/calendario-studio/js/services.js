@@ -316,7 +316,10 @@ const Services = (() => {
   }
 
   function canBookAppointment(appt, options = {}) {
-    const errors = [];
+    const errors = [], warnings = [];
+    const flex = typeof window !== 'undefined' && window.CalendarFlex?.enabled;
+    const planning = flex ? warnings : errors;
+    if (flex && (!Number.isInteger(Number(appt.durationMin)) || appt.durationMin < 15 || appt.durationMin > 240 || appt.durationMin % 15)) errors.push('Durata: multipli di 15 minuti, da 15 a 240');
     let operatorConflicts = [];
     let operatorOverrideEligible = false;
     const svc = getService(appt.serviceId);
@@ -348,14 +351,14 @@ const Services = (() => {
           const conflictClients = (operatorConflict.clientIds || []).map(clientConflictLabel).join(', ') || 'nessun cliente';
           return `${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`;
         }).join(' · ');
-        errors.push(`${operatorFullName(appt.operatorId)} occupato alle ${conflictSummary}`);
+        planning.push(`${operatorFullName(appt.operatorId)} occupato alle ${conflictSummary}`);
       }
     }
 
     const clientConflictId = (appt.clientIds || []).find(cid =>
       appts.some(a => (a.clientIds || []).includes(cid) && overlaps(appt, a, false))
     );
-    if (clientConflictId) errors.push(`${clientFullName(clientConflictId)} ha gia un appuntamento alle ${String(appt.startTime || '').slice(0, 5)}`);
+    if (clientConflictId) planning.push(`${clientFullName(clientConflictId)} ha gia un appuntamento alle ${String(appt.startTime || '').slice(0, 5)}`);
 
     const incompatibleClient = (appt.clientIds || []).map(getClient).find(c =>
       c && svc && !svc.isBlock && !clientCanUseService(c, appt.serviceId)
@@ -371,7 +374,7 @@ const Services = (() => {
           const days = c?.giorniSettimana || c?.giorni_settimana || [];
           return Array.isArray(days) && days.length && !days.includes(apptDay);
         });
-        if (dayMismatch) errors.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nella pianificazione reale del pacchetto`);
+        if (dayMismatch) planning.push(`${clientFullName(dayMismatch.id)} non ha ${apptDay} nella pianificazione reale del pacchetto`);
       }
 
       const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
@@ -391,10 +394,22 @@ const Services = (() => {
       const current = getRoomLoadAt(appt.date, appt.startTime, appt.durationMin, svc.room, appt.id);
       const add = appointmentRoomLoad(appt);
       const max = getRoomMax(svc.room);
-      if (current + add > max) errors.push(`${CONFIG.ROOMS[svc.room]?.label || 'Sala'} piena`);
+      if (current + add > max) planning.push(`${CONFIG.ROOMS[svc.room]?.label || 'Sala'} piena`);
     }
 
-    return { ok: errors.length === 0, errors, operatorConflicts, operatorOverrideEligible };
+    if (flex) {
+      const start = timeToMin(appt.startTime), end = start + Number(appt.durationMin);
+      if (start < timeToMin(CONFIG.workHours.start) || end > timeToMin(CONFIG.workHours.end)) warnings.push('Fuori orario di apertura');
+      if (appt.operatorId && window.PTAvailabilityOverview?.getDeclaredSlots) {
+        const dayKey = ['sun','mon','tue','wed','thu','fri','sat'][new Date(appt.date+'T12:00:00').getDay()];
+        const ranges = window.PTAvailabilityOverview.getDeclaredSlots(appt.operatorId,dayKey).map(s=>String(s).split('-').map(timeToMin)).sort((a,b)=>a[0]-b[0]);
+        let covered=start; for(const [lo,hi] of ranges){if(lo<=covered&&hi>covered)covered=hi;}
+        if(covered<end)warnings.push('Fuori disponibilità PT dichiarata');
+      }
+      if(appts.some(a=>(a.operatorId===appt.operatorId || (a.clientIds||[]).some(id=>(appt.clientIds||[]).includes(id))) && overlaps(appt,a,true) && !overlaps(appt,a,false)))warnings.push('Buffer tra appuntamenti non rispettato');
+      operatorOverrideEligible=false;
+    }
+    return { ok: errors.length === 0, errors, warnings, operatorConflicts, operatorOverrideEligible };
   }
 
   function hasForcedPt11Overlap(appt) {

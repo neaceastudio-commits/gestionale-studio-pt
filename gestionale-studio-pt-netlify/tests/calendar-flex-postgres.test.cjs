@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {start,seed}=require('./helpers/calendar-postgres.cjs');
+const core=require('../tools/apple-caldav-production/functions/lib/core.cjs');
+class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){return structuredClone(this.m.get(k)||null)}async get(k){return(await this.getWithMetadata(k))?.data||null}async getMetadata(k){return this.getWithMetadata(k)}async setJSON(k,data,o={}){const old=this.m.get(k);if(o.onlyIfNew&&old||o.onlyIfMatch&&old?.etag!==o.onlyIfMatch)return{modified:false};const etag=String(++this.v);this.m.set(k,{data:structuredClone(data),etag});return{modified:true,etag}}async list({prefix}){return{blobs:[...this.m.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key}))}}async delete(k){this.m.delete(k)}}
+(async()=>{const pg=await start(),c=pg.client;try{
+ await seed(c);await c.query("insert into operators(id,nome,cognome,email,roles) values('staff_1','Owner','SIM','owner@example.test',array['owner']);create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators;grant select on operator_effective_roles to service_role");
+ for(const name of ['20260912212042_calendar_activity_audit.sql','20260912225335_calendar_audit_assignment_partial_unique.sql','20260913211931_calendar_flex_mode.sql'])await c.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8'));
+ const write=async row=>{await c.query('set role service_role');try{return (await c.query('select calendar_audit_write($1,$2,$3,$4,$5,$6) result',['staff_1','owner','calendar',crypto.randomUUID(),'save',JSON.stringify({appointment:row})])).rows[0].result}finally{await c.query('reset role')}};
+ const row=(id,patch={})=>({id,service_id:'pt11',operator_id:'pt',client_ids:['test'],date:'2026-09-15',start_time:'17:00:00',duration_min:60,buffer_min:10,status:'prenotato',notes:'',...patch});
+ const balance=async()=>assert.equal((await c.query("select sessions_remaining from clients where id='test'")).rows[0].sessions_remaining,8);
+ const get=async id=>(await c.query('select to_jsonb(a) row from appointments a where id=$1',[id])).rows[0].row;
+ await write(row('busy'));await assert.rejects(write(row('overlap')),/operator occupied/);
+ await c.query("update calendar_runtime_flags set enabled=true where key='CALENDAR_FLEX_MODE'");
+ let result=await write(row('overlap'));assert.ok(result.warnings.includes('operator_overlap')&&result.warnings.includes('client_overlap'));await balance();console.log('PASS 1 same PT and client overlap: allowed, warnings, balance 8');
+ result=await write(row('short',{duration_min:30}));assert.equal(result.appointment.duration_min,30);await balance();console.log('PASS 2 duration 30 minutes: allowed, balance 8');
+ await write(row('outside',{start_time:'23:00:00',duration_min:30}));await balance();console.log('PASS 3 outside PT availability/opening: allowed, balance 8');
+ for(const n of [15,30,45,90,240])assert.equal((await write(row('duration'+n,{duration_min:n}))).appointment.duration_min,n);
+ for(const n of [0,14,20,241,255])await assert.rejects(write(row('invalid'+n,{duration_min:n})),/Duration/);
+ await c.query("update calendar_runtime_flags set enabled=false");await assert.rejects(write(row('strict_again')),/operator occupied/);await c.query("update calendar_runtime_flags set enabled=true");
+ for(const role of ['anon','authenticated','service_role']){await c.query('set role '+role);await assert.rejects(c.query('update calendar_runtime_flags set enabled=false'));await c.query('reset role')}
+ // The unchanged CalDAV worker uses the same audited RPC and global flag.
+ await write(row('TEST_FLEX_APPLE',{start_time:'18:00:00',duration_min:30}));
+ const db=async(table,{query='',body}={})=>{if(table==='rpc/calendar_audit_write')return write(body.p_payload.appointment);assert.ok(['clients','appointments','operators','operator_effective_roles'].includes(table));let rows=(await c.query(`select to_jsonb(a) r from ${table} a`)).rows.map(x=>x.r);const q=new URLSearchParams(query.slice(1));for(const k of ['id','operator_id'])if(q.has(k))rows=rows.filter(x=>x[k]===q.get(k).slice(3));if(q.has('offset'))rows=rows.slice(+q.get('offset'),+q.get('offset')+1000);if(q.has('created_at'))rows=rows.filter(x=>Date.parse(x.created_at)>=Date.parse(q.get('created_at').slice(4)));return rows};
+ const env={SITE_NAME:'neacea-caldav-gianluca',SITE_ID:'SIM',APPLE_CALDAV_SITE_ID:'SIM',APPLE_CALDAV_ACTOR_ID:'staff_1',APPLE_CALDAV_USER:'ventofresco55@gmail.com',APPLE_CALDAV_SYNC_ENABLED:'true',APPLE_CALDAV_URL:'https://p00-caldav.icloud.com/test/',APPLE_CALDAV_START_AT:'2099-01-01T00:00:00Z'};
+ const objects=new Map;let tag=0;const cal={verify:async()=>{},read:async h=>structuredClone(objects.get(h)||null),put:async(h,ics,etag)=>{assert.equal(objects.get(h)?.etag,etag);objects.set(h,{ics,etag:String(++tag)})}};
+ const worker=core.service({env,db,store:new Store,cal,now:()=>Date.parse('2026-09-13T12:00:00Z')});await worker.link('TEST_FLEX_APPLE');const href=[...objects.keys()][0],a=await cal.read(href);await cal.put(href,core.rewrite(a.ics,{date:'2026-09-15',start_time:'17:00',duration_min:30}),a.etag);assert.equal((await worker.run()).errors,0);assert.equal((await get('TEST_FLEX_APPLE')).start_time,'17:00:00');await balance();console.log('PASS 4 unchanged CalDAV Apple overlap → NEACEA persists');
+ let n=await get('short');await write({...n,status:'fatto'});assert.equal((await c.query("select sessions_remaining from clients where id='test'")).rows[0].sessions_remaining,7);n=await get('short');await write({...n,status:'prenotato'});await balance();
+ assert.ok((await c.query("select 1 from calendar_audit_log where action='marked_done' and actor_operator_id='staff_1'")).rowCount);
+ console.log('PASS 5 balances unchanged by planning, Fatto/restoration/audit preserved; false restores strict, public flag writes denied');
+}finally{await pg.close()}})().catch(e=>{console.error(e);process.exitCode=1});
