@@ -2,9 +2,10 @@
 window.CalendarAudit = (() => {
   const endpoint='/.netlify/functions/calendar-activity';
   const key='neacea-calendar-audit-session';let actor=null;
-  const token=()=>new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
+  let accessToken=new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
+  const token=()=>accessToken;
   async function call(operation,payload={},filters={}) {
-    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata'}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
+    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata',status:r.status}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
   }
   async function dispatchWrite(table,{method,query,body}) {
     const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');
@@ -20,7 +21,9 @@ window.CalendarAudit = (() => {
     return {error:'Scrittura non supportata dal registro'};
   }
   async function write(table,options) {
+    if(!token()){login();return {error:'Accedi con il codice del Portale PT prima di salvare'};}
     const result=await dispatchWrite(table,options);
+    if(result?.status===401){actor=null;accessToken='';sessionStorage.removeItem(key);login();}
     if(result?.error){
       try { await SupabaseSync.pullAll(); Calendar.render(); } catch (_) { /* Never claim a failed write succeeded. */ }
       UI.showToast(result.error, 'error');
@@ -32,33 +35,28 @@ window.CalendarAudit = (() => {
   function dateInput(value){const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
   function open(){
     if(actor?.role!=='owner')return;
-    UI.openModal('<div class="modal-header"><h3>Registro attività</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body" id="calendar-audit-view"></div>');
-    const host=document.getElementById('calendar-audit-view'),form=element('form');host.append(form);
-    const inputs={};
-    for(const [name,label,type] of [['from','Dal','date'],['to','Al','date']]){const wrap=element('label',label+' '),input=element('input');input.type=type;wrap.append(input);form.append(wrap);inputs[name]=input}
-    for(const [name,label,values] of [['actor','Utente',State.getOperators().map(o=>[o.id,`${o.nome} ${o.cognome}`])],['client','Cliente',State.getClients().map(c=>[c.id,`${c.nome} ${c.cognome}`])],['action','Azione',Object.entries(labels)],['source','Origine',['calendar','acquisition','system','apple'].map(s=>[s,s])]]){
-      const wrap=element('label',label+' '),select=element('select');select.append(new Option('Tutti',''));for(const [v,t] of values)select.append(new Option(t,v));wrap.append(select);form.append(wrap);inputs[name]=select;
-    }
-    const output=element('div');const more=element('button','Carica altre');more.type='button';let cursor='';
-    async function load(append=false){
-      if(!append){cursor='';output.replaceChildren()}
-      const filters=Object.fromEntries(Object.entries(inputs).map(([k,e])=>[k,e.value]));
-      if(filters.from)filters.from=new Date(filters.from+'T00:00:00').toISOString();
-      if(filters.to){const d=new Date(filters.to+'T00:00:00');d.setDate(d.getDate()+1);filters.to=d.toISOString()}
-      filters.beforeId=cursor;const rows=await call('list',{},filters);
-      if(rows.error){output.append(element('p',rows.error));return}
-      if(!rows.length&&!append)output.append(element('p','Nessuna attività nel periodo.'));
-      for(const row of rows){const names=(row.client_ids||[]).map(id=>{const c=State.getClients().find(c=>c.id===id);return c?`${c.nome} ${c.cognome}`:id}).join(', ');
-        const b=row.before_data||{},a=row.after_data||{};const changes=Array.from(new Set([...Object.keys(b),...Object.keys(a)])).filter(k=>JSON.stringify(b[k])!==JSON.stringify(a[k])).map(k=>`${k}: ${JSON.stringify(b[k]??'—')} → ${JSON.stringify(a[k]??'—')}`).join(' · ');
-        const item=element('p',`${new Date(row.created_at).toLocaleString('it-IT')} · ${row.actor_name} · ${labels[row.action]||row.action} · ${names} · ${changes||(row.action==='client_details_changed'?'Dettagli non riportati nel registro':'Nessuna variazione')} · ${row.source}`);output.append(item);cursor=String(row.id);
-      }more.hidden=rows.length<100;
-    }
-    for(const [label,days] of [['Oggi',0],['Ultimi 7 giorni',6]]){const b=element('button',label);b.type='button';b.onclick=()=>{const now=new Date();inputs.to.value=dateInput(now);now.setDate(now.getDate()-days);inputs.from.value=dateInput(now);load()};form.append(b)}
-    const submit=element('button','Filtra');submit.type='submit';form.append(submit);form.onsubmit=e=>{e.preventDefault();load()};more.onclick=()=>load(true);host.append(output,more);inputs.from.value=inputs.to.value=dateInput(new Date());load();
+    CalendarAuditView.open({call,labels,state:State,ui:UI});
+  }
+  function login(){
+    UI.openModal('<div class="modal-header"><h3>Accedi al Calendario</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><form id="calendar-audit-login" class="modal-body"><p>Usa email e codice del Portale PT. La sessione viene verificata prima di abilitare i salvataggi.</p><label>Email <input name="email" type="email" autocomplete="username" required></label><label>Codice Portale PT <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label><button type="submit" class="btn-primary">Accedi</button><p role="status" id="calendar-audit-login-status"></p></form>');
+    const form=document.getElementById('calendar-audit-login');
+    form.onsubmit=async e=>{
+      e.preventDefault();const status=document.getElementById('calendar-audit-login-status'),button=form.querySelector('button[type="submit"]');button.disabled=true;status.textContent='Verifica in corso…';
+      try{
+        const r=await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',email:form.elements.email.value.trim(),code:form.elements.code.value.trim()})});
+        const data=await r.json();if(!r.ok||!data.success||!data.token)throw Error(data.error||'Codice non valido');
+        accessToken=data.token;const verified=await call('session');if(verified.error)throw Error(verified.error);
+        actor=verified.actor;sessionStorage.setItem(key,accessToken);
+        const url=new URL(location.href);url.searchParams.set('access',accessToken);
+        for(const name of ['pt','mode','op','operator','operator_id','email','ptEmail'])url.searchParams.delete(name);
+        if(actor.role==='pt'){url.searchParams.set('pt','1');url.searchParams.set('mode','pt');url.searchParams.set('op',actor.id);}else url.searchParams.set('mode','admin');
+        location.assign(url.toString());
+      }catch(error){accessToken='';actor=null;sessionStorage.removeItem(key);status.textContent=error.message||'Accesso non disponibile';button.disabled=false;}
+    };
   }
   async function init(){
     const result=await call('session');if(result.error){
-      const link=element('a','Accedi dal Portale per modificare il Calendario');link.href='https://neacea-portale-personal-trainer.netlify.app/';(document.querySelector('.topbar-right')||document.body).append(link);return;
+      const button=element('button','Accedi al Calendario');button.className='topbar-btn';button.id='calendar-audit-login-button';button.onclick=login;(document.querySelector('.topbar-right')||document.body).append(button);return;
     }actor=result.actor;sessionStorage.setItem(key,token());
     if(actor.role==='owner'){const b=element('button','Registro attività');b.className='btn';b.id='calendar-audit-button';b.onclick=open;(document.querySelector('.topbar-right')||document.body).append(b)}
   }
