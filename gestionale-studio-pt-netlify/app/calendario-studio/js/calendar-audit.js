@@ -2,9 +2,10 @@
 window.CalendarAudit = (() => {
   const endpoint='/.netlify/functions/calendar-activity';
   const key='neacea-calendar-audit-session';let actor=null;
-  const token=()=>new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
+  let accessToken=new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
+  const token=()=>accessToken;
   async function call(operation,payload={},filters={}) {
-    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata'}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
+    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata',status:r.status}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
   }
   async function dispatchWrite(table,{method,query,body}) {
     const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');
@@ -20,7 +21,9 @@ window.CalendarAudit = (() => {
     return {error:'Scrittura non supportata dal registro'};
   }
   async function write(table,options) {
+    if(!token()){login();return {error:'Accedi con il codice del Portale PT prima di salvare'};}
     const result=await dispatchWrite(table,options);
+    if(result?.status===401){actor=null;accessToken='';sessionStorage.removeItem(key);login();}
     if(result?.error){
       try { await SupabaseSync.pullAll(); Calendar.render(); } catch (_) { /* Never claim a failed write succeeded. */ }
       UI.showToast(result.error, 'error');
@@ -56,9 +59,26 @@ window.CalendarAudit = (() => {
     for(const [label,days] of [['Oggi',0],['Ultimi 7 giorni',6]]){const b=element('button',label);b.type='button';b.onclick=()=>{const now=new Date();inputs.to.value=dateInput(now);now.setDate(now.getDate()-days);inputs.from.value=dateInput(now);load()};form.append(b)}
     const submit=element('button','Filtra');submit.type='submit';form.append(submit);form.onsubmit=e=>{e.preventDefault();load()};more.onclick=()=>load(true);host.append(output,more);inputs.from.value=inputs.to.value=dateInput(new Date());load();
   }
+  function login(){
+    UI.openModal('<div class="modal-header"><h3>Accedi al Calendario</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><form id="calendar-audit-login" class="modal-body"><p>Usa email e codice del Portale PT. La sessione viene verificata prima di abilitare i salvataggi.</p><label>Email <input name="email" type="email" autocomplete="username" required></label><label>Codice Portale PT <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label><button type="submit" class="btn-primary">Accedi</button><p role="status" id="calendar-audit-login-status"></p></form>');
+    const form=document.getElementById('calendar-audit-login');
+    form.onsubmit=async e=>{
+      e.preventDefault();const status=document.getElementById('calendar-audit-login-status'),button=form.querySelector('button[type="submit"]');button.disabled=true;status.textContent='Verifica in corso…';
+      try{
+        const r=await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',email:form.elements.email.value.trim(),code:form.elements.code.value.trim()})});
+        const data=await r.json();if(!r.ok||!data.success||!data.token)throw Error(data.error||'Codice non valido');
+        accessToken=data.token;const verified=await call('session');if(verified.error)throw Error(verified.error);
+        actor=verified.actor;sessionStorage.setItem(key,accessToken);
+        const url=new URL(location.href);url.searchParams.set('access',accessToken);
+        for(const name of ['pt','mode','op','operator','operator_id','email','ptEmail'])url.searchParams.delete(name);
+        if(actor.role==='pt'){url.searchParams.set('pt','1');url.searchParams.set('mode','pt');url.searchParams.set('op',actor.id);}else url.searchParams.set('mode','admin');
+        location.assign(url.toString());
+      }catch(error){accessToken='';actor=null;sessionStorage.removeItem(key);status.textContent=error.message||'Accesso non disponibile';button.disabled=false;}
+    };
+  }
   async function init(){
     const result=await call('session');if(result.error){
-      const link=element('a','Accedi dal Portale per modificare il Calendario');link.href='https://neacea-portale-personal-trainer.netlify.app/';(document.querySelector('.topbar-right')||document.body).append(link);return;
+      const button=element('button','Accedi al Calendario');button.className='topbar-btn';button.id='calendar-audit-login-button';button.onclick=login;(document.querySelector('.topbar-right')||document.body).append(button);return;
     }actor=result.actor;sessionStorage.setItem(key,token());
     if(actor.role==='owner'){const b=element('button','Registro attività');b.className='btn';b.id='calendar-audit-button';b.onclick=open;(document.querySelector('.topbar-right')||document.body).append(b)}
   }
