@@ -43,24 +43,25 @@ function service({env=process.env,db=auth.db,store,cal=new CalDAV(env),now=Date.
  const baseline=(n,a)=>({slot:slot(n),guard:guard(n),apple:a?parse(a.ics).slot:null});
  async function save(k,data,etag){const r=await store.setJSON(k,data,etag?{onlyIfMatch:etag}:{onlyIfNew:true});need(r.modified,'Mapping changed concurrently');return r.etag}
  async function locked(fn){config();await actor();const owner=crypto.randomUUID(),lease=await store.getWithMetadata('lease',{type:'json'}),start=now();need(!lease||lease.data.until<start,'Sync already running');const writeLease=await store.setJSON('lease',{owner,until:start+120000},lease?{onlyIfMatch:lease.etag}:{onlyIfNew:true});need(writeLease.modified,'Concurrent sync');const check=()=>need(now()<start+23000,'Batch deadline reached');try{await cal.verify();return await fn(check)}finally{await store.setJSON('lease',{owner,until:0},{onlyIfMatch:writeLease.etag})}}
- function manualEligible(n){
-  try{return ['pt11','pt12','circuit'].includes(n.service_id)&&['prenotato','fatto','noshow'].includes(n.status)&&instant(n.date.replace(/-/g,'')+'T'+n.start_time.slice(0,5).replace(':','')+'00')>now()}catch{return false}
+ function futureEligible(n){
+  try{return ['prenotato','fatto','noshow'].includes(n.status)&&instant(n.date.replace(/-/g,'')+'T'+n.start_time.slice(0,5).replace(':','')+'00')>now()}catch{return false}
  }
+ const manualEligible=n=>['pt11','pt12','circuit'].includes(n.service_id)&&futureEligible(n);
  async function linkStatus(id){config();await actor();need(typeof id==='string'&&id.length>0&&id.length<=160,'Appointment ID required');const n=await read(id),entry=await store.getWithMetadata(key(id),{type:'json'});return {eligible:manualEligible(n),linked:entry?.data.stage==='linked'&&entry.data.calendar===env.APPLE_CALDAV_URL};}
  async function provision(id,check,manual=false){
   const k=key(id);let entry=await store.getWithMetadata(k,{type:'json'});if(entry?.data.stage==='linked')return;
-  let n=await read(id);if(manual){need(manualEligible(n),'Only future PT appointments can be linked')}else{need(Date.parse(n.created_at)>=Date.parse(env.APPLE_CALDAV_START_AT)&&n.date>=env.APPLE_CALDAV_START_AT.slice(0,10),'Historical backfill forbidden');need(n.status==='prenotato','Only booked appointments can be linked');}
-  if(!entry){const record={id,href:'neacea-'+crypto.createHash('sha256').update(id).digest('hex')+'.ics',uid:id+'@calendar.neacea.it',marker:crypto.randomUUID(),calendar:env.APPLE_CALDAV_URL,origin:manual?'manual':'automatic',stage:'pending',baseline:{slot:slot(n),guard:guard(n),apple:slot(n)}};entry={data:record,etag:await save(k,record)}}
+  let n=await read(id);if(manual==='bootstrap'||manual===true){need((manual==='bootstrap'?futureEligible:manualEligible)(n),'Only future PT appointments can be linked')}else{need(Date.parse(n.created_at)>=Date.parse(env.APPLE_CALDAV_START_AT)&&n.date>=env.APPLE_CALDAV_START_AT.slice(0,10),'Historical backfill forbidden');need(manual==='automatic'?futureEligible(n):n.status==='prenotato','Only future booked appointments can be linked');}
+  if(!entry){const record={id,href:'neacea-'+crypto.createHash('sha256').update(id).digest('hex')+'.ics',uid:id+'@calendar.neacea.it',marker:crypto.randomUUID(),calendar:env.APPLE_CALDAV_URL,origin:manual==='bootstrap'?'bootstrap':manual===true?'manual':'automatic',stage:'pending',baseline:{slot:slot(n),guard:guard(n),apple:slot(n)}};entry={data:record,etag:await save(k,record)}}
   const record=entry.data;need(record.calendar===env.APPLE_CALDAV_URL,'Collection changed');let a=await cal.read(record.href);
   if(!a){check();const [clients,operators]=await Promise.all([db('clients',{query:'?select=id,nome,cognome,active,sessions_total,sessions_remaining,package_start,data_inizio,data_conferma,notes'}),db('operators',{query:'?select=id,nome,cognome,active'})]);const appointments=await allAppointments();const full=buildCalendar(appointments,clients,operators).body;const events=full.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g)||[];const selected=events.find(e=>e.includes('UID:'+record.uid+'\r\n'));need(selected,'No active participant');let ics=full.slice(0,full.indexOf('BEGIN:VEVENT'))+selected+'\r\nEND:VCALENDAR\r\n';ics=ics.replace(/^METHOD:.*\r?\n/gm,'');ics=ics.replace('END:VEVENT','X-NEACEA-LINK-ID:'+record.marker+'\r\nEND:VEVENT');ics=rewrite(ics,slot(n));check();await cal.put(record.href,ics);a=await cal.read(record.href)}
-  need(a&&parse(a.ics).uid===record.uid&&parse(a.ics).marker===record.marker,'Unknown event at mapped path');need(eq(parse(a.ics).slot,record.baseline.apple)&&eq(guard(n),record.baseline.guard)&&eq(slot(n),record.baseline.slot),'Pending link changed');await save(k,{...record,stage:'linked'},entry.etag);
+  need(a&&parse(a.ics).uid===record.uid&&parse(a.ics).marker===record.marker,'Unknown event at mapped path');need(eq(parse(a.ics).slot,record.baseline.apple)&&eq(guard(n),record.baseline.guard)&&eq(slot(n),record.baseline.slot),'Pending link changed');await save(k,{...record,stage:'linked',etag:a.etag},entry.etag);
  }
- async function one(entry,check){const record=entry.data;need(record.calendar===env.APPLE_CALDAV_URL,'Collection changed');if(record.stage==='pending'){await provision(record.id,check,record.origin==='manual');return 'linked'}
+ async function one(entry,check){const record=entry.data;need(record.calendar===env.APPLE_CALDAV_URL,'Collection changed');if(record.stage==='pending'){await provision(record.id,check,record.origin==='bootstrap'?'bootstrap':record.origin==='manual'?true:'automatic');return 'linked'}
   let n=await read(record.id),a=await cal.read(record.href);if(!['prenotato','annullato'].includes(n.status))return 'locked';const old=record.baseline;need(['client_ids','operator_id','service_id'].every(k=>eq(guard(n)[k],old.guard[k])),'Protected NEACEA fields changed');const ap=a?parse(a.ics):null;need(!ap||(ap.uid===record.uid&&ap.marker===record.marker),'Mapped UID/marker changed');
   const ns=slot(n),aps=ap?.slot||null,nc=!eq(ns,old.slot)||n.status!==old.guard.status,ac=!eq(aps,old.apple);need(!(nc&&ac)||((n.status==='annullato'&&!a)||(n.status==='prenotato'&&eq(ns,aps))),'Conflicting edits');let result='unchanged';
   if(nc&&!ac){check();if(n.status==='annullato'){if(a)await cal.delete(record.href,a.etag);a=null}else{need(a,'Cannot recreate deleted event');await cal.put(record.href,rewrite(a.ics,ns),a.etag);a=await cal.read(record.href);need(a&&eq(parse(a.ics).slot,ns),'Apple persistence check failed')}result='neacea_to_apple'}
   else if(ac&&!nc){check();need(n.status==='prenotato','Apple cannot restore cancelled booking');n=await write(n,a?aps:{status:'annullato'});result='apple_to_neacea'}
-  await save(key(record.id),{...record,baseline:baseline(n,a),lastResult:result},entry.etag);return result;
+  await save(key(record.id),{...record,baseline:baseline(n,a),etag:a?.etag||null,lastResult:result},entry.etag);return result;
  }
  async function allAppointments(){let result=[];for(let offset=0;;){const rows=await db('appointments',{query:'?select=*&order=id.asc&limit=1000&offset='+offset});if(!rows.length)return result;result.push(...rows);offset+=rows.length}}
  async function run(){return locked(async check=>{
@@ -68,10 +69,35 @@ function service({env=process.env,db=auth.db,store,cal=new CalDAV(env),now=Date.
   for(let i=0;i<ordered.length;i+=4){try{check()}catch{break}await Promise.all(ordered.slice(i,i+4).map(async b=>{try{const entry=await store.getWithMetadata(b.key,{type:'json'});await one(entry,check);result.processed++}catch{result.errors++}finally{processed++}}))}
   if(blobs.length)await store.setJSON('cursor',{index:(control.index+processed)%blobs.length});
   // Only NEW NEACEA bookings after activation. Never import unknown Apple events.
-  const fresh=await db('appointments',{query:'?select=id&status=eq.prenotato&created_at=gte.'+encodeURIComponent(env.APPLE_CALDAV_START_AT)+'&date=gte.'+env.APPLE_CALDAV_START_AT.slice(0,10)+'&order=created_at.asc,id.asc&limit=1000'});
-  for(const n of fresh){try{check()}catch{break}try{if(!await store.getMetadata(key(n.id))){await provision(n.id,check);result.created++}}catch{result.errors++}}
+  const fresh=await db('appointments',{query:'?select=*&status=neq.annullato&created_at=gte.'+encodeURIComponent(env.APPLE_CALDAV_START_AT)+'&date=gte.'+env.APPLE_CALDAV_START_AT.slice(0,10)+'&order=created_at.asc,id.asc&limit=1000'});
+  for(const n of fresh.filter(futureEligible)){try{check()}catch{break}try{if(!await store.getMetadata(key(n.id))){await provision(n.id,check,'automatic');result.created++}}catch{result.errors++}}
   await store.setJSON('last-run',{...result,at:new Date(now()).toISOString()});return result;
  })}
- return {run,linkStatus,link:id=>locked(async check=>{need(typeof id==='string'&&id.length>0&&id.length<=160,'Appointment ID required');need(manualEligible(await read(id)),'Only future PT appointments can be linked');await provision(id,check,true);return {linked:true,eligible:true}}),provision:id=>locked(check=>provision(id,check)),status:async()=>({enabled:env.APPLE_CALDAV_SYNC_ENABLED==='true',lastRun:await store.get('last-run',{type:'json'})}),removeMapping:id=>locked(async()=>{const e=await store.getWithMetadata(key(id),{type:'json'});need(id.startsWith('TEST_'),'Only controlled TEST mapping cleanup');if(e){need(!await cal.read(e.data.href),'Apple fixture still present');await store.delete(key(id))}})};
+ async function bootstrapPreview(){config();await actor();const rows=(await allAppointments()).filter(futureEligible);let linked=0;for(const n of rows){const m=await store.get(key(n.id),{type:'json'});if(m?.stage==='linked'&&m.calendar===env.APPLE_CALDAV_URL)linked++}return {found:rows.length,linked,toCreate:rows.length-linked};}
+ async function bootstrapStart(){return locked(async()=>{
+  const previous=await store.get('bootstrap-v1',{type:'json'});if(previous)return previous;
+  const rows=(await allAppointments()).filter(futureEligible),job={ids:rows.map(n=>n.id).sort(),index:0,created:0,skipped:0,errors:[],startedAt:new Date(now()).toISOString(),complete:false};
+  await store.setJSON('bootstrap-v1',job,{onlyIfNew:true});return job;
+ })}
+ async function bootstrapRun(){return locked(async check=>{
+  const job=await store.get('bootstrap-v1',{type:'json'});need(job,'Bootstrap not started');if(job.complete)return job;
+  job.errors=[];
+  // One persistent cursor; failed appointments are retried on the next explicit call.
+  for(;job.index<job.ids.length;){try{check()}catch{break}const id=job.ids[job.index];
+   try{const n=await read(id),m=await store.get(key(id),{type:'json'});
+    if(!futureEligible(n)||m?.stage==='linked'){job.skipped++}else{await provision(id,check,'bootstrap');job.created++}
+    job.index++;await store.setJSON('bootstrap-v1',job);
+   }catch(e){job.errors=[{id,error:String(e.message).slice(0,160)}];break}
+  }
+  job.complete=job.index===job.ids.length;await store.setJSON('bootstrap-v1',job);return job;
+ })}
+ async function reconcile(){return locked(async check=>{
+  const rows=(await allAppointments()).filter(futureEligible),report={found:rows.length,linked:0,verified:0,missing:[],mismatch:[]},seen=new Set;
+  for(let i=0;i<rows.length;i+=8){check();await Promise.all(rows.slice(i,i+8).map(async n=>{const m=await store.get(key(n.id),{type:'json'});if(!m||m.stage!=='linked'){report.missing.push(n.id);return}report.linked++;
+   if(m.calendar!==env.APPLE_CALDAV_URL||seen.has(m.href)){report.mismatch.push(n.id);return}seen.add(m.href);
+   const a=await cal.read(m.href);if(!a||parse(a.ics).uid!==n.id+'@calendar.neacea.it'||parse(a.ics).marker!==m.marker||!eq(parse(a.ics).slot,slot(n)))report.mismatch.push(n.id);else report.verified++;
+  }))}return report;
+ })}
+ return {run,bootstrapPreview,bootstrapStart,bootstrapRun,bootstrapStatus:async()=>{config();await actor();return store.get('bootstrap-v1',{type:'json'})},reconcile,linkStatus,link:id=>locked(async check=>{need(typeof id==='string'&&id.length>0&&id.length<=160,'Appointment ID required');need(manualEligible(await read(id)),'Only future PT appointments can be linked');await provision(id,check,true);return {linked:true,eligible:true}}),provision:id=>locked(check=>provision(id,check)),status:async()=>({enabled:env.APPLE_CALDAV_SYNC_ENABLED==='true',lastRun:await store.get('last-run',{type:'json'})}),removeMapping:id=>locked(async()=>{const e=await store.getWithMetadata(key(id),{type:'json'});need(id.startsWith('TEST_'),'Only controlled TEST mapping cleanup');if(e){need(!await cal.read(e.data.href),'Apple fixture still present');await store.delete(key(id))}})};
 }
 module.exports={NAME,HOST,parse,rewrite,instant,slot,CalDAV,service};

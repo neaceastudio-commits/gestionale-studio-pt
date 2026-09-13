@@ -11,10 +11,10 @@ identifica gli eventi creati dal servizio, anche dopo un'interruzione durante la
 creazione. Nessun evento Apple sconosciuto viene importato o riconosciuto per nome.
 
 `APPLE_CALDAV_START_AT` è un confine di attivazione immutabile: vengono esportati
-solo nuovi appuntamenti prenotati creati in NEACEA dopo quel momento, con data non
+di default nuovi appuntamenti futuri non annullati creati dopo quel momento, con data non
 precedente all'attivazione. Non arretrare questo valore per trasferire lo storico.
-Gli eventi già esistenti non vengono adottati. Il trasferimento storico resta
-manuale. UID, titolo professionale, progresso da residuo salvato e filtri privacy
+Gli eventi Apple già esistenti non vengono adottati. Il bootstrap una tantum
+autorizzato collega soltanto le sedute NEACEA future; non trasferisce lo storico passato. UID, titolo professionale, progresso da residuo salvato e filtri privacy
 riusano il formatter approvato del feed. Il contenuto descrittivo è una fotografia
 alla creazione: questa V1 sincronizza in seguito soltanto data, ora, durata e
 annullamento, non titoli o contatori descrittivi.
@@ -77,3 +77,20 @@ elenco o import storico è accettato. Un mapping già collegato restituisce
 successo senza PUT; un pending manuale conserva la provenienza per il recupero
 dopo interruzione. Fatto/no-show restano protetti dalla sync. Nessuna scrittura
 al DB per collegare un evento e nessun accesso ad altre collection iCloud.
+
+## Bootstrap production autorizzato una tantum
+
+`bootstrapPreview` conta tutti gli appuntamenti futuri non annullati e i mapping
+esistenti. `bootstrapStart` salva una sola fotografia di ID in `bootstrap-v1`;
+`bootstrapRun` avanza un cursore persistente sotto lo stesso lease della sync.
+Ogni ID già collegato viene saltato; un errore blocca il cursore sul singolo ID
+per consentire un retry idempotente. Nessuna lettura di altri calendari iCloud.
+Non ripetere la fotografia né modificare il confine di attivazione per importare
+altri periodi. Il comando è solo nell'endpoint amministrativo autenticato.
+
+Dopo il bootstrap le nuove sedute future non annullate, create dopo l'attivazione,
+continuano a entrare automaticamente tramite il cron. Il pulsante è un recupero
+manuale; non è necessario nel flusso normale. Le sedute future Fatto/no-show
+vengono rappresentate senza modificarne stato o residuo; le relative coppie
+restano protette dalle modifiche Apple. Il mapping conserva anche l'ultimo ETag
+letto; la sync continua a leggere l'ETag remoto prima di ogni PUT/DELETE.

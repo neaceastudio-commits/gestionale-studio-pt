@@ -14,7 +14,7 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
  let failRead=false,failPut=false;
  const objects=new Map;let etag=0;
  const cal={verify:async()=>{},read:async h=>{if(failRead)throw Error('HTTP 500');return structuredClone(objects.get(h)||null)},put:async(h,ics,tag)=>{if(failPut)throw Error('412');const old=objects.get(h);assert.equal(old?.etag,tag);objects.set(h,{ics,etag:String(++etag)})},delete:async(h,tag)=>{assert.equal(objects.get(h).etag,tag);objects.delete(h)}};
- const db=async(table,{query='',body}={})=>{if(table==='rpc/calendar_audit_write')return write(body);assert.ok(['clients','appointments','operators','operator_effective_roles'].includes(table));let rows=(await c.query(`select to_jsonb(a) r from ${table} a`)).rows.map(x=>x.r);const q=new URLSearchParams(query.slice(1));if(q.has('operator_id'))rows=rows.filter(x=>x.operator_id===q.get('operator_id').slice(3));if(q.has('id'))rows=rows.filter(x=>x.id===q.get('id').slice(3));if(q.has('offset'))rows=rows.slice(+q.get('offset'),+q.get('offset')+1000);if(q.has('created_at'))rows=rows.filter(x=>Date.parse(x.created_at)>=Date.parse(q.get('created_at').slice(4)));if(q.has('status'))rows=rows.filter(x=>x.status===q.get('status').slice(3));return rows};
+ const db=async(table,{query='',body}={})=>{if(table==='rpc/calendar_audit_write')return write(body);assert.ok(['clients','appointments','operators','operator_effective_roles'].includes(table));let rows=(await c.query(`select to_jsonb(a) r from ${table} a`)).rows.map(x=>x.r);const q=new URLSearchParams(query.slice(1));if(q.has('operator_id'))rows=rows.filter(x=>x.operator_id===q.get('operator_id').slice(3));if(q.has('id'))rows=rows.filter(x=>x.id===q.get('id').slice(3));if(q.has('offset'))rows=rows.slice(+q.get('offset'),+q.get('offset')+1000);if(q.has('created_at'))rows=rows.filter(x=>Date.parse(x.created_at)>=Date.parse(q.get('created_at').slice(4)));if(q.has('status'))rows=rows.filter(x=>q.get('status').startsWith('neq.')?x.status!==q.get('status').slice(4):x.status===q.get('status').slice(3));return rows};
  const store=new Store,s=core.service({env,db,cal,store});
  for(const patch of [{date:'2020-01-01'},{status:'annullato'},{service_id:'nutrizione'}]){
   const denied=core.service({env,cal,store:new Store,db:async(t,o)=>{const rows=await db(t,o);return t==='appointments'?rows.map(r=>({...r,...patch})):rows}});
@@ -42,6 +42,19 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
  await edit({...await row(),status:'fatto'});a=await cal.read(href);await cal.delete(href,a.etag);await s.run();assert.equal((await row()).status,'fatto');assert.equal((await c.query("select sessions_remaining from clients where id='test'")).rows[0].sessions_remaining,7);
  await edit({...await row(),status:'noshow'});await s.run();assert.equal((await row()).status,'noshow');await balance();
  await store.setJSON('lease',{owner:'other',until:Date.now()+120000});await assert.rejects(s.run(),/already running/);
+ await store.setJSON('lease',{until:0});
+ // Dedicated bootstrap snapshot, including protected future states, with a historical creation boundary.
+ const bootstrapStore=new Store,bootstrapObjects=new Map;let version=0;
+ const bootstrapCal={verify:async()=>{},read:async h=>structuredClone(bootstrapObjects.get(h)||null),put:async(h,ics,tag)=>{assert.equal(bootstrapObjects.get(h)?.etag,tag);bootstrapObjects.set(h,{ics,etag:String(++version)})},delete:async h=>bootstrapObjects.delete(h)};
+ env.APPLE_CALDAV_START_AT=new Date(Date.parse(created)+60000).toISOString();
+ const bs=core.service({env,db,cal:bootstrapCal,store:bootstrapStore});const snap=JSON.stringify(await row());
+ assert.deepEqual(await bs.bootstrapPreview(),{found:1,linked:0,toCreate:1});const job=await bs.bootstrapStart();assert.deepEqual(job.ids,['TEST_CLOUD']);
+ assert.ok((await bs.bootstrapRun()).complete);assert.equal(bootstrapObjects.size,1);assert.deepEqual(await bs.bootstrapPreview(),{found:1,linked:1,toCreate:0});await bs.bootstrapStart();await bs.bootstrapRun();assert.equal(bootstrapObjects.size,1);assert.equal(JSON.stringify(await row()),snap);await balance();assert.equal((await bs.reconcile()).verified,1);
+ // New appointments continue to be exported automatically, without replaying bootstrap.
+ await cal.delete(href,(await cal.read(href))?.etag).catch(()=>{});await edit({...await row(),status:'prenotato'});await edit({...await row(),id:'TEST_NEW_DEFAULT',date:'2026-09-17',start_time:'18:00:00'});
+ env.APPLE_CALDAV_START_AT=new Date(Date.parse(created)-60000).toISOString();await bs.run();assert.equal(bootstrapObjects.size,2);await balance();
+ assert.ok([...bootstrapStore.m.values()].some(x=>x.data.id==='TEST_NEW_DEFAULT'&&x.data.origin==='automatic'&&x.data.etag));
+ console.log('PASS one-time bootstrap: snapshot, mapped skip, idempotency, no balance/status writes, remote reconciliation and new-booking default');
  const sample='BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:SIM\r\nDTSTART:20260915T150000Z\r\nDTEND:20260915T160000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';assert.equal(core.parse(sample).slot.start_time,'17:00');assert.throws(()=>core.parse(sample.replace('END:VEVENT','RRULE:FREQ=DAILY\r\nEND:VEVENT')),/Recurrence/);assert.throws(()=>core.instant('20261025T023000'),/DST/);assert.throws(()=>core.instant('20260329T023000'),/DST/);
  const client=new core.CalDAV({APPLE_CALDAV_URL:env.APPLE_CALDAV_URL,APPLE_CALDAV_USER:'SIM',APPLE_CALDAV_PASSWORD:'SIM'});assert.throws(()=>client.url('../else.ics'),/Outside/);assert.throws(()=>client.url('https://example.com/x'),/Outside/);
  env.SITE_NAME='new-calendar-neacea';await assert.rejects(s.run(),/Isolated/);
