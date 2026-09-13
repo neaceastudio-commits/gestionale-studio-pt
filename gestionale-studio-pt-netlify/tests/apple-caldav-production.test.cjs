@@ -16,6 +16,11 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
  const cal={verify:async()=>{},read:async h=>{if(failRead)throw Error('HTTP 500');return structuredClone(objects.get(h)||null)},put:async(h,ics,tag)=>{if(failPut)throw Error('412');const old=objects.get(h);assert.equal(old?.etag,tag);objects.set(h,{ics,etag:String(++etag)})},delete:async(h,tag)=>{assert.equal(objects.get(h).etag,tag);objects.delete(h)}};
  const db=async(table,{query='',body}={})=>{if(table==='rpc/calendar_audit_write')return write(body);assert.ok(['clients','appointments','operators','operator_effective_roles'].includes(table));let rows=(await c.query(`select to_jsonb(a) r from ${table} a`)).rows.map(x=>x.r);const q=new URLSearchParams(query.slice(1));if(q.has('operator_id'))rows=rows.filter(x=>x.operator_id===q.get('operator_id').slice(3));if(q.has('id'))rows=rows.filter(x=>x.id===q.get('id').slice(3));if(q.has('offset'))rows=rows.slice(+q.get('offset'),+q.get('offset')+1000);if(q.has('created_at'))rows=rows.filter(x=>Date.parse(x.created_at)>=Date.parse(q.get('created_at').slice(4)));if(q.has('status'))rows=rows.filter(x=>x.status===q.get('status').slice(3));return rows};
  const store=new Store,s=core.service({env,db,cal,store});
+ for(const patch of [{date:'2020-01-01'},{status:'annullato'},{service_id:'nutrizione'}]){
+  const denied=core.service({env,cal,store:new Store,db:async(t,o)=>{const rows=await db(t,o);return t==='appointments'?rows.map(r=>({...r,...patch})):rows}});
+  assert.equal((await denied.linkStatus('TEST_CLOUD')).eligible,false);await assert.rejects(denied.link('TEST_CLOUD'),/future PT/);
+ }
+
  const balance=async()=>assert.equal((await c.query("select sessions_remaining from clients where id='test'")).rows[0].sessions_remaining,8);
  await s.provision('TEST_CLOUD');assert.equal(objects.size,1);const href=[...objects.keys()][0];let a=await cal.read(href);assert.ok(!a.ics.includes('PRIVATE_CLINICAL'));assert.ok(!a.ics.includes('METHOD:'));assert.ok(!a.ics.includes('RRULE:'));
  await cal.put(href,core.rewrite(a.ics,{date,start_time:'18:00',duration_min:60}),a.etag);await s.run();assert.equal((await row()).start_time,'18:00:00');await balance();console.log('PASS cloud Apple 17→18; balance 8');
@@ -23,7 +28,14 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
  await cal.delete(href,a.etag);await s.run();assert.equal((await row()).status,'annullato');await balance();console.log('PASS cloud Apple delete→annullato; balance 8');
  await s.run();await balance();await s.removeMapping('TEST_CLOUD');assert.equal((await store.list({prefix:'mapping/'})).blobs.length,0);
  // New application bookings only; old rows and unknown Apple events are never imported.
- await edit({...await row(),status:'prenotato'});env.APPLE_CALDAV_START_AT=new Date(Date.parse(created)+60000).toISOString();await assert.rejects(s.provision('TEST_CLOUD'),/Historical/);await s.run();assert.equal(objects.size,0);env.APPLE_CALDAV_START_AT='2026-09-01T00:00:00Z';await s.provision('TEST_CLOUD');
+ await edit({...await row(),status:'prenotato'});env.APPLE_CALDAV_START_AT=new Date(Date.parse(created)+60000).toISOString();await assert.rejects(s.provision('TEST_CLOUD'),/Historical/);await s.run();assert.equal(objects.size,0);
+ assert.deepEqual(await s.linkStatus('TEST_CLOUD'),{eligible:true,linked:false});
+ failPut=true;await assert.rejects(s.link('TEST_CLOUD'),/412/);assert.equal(objects.size,0);failPut=false;await s.run();assert.equal(objects.size,1);await s.link('TEST_CLOUD');const first=await cal.read(href);await s.link('TEST_CLOUD');assert.equal(objects.size,1);assert.deepEqual(await cal.read(href),first);await balance();
+ assert.equal((await s.linkStatus('TEST_CLOUD')).linked,true);
+ a=await cal.read(href);await cal.put(href,core.rewrite(a.ics,{date,start_time:'18:00',duration_min:60}),a.etag);await s.run();assert.equal((await row()).start_time,'18:00:00');await balance();
+ await edit({...await row(),start_time:'19:00:00'});await s.run();
+ console.log('PASS manual historical one-to-one link, persistent mapping, repeated click unchanged, Apple→NEACEA, balance 8');
+ env.APPLE_CALDAV_START_AT='2026-09-01T00:00:00Z';
  failRead=true;const result=await s.run();assert.equal(result.errors,1);assert.equal((await row()).status,'prenotato');failRead=false;
  a=await cal.read(href);await cal.put(href,core.rewrite(a.ics,{date,start_time:'18:00',duration_min:60}),a.etag);await edit({...await row(),start_time:'20:00:00'});assert.equal((await s.run()).errors,1);assert.equal((await row()).start_time,'20:00:00');
  a=await cal.read(href);await cal.put(href,core.rewrite(a.ics,{date,start_time:'19:00',duration_min:60}),a.etag);failPut=true;assert.equal((await s.run()).errors,1);failPut=false;await s.run();

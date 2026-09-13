@@ -60,3 +60,20 @@ Deploy manuale dal contenuto committato, solo questa directory Functions e
 servizio impostare `APPLE_CALDAV_SYNC_ENABLED=false` e ridistribuire lo stesso
 commit, poi verificare lo stato autenticato. Conservare i mapping durante pause
 e deploy: cancellarli può perdere il collegamento operativo.
+
+## Collegamento manuale dalla Direzione
+
+Il pulsante ` Porta su NEACEA — Operativo` nel dettaglio PT usa esclusivamente
+`appointment_id`. L'endpoint same-origin del Calendario verifica la sessione e
+inoltra solo ID, operazione e token all'endpoint ristretto del servizio CalDAV.
+Quest'ultimo verifica firma con `APPLE_CALDAV_CALENDAR_SECRET` (secret della
+sessione Calendario, solo env Functions), identità corrente e ruolo di Gianluca.
+Non espone le operazioni amministrative del worker.
+
+`linkStatus` legge il mapping; `link` usa lease, UID, href, marcatore e store
+esistenti. La sola scelta esplicita del singolo ID consente di collegare una
+seduta creata prima dell'attivazione, purché PT, futura e non annullata. Nessun
+elenco o import storico è accettato. Un mapping già collegato restituisce
+successo senza PUT; un pending manuale conserva la provenienza per il recupero
+dopo interruzione. Fatto/no-show restano protetti dalla sync. Nessuna scrittura
+al DB per collegare un evento e nessun accesso ad altre collection iCloud.

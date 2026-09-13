@@ -61,5 +61,10 @@ window.CalendarAudit = (() => {
     if(actor.role==='owner'){const b=element('button','Registro attività');b.className='btn';b.id='calendar-audit-button';b.onclick=open;(document.querySelector('.topbar-right')||document.body).append(b)}
   }
   document.addEventListener('DOMContentLoaded',init);
-  return {write,open,call};
+  async function appleLink(operation,id){
+    if(actor?.role!=='owner'||actor.id!=='staff_1')throw Error('Collegamento riservato alla Direzione');
+    const r=await fetch('/.netlify/functions/apple-caldav-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,id})});
+    const data=await r.json();if(!r.ok)throw Error(data.error||'Collegamento non confermato');return data;
+  }
+  return {write,open,call,appleLink,canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
 })();

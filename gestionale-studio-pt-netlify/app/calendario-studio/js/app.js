@@ -978,6 +978,7 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+    window.AppleOperativo?.mount(appt, document.querySelector('.appt-detail-body'));
   },
 
   _addParticipant(apptId) {
