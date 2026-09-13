@@ -35,7 +35,7 @@ class CalDAV:
         try:
             root=ET.fromstring(data)
             props=[p for p in root.findall('.//{DAV:}propstat') if ' 200 ' in p.findtext('{DAV:}status','')]
-            if len(props)!=1 or props[0].findtext('.//{DAV:}displayname')!='NEACEA TEST — Gianluca' or props[0].find('.//{urn:ietf:params:xml:ns:caldav}calendar') is None: raise ValueError()
+            if len(props)!=1 or props[0].findtext('.//{DAV:}displayname')!='NEACEA TEST CALDAV' or props[0].find('.//{urn:ietf:params:xml:ns:caldav}calendar') is None: raise ValueError()
         except Exception: raise SyncError('Calendar is not the dedicated Gianluca TEST collection') from None
     def target(self, href):
         url=urllib.parse.urljoin(self.collection,href);u=urllib.parse.urlsplit(url);c=urllib.parse.urlsplit(self.collection)
@@ -59,7 +59,7 @@ class CalDAV:
 class Gateway:
     def __init__(self,env):
         self.url=env['APPLE_TEST_GATEWAY_URL'];u=validate_url(self.url,env.get('APPLE_TEST_LOCAL_SIMULATION')=='true')
-        if u.hostname not in ['localhost','127.0.0.1'] and not (u.hostname=='neacea-test-gianluca.netlify.app' or u.hostname.endswith('--neacea-test-gianluca.netlify.app')):raise SyncError('Only isolated TEST gateway allowed')
+        if u.hostname not in ['localhost','127.0.0.1'] and not u.hostname=='neacea-caldav-test-gianluca.netlify.app':raise SyncError('Only isolated TEST gateway allowed')
         self.token=env['APPLE_TEST_ACCESS_TOKEN']
     def call(self,operation,id,**kwargs):
         code,_,data=request(self.url,'POST',json.dumps({'accessToken':self.token,'operation':operation,'id':id,**kwargs}).encode(),{'Content-Type':'application/json'})

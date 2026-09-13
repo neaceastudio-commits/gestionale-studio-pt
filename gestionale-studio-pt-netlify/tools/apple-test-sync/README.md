@@ -8,7 +8,7 @@ audit migrations. No remote data or calendar is changed.
 ## Scope and setup
 
 Use an explicitly created, writable, dedicated collection named exactly
-`NEACEA TEST — Gianluca`. Never configure a PT or historical Studio calendar.
+`NEACEA TEST CALDAV`. Never configure a PT or historical Studio calendar.
 Use only newly created TEST fixtures, not existing appointments/history.
 Provision credentials through environment variables; never commit or print them.
 
@@ -16,7 +16,7 @@ Worker environment:
 
 - `APPLE_TEST_CALDAV_URL`: exact dedicated collection HTTPS URL.
 - `APPLE_TEST_CALDAV_USER`, `APPLE_TEST_CALDAV_PASSWORD`: CalDAV credentials.
-- `APPLE_TEST_GATEWAY_URL`: isolated `neacea-test-gianluca` Function URL ending
+- `APPLE_TEST_GATEWAY_URL`: isolated `neacea-caldav-test-gianluca` Function URL ending
   `/.netlify/functions/apple-test-sync` (production hosts rejected).
 - `APPLE_TEST_ACCESS_TOKEN`: current signed Direction session. Expiry stops sync;
   there is no anonymous fallback or automatic privileged session renewal.

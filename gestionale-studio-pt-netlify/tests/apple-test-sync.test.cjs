@@ -22,7 +22,7 @@ try{
  requests.push(req.method+' '+req.url);
  if(req.url==='/gateway'){const r=await handler({httpMethod:req.method,body});res.writeHead(r.statusCode,r.headers);return res.end(r.body)}
  if(req.headers.authorization!=='Basic '+Buffer.from('SIM:SIM').toString('base64')){res.writeHead(401);return res.end()}
- if(req.method==='PROPFIND'){res.writeHead(207);return res.end('<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:propstat><d:prop><d:displayname>NEACEA TEST — Gianluca</d:displayname><d:resourcetype><c:calendar/></d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>')}
+ if(req.method==='PROPFIND'){res.writeHead(207);return res.end('<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:propstat><d:prop><d:displayname>NEACEA TEST CALDAV</d:displayname><d:resourcetype><c:calendar/></d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>')}
  assert.equal(req.url,'/test/one.ics');
  if(req.method==='GET'){res.writeHead(readError?500:event?200:404,{'ETag':`"${version}"`});return res.end(event||'')}
  if(etagRace||req.headers['if-match']!==`"${version}"`){res.writeHead(412);return res.end()}
