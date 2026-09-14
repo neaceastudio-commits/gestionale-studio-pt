@@ -365,7 +365,9 @@ const App = {
       </option>`;
     }).join('');
 
-    const hint = svc.isGroup
+    const pair = svc.id === 'pt12';
+    const pairSelect = index => `<label>Cliente ${index + 1}<select id="appt-pair-${index}" class="form-input" onchange="App._onPairSelectionChange()"><option value="">— scegli cliente —</option>${compatible.map(c => `<option value="${c.id}" ${selectedIds[index] === c.id ? 'selected' : ''}>${App._escapeHtml(c.nome)} ${App._escapeHtml(c.cognome)}${c.compatible ? '' : ' ⚠ pacchetto non compatibile'}</option>`).join('')}</select></label>`;
+    const hint = pair ? 'Una sola seduta, due partecipanti. Ogni cliente mantiene il proprio pacchetto e residuo.' : svc.isGroup
       ? `Circuit: seleziona fino a ${svc.maxClients} partecipanti (Ctrl+click)`
       : compCount > 0
         ? `${compCount} clienti con pacchetto compatibile mostrati per primi`
@@ -376,7 +378,8 @@ const App = {
         <label>Cliente${isMulti?'/i':''} *
           ${compCount>0?`<span class="compat-badge">${compCount} compatibili</span>`:''}
         </label>
-        <select id="appt-clients" class="form-input"
+        ${pair ? `<div class="form-row">${pairSelect(0)}${pairSelect(1)}</div>` : ''}
+        <select id="appt-clients" class="form-input" ${pair ? 'hidden style="display:none"' : ''}
                 size="${Math.min(5, compatible.length+1)}"
                 ${isMulti?'multiple':''}
                 onchange="App._onClientSelectionChange()">
@@ -413,6 +416,14 @@ const App = {
           </div>
         </div>`;
     }).join('');
+  },
+
+  _onPairSelectionChange() {
+    const a = document.getElementById('appt-pair-0'), b = document.getElementById('appt-pair-1');
+    if (!a || !b) return;
+    if (a.value && a.value === b.value) { b.value = ''; UI.showToast('Scegli due clienti diversi', 'error'); }
+    for (const option of document.getElementById('appt-clients').options) option.selected = [a.value, b.value].includes(option.value);
+    App._onClientSelectionChange();
   },
 
   _onClientSelectionChange() {
@@ -1221,7 +1232,7 @@ const App = {
           </div>
           <div class="form-group">
             <label>Sessioni totali</label>
-            <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${currentMetrics?.total || client?.sessionsTotal || ''}" onchange="App._limitClientDays()">
+            <input type="number" id="cl-sessions-total" class="form-input" min="1" value="${client?.sessionsTotal ?? currentMetrics?.total ?? ''}" onchange="App._limitClientDays()">
           </div>
           <div class="form-group">
             <label>Sessioni residue automatiche</label>
@@ -1247,7 +1258,7 @@ const App = {
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
-        <button class="btn-primary" onclick="App._saveClient('${clientId||''}', ${packageOnly ? 'true' : 'false'})">
+        <button id="client-save-button" class="btn-primary" onclick="App._saveClient('${clientId||''}', ${packageOnly ? 'true' : 'false'})">
           ${isEdit?'Salva modifiche':'Salva cliente'}
         </button>
       </div>
@@ -1290,7 +1301,8 @@ const App = {
     </div>`;
   },
 
-  _saveClient(clientId, packageOnly = false) {
+  async _saveClient(clientId, packageOnly = false) {
+    if (App._clientSaveBusy) return;
     if (packageOnly) {
       if (!App.guardPackageManagement(clientId)) return;
     } else if (!App.guardStudioManagement()) return;
@@ -1317,9 +1329,8 @@ const App = {
 
     const clients = State.getClients();
     const currentClient = clientId ? clients.find(c => c.id === clientId) : null;
-    const currentMetrics = currentClient ? Services.getClientSessionMetrics(currentClient) : null;
-    const completedSessions = currentMetrics?.completed || 0;
-    const sessRem = sessTotal > 0 ? Math.max(0, sessTotal - completedSessions) : 0;
+    // A type change never reconstructs balances from appointment history.
+    const sessRem = currentClient ? Math.max(0, Number(currentClient.sessionsRemaining || 0) + sessTotal - Number(currentClient.sessionsTotal || 0)) : sessTotal;
     let rawNotes = packageOnly
       ? String(currentClient?.notes || '')
       : String(document.getElementById('cl-notes')?.value || '').trim();
@@ -1337,30 +1348,35 @@ const App = {
     const data = {
       nome, cognome, email, telefono, nascita, codiceFiscale, documento, indirizzo, contattoEmergenza,
       packageTypes: pkgs,
+      ...(pkgs.length === 1 ? { tipoServizio: pkgs[0] } : {}),
       packageFrequency: frequency,
       giorniSettimana,
       sessionsTotal: sessTotal, sessionsRemaining: sessRem,
       packageCycleStart: currentClient
-        ? (currentClient.packageCycleStart || currentMetrics?.cycleStart || currentClient.packageStart || App._dateStr(new Date()))
+        ? currentClient.packageCycleStart
         : App._dateStr(new Date()),
       notes, active: currentClient ? currentClient.active !== false : true,
     };
 
-    let saved;
-    if (clientId) {
-      const idx = clients.findIndex(c=>c.id===clientId);
-      if (idx!==-1) { clients[idx] = { ...clients[idx], ...data }; saved = clients[idx]; }
-    } else {
-      const newC = { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
-      clients.push(newC); saved = newC;
-    }
-    State.saveClients(clients);
-    SupabaseSync.pushClient(saved);
-    if (CONFIG.SHEETS.enabled) Sheets.pushClient(saved);
-
-    UI.closeModal();
-    if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
-    UI.showToast(clientId?'Cliente aggiornato':'Cliente salvato','success');
+    const saved = currentClient ? { ...currentClient, ...data } : { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
+    const button = document.getElementById('client-save-button');
+    let errorBox = document.getElementById('client-save-error');
+    if (!errorBox) { errorBox = document.createElement('p'); errorBox.id = 'client-save-error'; errorBox.setAttribute('role', 'alert'); errorBox.style.cssText = 'color:var(--red,#b91c1c);white-space:pre-wrap'; button?.closest('.modal-footer')?.before(errorBox); }
+    errorBox.textContent = '';
+    App._clientSaveBusy = true; if (button) button.disabled = true;
+    try {
+      const confirmed = await SupabaseSync.saveClientEdit(currentClient, saved);
+      if (!confirmed || confirmed.error) throw new Error(confirmed?.error || 'Il server non ha confermato il salvataggio');
+      const fresh = State.getClients(); const index = fresh.findIndex(c => c.id === confirmed.id);
+      if (index >= 0) fresh[index] = confirmed; else fresh.push(confirmed);
+      State.saveClients(fresh);
+      if (CONFIG.SHEETS.enabled) Sheets.pushClient(confirmed);
+      UI.closeModal();
+      if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
+      UI.showToast(clientId ? 'Cliente aggiornato' : 'Cliente salvato', 'success');
+    } catch (error) {
+      errorBox.textContent = 'Salvataggio non riuscito: ' + (error.message || error);
+    } finally { App._clientSaveBusy = false; if (button?.isConnected) button.disabled = false; }
   },
 
   // ── TRASFERIMENTO CLIENTE TRA PT ─────────────────────

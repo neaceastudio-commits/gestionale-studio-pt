@@ -440,6 +440,27 @@ const SupabaseSync = (() => {
     return clientFromDb(row);
   }
 
+  async function saveClientEdit(previous, candidate) {
+    if (!window.CalendarAudit?.write) return { error: 'Sessione audit non disponibile: rientra dal Portale' };
+    const next = clientToDb(candidate), old = previous ? clientToDb(previous) : null;
+    let result;
+    if (!old) result = await pushClient(candidate);
+    else {
+      const patch = { id: candidate.id };
+      for (const [key, value] of Object.entries(next)) {
+        if (key === 'updated_at' || JSON.stringify(value) === JSON.stringify(old[key])) continue;
+        patch[key] = value;
+      }
+      // Omitting unchanged counters protects a concurrent Fatto from a stale form.
+      if (Object.keys(patch).length > 1) result = await patchClient(patch);
+      else result = await request('clients', { query: '?select=*&id=eq.' + encodeURIComponent(candidate.id) });
+    }
+    if (result?.error) return result;
+    const row = Array.isArray(result) && result.length === 1 ? result[0] : null;
+    if (!row || row.id !== candidate.id || JSON.stringify(row.package_types || []) !== JSON.stringify(next.package_types)) return { error: 'Il server non ha confermato il pacchetto: ricarica e riprova' };
+    return clientFromDb(row);
+  }
+
   async function pushClient(client) {
     if (!client) return;
     let body = clientToDb(client);
@@ -549,5 +570,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();
