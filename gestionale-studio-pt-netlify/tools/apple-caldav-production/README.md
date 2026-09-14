@@ -15,9 +15,12 @@ di default nuovi appuntamenti futuri non annullati creati dopo quel momento, con
 precedente all'attivazione. Non arretrare questo valore per trasferire lo storico.
 Gli eventi Apple già esistenti non vengono adottati. Il bootstrap una tantum
 autorizzato collega soltanto le sedute NEACEA future; non trasferisce lo storico passato. UID, titolo professionale, progresso da residuo salvato e filtri privacy
-riusano il formatter approvato del feed. Il contenuto descrittivo è una fotografia
-alla creazione: questa V1 sincronizza in seguito soltanto data, ora, durata e
-annullamento, non titoli o contatori descrittivi.
+riusano il formatter approvato del feed. Il contenuto descrittivo viene rigenerato dai dati NEACEA correnti quando cambia
+il PT in NEACEA, aggiornando lo stesso evento e la baseline senza cambiare UID,
+href o marker. Apple può modificare soltanto data, ora, durata e cancellazione:
+modifiche al titolo o alla descrizione non cambiano mai il PT in NEACEA. Clienti
+e servizio restano protetti anche in uscita. I conflitti temporali divergenti
+continuano a essere rifiutati.
 
 Apple non può cambiare clienti, PT, servizio, pacchetto, residui, Fatto o no-show.
 Entrambi questi stati bloccano la singola coppia. Modifiche concorrenti divergenti

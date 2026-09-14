@@ -25,6 +25,31 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
  await s.provision('TEST_CLOUD');assert.equal(objects.size,1);const href=[...objects.keys()][0];let a=await cal.read(href);assert.ok(!a.ics.includes('PRIVATE_CLINICAL'));assert.ok(!a.ics.includes('METHOD:'));assert.ok(!a.ics.includes('RRULE:'));
  await cal.put(href,core.rewrite(a.ics,{date,start_time:'18:00',duration_min:60}),a.etag);await s.run();assert.equal((await row()).start_time,'18:00:00');await balance();console.log('PASS cloud Apple 17→18; balance 8');
  await edit({...await row(),start_time:'19:00:00'});await s.run();a=await cal.read(href);assert.equal(core.parse(a.ics).slot.start_time,'19:00');await balance();console.log('PASS cloud NEACEA 18→19; balance 8');
+ // PT is authoritative only in NEACEA; existing identity and timing survive a refresh.
+ const mappingKey=[...store.m.keys()].find(k=>k.startsWith('mapping/'));
+ const originalMapping=await store.get(mappingKey),originalSlot=core.slot(await row());
+ await edit({...await row(),operator_id:'staff_1'});
+ failPut=true;assert.equal((await s.run()).errors,1);assert.equal((await store.get(mappingKey)).baseline.guard.operator_id,'pt');failPut=false;
+ assert.equal((await s.run()).errors,0);a=await cal.read(href);
+ assert.match(a.ics.replace(/\r?\n[ \t]/g,''),/Personal Trainer: Gianluca SIM/);
+ assert.deepEqual(core.parse(a.ics).slot,originalSlot);
+ const updatedMapping=await store.get(mappingKey);
+ for(const k of ['uid','href','marker'])assert.equal(updatedMapping[k],originalMapping[k]);
+ assert.equal(updatedMapping.baseline.guard.operator_id,'staff_1');assert.equal(objects.size,1);
+ const stable=await cal.read(href);await s.run();assert.deepEqual(await cal.read(href),stable);await balance();
+ // Apple text cannot assign a PT, even when accompanied by an allowed time edit.
+ let forged=a.ics.replace(/\r?\n[ \t]/g,'').replace('Personal Trainer: Gianluca SIM','Personal Trainer: ATTACKER');
+ await cal.put(href,forged,a.etag);assert.equal((await s.run()).errors,0);assert.equal((await row()).operator_id,'staff_1');
+ a=await cal.read(href);await cal.put(href,core.rewrite(a.ics,{...originalSlot,start_time:'19:15'}),a.etag);
+ assert.equal((await s.run()).errors,0);assert.equal((await row()).operator_id,'staff_1');assert.equal((await row()).start_time,'19:15:00');await balance();
+ a=await cal.read(href);await cal.put(href,core.rewrite(a.ics,originalSlot),a.etag);await s.run();
+ // Service and participants remain protected in the outgoing direction.
+ for(const patch of [{service_id:'nutrizione'},{client_ids:['other']}]){
+  await edit({...await row(),...patch});const remote=await cal.read(href);
+  assert.equal((await s.run()).errors,1);assert.deepEqual(await cal.read(href),remote);
+  await edit({...await row(),service_id:'pt11',client_ids:['test']});
+ }
+ a=await cal.read(href);console.log('PASS PT NEACEA→Apple, unchanged UID/href/marker/slot, retry baseline, no duplicates, balance unchanged, Apple text/time cannot change PT, protected clients/service');
  await cal.delete(href,a.etag);await s.run();assert.equal((await row()).status,'annullato');await balance();console.log('PASS cloud Apple delete→annullato; balance 8');
  await s.run();await balance();await s.removeMapping('TEST_CLOUD');assert.equal((await store.list({prefix:'mapping/'})).blobs.length,0);
  // New application bookings only; old rows and unknown Apple events are never imported.
