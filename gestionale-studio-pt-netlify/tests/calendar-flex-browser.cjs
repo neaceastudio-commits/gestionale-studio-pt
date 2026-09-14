@@ -7,7 +7,8 @@ for(const enabled of [true,false]){
  const busy={id:'busy',client_ids:['test'],operator_id:'pt',service_id:'pt11',date:'2026-09-15',start_time:'17:00:00',duration_min:60,buffer_min:10,status:'prenotato',notes:''};
  await page.route('**/*',async route=>{const r=route.request(),u=new URL(r.url());
   if(u.hostname.startsWith('fonts.'))return route.fulfill({body:''});
-  if(u.pathname.endsWith('calendar-runtime'))return route.fulfill({json:{CALENDAR_FLEX_MODE:enabled}});
+  if(u.pathname.endsWith('whatsapp-agenda')) return route.fulfill({status:403,json:{error:'direction_only'}});
+      if(u.pathname.endsWith('calendar-runtime'))return route.fulfill({json:{CALENDAR_FLEX_MODE:enabled}});
   if(u.pathname.endsWith('apple-caldav-link'))return route.fulfill({json:{eligible:false,linked:false}});
   if(u.pathname.endsWith('calendar-activity')){const b=r.postDataJSON();if(b.operation==='session')return route.fulfill({json:{actor:{id:'staff_1',role:'owner'}}});assert.equal(b.operation,'save');saves.push(b);return route.fulfill({json:{appointment:b.payload.appointment,clients:[client]}})}
   if(u.pathname.includes('/rest/v1/')){assert.equal(r.method(),'GET');const table=u.pathname.split('/').pop();return route.fulfill({json:table==='clients'?[client]:table==='operators'?[{id:'pt',nome:'PT',cognome:'TEST',roles:['PT'],active:true}]:table==='appointments'?[busy]:table==='operator_availability'?[{operator_id:'pt',day_key:'tue',slots:['09:00-10:00']}]:[]})}

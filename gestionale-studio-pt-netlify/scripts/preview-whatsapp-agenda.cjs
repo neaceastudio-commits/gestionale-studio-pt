@@ -1,0 +1,9 @@
+// Render an offline, non-sending Direction preview from an allowlisted JSON snapshot.
+const fs=require('node:fs');
+const {buildAgendas}=require('../netlify/functions/lib/whatsapp-agenda');
+const [input,output]=process.argv.slice(2);if(!input||!output)throw Error('Usage: node scripts/preview-whatsapp-agenda.cjs snapshot.json preview.html');
+const data=JSON.parse(fs.readFileSync(input,'utf8'));const before=JSON.stringify(data);const agendas=buildAgendas(data,data.day);
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+fs.writeFileSync(output,`<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEACEA · Anteprima agenda WhatsApp</title><style>body{font:16px system-ui;background:#f3f5f4;color:#18332b;max-width:880px;margin:36px auto;padding:0 20px}h1{font-size:30px}article{background:white;border:1px solid #d6e1db;border-radius:16px;padding:20px;margin:18px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.7}small{color:#506158}.badge{background:#e5efe8;border-radius:20px;padding:8px 14px;display:inline-block}</style><h1>WhatsApp Agenda PT</h1><p class="badge">Anteprima Direzione · ${escape(data.day)} · Nessun messaggio inviato</p><p>Dati NEACEA production letti in sola lettura. Invii disabilitati; nessuna connessione a Meta da questa pagina.</p>${agendas.map(a=>`<article><h2>${escape(a.operatorName)}</h2><pre>${escape(a.count?a.text:'Nessuna seduta prenotata PT: nessun messaggio.')}</pre><small>${a.count} sedute · Invio non abilitato</small></article>`).join('')}</html>`);
+if(JSON.stringify(data)!==before)throw Error('Snapshot mutated');
+console.log(JSON.stringify(agendas.map(a=>({pt:a.operatorName,count:a.count,text:a.count?a.text:null})),null,2));

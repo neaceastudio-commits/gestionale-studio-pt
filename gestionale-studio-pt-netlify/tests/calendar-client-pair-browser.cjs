@@ -19,6 +19,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.route('**/*', async route => {
       const r = route.request(), u = new URL(r.url());
       if (u.hostname.startsWith('fonts.')) return route.fulfill({ body: '' });
+      if(u.pathname.endsWith('whatsapp-agenda')) return route.fulfill({status:403,json:{error:'direction_only'}});
       if (u.pathname.endsWith('calendar-runtime')) return route.fulfill({ json: { CALENDAR_FLEX_MODE: true } });
       if (u.pathname.endsWith('apple-caldav-link')) return route.fulfill({ json: { eligible: false, linked: false } });
       if (u.pathname.endsWith('calendar-activity')) {

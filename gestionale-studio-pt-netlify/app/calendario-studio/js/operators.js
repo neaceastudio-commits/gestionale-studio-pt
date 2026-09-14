@@ -67,6 +67,7 @@ const Operators = (() => {
         </table>
       </div>
     `;
+    window.WhatsAppAgenda?.mount(panel);
   }
 
   function openModal(opId = null) {
