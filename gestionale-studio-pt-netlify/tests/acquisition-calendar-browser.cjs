@@ -15,13 +15,13 @@ const payload = Buffer.from(JSON.stringify({ email: 'owner@example.test', operat
 const token = payload + '.' + crypto.createHmac('sha256', process.env.PT_ACCESS_SECRET).update(payload).digest('base64url');
 let lead = { id: 'test-lead', nome: 'Cliente', cognome: 'SIMULATO', email: 'client@example.test', servizi: 'PT', sessioni_pref: '2×', stato: 'Pronto a iniziare', impressioni: '', data_acquisizione: '2026-09-12' };
 const operator = { id: 'test-pt', nome: 'PT', cognome: 'SIMULATO', active: true, roles: ['pt'] };
-let clients = [], appointments = [], backendCalls = 0, failed = false;
+let clients = [], appointments = [], backendCalls = 0, failed = false, planningReads = 0, changedScheduling = false;
 const failure = process.env.CALENDAR_FAILURE || '';
-const availability = [{operator_id:'test-pt',day_key:'tue',slots:['17:00-18:00']},{operator_id:'test-pt',day_key:'thu',slots:['18:00-19:00']}];
+const availability = process.env.ACQ_FLEX === 'true' ? [] : [{operator_id:'test-pt',day_key:'tue',slots:['17:00-18:00']},{operator_id:'test-pt',day_key:'thu',slots:['18:00-19:00']}];
 const json = data => ({ ok: true, status: 200, text: async () => JSON.stringify(data) });
 function database(url, method = 'GET', body) {
   const u = new URL(url), table = u.pathname.split('/').pop();
-  if (table === 'calendar_planning_snapshot') return { revision: 'simulated', clients, appointments, operators:[operator], availability };
+  if (table === 'calendar_planning_snapshot') { if (failure === 'beforeActivationChange' && ++planningReads === 4) { changedScheduling = true; failed = true; } return { revision: 'simulated', flexMode:process.env.ACQ_FLEX === 'true', clients, appointments, operators:[operator], availability: changedScheduling ? availability.filter(a=>a.day_key==='thu') : availability }; }
   if (table === 'calendar_audit_write' && body.p_operation === 'client') {
     for(const row of body.p_payload.rows) { const existing=clients.find(c=>c.id===row.id); if(existing)Object.assign(existing,row);else clients.push(row); }
     return body.p_payload.rows;
@@ -56,7 +56,7 @@ global.fetch = async (url, options = {}) => {
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
   try {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, serviceWorkers: 'block' });
+    const page = await browser.newPage({ viewport: { width: Number(process.env.QA_WIDTH || 1280), height: 1000 }, serviceWorkers: 'block' });
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
@@ -89,8 +89,29 @@ global.fetch = async (url, options = {}) => {
     await frame.getByLabel('Orario Martedì').fill('17:00');
     await frame.locator('input[type=checkbox][value="Giovedì"]').check();
     await frame.getByLabel('Orario Giovedì').fill('18:00');
+    await frame.getByLabel('Durata Martedì').selectOption('30');
+    await frame.getByLabel('Durata Giovedì').selectOption('45');
+    const mirror=await frame.evaluate(()=>confMirrorSlotsForOperator(staffAll[0],['2026-09-15','2026-09-17'],['17:00','18:00'],CONF_SERVICE_META['PT 1:1']));
+    assert.deepEqual(mirror.map(s=>[s.date,s.time]),[['2026-09-15','17:00'],['2026-09-17','18:00']]);
     assert.match(await frame.locator('#conf-schedule-summary').innerText(), /Martedì 17:00.*Giovedì 18:00/);
     await page.screenshot({ path: process.env.CALENDAR_QA_SCREENSHOT || '/tmp/neacea-calendar-simulation.png', fullPage: true });
+    await frame.locator('#btn-conf').click();
+    await frame.locator('#conf-plan-preview').waitFor({state:'visible'});
+    assert.equal(clients.length,0,'anteprima prima dell’attivazione');
+    assert.equal(appointments.length,0,'anteprima senza scritture');
+    assert.equal(await frame.locator('#conf-plan-preview tr').count(),9);
+    assert.match(await frame.locator('#conf-plan-preview').innerText(),/30 min/);
+    if (process.env.ACQ_FLEX === 'true') assert.match(await frame.locator('#conf-plan-preview').innerText(),/Fuori disponibilità/);
+    await frame.getByLabel('Durata Martedì').selectOption('15');
+    assert.equal(await frame.locator('#conf-plan-preview').isVisible(),false);
+    await frame.locator('#btn-conf').click();
+    await frame.locator('#conf-plan-preview').waitFor({state:'visible'});
+    assert.match(await frame.locator('#conf-plan-preview').innerText(),/15 min/);
+    assert.equal(clients.length,0);
+    await frame.getByLabel('Durata Martedì').selectOption('30');
+    await frame.locator('#btn-conf').click();
+    await frame.locator('#conf-plan-preview').waitFor({state:'visible'});
+    await page.screenshot({path:'/tmp/neacea-acquisition-preview-'+(process.env.QA_WIDTH||'1280')+'.png',fullPage:true});
     await frame.locator('#btn-conf').click();
     if (failure) {
       await frame.locator('#calendar-pending button').waitFor({state:'visible'});
@@ -98,6 +119,7 @@ global.fetch = async (url, options = {}) => {
       await page.reload();
       const resumed = page;
       await resumed.locator('#calendar-pending button').waitFor({state:'visible'});
+      if (failure === 'beforeActivationChange') { assert.equal(clients.length,0); assert.equal(appointments.length,0); await resumed.locator('#calendar-pending button').click(); await resumed.getByRole('button',{name:'Conferma queste sedute'}).waitFor(); assert.equal(clients.length,0); }
       await resumed.locator('#calendar-pending button').click();
       await resumed.locator('#calendar-pending').waitFor({state:'hidden'});
       assert.equal(clients.length,1, 'resume must not activate a duplicate client');
@@ -108,8 +130,11 @@ global.fetch = async (url, options = {}) => {
     assert.equal(lead.stato, 'Convertito');
     assert.equal(appointments.length, 8);
     assert.equal(clients[0].sessions_remaining, 8);
+    if (failure === 'beforeActivationChange') { assert.ok(appointments.every(a=>a.start_time==='18:00'&&a.duration_min===45)); assert.deepEqual(errors,[]); console.log('PASS changed preview: no activation until new dates reviewed; exact 8 dates then saved without duplicate clients'); return; }
     assert.equal(appointments[0].start_time, '17:00');
     assert.equal(appointments[1].start_time, '18:00');
+    assert.equal(appointments[0].duration_min,30);
+    assert.equal(appointments[1].duration_min,45);
     assert.ok(appointments.every(a => a.operator_id === 'test-pt'));
     const request = { httpMethod: 'POST', body: JSON.stringify({ accessToken: token, clientId: clients[0].id, serviceId: 'pt11', operatorId: 'test-pt', startDate: '2026-10-20', schedule: [{ weekday: 'Martedì', time: '17:00' }] }) };
     assert.equal(JSON.parse((await handler(request)).body).plan.created, 0);

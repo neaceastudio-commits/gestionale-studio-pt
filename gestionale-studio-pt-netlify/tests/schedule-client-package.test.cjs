@@ -24,7 +24,7 @@ test('conteggia le prenotazioni oltre la prima pagina e precedenti alla data sce
     let data;
     if (u.pathname.endsWith('/operator_effective_roles')) data = [{ operator_id: 'owner', system_roles: ['owner'] }];
     else if (u.pathname.endsWith('/calendar_planning_snapshot')) {
-      data = { revision:'test', clients:[{ id:'test', active:true, package_types:['PT 1:1'], sessions_total:8, sessions_remaining:8, pt_assegnato:'pt' }], operators:[{id:'pt',roles:['PT']}], availability:[], appointments:[...unrelated,...Array.from({length:8},(_,i)=>({id:`test-${i}`,date:'2026-09-15',status:'prenotato',client_ids:['test'],service_id:'pt11'}))] };
+      data = { revision:'test', flexMode:false, clients:[{ id:'test', active:true, package_types:['PT 1:1'], sessions_total:8, sessions_remaining:8, pt_assegnato:'pt' }], operators:[{id:'pt',roles:['PT']}], availability:[], appointments:[...unrelated,...Array.from({length:8},(_,i)=>({id:`test-${i}`,date:'2026-09-15',status:'prenotato',client_ids:['test'],service_id:'pt11'}))] };
     } else throw Error('Unexpected URL');
     return { ok: true, text: async () => JSON.stringify(data) };
   };

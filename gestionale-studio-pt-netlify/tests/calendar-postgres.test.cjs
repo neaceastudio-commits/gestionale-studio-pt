@@ -76,6 +76,7 @@ const row = (id, client = 'test', op = 'pt') => ({ id, service_id:'pt11', client
     await seed(db.client);
     await db.client.query("insert into operators(id,nome,cognome,email,roles) values('owner','Direzione','SIM','owner@example.test',array['owner']); create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators; grant select on operator_effective_roles to service_role");
     await db.client.query(require('node:fs').readFileSync(require('node:path').join(__dirname,'../supabase/migrations/20260912212042_calendar_activity_audit.sql'),'utf8'));
+    for (const migration of ['20260913211931_calendar_flex_mode.sql','20260914141653_acquisition_calendar_flex_snapshot.sql']) await db.client.query(require('node:fs').readFileSync(require('node:path').join(__dirname,'../supabase/migrations',migration),'utf8'));
     process.env.PT_ACCESS_SECRET='local-test'; process.env.SUPABASE_SERVICE_ROLE_KEY='local-test';
     const {handler}=require('../netlify/functions/schedule-client-package');
     const crypto=require('node:crypto');

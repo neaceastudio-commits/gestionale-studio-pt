@@ -168,6 +168,7 @@ function planSummary(plan) {
     toSchedule: plan.allowance?.toSchedule ?? 0,
     created: plan.created?.length || 0,
     endDate: plan.endDate || null,
+    warnings: (plan.warnings || []).map(item => ({ date: item.date, time: item.time, reasons: item.conflicts.map(c => c.type) })),
     skipped: (plan.skipped || []).slice(0, 20).map(item => ({
       date: item.date,
       time: item.time,
@@ -192,14 +193,22 @@ exports.handler = async event => {
     const schedule = Array.isArray(input.schedule) ? input.schedule : [];
     const dryRun = input.dryRun === true;
 
-    if (!clientId || !startDate || !ALLOWED_SERVICES.has(serviceId) || !schedule.length) {
+    const preview = dryRun && !clientId && input.preview;
+    if ((!clientId && !preview) || !startDate || !ALLOWED_SERVICES.has(serviceId) || !schedule.length) {
       return response(400, { success: false, error: 'Cliente, data inizio, servizio e pianificazione sono obbligatori' });
     }
 
     // One database snapshot is used for planning and checked again under lock at commit.
     const snapshot = await supabaseRequest('rpc/calendar_planning_snapshot', { method: 'POST', body: {} });
     if (!snapshot || !snapshot.revision || !Array.isArray(snapshot.clients) || !Array.isArray(snapshot.appointments) || !Array.isArray(snapshot.operators) || !Array.isArray(snapshot.availability)) throw new Error('Snapshot calendario non valido');
-    const clientRow = snapshot.clients.find(c => String(c.id) === clientId);
+    if (typeof snapshot.flexMode !== 'boolean') return response(503, { success: false, error: 'Allineamento pianificatore non ancora disponibile' });
+    let clientRow = snapshot.clients.find(c => String(c.id) === clientId);
+    if (preview) {
+      const total = Number(preview.sessionsTotal), used = Number(preview.sessionsUsed);
+      if (!Number.isInteger(total) || total < 1 || total > 500 || !Number.isInteger(used) || used < 0 || used > total) return response(400, { success: false, error: 'Sessioni totali/usate non valide' });
+      // Synthetic identity is used only in this read-only plan, never in a write.
+      clientRow = { id: '__acquisition_preview__', active: true, sessions_total: total, sessions_remaining: total - used, package_types: [{pt11:'PT 1:1',pt12:'PT 1:2',circuit:'Circuit'}[serviceId]], pt_assegnato: operatorId };
+    }
     if (!clientRow || clientRow.active === false) {
       return response(404, { success: false, error: 'Cliente attivo non trovato' });
     }
@@ -227,10 +236,11 @@ exports.handler = async event => {
       serviceId,
       operatorId: effectiveOperatorId,
       startDate,
-      operators: snapshot.operators, availability: snapshot.availability, clients: snapshot.clients,
+      operators: snapshot.operators, availability: snapshot.availability, clients: [...snapshot.clients, ...(preview ? [clientRow] : [])], flexMode: snapshot.flexMode,
     });
 
-    const summary = planSummary(plan);
+    const summary = { ...planSummary(plan), flexMode: snapshot.flexMode };
+    const confirmation = { flexMode: snapshot.flexMode, slots: (plan.created || []).map(a => ({ date: a.date, startTime: a.startTime, durationMin: a.durationMin, operatorId: a.operatorId, serviceId: a.serviceId })) };
     if (!plan.ok) {
       return response(409, {
         success: false,
@@ -249,9 +259,12 @@ exports.handler = async event => {
         client: publicClient(clientRow),
         plan: summary,
         appointments: plan.created,
+        confirmation,
         sessionsRemainingChanged: false,
       });
     }
+
+    if (input.confirmation && JSON.stringify(input.confirmation) !== JSON.stringify(confirmation)) return response(409, { success: false, code: 'preview_changed', error: 'Le sedute sono cambiate: rivedi l’anteprima prima di confermare.', plan: summary });
 
     const rows = plan.created.map(appt => toDbAppointment(appt, { ...clientCycle(clientRow), startDate: clientCycle(clientRow).startDate || startDate }));
     const committed = await supabaseRequest('rpc/calendar_audit_write', {
