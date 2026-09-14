@@ -16,14 +16,18 @@ precedente all'attivazione. Non arretrare questo valore per trasferire lo storic
 Gli eventi Apple già esistenti non vengono adottati. Il bootstrap una tantum
 autorizzato collega soltanto le sedute NEACEA future; non trasferisce lo storico passato. UID, titolo professionale, progresso da residuo salvato e filtri privacy
 riusano il formatter approvato del feed. Il contenuto descrittivo viene rigenerato dai dati NEACEA correnti quando cambia
-il PT in NEACEA, aggiornando lo stesso evento e la baseline senza cambiare UID,
+il PT o lo stato in NEACEA, aggiornando lo stesso evento e la baseline senza cambiare UID,
 href o marker. Apple può modificare soltanto data, ora, durata e cancellazione:
 modifiche al titolo o alla descrizione non cambiano mai il PT in NEACEA. Clienti
 e servizio restano protetti anche in uscita. I conflitti temporali divergenti
 continuano a essere rifiutati.
 
 Apple non può cambiare clienti, PT, servizio, pacchetto, residui, Fatto o no-show.
-Entrambi questi stati bloccano la singola coppia. Modifiche concorrenti divergenti
+Fatto e no-show bloccano soltanto le modifiche in ingresso da Apple. Tutti i
+cambi di stato NEACEA aggiornano Apple: Prenotato, Fatto e No-show rigenerano
+titolo e descrizione; Annullato rimuove l’evento. La riapertura di una seduta
+annullata ripristina esclusivamente il suo href, UID e marker originali, con
+scrittura condizionale. Un evento eliminato da Apple non viene ricreato. Modifiche concorrenti divergenti
 vengono rifiutate; nessuna correzione automatica del residuo. I salvataggi usano
 l'RPC audit esistente, snapshot atteso e identità Direzione ricontrollata nel DB.
 L'origine audit resta `calendar`, già supportata dal database; non sono aggiunte
@@ -78,7 +82,7 @@ esistenti. La sola scelta esplicita del singolo ID consente di collegare una
 seduta creata prima dell'attivazione, purché PT, futura e non annullata. Nessun
 elenco o import storico è accettato. Un mapping già collegato restituisce
 successo senza PUT; un pending manuale conserva la provenienza per il recupero
-dopo interruzione. Fatto/no-show restano protetti dalla sync. Nessuna scrittura
+dopo interruzione. Fatto/no-show restano protetti dalle modifiche in ingresso da Apple. Nessuna scrittura
 al DB per collegare un evento e nessun accesso ad altre collection iCloud.
 
 ## Bootstrap production autorizzato una tantum

@@ -50,6 +50,33 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
   await edit({...await row(),service_id:'pt11',client_ids:['test']});
  }
  a=await cal.read(href);console.log('PASS PT NEACEA→Apple, unchanged UID/href/marker/slot, retry baseline, no duplicates, balance unchanged, Apple text/time cannot change PT, protected clients/service');
+
+ // Every directed state transition preserves identity and never writes back to NEACEA.
+ const states=['prenotato','fatto','noshow','annullato'];
+ const snapshot=async()=>JSON.stringify((await c.query("select (select jsonb_agg(t) from appointments t) appointments, (select jsonb_agg(t) from clients t) clients")).rows);
+ for(const from of states)for(const to of states){
+  await edit({...await row(),status:from});assert.equal((await s.run()).errors,0);
+  await edit({...await row(),status:to});const before=await snapshot();
+  const beforeMapping=await store.get(mappingKey);
+  if(from!==to){failPut=to!=='annullato';if(failPut){assert.equal((await s.run()).errors,1);assert.deepEqual((await store.get(mappingKey)).baseline,beforeMapping.baseline);failPut=false;}}
+  assert.equal((await s.run()).errors,0);assert.equal(await snapshot(),before);
+  const mapped=await store.get(mappingKey);for(const k of ['uid','href','marker'])assert.equal(mapped[k],originalMapping[k]);
+  assert.equal(mapped.baseline.guard.status,to);assert.equal(objects.size,to==='annullato'?0:1);
+  if(to!=='annullato'){
+   const remote=await cal.read(href),text=remote.ics.replace(/\r?\n[ \t]/g,'');
+   assert.match(text,new RegExp('Stato: '+({prenotato:'Prenotata',fatto:'Fatto',noshow:'No-show'}[to])));
+   assert.deepEqual(core.parse(remote.ics).slot,core.slot(await row()));
+   if(to==='fatto')assert.match(text,/SUMMARY:✓ /);if(to==='noshow')assert.match(text,/SUMMARY:⚠ NO-SHOW/);
+   assert.equal((await s.run()).errors,0);assert.deepEqual(await cal.read(href),remote);
+   if(['fatto','noshow'].includes(to)){
+    await cal.put(href,core.rewrite(remote.ics,{...core.slot(await row()),start_time:'21:00'}),remote.etag);
+    assert.equal((await s.run()).errors,1);assert.equal(await snapshot(),before);
+    await cal.put(href,remote.ics,(await cal.read(href)).etag);
+   }
+  }
+ }
+ await edit({...await row(),status:'prenotato'});assert.equal((await s.run()).errors,0);a=await cal.read(href);await balance();
+ console.log('PASS all 16 status transitions, rendered titles/descriptions, same identity/slots, retries, idempotency, no duplicates or NEACEA writes, terminal inbound protection');
  await cal.delete(href,a.etag);await s.run();assert.equal((await row()).status,'annullato');await balance();console.log('PASS cloud Apple delete→annullato; balance 8');
  await s.run();await balance();await s.removeMapping('TEST_CLOUD');assert.equal((await store.list({prefix:'mapping/'})).blobs.length,0);
  // New application bookings only; old rows and unknown Apple events are never imported.
