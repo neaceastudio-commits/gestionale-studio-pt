@@ -23,7 +23,15 @@ class Store{constructor(){this.m=new Map;this.v=0}async getWithMetadata(k){const
 
  const balance=async()=>assert.equal((await c.query("select sessions_remaining from clients where id='test'")).rows[0].sessions_remaining,8);
  await s.provision('TEST_CLOUD');assert.equal(objects.size,1);const href=[...objects.keys()][0];let a=await cal.read(href);assert.ok(!a.ics.includes('PRIVATE_CLINICAL'));assert.ok(!a.ics.includes('METHOD:'));assert.ok(!a.ics.includes('RRULE:'));
- await cal.put(href,core.rewrite(a.ics,{date,start_time:'18:00',duration_min:60}),a.etag);await s.run();assert.equal((await row()).start_time,'18:00:00');await balance();console.log('PASS cloud Apple 17→18; balance 8');
+ // Apple inserts timezone transition rules when a participant edits a single event.
+ const timezone=['BEGIN:VTIMEZONE','TZID:Europe/Rome','BEGIN:DAYLIGHT','TZOFFSETFROM:+0100','TZOFFSETTO:+0200','DTSTART:19810329T020000','RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU','END:DAYLIGHT','BEGIN:STANDARD','TZOFFSETFROM:+0200','TZOFFSETTO:+0100','DTSTART:19961027T030000','RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU','END:STANDARD','END:VTIMEZONE'].join('\r\n')+'\r\n';
+ const appleEdited=core.rewrite(a.ics,{date,start_time:'18:00',duration_min:60}).replace('BEGIN:VEVENT',timezone+'BEGIN:VEVENT').replace('DTSTART:20260915T160000Z','DTSTART;TZID=Europe/Rome:20260915T180000').replace('DTEND:20260915T170000Z','DTEND;TZID=Europe/Rome:20260915T190000');
+ assert.deepEqual(core.parse(appleEdited).slot,{date,start_time:'18:00',duration_min:60});
+ for(const recurrence of ['RRULE:FREQ=WEEKLY','RDATE:20260922T160000Z','EXDATE:20260922T160000Z','RECURRENCE-ID:20260915T160000Z'])assert.throws(()=>core.parse(appleEdited.replace('END:VEVENT',recurrence+'\r\nEND:VEVENT')),/Recurrence/);
+ await cal.put(href,appleEdited,a.etag);assert.equal((await s.run()).errors,0);assert.equal((await row()).start_time,'18:00:00');
+ assert.ok((await c.query("select 1 from calendar_audit_log where entity_id='TEST_CLOUD' and action='appointment_moved' and before_data->>'start_time'='17:00:00' and after_data->>'start_time'='18:00:00'")).rowCount);
+ console.log('PASS Apple-edited VTIMEZONE with DST RRULEs accepted, NEACEA time updated and audit recorded; actual event recurrence still blocked');
+await balance();console.log('PASS cloud Apple 17→18; balance 8');
  await edit({...await row(),start_time:'19:00:00'});await s.run();a=await cal.read(href);assert.equal(core.parse(a.ics).slot.start_time,'19:00');await balance();console.log('PASS cloud NEACEA 18→19; balance 8');
  // PT is authoritative only in NEACEA; existing identity and timing survive a refresh.
  const mappingKey=[...store.m.keys()].find(k=>k.startsWith('mapping/'));

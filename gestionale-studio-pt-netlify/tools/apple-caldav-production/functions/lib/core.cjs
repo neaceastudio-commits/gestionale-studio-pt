@@ -18,8 +18,9 @@ const slot=n=>({date:n.date,start_time:n.start_time.slice(0,5),duration_min:n.du
 const display=ics=>ics.replace(/\r?\n[ \t]/g,'').split(/\r?\n/).filter(l=>/^(SUMMARY|DESCRIPTION|LOCATION|CATEGORIES|STATUS):/.test(l)).sort().join('\n');
 const guard=n=>({client_ids:n.client_ids,operator_id:n.operator_id,service_id:n.service_id,status:n.status});
 function parse(ics){
- const lines=ics.replace(/\r?\n[ \t]/g,'').split(/\r?\n/);need(lines.filter(l=>l==='BEGIN:VEVENT').length===1&&lines.filter(l=>l==='END:VEVENT').length===1,'One VEVENT required');need(!lines.some(l=>/^(RRULE|RDATE|EXDATE|RECURRENCE-ID)[;:]/i.test(l)),'Recurrence forbidden');
- const body=lines.slice(lines.indexOf('BEGIN:VEVENT')+1,lines.indexOf('END:VEVENT'));need(!body.some(l=>/^(BEGIN|END):/.test(l)),'Nested components unsupported');const props={};for(const l of body){const k=l.split(/[;:]/)[0].toUpperCase();(props[k]??=[]).push(l)}
+ const lines=ics.replace(/\r?\n[ \t]/g,'').split(/\r?\n/);need(lines.filter(l=>l==='BEGIN:VEVENT').length===1&&lines.filter(l=>l==='END:VEVENT').length===1,'One VEVENT required');
+ // VTIMEZONE daylight/standard RRULEs describe the clock, not repeated appointments.
+ const body=lines.slice(lines.indexOf('BEGIN:VEVENT')+1,lines.indexOf('END:VEVENT'));need(!body.some(l=>/^(RRULE|RDATE|EXDATE|RECURRENCE-ID)[;:]/i.test(l)),'Recurrence forbidden');need(!body.some(l=>/^(BEGIN|END):/.test(l)),'Nested components unsupported');const props={};for(const l of body){const k=l.split(/[;:]/)[0].toUpperCase();(props[k]??=[]).push(l)}
  need(props.UID?.length===1&&props.DTSTART?.length===1,'UID and DTSTART required');const time=l=>{need(!l.includes('VALUE=DATE'),'Timed event required');const head=l.slice(0,l.indexOf(':')),v=l.slice(l.indexOf(':')+1),tz=head.match(/;TZID="?([^;"]+)/)?.[1];return instant(v,tz||'Europe/Rome')};const start=time(props.DTSTART[0]);need((props.DTEND?.length||0)+(props.DURATION?.length||0)===1,'End required');
  let end;if(props.DTEND)end=time(props.DTEND[0]);else{const d=props.DURATION[0].match(/^DURATION:PT(?:(\d+)H)?(?:(\d+)M)?$/);need(d,'Unsupported duration');end=start+((+d[1]||0)*60+(+d[2]||0))*60000}
  const minutes=(end-start)/60000;need(Number.isInteger(minutes)&&minutes>0&&minutes<=480&&start%60000===0,'Invalid duration');const p=parts(start);

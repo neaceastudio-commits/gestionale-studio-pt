@@ -114,3 +114,8 @@ Un solo snapshot condiviso per batch evita letture complete per ogni evento;
 il confronto ignora DTSTAMP/SEQUENCE e il folding ICS, evitando PUT continui.
 Le coppie preesistenti vengono riallineate senza cancellare mapping né reimportare
 eventi. Le modifiche temporali Apple seguono ancora i controlli e l’audit esistenti.
+
+Le regole RRULE/RDATE del componente VTIMEZONE aggiunto da Apple descrivono
+il cambio ora legale/solare e sono accettate. Il divieto di ricorrenza riguarda
+solo VEVENT: una seduta rimane sempre collegata uno a uno. Gli errori di ogni
+batch sono disponibili nello store privato last-run con chiave mapping e causa.
