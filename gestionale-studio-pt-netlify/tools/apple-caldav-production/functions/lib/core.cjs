@@ -98,13 +98,13 @@ function service({env=process.env,db=auth.db,store,cal=new CalDAV(env),now=Date.
  }
  async function allAppointments(){let result=[];for(let offset=0;;){const rows=await db('appointments',{query:'?select=*&order=id.asc&limit=1000&offset='+offset});if(!rows.length)return result;result.push(...rows);offset+=rows.length}}
  async function run(){return locked(async check=>{
-  const result={processed:0,errors:0,created:0};const {blobs}=await store.list({prefix:'mapping/'});const control=await store.get('cursor',{type:'json'})||{index:0};const ordered=blobs.slice(control.index).concat(blobs.slice(0,control.index));let processed=0;
-  for(let i=0;i<ordered.length;i+=4){try{check()}catch{break}await Promise.all(ordered.slice(i,i+4).map(async b=>{try{const entry=await store.getWithMetadata(b.key,{type:'json'});await one(entry,check);result.processed++}catch{result.errors++}finally{processed++}}))}
+  const failures=[];const result={processed:0,errors:0,created:0};const {blobs}=await store.list({prefix:'mapping/'});const control=await store.get('cursor',{type:'json'})||{index:0};const ordered=blobs.slice(control.index).concat(blobs.slice(0,control.index));let processed=0;
+  for(let i=0;i<ordered.length;i+=4){try{check()}catch{break}await Promise.all(ordered.slice(i,i+4).map(async b=>{try{const entry=await store.getWithMetadata(b.key,{type:'json'});await one(entry,check);result.processed++}catch(e){result.errors++;failures.push({key:b.key,error:/^[A-Za-z0-9 /:;.,_()-]{1,160}$/.test(e.message)?e.message:'Sync operation failed',status:e.status||null})}finally{processed++}}))}
   if(blobs.length)await store.setJSON('cursor',{index:(control.index+processed)%blobs.length});
   // Only NEW NEACEA bookings after activation. Never import unknown Apple events.
   const fresh=await db('appointments',{query:'?select=*&status=neq.annullato&created_at=gte.'+encodeURIComponent(env.APPLE_CALDAV_START_AT)+'&date=gte.'+env.APPLE_CALDAV_START_AT.slice(0,10)+'&order=created_at.asc,id.asc&limit=1000'});
   for(const n of fresh.filter(futureEligible)){try{check()}catch{break}try{if(!await store.getMetadata(key(n.id))){await provision(n.id,check,'automatic');result.created++}}catch{result.errors++}}
-  await store.setJSON('last-run',{...result,at:new Date(now()).toISOString()});return result;
+  await store.setJSON('last-run',{...result,failures,at:new Date(now()).toISOString()});return result;
  })}
  async function bootstrapPreview(){config();await actor();const rows=(await allAppointments()).filter(futureEligible);let linked=0;for(const n of rows){const m=await store.get(key(n.id),{type:'json'});if(m?.stage==='linked'&&m.calendar===env.APPLE_CALDAV_URL)linked++}return {found:rows.length,linked,toCreate:rows.length-linked};}
  async function bootstrapStart(){return locked(async()=>{
