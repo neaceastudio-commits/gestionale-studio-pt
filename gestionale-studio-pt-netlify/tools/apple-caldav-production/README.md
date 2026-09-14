@@ -101,3 +101,16 @@ manuale; non è necessario nel flusso normale. Le sedute future Fatto/no-show
 vengono rappresentate senza modificarne stato o residuo; le relative coppie
 restano protette dalle modifiche Apple. Il mapping conserva anche l'ultimo ETag
 letto; la sync continua a leggere l'ETag remoto prima di ogni PUT/DELETE.
+
+## Aggiornamento dei dati visualizzati
+
+Ogni batch confronta titolo, descrizione, luogo, categorie e stato ICS con il
+formatter NEACEA corrente per tutti gli eventi collegati, anche se PT, stato e
+orario della singola seduta non sono cambiati. Contatori cliente, completamento
+di altre sedute, rinnovi e programmazione aggiornano quindi anche gli eventi
+futuri dello stesso cliente. I contatori salvati restano la fonte autorevole:
+il worker li legge senza ricalcolarli o scriverli nel DB.
+Un solo snapshot condiviso per batch evita letture complete per ogni evento;
+il confronto ignora DTSTAMP/SEQUENCE e il folding ICS, evitando PUT continui.
+Le coppie preesistenti vengono riallineate senza cancellare mapping né reimportare
+eventi. Le modifiche temporali Apple seguono ancora i controlli e l’audit esistenti.
