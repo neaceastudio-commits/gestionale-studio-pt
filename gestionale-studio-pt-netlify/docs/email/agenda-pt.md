@@ -13,8 +13,8 @@ Le modifiche successive all'invio si consultano nel Calendario.
 
 ## Esecuzione
 
-La funzione `email-agenda-scheduled.mjs` viene pubblicata sul sito Netlify del
-Portale PT (stesso database Studio e provider Resend). L'allowlist `EMAIL_AGENDA_SITE_ID`
+La funzione `email-agenda-scheduled.mjs` viene pubblicata sul sito dedicato
+`neacea-email-agenda-pt` (stesso database Studio e provider Resend). L'allowlist `EMAIL_AGENDA_SITE_ID`
 evita invii se la funzione viene distribuita anche su altri siti del monorepo.
 Cron UTC `*/5 4-6 * * *`; controllo locale 06:30–07:00, estate/inverno.
 Prima esecuzione alle 06:30; le successive recuperano solo invii non accettati.
@@ -22,7 +22,7 @@ Le funzioni programmate non sono endpoint pubblici di invio.
 
 Configurazione Functions:
 - EMAIL_AGENDA_ENABLED=true
-- EMAIL_AGENDA_SITE_ID=3c87fb2e-525d-43b0-9a84-4699994352e4
+- EMAIL_AGENDA_SITE_ID=4f4adb33-910e-45a8-89ca-3564c2d9930e
 - EMAIL_AGENDA_FROM=NEACEA Desk <desk@neacea.com>
 - EMAIL_AGENDA_REPLY_TO=neacea.desk@gmail.com
 - RESEND_API_KEY e SUPABASE_SERVICE_ROLE_KEY già presenti, mai salvati nel repo.
@@ -44,6 +44,14 @@ Nessun aggiornamento a appuntamenti, pacchetti, residui, audit o sincronizzazion
 - Prova API verso delivered@resend.dev con dati sintetici: accettata.
 - Anteprima reale del 18 settembre: Alessandro, 6 sedute, nessun dato mancante.
 
-Il rilascio riutilizza gli hash dei file e delle sei funzioni già pubblicate,
-aggiungendo soltanto email-agenda-scheduled. Non incorpora le modifiche locali
-preesistenti del repository.
+Il rilascio è isolato nel sito dedicato: una sola funzione e una pagina statica.
+Sorgente per i rilasci: `tools/email-agenda-production/`. Il Calendario resta
+invariato; il Portale mantiene la release precedente `6aabf3e5f849cb00fa87fa6c`.
+Il tentativo intermedio sul Portale è stato sostituito dal servizio dedicato
+per non riconfezionare le funzioni preesistenti. Nessuna modifica locale
+preesistente del repository è stata inclusa.
+
+Produzione: https://neacea-email-agenda-pt.netlify.app
+Deploy: `6aac319c320fef1c799a64b8`
+Prima agenda prevista: 18 settembre 2026 alle 06:30 Europe/Rome.
+La consegna reale ai PT potrà essere confermata solo dopo il primo invio.
