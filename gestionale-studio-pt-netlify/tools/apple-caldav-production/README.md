@@ -119,3 +119,25 @@ Le regole RRULE/RDATE del componente VTIMEZONE aggiunto da Apple descrivono
 il cambio ora legale/solare e sono accettate. Il divieto di ricorrenza riguarda
 solo VEVENT: una seduta rimane sempre collegata uno a uno. Gli errori di ogni
 batch sono disponibili nello store privato last-run con chiave mapping e causa.
+
+## Ripianificazioni e coda nuove sedute (18 settembre 2026)
+
+Le righe prenotate eliminate dal gestionale non lasciano più eventi sospesi:
+la prima assenza viene registrata nel mapping, una seconda osservazione dopo
+almeno un minuto la conferma. Prima del DELETE si ricontrollano la riga, UID,
+marker, orario Apple invariato ed ETag. Modifiche Apple concorrenti, errori DB,
+identità estranee e sedute Fatto/no-show scomparse richiedono verifica e non
+vengono cancellate. Il mapping resta come `retired`, conservando UID/href/marker;
+non viene riutilizzato né cancellato. Nessuna scrittura a appuntamenti, pacchetti,
+residui o audit per questa pulizia.
+
+Ogni esecuzione riserva prima una corsia a quattro nuove sedute. La selezione
+usa tutte le pagine degli appuntamenti e l'inventario mapping in memoria.
+`creation-cursor` ruota i candidati, evitando che errori di una seduta blocchino
+le successive. Seguono gli eventi già collegati con il cursore esistente.
+`last-run` riporta anche `newPending`, `retired` e `missingSourcePending`.
+Gli eventi creati manualmente in Apple rimangono estranei alla sync: non vengono
+adottati né cancellati sulla base del titolo o del nome cliente.
+
+Test aggiuntivi: `node --test tests/apple-caldav-reconciliation.test.cjs`.
+La suite PostgreSQL usa un orologio fisso per non dipendere dal giorno di esecuzione.
