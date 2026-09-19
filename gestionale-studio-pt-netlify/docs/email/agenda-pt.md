@@ -55,3 +55,31 @@ Produzione: https://neacea-email-agenda-pt.netlify.app
 Deploy: `6aac319c320fef1c799a64b8`
 Prima agenda prevista: 18 settembre 2026 alle 06:30 Europe/Rome.
 La consegna reale ai PT potrà essere confermata solo dopo il primo invio.
+
+## Riepilogo Direzione — prossimi 30 giorni
+
+Dal 19/09/2026 è autorizzata una mail ogni domenica alle 20:00 Europe/Rome a
+`neacea.desk@gmail.com`, con tutti gli appuntamenti dei successivi 30 giorni.
+L'intervallo parte dall'orario di preparazione ed esclude l'estremo finale,
+30 date locali dopo, alla stessa ora. Include tutti i servizi e stati, anche
+annullati e no-show, senza filtri sugli operatori/clienti attivi. La mail riporta
+orario, durata, clienti, operatore, servizio e stato, raggruppati per giorno,
+con totali. Allegato CSV completo (ID inclusi, formule neutralizzate) per
+conservare la traccia anche quando il client email abbrevia corpi molto lunghi.
+Non vengono letti anamnesi, note, contatti o dati dei pacchetti.
+
+Funzione isolata `tools/email-agenda-production/functions/email-calendar-summary.mjs`.
+Flag `EMAIL_CALENDAR_SUMMARY_ENABLED=true` solo sul sito email esistente.
+Cron UTC `*/5 18-20 * * 0`; controllo Europe/Rome domenica 20:00–21:00,
+con prima esecuzione alle 20:00 e recuperi ogni cinque minuti. Primo invio
+previsto il 20 settembre 2026. L'agenda giornaliera PT delle 06:30 resta invariata.
+
+Store privato `email-calendar-summary-v1`: claim condizionale con lease di due
+minuti, payload immutabile e Idempotency-Key per domenica. Il provider viene
+richiamato nella sola finestra di un'ora; nessun reinvio dopo l'accettazione.
+Il payload è rimosso dopo accettazione/rifiuto definitivo; vecchi payload
+incerti sono rimossi alla successiva esecuzione. Restano ID/stato di invio,
+conteggio e intervallo. `accepted` non significa consegna o lettura confermata.
+Nessuna scrittura a Supabase o ai calendari. Nessuna migrazione richiesta.
+
+Verifica: `node --test tests/email-calendar-summary.test.cjs tests/email-agenda.test.cjs`.
