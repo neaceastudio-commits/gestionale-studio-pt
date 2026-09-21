@@ -166,7 +166,16 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 .sb-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
 .sb-val{font-size:13px;font-weight:700;color:var(--text);max-width:55%;text-align:right}
 .sch-quote{font-size:15px;font-style:italic;color:var(--text2);line-height:1.6;padding:8px 0}
-.sch-nota{font-size:13px;color:var(--text2);line-height:1.7;padding:4px 0}
+.sch-nota{overflow-wrap:anywhere;font-size:13px;color:var(--text2);line-height:1.7;padding:4px 0}
+.visit-intro{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.5}
+.visit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.visit-section h3{font-size:13px;color:var(--blue);margin:0 0 8px}
+.visit-section .sb-row{display:block;padding:8px 0}
+.visit-section .sb-label{display:block;margin-bottom:4px}
+.visit-section .sb-val{display:block;max-width:none;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.visit-admin{margin-top:16px;font-size:12px;color:var(--text2)}
+.visit-admin summary{cursor:pointer;font-weight:700;margin-bottom:8px}
+@media(max-width:600px){.visit-grid{grid-template-columns:1fr;gap:16px}}
 .coaching-details{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
 .coaching-details summary{cursor:pointer;color:#7e22ce;font-size:12px;font-weight:800;list-style-position:inside}
 .coaching-details[open] summary{margin-bottom:8px}
@@ -1150,8 +1159,9 @@ function apriScheda(id){
   h+=`<div class="sch-block"><div class="sb-title">Interesse</div>${sr('Obiettivo',c.obiettivo)}${sr('Come ci ha trovato',c.come)}</div>`;
   h+=`<div class="sch-block"><div class="sb-title">Follow-up</div>${sr('Stato',c.stato)}${sr('Prossimo contatto',c.followup?fmtData(c.followup):'Da programmare')}</div>`;
   if(receipts.length)h+=`<div class="sch-block full"><div class="sb-title">Anamnesi ricevute</div>${receipts.map(receipt=>sr(receipt.service,fmtDataOra(receipt.at))).join('')}</div>`;
+  h+=renderPtVisit(c.impressioni);
   const coaching=coachingAnamnesi(c.impressioni);if(coaching)h+=renderCoachingAnamnesi(coaching);
-  if(c.sessioni_pref||c.orari)h+=`<div class="sch-block full"><div class="sb-title">Disponibilità indicativa</div>${sr('Sessioni/sett.',c.sessioni_pref)}${sr('Orari',c.orari)}</div>`;
+  if(!ptVisitReport(c.impressioni)&&(c.sessioni_pref||c.orari))h+=`<div class="sch-block full"><div class="sb-title">Disponibilità indicativa</div>${sr('Sessioni/sett.',c.sessioni_pref)}${sr('Orari',c.orari)}</div>`;
   if(visibleLeadNote(c.impressioni))h+=`<div class="sch-block full"><div class="sb-title">Nota interna</div><div class="sch-nota">${escapeHtml(visibleLeadNote(c.impressioni)).replaceAll('\n','<br>')}</div></div>`;
   const leadOwner=acquisitionOwnerId(c);
   document.getElementById('sch-content').innerHTML=h;document.getElementById('sch-footer').textContent='Acquisito il '+fmtData(c.dataAcquisizione)+(leadOwner?' · Inserito da '+(leadOwner.email||leadOwner.operatorId):'');
@@ -1268,9 +1278,48 @@ const COACHING_LABELS={timestamp:'Data invio',obiettivo_primario:'Obiettivo prim
 function coachingAnamnesi(value){const matches=[...String(value||'').matchAll(/\[ANAMNESI_COACHING\]\s*([\s\S]*?)\s*\[\/ANAMNESI_COACHING\]/g)];if(!matches.length)return null;try{return JSON.parse(matches.at(-1)[1])}catch{return null}}
 function coachingLabel(key){return COACHING_LABELS[key]||String(key).replaceAll('_',' ').replace(/^./,c=>c.toUpperCase())}
 function renderCoachingAnamnesi(data){const skip=new Set(['nome','cognome','email','telefono','codice_fiscale','indirizzo','cap','comune','provincia','data_nascita','sesso','privacy','tipo']);const entries=Object.entries(data||{}).filter(([key,value])=>!skip.has(key)&&value!==null&&value!==undefined&&String(value).trim()!=='');const highlights=['obiettivo_primario','patologie','infortuni','livello','frequenza','luogo','note'].filter(key=>data[key]&&String(data[key]).trim());const summary=highlights.map(key=>sr(coachingLabel(key),data[key])).join('');const all=entries.map(([key,value])=>sr(coachingLabel(key),Array.isArray(value)?value.join(', '):value)).join('');return`<div class="sch-block full"><div class="sb-title">Anamnesi Coaching</div>${summary}<details class="coaching-details"><summary>Apri la scheda completa (${entries.length} risposte)</summary>${all}</details></div>`}
-function stripAnamnesiData(value){return String(value||'').replace(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]\s*/g,'').replace(/\[ANAMNESI_COACHING\][\s\S]*?\[\/ANAMNESI_COACHING\]\s*/g,'').replace(/^\[ANAMNESI_RICEVUTA\].*$/gm,'').trim()}
-function visibleLeadNote(value){const raw=stripAnamnesiData(stripPtTracking(value));const i=raw.indexOf('Dati minore/tutore:');return(i>=0?raw.slice(0,i):raw).trim()}
-function legacyLeadTail(value){const raw=String(value||'');const hidden=[...raw.matchAll(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]/g)].map(m=>m[0]);const coaching=[...raw.matchAll(/\[ANAMNESI_COACHING\][\s\S]*?\[\/ANAMNESI_COACHING\]/g)].map(m=>m[0]);const receipts=[...raw.matchAll(/^\[ANAMNESI_RICEVUTA\].*$/gm)].map(m=>m[0]);const clean=stripAnamnesiData(raw);const i=clean.indexOf('Dati minore/tutore:');const legacy=i>=0?clean.slice(i).trim():'';return[legacy,...hidden,...coaching,...receipts].filter(Boolean).join('\n\n')}
+function stripAnamnesiData(value){return String(value||'').replace(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]\s*/g,'').replace(/\[ANAMNESI_(PT_REPORT|COACHING)\][\s\S]*?(?:\[\/ANAMNESI_\1\]|$)\s*/g,'').replace(/^\[ANAMNESI_RICEVUTA\].*$/gm,'').trim()}
+function ptVisitReport(value){
+  const blocks=[...String(value||'').matchAll(/\[ANAMNESI_PT_REPORT\]\s*([\s\S]*?)\s*\[\/ANAMNESI_PT_REPORT\]/g)];
+  if(!blocks.length)return null;
+  try{const data=JSON.parse(blocks.at(-1)[1]);return data&&typeof data==='object'&&!Array.isArray(data)?data:null}catch{return null}
+}
+function leadNoteParts(value){
+  const raw=stripAnamnesiData(stripPtTracking(value));
+  const i=raw.indexOf('Dati minore/tutore:');
+  const text=i>=0?raw.slice(0,i):raw;
+  const administrative=[];
+  const note=text.split('\n').filter(line=>{if(/^(CAP|Comune|Indirizzo per fattura|Provincia):/i.test(line.trim())){administrative.push(line);return false}return true}).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  return{note,administrative};
+}
+function visibleLeadNote(value){return leadNoteParts(value).note}
+function renderPtVisit(value){
+  const report=ptVisitReport(value);
+  const address={};
+  leadNoteParts(value).administrative.forEach(line=>{const i=line.indexOf(':');address[line.slice(0,i).trim().toLowerCase()]=line.slice(i+1).trim()});
+  const data=report||{};
+  const display=v=>v===true?'Sì':v===false?'No':Array.isArray(v)?v.join(', '):typeof v==='string'||typeof v==='number'?String(v):'';
+  const section=(title,fields)=>{const rows=fields.map(([label,key])=>sr(label,display(data[key]))).join('');return rows?`<section class="visit-section"><h3>${title}</h3>${rows}</section>`:''};
+  const sections=[
+    section('Obiettivi e percorso',[['Obiettivo','obiettivo'],['Nelle sue parole','obiettivo_libero'],['Esperienza di allenamento','esperienza'],['Attività fisica attuale','inattivo'],['Sport praticati','sport'],['Interesse per la nutrizione','interesse_nutrizione']]),
+    section('Disponibilità',[['Frequenza desiderata','sessioni_pref'],['Orari preferiti','orari']]),
+    section('Salute e limitazioni',[['Patologie riferite','patologie'],['Farmaci','farmaci'],['Infortuni','infortuni'],['Limitazioni','limitazioni']]),
+    section('Benessere e altre informazioni',[['Stress','stress'],['Sonno','sonno'],['Professione','professione'],['Note del cliente','note']]),
+  ].filter(Boolean).join('');
+  const admin=[sr('Data di nascita',data.nascita?fmtData(data.nascita):''),sr('Codice fiscale',data.codice_fiscale),sr('Indirizzo',data.indirizzo||address['indirizzo per fattura']),sr('CAP',data.cap||address.cap),sr('Comune',data.comune||address.comune),sr('Provincia',data.provincia||address.provincia)].join('');
+  if(!report&&!admin&&!String(value||'').includes('[ANAMNESI_PT_REPORT]'))return'';
+  const date=data.submitted_at&&!Number.isNaN(Date.parse(data.submitted_at))?' · '+fmtDataOra(data.submitted_at):'';
+  const intro=report?'Ultima anamnesi ricevuta'+date+'. Sono riportate solo le risposte compilate.':String(value||'').includes('[ANAMNESI_PT_REPORT]')?'Il riepilogo dell’anamnesi non è disponibile. Verificare la compilazione.':'Dati recuperati dalla prima visita.';
+  return`<div class="sch-block full"><div class="sb-title">Prima visita · Riepilogo per il PT</div><p class="visit-intro">${escapeHtml(intro)}</p><div class="visit-grid">${sections}</div>${admin?`<details class="visit-admin"><summary>Dati anagrafici e di fatturazione</summary>${admin}</details>`:''}</div>`;
+}
+function legacyLeadTail(value){
+  const raw=String(value||'');
+  const hidden=[...raw.matchAll(/\[ANAMNESI_CLIENTE[^\]]*\][\s\S]*?\[\/ANAMNESI_CLIENTE\]/g)].map(m=>m[0]);
+  const reports=[...raw.matchAll(/\[ANAMNESI_(PT_REPORT|COACHING)\][\s\S]*?(?:\[\/ANAMNESI_\1\]|$)/g)].map(m=>m[0]);
+  const receipts=[...raw.matchAll(/^\[ANAMNESI_RICEVUTA\].*$/gm)].map(m=>m[0]);
+  const clean=stripAnamnesiData(raw);const i=clean.indexOf('Dati minore/tutore:');const legacy=i>=0?clean.slice(i).trim():'';
+  return[...leadNoteParts(value).administrative,legacy,...hidden,...reports,...receipts].filter(Boolean).join('\n\n');
+}
 function calcEta(n){const o=new Date(),d=new Date(n);let e=o.getFullYear()-d.getFullYear();const m=o.getMonth()-d.getMonth();if(m<0||(m===0&&o.getDate()<d.getDate()))e--;return e}
 function fmtData(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}catch{return d}}
 function fmtDataOra(d){if(!d)return'—';try{return new Date(d).toLocaleString('it-IT',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return d}}

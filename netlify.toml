@@ -1,0 +1,10 @@
+[build]
+  publish = "gestionale-studio-pt-netlify/app/acquisizione"
+  command = "mkdir -p /tmp/acquisition-functions && cp -R gestionale-studio-pt-netlify/netlify/functions/lib /tmp/acquisition-functions/ && for name in acquisition-calendar-activity apple-calendar-dry-run apple-calendar form-notify foto-pt pt-access-email schedule-client-package; do cp gestionale-studio-pt-netlify/netlify/functions/$name.js /tmp/acquisition-functions/; done"
+[functions]
+  directory = "/tmp/acquisition-functions"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

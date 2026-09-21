@@ -72,3 +72,36 @@ test('legge i dati Coaching completi senza mostrarli nella nota commerciale', ()
   assert.equal(evaluate('visibleLeadNote(fullCoachingNotes)'), 'Nota del commerciale');
   assert.match(evaluate('legacyLeadTail(fullCoachingNotes)'), /\[ANAMNESI_COACHING\]/);
 });
+
+test('prima visita: ultima compilazione leggibile, nessun JSON o indirizzo duplicato', () => {
+  const block = data => '[ANAMNESI_PT_REPORT]\n' + JSON.stringify(data) + '\n[/ANAMNESI_PT_REPORT]';
+  const old = block({obiettivo:'Vecchio obiettivo',comune:'Comune precedente'});
+  const latest = block({obiettivo:'Forza',sport:'Tennis',orari:'Mattina\nWeekend',patologie:'<script>alert(1)</script>',interesse_nutrizione:false,comune:'Comune aggiornato'});
+  const notes = ['Richiamare venerdì', 'CAP: 09000', 'Comune: Comune precedente', old, 'Comune: Comune aggiornato', latest].join('\n\n');
+  const rendered = context.renderPtVisit(notes);
+  assert.match(rendered, /Forza/);
+  assert.match(rendered, /Tennis/);
+  assert.match(rendered, /Mattina\nWeekend/);
+  assert.match(rendered, />No</);
+  assert.match(rendered, /&lt;script&gt;/);
+  assert.doesNotMatch(rendered, /Vecchio obiettivo|Comune precedente|ANAMNESI_PT_REPORT|<script>/);
+  assert.equal(context.visibleLeadNote(notes), 'Richiamare venerdì');
+  const saved = ['Nuova nota', context.legacyLeadTail(notes)].join('\n\n');
+  assert.ok(saved.includes(old));
+  assert.ok(saved.includes(latest));
+  assert.equal(context.visibleLeadNote(saved), 'Nuova nota');
+  assert.equal(context.renderPtVisit(saved), rendered);
+  assert.equal(context.legacyLeadTail(saved), context.legacyLeadTail(notes));
+});
+
+test('report non leggibili o incompleti non espongono dati tecnici e restano salvati', () => {
+  for (const block of ['[ANAMNESI_PT_REPORT]{rotto}[/ANAMNESI_PT_REPORT]', '[ANAMNESI_PT_REPORT]{incompleto', '[ANAMNESI_PT_REPORT][][/ANAMNESI_PT_REPORT]']) {
+    const notes = 'Nota utile\n' + block;
+    assert.equal(context.visibleLeadNote(notes), 'Nota utile');
+    assert.ok(context.legacyLeadTail(notes).includes(block));
+    assert.match(context.renderPtVisit(notes), /non è disponibile/);
+    assert.doesNotMatch(context.renderPtVisit(notes), /ANAMNESI_PT_REPORT|rotto|incompleto/);
+  }
+  assert.equal(context.renderPtVisit('Solo nota'), '');
+  assert.equal(context.visibleLeadNote('Prima riga\n\nSeconda riga'), 'Prima riga\n\nSeconda riga');
+});
