@@ -887,7 +887,8 @@ function confSlotLabel(date,time){
 function confMirrorSlotsForOperator(op,dates,times,meta){
   return dates.flatMap(date=>times.map(time=>{
     const draft={date,startTime:time,durationMin:meta.duration,bufferMin:meta.buffer};
-    const conflicts=confAppointments.filter(a=>a.operator_id===op.id&&a.date===date&&a.status!=='annullato'&&confOverlaps(draft,a,true));
+    // Come Calendario e pianificazione pacchetti: il buffer non occupa lo slot adiacente.
+    const conflicts=confAppointments.filter(a=>a.operator_id===op.id&&a.date===date&&a.status!=='annullato'&&confOverlaps(draft,a,false));
     return{date,time,free:conflicts.length===0,conflicts};
   }));
 }
