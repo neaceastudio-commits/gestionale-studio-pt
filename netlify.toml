@@ -1,0 +1,10 @@
+[build]
+  publish = "gestionale-studio-pt-netlify/app/calendario-studio"
+  command = "mkdir -p .netlify/calendar-functions && cp -R gestionale-studio-pt-netlify/netlify/functions/lib .netlify/calendar-functions/ && for name in acquisition-calendar-activity apple-caldav-link apple-calendar-dry-run apple-calendar calendar-activity calendar-runtime calendar-system-activity form-notify foto-pt pt-access-email schedule-client-package studio-calendar-activity whatsapp-agenda; do cp gestionale-studio-pt-netlify/netlify/functions/$name.js .netlify/calendar-functions/; done && cp gestionale-studio-pt-netlify/netlify/functions/whatsapp-agenda-scheduled.mjs .netlify/calendar-functions/"
+[functions]
+  directory = ".netlify/calendar-functions"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

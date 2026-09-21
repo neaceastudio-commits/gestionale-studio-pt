@@ -179,9 +179,9 @@ const Services = (() => {
     // I cicli creati dal nuovo registro usano sempre un ID: una vecchia
     // seduta senza ID non puo' entrare per errore nel nuovo rinnovo.
     if (context.id && !context.legacy) return false;
-    // Dopo che il ciclo è stato confermato sul cliente, la data di inizio è
-    // l'unica fonte di verità: una lezione svolta nello stesso giorno del
-    // rinnovo appartiene al nuovo ciclo anche se conserva una vecchia nota.
+    // Il collegamento esplicito al ciclo corrente sopravvive a un anticipo.
+    // Per le sedute storiche senza collegamento corrente resta la regola per data.
+    if (appointmentCycle && appointmentCycle === context.start) return true;
     if (context.persisted) return !context.start || String(appt.date || '') >= context.start;
     if (appointmentCycle) return !context.start || appointmentCycle === context.start;
     return !context.start || String(appt.date || '') >= context.start;

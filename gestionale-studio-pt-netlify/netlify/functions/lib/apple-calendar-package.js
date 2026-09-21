@@ -18,6 +18,7 @@ function inCycle(a, ctx) {
   const id = cycleId(a.notes);
   if (ctx.id && id) return id === ctx.id;
   if (ctx.id && !ctx.legacy) return false;
+  if (marker(a.notes) && marker(a.notes) === ctx.start) return true;
   if (ctx.persisted) return !ctx.start || a.date >= ctx.start;
   const start = marker(a.notes);
   return start ? !ctx.start || start === ctx.start : !ctx.start || a.date >= ctx.start;

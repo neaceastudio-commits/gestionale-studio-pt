@@ -1018,7 +1018,18 @@ const App = {
     const appt = State.getAppointments().find(a => a.id === apptId);
     if (appt) App._renderDetailModal(appt);
   },
+  _preserveAppointmentPackage(appt, before) {
+    if (!Services.serviceUsesPackageSessions(appt.serviceId) || appt.clientIds?.length !== 1) return appt;
+    const client = Services.getClient(appt.clientIds[0]);
+    if (!client || Number(client.sessionsTotal || 0) <= 0) return appt;
+    const sameClient = before?.clientIds?.length === 1 && before.clientIds[0] === client.id;
+    // Non riassegnare lo storico quando si modifica una vecchia seduta.
+    if (before && (!sameClient || !Services.appointmentInCurrentPackageCycle(before, client))) return appt;
+    const cycle = Services.getPackageCycleContext(client);
+    return { ...appt, notes: App._withPackageCycle(appt.notes, cycle.start, cycle.id) };
+  },
   async _persistAppointment(appt, before) {
+    appt = App._preserveAppointmentPackage(appt, before);
     try {
       const result = await SupabaseSync.saveAppointmentAtomic(appt, before);
       if (result?.error || !result?.appointment) throw new Error(result?.error || 'Conferma mancante');
@@ -2033,6 +2044,7 @@ const App = {
       const cycleLabel = usesPackage ? (isCurrentCycle ? 'Ciclo corrente' : 'Storico') : 'Servizio extra';
       const canEditRow = !isArchived && App.canEditAppointment(a);
       const rowReadOnlyAttr = canEditRow ? '' : 'disabled';
+      const canInclude = canEditRow && !isCurrentCycle && usesPackage && a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && metrics.toSchedule > 0;
       const operatorOptions = operators
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
@@ -2061,7 +2073,7 @@ const App = {
               ${statusOptions}
             </select>` : `<span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>`}
           </td>
-          <td><span class="role-tag">${cycleLabel}</span></td>
+          <td><span class="role-tag">${cycleLabel}</span>${canInclude ? `<button class="btn" onclick="App._includeAppointmentInPackage('${a.id}','${client.id}')">Includi nel ciclo</button>` : ''}</td>
           <td>
             ${!canEditRow ? '<span class="client-history-readonly">Solo lettura</span>' : `<div class="package-row-actions">
               <button class="btn" title="Salva soltanto questa seduta" onclick="App._updatePackageAppointmentRow('${a.id}')">Salva seduta</button>
@@ -2148,6 +2160,7 @@ const App = {
 
           ${isArchived ? '' : `<section class="package-panel">
             <h4>Prossime date suggerite</h4>
+            ${appointments.some(a => a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && Services.serviceUsesPackageSessions(a.serviceId) && !Services.appointmentInCurrentPackageCycle(a, client)) && metrics.toSchedule > 0 ? `<p>Ci sono sedute già in agenda fuori dal ciclo. Prima di generarne altre, controlla l’elenco: puoi usare “Includi nel ciclo” per una lezione anticipata.</p><button class="btn" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Controlla le sedute</button>` : ''}
             <div class="suggested-date-row">
               ${hasTotal
                 ? (suggested.length ? suggested.map(date => `<span>${App._fmtLongDate(date)}</span>`).join('') : '<em>Nessuna data da generare</em>')
@@ -3422,6 +3435,28 @@ const App = {
       'success'
     );
     App._openPackageFinance(clientId);
+  },
+
+  async _includeAppointmentInPackage(apptId, clientId) {
+    if (!App.guardPackageManagement(clientId)) return;
+    const client = Services.getClient(clientId);
+    const before = State.getAppointments().find(a => a.id === apptId);
+    if (!client || !before || !App.guardPortalEdit('appointment', before)) return;
+    if (before.clientIds?.length !== 1 || before.clientIds[0] !== clientId ||
+        !Services.serviceUsesPackageSessions(before.serviceId) || before.status !== 'prenotato' || before.date < App._dateStr(new Date())) return;
+    if (Services.appointmentInCurrentPackageCycle(before, client)) return;
+    if (Services.getClientSessionMetrics(client).toSchedule <= 0) {
+      UI.showToast('Tutte le sedute del ciclo sono già programmate', 'info'); return;
+    }
+    if (!confirm('Includere questa seduta nel pacchetto corrente? Data e orario rimangono invariati.')) return;
+    const cycle = Services.getPackageCycleContext(client);
+    const saved = await App._persistAppointment({ ...before, notes: App._withPtAudit(
+      App._withPackageCycle(before.notes, cycle.start, cycle.id), 'seduta inclusa nel ciclo corrente'
+    ) }, before);
+    if (!saved) return;
+    Calendar.render();
+    App.openPackageOverview(clientId);
+    UI.showToast('Seduta inclusa nel pacchetto · conteggio aggiornato', 'success');
   },
 
   async _updatePackageAppointmentRow(apptId) {
