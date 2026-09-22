@@ -1,26 +1,18 @@
 'use strict';
 const crypto=require('node:crypto');
-const {XMLParser,XMLValidator}=require('fast-xml-parser');
 const {CalDAV,parse,slot}=require('./core.cjs');
 const {buildCalendar}=require('../../../../netlify/functions/apple-calendar')._test;
 const {romeTime}=require('../../../../netlify/functions/lib/whatsapp-agenda');
 const SITE='305b1dd7-9d1e-4e96-87ef-5619de0f5130';
-const list=v=>v===undefined?[]:Array.isArray(v)?v:[v];
 const display=ics=>ics.replace(/\r?\n[ \t]/g,'').split(/\r?\n/).filter(l=>/^(SUMMARY|DESCRIPTION|LOCATION|CATEGORIES|STATUS):/.test(l)).sort().join('\n');
 const hash=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
 async function inventory(cal){
  await cal.verify();
- const response=await cal.request(cal.base,'REPORT','<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"/></c:comp-filter></c:filter></c:calendar-query>',{Depth:'1','Content-Type':'application/xml'});
- if(response.status!==207)throw Error('Apple HTTP '+response.status);
- const xml=await response.text();if(/<!DOCTYPE|<!ENTITY/i.test(xml)||XMLValidator.validate(xml)!==true)throw Error('Risposta Apple non valida');
- const tree=new XMLParser({removeNSPrefix:true,ignoreAttributes:false,parseTagValue:false,trimValues:false}).parse(xml);
- if(!tree.multistatus)throw Error('Inventario Apple incompleto');
- const responses=list(tree.multistatus.response).filter(r=>r.href!==cal.base&&(!/^https:/.test(cal.base)||new URL(r.href,cal.base).href!==cal.base)),events=new Array(responses.length);let next=0;
- // iCloud may return 404 for calendar-data in REPORT while GET serves the event.
- // Read those resources with bounded concurrency; never mistake an unreadable event for absence.
- await Promise.all(Array.from({length:Math.min(24,responses.length)},async()=>{for(;;){const index=next++;if(index>=responses.length)return;const r=responses[index],href=cal.url(r.href),props=list(r.propstat);const good=props.find(p=>/\s200(?:\s|$)/.test(String(p.status))&&p.prop?.['calendar-data']);const data=good?.prop?.['calendar-data'];let ics=typeof data==='string'?data:data?.['#text'];if(!ics){const remote=await cal.read(href);if(!remote?.ics)throw Error('Evento Apple non leggibile');ics=remote.ics;}events[index]={href,ics};}}));
+ const hrefs=await cal.inventory(),events=new Array(hrefs.length);let next=0;
+ await Promise.all(Array.from({length:Math.min(24,hrefs.length)},async()=>{for(;;){const index=next++;if(index>=hrefs.length)return;const href=hrefs[index],remote=await cal.read(href);if(!remote?.ics)throw Error('Evento Apple non leggibile');events[index]={href,ics:remote.ics};}}));
  return events;
 }
+
 function compare({rows,clients,operators,mappings,events,lastRun,now,cal}){
  const issues=[],names=new Map(clients.map(c=>[c.id,[c.nome,c.cognome].filter(Boolean).join(' ')]));
  const add=(code,id,detail='')=>{const row=rows.find(r=>r.id===id);issues.push({key:hash([code,id,detail]),code,id,detail,label:row?`${row.date} ${row.start_time.slice(0,5)} · ${(row.client_ids||[]).map(i=>names.get(i)||i).join(' + ')}`:id||''});};

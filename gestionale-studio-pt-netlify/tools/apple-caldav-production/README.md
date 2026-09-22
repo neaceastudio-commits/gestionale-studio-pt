@@ -145,7 +145,7 @@ La suite PostgreSQL usa un orologio fisso per non dipendere dal giorno di esecuz
 ## Controllo serale cloud (22 settembre 2026)
 
 `apple-caldav-monitor` è separato dal worker e non scrive in Supabase né su Apple.
-Alle 23:30 Europe/Rome confronta inventario CalDAV reale (REPORT), tutti i mapping,
+Alle 23:30 Europe/Rome confronta inventario CalDAV reale (PROPFIND e GET con concorrenza limitata), tutti i mapping,
 appuntamenti futuri, identità, duplicati, orari, durata, PT, stati e contenuti.
 Gli eventi manuali con UID estranei ai mapping sono ignorati. Il worker deve avere
 un'esecuzione recente (entro 10 minuti). Un errore di lettura produce un controllo
