@@ -15,7 +15,7 @@ async function inventory(cal){
  const xml=await response.text();if(/<!DOCTYPE|<!ENTITY/i.test(xml)||XMLValidator.validate(xml)!==true)throw Error('Risposta Apple non valida');
  const tree=new XMLParser({removeNSPrefix:true,ignoreAttributes:false,parseTagValue:false,trimValues:false}).parse(xml);
  if(!tree.multistatus)throw Error('Inventario Apple incompleto');
- const responses=list(tree.multistatus.response),events=new Array(responses.length);let next=0;
+ const responses=list(tree.multistatus.response).filter(r=>r.href!==cal.base&&(!/^https:/.test(cal.base)||new URL(r.href,cal.base).href!==cal.base)),events=new Array(responses.length);let next=0;
  // iCloud may return 404 for calendar-data in REPORT while GET serves the event.
  // Read those resources with bounded concurrency; never mistake an unreadable event for absence.
  await Promise.all(Array.from({length:Math.min(24,responses.length)},async()=>{for(;;){const index=next++;if(index>=responses.length)return;const r=responses[index],href=cal.url(r.href),props=list(r.propstat);const good=props.find(p=>/\s200(?:\s|$)/.test(String(p.status))&&p.prop?.['calendar-data']);const data=good?.prop?.['calendar-data'];let ics=typeof data==='string'?data:data?.['#text'];if(!ics){const remote=await cal.read(href);if(!remote?.ics)throw Error('Evento Apple non leggibile');ics=remote.ics;}events[index]={href,ics};}}));

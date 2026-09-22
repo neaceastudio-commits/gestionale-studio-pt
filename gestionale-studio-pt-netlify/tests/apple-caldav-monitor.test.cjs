@@ -22,3 +22,9 @@ test('iCloud calendar-data 404 falls back to read-only GET; unreadable events fa
  let reads=0;const cal={base:'base',url:x=>x,verify:async()=>{},read:async()=>{reads++;return {ics:'BEGIN:VCALENDAR\r\nEND:VCALENDAR'};},request:async()=>({status:207,text:async()=>'<multistatus><response><href>a.ics</href><propstat><prop><getetag>x</getetag></prop><status>HTTP/1.1 200 OK</status></propstat><propstat><prop><calendar-data/></prop><status>HTTP/1.1 404 Not Found</status></propstat></response></multistatus>'})};
  assert.equal((await inventory(cal))[0].href,'a.ics');assert.equal(reads,1);cal.read=async()=>null;await assert.rejects(inventory(cal),/non leggibile/);
 });
+
+test('Apple collection response is metadata, while every child event is still read',async()=>{
+ const base='https://p01-caldav.icloud.com/123/calendars/test/';let reads=0;
+ const cal={base,url:x=>new URL(x,base).href,verify:async()=>{},read:async()=>{reads++;return {ics:'BEGIN:VCALENDAR\nEND:VCALENDAR'};},request:async()=>({status:207,text:async()=>'<multistatus><response><href>/123/calendars/test/</href><propstat><prop><getetag>x</getetag></prop><status>HTTP/1.1 200 OK</status></propstat></response><response><href>/123/calendars/test/a.ics</href><propstat><prop><getetag>y</getetag></prop><status>HTTP/1.1 200 OK</status></propstat></response></multistatus>'})};
+ assert.equal((await inventory(cal)).length,1);assert.equal(reads,1);
+});
