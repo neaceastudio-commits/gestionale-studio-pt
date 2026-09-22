@@ -12,3 +12,8 @@ test('new deployment is read-only; anomaly confirmed twice; duplicates quiet fol
 test('unreadable sources produce incomplete check rather than false all-clear',async()=>{const f=fixture();f.fail();const r=await f.s.inspect();assert.equal(r.checked,0);assert.match(r.issues[0].code,/incompleto/);});
 
 test("uncertain email retries identical payload/key after lease, without duplicate logical mail",async()=>{const f=fixture();await f.s.run("d");f.d.rows[0].start_time="11:00";await f.s.run("d");f.advance();f.failMail();await assert.rejects(f.s.run("d"),/timeout/);f.d.rows[0].start_time="12:00";f.advance();await f.s.run("d");assert.equal(f.emails.length,2);assert.equal(f.emails[0].body,f.emails[1].body);assert.equal(f.emails[0].headers["Idempotency-Key"],f.emails[1].headers["Idempotency-Key"]);});
+
+test('CalDAV properties may use separate success blocks and calendar-data attributes',async()=>{
+ const cal={base:'base',url:x=>x,verify:async()=>{},request:async()=>({status:207,text:async()=>'<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:href>a.ics</d:href><d:propstat><d:prop><d:getetag>x</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat><d:propstat><d:prop><c:calendar-data content-type="text/calendar"><![CDATA[BEGIN:VCALENDAR\r\nEND:VCALENDAR]]></c:calendar-data></d:prop><d:status>HTTP/1.1 200</d:status></d:propstat></d:response></d:multistatus>'})};
+ assert.deepEqual(await inventory(cal),[{href:'a.ics',ics:'BEGIN:VCALENDAR\nEND:VCALENDAR'}]);
+});
