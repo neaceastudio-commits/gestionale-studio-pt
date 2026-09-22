@@ -17,3 +17,8 @@ test('CalDAV properties may use separate success blocks and calendar-data attrib
  const cal={base:'base',url:x=>x,verify:async()=>{},request:async()=>({status:207,text:async()=>'<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:href>a.ics</d:href><d:propstat><d:prop><d:getetag>x</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat><d:propstat><d:prop><c:calendar-data content-type="text/calendar"><![CDATA[BEGIN:VCALENDAR\r\nEND:VCALENDAR]]></c:calendar-data></d:prop><d:status>HTTP/1.1 200</d:status></d:propstat></d:response></d:multistatus>'})};
  assert.deepEqual(await inventory(cal),[{href:'a.ics',ics:'BEGIN:VCALENDAR\nEND:VCALENDAR'}]);
 });
+
+test('iCloud calendar-data 404 falls back to read-only GET; unreadable events fail closed',async()=>{
+ let reads=0;const cal={base:'base',url:x=>x,verify:async()=>{},read:async()=>{reads++;return {ics:'BEGIN:VCALENDAR\r\nEND:VCALENDAR'};},request:async()=>({status:207,text:async()=>'<multistatus><response><href>a.ics</href><propstat><prop><getetag>x</getetag></prop><status>HTTP/1.1 200 OK</status></propstat><propstat><prop><calendar-data/></prop><status>HTTP/1.1 404 Not Found</status></propstat></response></multistatus>'})};
+ assert.equal((await inventory(cal))[0].href,'a.ics');assert.equal(reads,1);cal.read=async()=>null;await assert.rejects(inventory(cal),/non leggibile/);
+});
