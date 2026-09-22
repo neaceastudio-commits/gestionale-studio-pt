@@ -141,3 +141,25 @@ adottati né cancellati sulla base del titolo o del nome cliente.
 
 Test aggiuntivi: `node --test tests/apple-caldav-reconciliation.test.cjs`.
 La suite PostgreSQL usa un orologio fisso per non dipendere dal giorno di esecuzione.
+
+## Controllo serale cloud (22 settembre 2026)
+
+`apple-caldav-monitor` è separato dal worker e non scrive in Supabase né su Apple.
+Alle 23:30 Europe/Rome confronta inventario CalDAV reale (REPORT), tutti i mapping,
+appuntamenti futuri, identità, duplicati, orari, durata, PT, stati e contenuti.
+Gli eventi manuali con UID estranei ai mapping sono ignorati. Il worker deve avere
+un'esecuzione recente (entro 10 minuti). Un errore di lettura produce un controllo
+incompleto, mai un esito positivo. Ogni nuovo deploy esegue una verifica senza mail.
+
+Il cron ogni minuto attende la finestra locale 23:30–23:55 (anche cambio ora).
+Due osservazioni distanti almeno due minuti confermano anomalie nuove prima della
+mail a `neacea.desk@gmail.com`, da NEACEA Desk. I problemi identici non sono
+rinotificati; dopo una risoluzione possono essere segnalati se ricompaiono.
+Lo store separato `caldav-monitor-v1` conserva verifica, ultimo rapporto, chiavi
+note e claim giornaliero con lease; il payload di un invio è immutabile fino alla
+conferma Resend, con chiave idempotente per giorno. Nessuna mail quando tutto è
+allineato. `CALDAV_MONITOR_ENABLED=true`, `RESEND_API_KEY`, `EMAIL_AGENDA_FROM`
+sono configurati solo sul sito CalDAV. L'automazione locale Codex viene disattivata
+solo dopo la verifica production del sostituto cloud.
+
+Test: `node --test tests/apple-caldav-monitor.test.cjs`.
