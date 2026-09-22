@@ -15,7 +15,7 @@ async function inventory(cal){
  const xml=await response.text();if(/<!DOCTYPE|<!ENTITY/i.test(xml)||XMLValidator.validate(xml)!==true)throw Error('Risposta Apple non valida');
  const tree=new XMLParser({removeNSPrefix:true,ignoreAttributes:false,parseTagValue:false,trimValues:false}).parse(xml);
  if(!tree.multistatus)throw Error('Inventario Apple incompleto');
- return list(tree.multistatus.response).map(r=>{const props=list(r.propstat);const good=props.find(p=>String(p.status).includes(' 200 '));if(!good?.prop?.['calendar-data'])throw Error('Evento Apple non leggibile');return {href:cal.url(r.href),ics:good.prop['calendar-data']};});
+ return list(tree.multistatus.response).map(r=>{const props=list(r.propstat);const good=props.find(p=>/\s200(?:\s|$)/.test(String(p.status))&&p.prop?.['calendar-data']);const data=good?.prop?.['calendar-data'];const ics=typeof data==='string'?data:data?.['#text'];if(!ics){console.error(JSON.stringify({inventoryResponse:{keys:Object.keys(r),props:props.map(p=>({status:p.status,keys:Object.keys(p.prop||{})}))}}));throw Error('Evento Apple non leggibile');}return {href:cal.url(r.href),ics};});
 }
 function compare({rows,clients,operators,mappings,events,lastRun,now,cal}){
  const issues=[],names=new Map(clients.map(c=>[c.id,[c.nome,c.cognome].filter(Boolean).join(' ')]));
