@@ -186,6 +186,32 @@
   gap: 12px;
   margin-bottom: 18px;
 }
+.client-finance-disclosure {
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg2);
+}
+.client-finance-disclosure > summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+}
+.client-finance-disclosure > summary:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+.client-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+@media (max-width: 600px) {
+  .client-finance-grid { grid-template-columns: 1fr; }
+}
 .client-kpi {
   border: 1px solid var(--border);
   border-radius: var(--radius);
