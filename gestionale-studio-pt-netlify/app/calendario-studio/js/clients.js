@@ -180,7 +180,11 @@ const Clients = (() => {
           <span>Alert gestione</span>
           <strong>${alerts.length}</strong>
         </div>
-        ${showFinance ? `
+      </div>
+      ${showFinance ? `
+      <details class="client-finance-disclosure">
+        <summary>Guadagni e pagamenti</summary>
+        <div class="client-finance-grid">
         <div class="client-kpi">
           <span>Valore cicli</span>
           <strong>${money(finance.expected)}</strong>
@@ -192,8 +196,9 @@ const Clients = (() => {
         <div class="client-kpi ${finance.outstanding > 0 ? 'client-kpi-alert' : ''}">
           <span>Da incassare</span>
           <strong>${money(finance.outstanding)}</strong>
-        </div>` : ''}
-      </div>`;
+        </div>
+        </div>
+      </details>` : ''}`;
   }
 
   function csvCell(value) {
