@@ -59,3 +59,14 @@ test('client conflicts, occupied PTs, cancellation, invalid dates, gaps and full
   setRoomLoad(0);
   assert.equal(api.evaluateRequest({...row,time:'12:00'},'c','pt11').operators.some(o=>o.available),false);
 });
+
+test('weekly requests check four occurrences, retain conflicts and cross month boundaries',()=>{
+ const {api,appointments}=setup();
+ const result=api.evaluateWeeklyRequest('mon','11:00','2026-09-28',60,'c','pt11');
+ assert.deepEqual(Array.from(result.dates),['2026-09-28','2026-10-05','2026-10-12','2026-10-19']);
+ assert.equal(result.operators.find(o=>o.op.id==='a').free,3);
+ appointments[0].status='annullato';
+ assert.equal(api.evaluateWeeklyRequest('mon','11:00','2026-09-28',60,'c','pt11').operators.find(o=>o.op.id==='b').free,4);
+ assert.deepEqual(Array.from(api.evaluateWeeklyRequest('mon','09:30','2026-10-23',60,'','pt11').dates),['2026-10-26','2026-11-02','2026-11-09','2026-11-16']);
+ assert.ok(api.evaluateWeeklyRequest('mon','09:30','invalid',60,'','pt11').error);
+});
