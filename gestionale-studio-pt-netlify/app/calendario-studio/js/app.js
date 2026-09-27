@@ -166,8 +166,12 @@ const App = {
     if (!App.portalPt.authorized || !appt) return false;
     const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
     const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
-    if (clientIds.length) return isOwnAppointment && clientIds.every(clientId => App.canEditClient(clientId));
-    return false;
+    if (!isOwnAppointment || !clientIds.length) return false;
+    // Existing sessions belong to their session PT, independently of the client's referent.
+    // A PT cannot take over another PT's session or add an unrelated participant.
+    const before = appt.id ? State.getAppointments().find(a => a.id === appt.id) : null;
+    if (appt.id && (!before || !App._operatorKeys(App.portalPt.operator).includes(App._normKey(before.operatorId)))) return false;
+    return clientIds.every(id => before?.clientIds?.includes(id) || App.canEditClient(id));
   },
 
   canViewAppointment(appt) {
@@ -306,7 +310,7 @@ const App = {
 
         <!-- Clienti: ricostruito da _buildClientsSection -->
         <div id="clients-section">
-          ${isBlock ? '' : App._buildClientsSection(curSvcId, appt?.clientIds || preselectedClientIds)}
+          ${isBlock ? '' : App._buildClientsSection(curSvcId, appt?.clientIds || preselectedClientIds, appt)}
         </div>
 
         <!-- Operatore: ricostruito da _buildOperatorSection -->
@@ -346,11 +350,13 @@ const App = {
   },
 
   // ── SEZIONE CLIENTI ──────────────────────────────────
-  _buildClientsSection(serviceId, selectedIds) {
+  _buildClientsSection(serviceId, selectedIds, existingAppointment = null) {
     const svc = Services.getService(serviceId);
     if (!svc || svc.isBlock) return '';
+    const original = existingAppointment || State.getAppointments().find(a => a.id === document.getElementById('appt-id')?.value);
+    const sessionClientIds = original && App.canEditAppointment(original) ? original.clientIds || [] : [];
     const compatible = Services.getCompatibleClients(serviceId)
-      .filter(client => !App.isPortalPtMode() || App.canEditClient(client));
+      .filter(client => !App.isPortalPtMode() || App.canEditClient(client) || sessionClientIds.includes(client.id));
     const compCount  = compatible.filter(c => c.compatible).length;
     const isMulti    = svc.maxClients > 1;
 

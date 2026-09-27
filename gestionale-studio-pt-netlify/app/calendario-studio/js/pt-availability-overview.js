@@ -29,6 +29,7 @@
   let lastSearchFilters = null;
   let availabilityCache = null;
   let availabilitySyncStarted = false;
+  let availabilityVerified = false;
   let pendingAvailabilityChanges = {};
   let availabilitySaveInFlight = false;
 
@@ -156,6 +157,7 @@
       // only an offline UI fallback; opening the page must never upload it.
       if (!staffEditorDirty && !availabilitySaveInFlight && !Object.keys(pendingAvailabilityChanges).length) {
         saveAvailability(remote || {});
+        availabilityVerified = true;
         renderStaffIfActive();
         renderAvailabilityIfActive();
       }
@@ -522,6 +524,127 @@
     return `<div class="pt-search-results">${results.map(item => `<div class="pt-search-result"><strong>${esc(operatorLabel(item.op))}</strong><span>${esc(fmtDate(item.date))} · ${esc(minToTime(item.start))}-${esc(minToTime(item.end))}</span></div>`).join('')}</div>`;
   }
 
+  let exactSearch = null;
+
+  function exactState() {
+    return exactSearch ||= { clientId: '', serviceId: 'pt11', rows: [{ date: currentDateValue(), time: '09:00', duration: 60 }] };
+  }
+
+  function evaluateRequest(row, clientId, serviceId) {
+    const day = parseDate(row.date);
+    const duration = Number(row.duration);
+    if (!day || dateStr(day) !== row.date || !/^([01]\d|2[0-3]):[0-5]\d$/.test(row.time) || !Number.isInteger(duration) || duration < 15 || duration > 240 || duration % 15) {
+      return { error: 'Scegli una data, un orario e una durata valida.', operators: [] };
+    }
+    const start = timeToMin(row.time), end = start + duration;
+    if (end > 1440) return { error: 'La seduta deve terminare nello stesso giorno.', operators: [] };
+    const service = Services.getService(serviceId);
+    if (!service || service.isBlock) return { error: 'Scegli un servizio.', operators: [] };
+    const appointments = State.getAppointments().filter(a => a.status !== 'annullato' && a.date === row.date);
+    const intersects = a => start < timeToMin(a.startTime) + appointmentMinutes(a) && end > timeToMin(a.startTime);
+    if (clientId && appointments.some(a => a.clientIds?.includes(clientId) && intersects(a))) {
+      return { error: 'Il cliente ha già una seduta in questo orario.', operators: [] };
+    }
+    const roomFull = service.room && Services.getRoomLoadAt && Services.getRoomLoadAt(row.date, row.time, duration, service.room) + (service.roomLoad || 1) > Services.getRoomMax(service.room);
+    const operators = activeOperators().filter(op => hasRoleForService(op, serviceId)).map(op => {
+      const ranges = declaredRangesFor(operatorKey(op), DAY_KEYS[day.getDay()]).sort((a, b) => a.start - b.start);
+      let covered = start;
+      for (const range of ranges) if (range.start <= covered && range.end > covered) covered = range.end;
+      const reason = covered < end ? 'Fuori disponibilità dichiarata'
+        : appointments.some(a => String(a.operatorId) === String(op.id) && intersects(a)) ? 'Occupato'
+        : roomFull ? 'Sala piena' : '';
+      return { op, available: !reason, reason };
+    });
+    return { operators };
+  }
+
+  function renderExactResults() {
+    const state = exactState();
+    return state.rows.map((row, index) => {
+      const result = evaluateRequest(row, state.clientId, state.serviceId);
+      return `<section class="pt-request-result"><h4>${esc(fmtDate(row.date))} · ${esc(row.time)} · ${esc(row.duration)} min</h4>
+        ${result.error ? `<p class="pt-search-empty">${esc(result.error)}</p>` : result.operators.length ? result.operators.map(({ op, available, reason }) => `<div class="pt-request-person ${available ? 'is-available' : ''}"><span><strong>${esc(operatorLabel(op))}</strong><small>${available ? 'Disponibile' : esc(reason)}</small></span>${available && state.clientId ? `<button class="pt-action" data-request-index="${index}" data-request-operator="${esc(op.id)}">Prepara seduta</button>` : ''}</div>`).join('') : '<p class="pt-search-empty">Nessun PT attivo con il ruolo richiesto.</p>'}
+      </section>`;
+    }).join('');
+  }
+
+  function updateExactSearch() {
+    const state = exactState();
+    const serviceId = document.getElementById('pt-exact-service')?.value || state.serviceId;
+    const changedService = serviceId !== state.serviceId;
+    state.clientId = document.getElementById('pt-exact-client')?.value || '';
+    state.serviceId = serviceId;
+    document.querySelectorAll('[data-exact-row]').forEach((el, index) => {
+      const duration = el.querySelector('[data-field="duration"]');
+      if (changedService) {
+        duration.innerHTML = exactDurationOptions(serviceId).map(value => `<option value="${value}">${value}</option>`).join('');
+        duration.value = Services.getService(serviceId)?.durationMin || 60;
+      }
+      state.rows[index] = { date: el.querySelector('[data-field="date"]').value, time: el.querySelector('[data-field="time"]').value, duration: Number(duration.value) };
+    });
+    const output = document.getElementById('pt-exact-results');
+    if (output) output.innerHTML = renderExactResults();
+  }
+
+  function addExactRequest() {
+    updateExactSearch();
+    const state = exactState();
+    const last = state.rows[state.rows.length - 1];
+    state.rows.push({ ...last, date: dateStr(addDays(parseDate(last.date) || new Date(), 1)) });
+    renderAvailabilityIfActive();
+  }
+
+  function removeExactRequest(index) {
+    updateExactSearch();
+    if (exactState().rows.length > 1) exactState().rows.splice(index, 1);
+    renderAvailabilityIfActive();
+  }
+
+  function prepareExactAppointment(index, operatorId) {
+    if (!App.canManageStudioData()) return;
+    const state = exactState(), row = state.rows[index];
+    if (!row || !state.clientId) return;
+    if (!evaluateRequest(row, state.clientId, state.serviceId).operators.some(item => item.available && String(item.op.id) === operatorId)) {
+      updateExactSearch();
+      UI.showToast('Disponibilità cambiata: controlla nuovamente i risultati.', 'error');
+      return;
+    }
+    App.openNewAppointment(row.date, state.clientId, row.time, state.serviceId);
+    const duration = document.getElementById('appt-duration');
+    if (duration && (duration.tagName !== 'SELECT' || [...duration.options].some(option => Number(option.value) === row.duration))) duration.value = row.duration;
+    const operator = document.getElementById('appt-operator');
+    if (operator) operator.value = operatorId;
+    App._onSlotChange();
+  }
+
+  function exactDurationOptions(serviceId) {
+    const service = Services.getService(serviceId);
+    return window.CalendarFlex?.enabled ? window.CalendarFlex.durations : (service?.durationOptions || [service?.durationMin || 60]);
+  }
+
+  function renderExactSearch() {
+    const state = exactState();
+    const clients = State.getClients().filter(c => c.active !== false);
+    return `<div class="pt-panel pt-search-panel">
+      <div class="pt-panel-title"><h3>Disponibilità per le richieste del cliente</h3></div>
+      <p class="pt-help">Scegli date singole e orari precisi. Ogni seduta può avere un PT diverso; il referente del cliente resta invariato. I risultati non prenotano: confermi dalla scheda della seduta.</p>
+      <div class="pt-exact-settings">
+        <label>Cliente<select id="pt-exact-client" onchange="PTAvailabilityOverview.updateExactSearch()"><option value="">— Confronta senza cliente —</option>${clients.map(c => `<option value="${esc(c.id)}" ${state.clientId === c.id ? 'selected' : ''}>${esc(`${c.nome || ''} ${c.cognome || ''}`.trim())}</option>`).join('')}</select></label>
+        <label>Servizio<select id="pt-exact-service" onchange="PTAvailabilityOverview.updateExactSearch()">${serviceOptions().replace(`value="${esc(state.serviceId)}"`, `value="${esc(state.serviceId)}" selected`)}</select></label>
+      </div>
+      <div class="pt-exact-rows">${state.rows.map((row, index) => `<div class="pt-exact-row" data-exact-row="${index}">
+        <label>Data<input data-field="date" type="date" value="${esc(row.date)}" onchange="PTAvailabilityOverview.updateExactSearch()"></label>
+        <label>Ora<input data-field="time" type="time" value="${esc(row.time)}" onchange="PTAvailabilityOverview.updateExactSearch()"></label>
+        <label>Durata (min)<select data-field="duration" onchange="PTAvailabilityOverview.updateExactSearch()">${exactDurationOptions(state.serviceId).map(value => `<option value="${value}" ${Number(value) === row.duration ? 'selected' : ''}>${value}</option>`).join('')}</select></label>
+        <button class="pt-action pt-action-secondary" ${state.rows.length === 1 ? 'disabled' : ''} onclick="PTAvailabilityOverview.removeExactRequest(${index})" aria-label="Rimuovi richiesta ${index + 1}">Rimuovi</button>
+      </div>`).join('')}</div>
+      <button class="pt-action pt-action-secondary" onclick="PTAvailabilityOverview.addExactRequest()">+ Aggiungi giorno e orario</button>
+      <p class="pt-help">Verifica su disponibilità dichiarata, impegni del PT e del cliente e capienza della sala. Compatibilità del pacchetto e altri vincoli vengono ricontrollati prima del salvataggio.</p>
+      ${availabilityVerified ? '' : '<p class="pt-help" role="status">Disponibilità dichiarate dalla cache locale: aggiornamento dal server non ancora verificato.</p>'}
+      <div id="pt-exact-results" class="pt-exact-results" aria-live="polite">${renderExactResults()}</div>
+    </div>`;
+  }
+
   function renderSearchBox() {
     const filters = lastSearchFilters || {
       serviceId: 'pt11',
@@ -646,9 +769,13 @@
     panel.querySelectorAll(`.${NS}`).forEach(el => el.remove());
     const wrap = document.createElement('div');
     wrap.className = NS;
-    wrap.innerHTML = `${renderSearchBox()}
+    wrap.innerHTML = `${renderExactSearch()}<details class="pt-period-search"><summary>Ricerca libera per periodo e fascia oraria</summary>${renderSearchBox()}</details>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Pacchetti e rinnovi</h3><span>quadro clienti</span></div><div class="pt-table-wrap"><table class="pt-package-table"><thead><tr><th>Cliente</th><th>PT</th><th>Inizio</th><th>Fine stimata</th><th>Pacchetto</th><th>Sedute</th><th>Stato</th><th>Follow-up</th></tr></thead><tbody>${renderPackageRows()}</tbody></table></div></div>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Orari impegnati della settimana</h3><span>appuntamenti reali</span></div><div class="pt-week-grid">${renderBusyColumns()}</div></div>`;
+    wrap.addEventListener('click', event => {
+      const button = event.target.closest('[data-request-operator]');
+      if (button) prepareExactAppointment(Number(button.dataset.requestIndex), button.dataset.requestOperator);
+    });
     panel.appendChild(wrap);
   }
 
@@ -676,7 +803,7 @@
     Calendar.__ptAvailabilityHookedV4 = true;
   }
 
-  window.PTAvailabilityOverview = { getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
+  window.PTAvailabilityOverview = { evaluateRequest, updateExactSearch, addExactRequest, removeExactRequest, getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
