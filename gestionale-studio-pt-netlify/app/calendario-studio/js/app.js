@@ -2112,6 +2112,7 @@ const App = {
             ? '<span class="client-history-badge">Storico in sola lettura</span>'
             : `<div class="action-btns">
                 ${App.isPortalPtMode() ? '' : `<button class="btn" onclick="App.openTransferClient('${client.id}')">Trasferisci PT</button>`}
+                ${window.CalendarAudit?.canShareClients() ? `<button class="btn" onclick="CalendarAudit.openClientSharing('${client.id}')">Condividi cliente con PT</button>` : ''}
                 <button class="btn" onclick="UI.closeModal();App.openEditPackage('${client.id}')">Modifica pacchetto</button>
               </div>`}
         </div>

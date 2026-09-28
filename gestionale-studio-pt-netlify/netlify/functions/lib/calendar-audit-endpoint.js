@@ -10,6 +10,21 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
   if(!actor)return reply(401,{error:'Rientra dal Portale con una sessione verificata'});
   if(ownerOnly && actor.role!=='owner')return reply(403,{error:'Operazione riservata alla Direzione'});
   if(input.operation==='session')return reply(200,{success:true,actor});
+  if(['client_shares','set_client_share'].includes(input.operation)){
+   if(source!=='calendar'||actor.role!=='owner'||actor.id!=='staff_1')return reply(403,{error:'Condivisione riservata al proprietario dal Calendario'});
+   const payload=input.payload||{};const clientId=String(payload.clientId||'').trim();
+   if(!clientId)return reply(400,{error:'Seleziona un cliente'});
+   if(input.operation==='client_shares'){
+    const [shares,operators,clients]=await Promise.all([
+     db('pt_client_shares',{query:'?select=operator_id,active&cliente_id=eq.'+encodeURIComponent(clientId)}),
+     db('operator_effective_roles',{query:'?select=operator_id,nome,cognome,system_roles,legacy_roles&active=eq.true'}),
+     db('clients',{query:'?select=id,pt_assegnato&id=eq.'+encodeURIComponent(clientId)})]);
+    if(!clients.length)return reply(404,{error:'Cliente non trovato'});
+    return reply(200,{shares,referent:clients[0].pt_assegnato,operators:operators.filter(o=>[...(o.system_roles||[]),...(o.legacy_roles||[])].some(r=>['pt','personal_trainer','personal trainer'].includes(String(r).toLowerCase()))).map(o=>({id:o.operator_id,name:[o.nome,o.cognome].filter(Boolean).join(' ')}))});
+   }
+   if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
+   return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
+  }
   if(input.operation==='list'){
    if(actor.role!=='owner')return reply(403,{error:'Registro riservato alla Direzione'});
    return reply(200,await db('rpc/calendar_audit_read',{method:'POST',body:{p_actor_id:actor.id,p_filters:input.filters||{}}}));

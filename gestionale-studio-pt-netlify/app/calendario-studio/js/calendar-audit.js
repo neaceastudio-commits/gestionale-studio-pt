@@ -30,7 +30,7 @@ window.CalendarAudit = (() => {
     }
     return result;
   }
-  const labels={appointment_created:'Creata seduta',package_appointment_created:'Creata seduta da pacchetto',appointment_moved:'Spostata seduta',operator_changed:'Cambiato PT',service_changed:'Cambiato servizio',marked_done:'Segnata Fatto',done_reverted:'Ripristinata seduta Fatto',appointment_cancelled:'Annullata seduta',marked_noshow:'No-show',appointment_deleted:'Eliminata seduta',appointment_updated:'Aggiornata seduta',status_changed:'Cambiato stato',appointment_noop:'Nessuna modifica',availability_changed:'Disponibilità PT',availability_noop:'Disponibilità invariata',client_details_changed:'Aggiornati dati cliente',trainer_assignment_changed:'Assegnazione PT',client_package_changed:'Aggiornato pacchetto cliente',operator_profile_changed:'Aggiornato operatore'};
+  const labels={client_sharing_changed:'Modificata condivisione cliente',training_session_saved:'Registrati carichi e ripetizioni',appointment_created:'Creata seduta',package_appointment_created:'Creata seduta da pacchetto',appointment_moved:'Spostata seduta',operator_changed:'Cambiato PT',service_changed:'Cambiato servizio',marked_done:'Segnata Fatto',done_reverted:'Ripristinata seduta Fatto',appointment_cancelled:'Annullata seduta',marked_noshow:'No-show',appointment_deleted:'Eliminata seduta',appointment_updated:'Aggiornata seduta',status_changed:'Cambiato stato',appointment_noop:'Nessuna modifica',availability_changed:'Disponibilità PT',availability_noop:'Disponibilità invariata',client_details_changed:'Aggiornati dati cliente',trainer_assignment_changed:'Assegnazione PT',client_package_changed:'Aggiornato pacchetto cliente',operator_profile_changed:'Aggiornato operatore'};
   function element(tag,text){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e}
   function dateInput(value){const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
   function open(){
@@ -66,5 +66,31 @@ window.CalendarAudit = (() => {
     const r=await fetch('/.netlify/functions/apple-caldav-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,id})});
     const data=await r.json();if(!r.ok)throw Error(data.error||'Collegamento non confermato');return data;
   }
-  return {write,open,call,appleLink,canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
+  async function openClientSharing(clientId) {
+    if(actor?.role!=='owner'||actor.id!=='staff_1')return;
+    UI.openModal('<div class="modal-header"><h3>Condividi cliente con PT</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body"><p>Abilita i PT che possono seguire questo cliente. Ogni PT compila carichi, ripetizioni e note soltanto delle sedute assegnate a lui. Il programma resta gestito dal PT referente; lo storico riepilogativo è riservato a te.</p><div id="client-share-list" aria-live="polite">Caricamento…</div></div>');
+    const host=document.getElementById('client-share-list');
+    const result=await call('client_shares',{clientId});
+    if(!host.isConnected)return;
+    host.replaceChildren();
+    if(result.error){host.textContent='Condivisione non disponibile: '+result.error;return;}
+    for(const operator of result.operators){
+      const row=element('div');row.className='form-group';
+      const name=element('strong',operator.name);row.append(name,document.createTextNode(' '));
+      if(operator.id===result.referent){row.append(element('span','PT referente · già abilitato'));host.append(row);continue;}
+      let active=result.shares.some(s=>s.operator_id===operator.id&&s.active);
+      const button=element('button');button.className='btn';button.type='button';
+      const label=()=>{button.textContent=active?'Revoca condivisione':'Abilita condivisione';button.setAttribute('aria-label',button.textContent+' con '+operator.name)};label();
+      const status=element('span');status.setAttribute('role','status');
+      button.onclick=async()=>{
+        button.disabled=true;status.textContent=' Salvataggio…';
+        const saved=await call('set_client_share',{clientId,operatorId:operator.id,active:!active});
+        if(saved.error)status.textContent=' '+saved.error;
+        else {active=!active;label();status.textContent=active?' Condivisione attiva.':' Condivisione revocata.';}
+        button.disabled=false;
+      };
+      row.append(button,status);host.append(row);
+    }
+  }
+  return {write,open,call,appleLink,openClientSharing,canShareClients:()=>actor?.role==='owner'&&actor.id==='staff_1',canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
 })();

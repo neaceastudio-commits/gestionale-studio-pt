@@ -133,7 +133,7 @@
       right: 10px;
       bottom: max(10px, env(safe-area-inset-bottom));
       z-index: 18;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 5px;
       padding: 7px;
       border: 1px solid rgba(255,255,255,.16);
@@ -677,10 +677,13 @@
     }
     .set-editor-head strong { color: var(--brand); }
     .set-editor-head span { color: var(--muted); font-size: 12px; }
+    .workout-date-field { display: grid; grid-template-columns: auto minmax(145px, 190px); align-items: center; gap: 8px; margin-left: auto; }
+    .workout-date-field label { font-size: 11px; color: var(--brand); font-weight: 900; }
+    .workout-date-field input { min-height: 38px; background: #fff; }
     .set-list { display: grid; gap: 7px; padding: 10px; }
     .set-row {
       display: grid;
-      grid-template-columns: 76px minmax(90px, .8fr) minmax(110px, 1fr) minmax(90px, .7fr) 38px;
+      grid-template-columns: 76px minmax(80px, .7fr) minmax(105px, .9fr) minmax(85px, .7fr) minmax(130px, 1.2fr) 38px;
       gap: 8px;
       align-items: end;
       padding: 9px;
@@ -826,6 +829,10 @@
       color: var(--brand);
       font-weight: 800;
     }
+    .revision-panel { grid-column: 1 / -1; width: 100%; }
+    .revision-list { display: grid; gap: 7px; margin-top: 10px; }
+    .revision-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
+    .revision-row span { color: var(--muted); font-size: 12px; font-weight: 700; }
     .archive-grid {
       margin-top: 12px;
       display: grid;
@@ -866,6 +873,59 @@
       outline: 3px solid rgba(21, 122, 86, .22);
       box-shadow: 0 10px 28px rgba(21, 122, 86, .16);
     }
+
+    .grip-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .grip-metric {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .grip-metric span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+    .grip-metric strong { display: block; margin-top: 7px; color: var(--brand); font-size: 25px; }
+    .grip-metric small { display: block; margin-top: 5px; color: var(--muted); line-height: 1.35; }
+    .grip-metric .positive { color: var(--ok); }
+    .grip-metric .negative { color: var(--danger); }
+    .grip-layout {
+      display: grid;
+      grid-template-columns: minmax(300px, .72fr) minmax(0, 1.45fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .grip-form { padding: 18px; display: grid; gap: 15px; }
+    .grip-form h2, .grip-history h2 { margin: 0; color: var(--brand); font-size: 20px; }
+    .grip-form > p, .grip-history-head p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .grip-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+    .grip-form-grid .field-wide { grid-column: 1 / -1; }
+    .grip-protocol {
+      padding: 12px 13px;
+      border-left: 4px solid var(--brand-2);
+      border-radius: 6px;
+      background: #edf6ff;
+      color: #174f7d;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .grip-history { overflow: hidden; }
+    .grip-history-head { padding: 18px; border-bottom: 1px solid var(--line); display: grid; gap: 5px; }
+    .grip-table-wrap { overflow-x: auto; }
+    .grip-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    .grip-table th, .grip-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .grip-table th { color: var(--muted); background: #f7fafc; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    .grip-table tbody tr:last-child td { border-bottom: 0; }
+    .grip-table strong { color: var(--brand); }
+    .grip-table .btn { min-height: 34px; padding: 0 10px; font-size: 12px; }
+    .grip-delta { display: inline-flex; margin-top: 3px; font-size: 11px; font-weight: 800; }
+    .grip-delta.positive { color: var(--ok); }
+    .grip-delta.negative { color: var(--danger); }
+    .grip-empty { padding: 28px; color: var(--muted); text-align: center; }
+    .grip-empty strong { display: block; margin-bottom: 5px; color: var(--brand); font-size: 18px; }
 
     .program-actions {
       padding: 18px;
@@ -998,6 +1058,8 @@
       .actions { justify-content: flex-start; }
       .library-entry, .builder-head { grid-template-columns: 1fr; }
       .history-controls { grid-template-columns: 1fr; }
+      .grip-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grip-layout { grid-template-columns: 1fr; }
       .builder-head .btn { justify-self: stretch; }
       .inline-builder-grid, .inline-results { grid-template-columns: 1fr; }
       .inline-builder-grid .field-wide, .archive-grid .field-wide { grid-column: span 1; }
@@ -1025,13 +1087,53 @@
       #exerciseModal .exercise-insert-summary { flex-basis: 100%; }
       #exerciseModal .modal-foot .btn { flex: 1; }
       .set-row { grid-template-columns: 64px 1fr 1fr; }
-      .set-row .set-field:nth-of-type(3) { grid-column: 2 / 3; }
+      .set-row .set-note-field { grid-column: 1 / -1; }
       .set-remove { grid-column: 3; grid-row: 2; justify-self: end; }
       .set-previous { grid-column: 1 / -1; }
+      .set-editor-head { align-items: stretch; flex-wrap: wrap; }
+      .workout-date-field { width: 100%; grid-template-columns: auto 1fr; }
+      .grip-summary, .grip-form-grid { grid-template-columns: 1fr; }
+      .grip-form-grid .field-wide { grid-column: 1; }
       .exercise-head { grid-template-columns: 1fr auto; }
       .badge { grid-column: 1 / -1; width: max-content; }
     }
+
+    #builderView.coaching-ready #sheetTabs, #builderView.coaching-ready .sheet-toolbar > .actions,
+    #builderView.coaching-ready #creationPreview, #builderView.coaching-ready #builderWeekNavigator,
+    #builderView.coaching-ready .section-head, #builderView.coaching-ready #exerciseStack, #builderView.coaching-ready #sessionRow { display: none; }
+    #coachingProgramEditor { min-width: 0; }
+    #sheetPreviewStack [hidden] { display: none !important; }
+    #builderView { background: #f5f7fa; }
+    #builderView .client-focus { padding: 16px 20px; }
+    #builderView .client-focus h2 { font-size: 25px; margin-bottom: 4px; }
+    #builderView #sheetEditorPanel { border-color: #e5e7eb; box-shadow: none; }
+    #builderView .sheet-toolbar { padding: 12px 16px; }
+    #builderView .sheet-meta { padding: 12px 16px; gap: 10px 14px; }
+    #builderView .field { gap: 4px; }
+    #builderView .field label { font-size: 10px; color: #6b7280; }
+    #builderView .field input, #builderView .field select { min-height: 38px; padding: 7px 10px; border-color: #e5e7eb; }
+    #builderView .session-manager { padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    #builderView .note-area { padding: 10px 16px; }
+    #builderView .note-area textarea { min-height: 42px; height: 42px; field-sizing: content; max-height: 180px; }
+    #builderView .btn { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+    #builderView .duplicate-section { padding: 12px 16px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; background: #fff; }
+    #builderView .duplicate-section h3 { margin: 0; font-size: 14px; color: #173f70; }
+    #builderView .duplicate-section p { margin: 4px 0 10px; font-size: 12px; color: #6b7280; line-height: 1.4; }
+    #builderView .duplicate-section .actions { justify-content: flex-start; }
+    #builderView .duplicate-section .btn { background: #fff; border: 1px solid #d4dce6; color: #173f70; }
+    #builderView .duplicate-section .btn:not(:disabled):hover { background: #eef3f9; border-color: #245a96; }
+    @media (max-width: 600px) {
+      #builderView .client-focus { padding: 14px; }
+      #builderView .btn { min-height: 44px; }
+      #builderView .duplicate-section .actions { align-items: stretch; flex-direction: column; }
+      #builderView .sheet-meta { padding: 12px; }
+      #builderView .field input, #builderView .field select { font-size: 16px; }
+    }
+    .pt-essentials{max-width:850px;margin:12px 0;font-size:13px}.pt-fact{margin:6px 0;line-height:1.45}.pt-fact strong{display:block}.pt-original{margin-top:10px}.pt-original pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font:inherit}
+    #clientList{max-height:65vh;overflow:auto}.client-card span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   </style>
+  <link rel="stylesheet" href="js/program-templates.css?v=20260918-pt-ux">
+  <link rel="stylesheet" href="js/pt-mobile.css?v=20260928-fix-20260921">
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -1067,19 +1169,21 @@
       </div>
       <nav class="side-nav" aria-label="Sezioni">
         <button class="nav-btn active" data-view="clientsView">Clienti</button>
-        <button class="nav-btn" data-view="programsView">Programmi mensili</button>
+        <button class="nav-btn" data-view="templatesView">Archivio Programmi</button>
         <button class="nav-btn" data-view="builderView">Crea programma</button>
-        <button class="nav-btn" data-view="sheetView">Usa scheda</button>
+        <button class="nav-btn" data-view="gripView">Hand Grip</button>
         <button class="nav-btn" data-nav-action="calendar">Calendario studio</button>
+        <button class="nav-btn" data-view="trashView">Cestino</button>
       </nav>
     </aside>
 
     <nav class="mobile-nav" aria-label="Navigazione rapida">
       <button class="nav-btn" data-view="clientsView">Clienti</button>
-      <button class="nav-btn" data-view="programsView">Programmi</button>
+      <button class="nav-btn" data-view="templatesView">Archivio</button>
       <button class="nav-btn" data-view="builderView">Crea</button>
-      <button class="nav-btn" data-view="sheetView">Usa scheda</button>
+      <button class="nav-btn" data-view="gripView">Grip</button>
       <button class="nav-btn" data-nav-action="calendar">Calendario</button>
+      <button class="nav-btn" data-view="trashView">Cestino</button>
     </nav>
 
     <main class="main">
@@ -1125,19 +1229,20 @@
               <p class="subtitle" id="clientsSubtitle">Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.</p>
             </div>
             <div class="actions">
+              <button class="btn primary" type="button" data-new-program>Nuovo programma</button>
               <button class="btn primary" id="openSelectedSheetBtn" type="button">Apri programma</button>
-              <button class="btn" id="openSelectedProgramsBtn" type="button">Programmi mensili</button>
+              <button class="btn" id="openSelectedProgramsBtn" type="button">Schede e storico</button>
+              <button class="btn" id="openSelectedGripBtn" type="button">Hand Grip</button>
             </div>
           </div>
           <div class="panel" id="clientPanel">
             <div class="panel-head"><h2 class="panel-title" id="clientPanelTitle">I miei clienti</h2></div>
             <div class="client-search">
               <label for="clientSearch">Cerca cliente
-                <input id="clientSearch" type="search" autocomplete="off" placeholder="Nome, email, obiettivo o PT">
+                <input id="clientSearch" type="search" autocomplete="off" placeholder="Nome o email del cliente">
               </label>
-              <label class="hidden" id="trainerFilterField" for="trainerFilter">Filtra per Personal Trainer
-                <select id="trainerFilter"><option value="">Tutti i Personal Trainer</option></select>
-              </label>
+              <select id="clientScope" class="hidden" aria-hidden="true"><option value="active">Attivi</option></select>
+              <label class="hidden" id="trainerFilterField" for="trainerFilter"><select id="trainerFilter"><option value="">I miei clienti</option></select></label>
             </div>
             <div class="client-list" id="clientList"></div>
           </div>
@@ -1146,9 +1251,9 @@
         <section class="app-view" id="programsView" aria-labelledby="programsTitle">
           <div class="hero">
             <div>
-              <p class="view-kicker">Archivio mensile</p>
-              <h1 id="programsTitle">Programmi mensili</h1>
-              <p class="subtitle">Qui trovi le bozze e i programmi già salvati del cliente.</p>
+              <p class="view-kicker">Schede del cliente</p>
+              <h1 id="programsTitle">Scheda attuale e storico</h1>
+              <p class="subtitle">Le schede precedenti restano nello storico del cliente. Non vengono inserite automaticamente nell’Archivio Programmi.</p>
             </div>
           </div>
           <div class="client-focus requires-client" id="programClientFocus">
@@ -1163,30 +1268,66 @@
             </div>
           </div>
           <div class="panel requires-client" id="programActionsPanel">
-            <div class="panel-head"><h2 class="panel-title">Azioni programma</h2></div>
+            <div class="panel-head"><h2 class="panel-title">Nuova scheda</h2></div>
             <div class="program-actions">
               <button class="btn" id="resetBtn"><span class="icon">+</span>Nuovo programma</button>
+              <button class="btn" type="button" data-go-view="templatesView">Assegna dall’Archivio Programmi</button>
               <button class="btn primary" id="newMonthBtn" type="button"><span class="icon">+</span>Mese successivo dall'aperto</button>
             </div>
           </div>
           <div class="program-grid requires-client" id="programCards"></div>
         </section>
 
-        <section class="app-view" id="builderView" aria-labelledby="builderViewTitle">
-          <div class="client-focus requires-client" id="sheetClientFocus">
+        <section class="app-view" id="templatesView" aria-labelledby="templatesTitle">
+          <div class="hero">
             <div>
-              <p class="view-kicker">Crea programma mensile · <span id="sheetPeriodLabel">Periodo</span></p>
-              <h2 id="sheetClientName">Nessun cliente</h2>
-              <p id="sheetClientMeta">Seleziona prima un cliente dall'area Clienti.</p>
+              <p class="view-kicker">Modelli condivisi dello studio</p>
+              <h1 id="templatesTitle">Archivio Programmi</h1>
+              <p class="subtitle">Libreria riutilizzabile dello studio, separata dallo storico dei clienti. Contiene solo i programmi creati qui o salvati esplicitamente nell’archivio.</p>
             </div>
             <div class="actions">
+              <button class="btn primary" id="newLibraryProgramBtn" type="button">Nuovo programma in archivio</button>
+              <button class="btn" id="refreshTemplatesBtn" type="button">Aggiorna archivio</button>
+            </div>
+          </div>
+          <div class="panel template-search"><label class="field" for="templateSearch">Cerca nell’archivio generale<input id="templateSearch" type="search" placeholder="Nome del modello, descrizione o autore"></label></div>
+          <nav id="templateBreadcrumb" aria-label="Percorso cartella"></nav>
+          <div class="actions library-folder-actions"><button class="btn" id="newTemplateFolderBtn" type="button">Nuova cartella</button><button class="btn" id="renameTemplateFolderBtn" type="button">Rinomina cartella</button><button class="btn danger" id="deleteTemplateFolderBtn" type="button">Elimina cartella</button></div>
+          <div id="templateFolders" aria-label="Cartelle dell’archivio"></div>
+          <p id="templateStatus" role="status" aria-live="polite"></p>
+          <div class="program-grid" id="templateCards"></div>
+        </section>
+
+        <section class="app-view" id="trashView" aria-labelledby="trashTitle">
+          <div class="hero">
+            <div>
+              <p class="view-kicker">Programmi eliminati</p>
+              <h1 id="trashTitle">Cestino</h1>
+              <p class="subtitle">Qui trovi i programmi eliminati dall’Archivio Programmi e le schede cliente eliminate. Puoi ripristinarli quando necessario.</p>
+            </div>
+            <div class="actions"><button class="btn" id="refreshTrashBtn" type="button">Aggiorna cestino</button><button class="btn danger" id="emptyTrashBtn" type="button">Svuota cestino</button></div>
+          </div>
+          <div id="trashCards" class="program-grid"></div>
+        </section>
+
+        <section class="app-view" id="builderView" aria-labelledby="builderViewTitle">
+          <div class="client-focus" id="sheetClientFocus">
+            <div>
+              <p class="view-kicker">Crea programma</p>
+              <h2>Nuovo programma</h2>
+              <p>Compila il programma e scegli la destinazione al momento del salvataggio.</p>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="button" data-new-program>Nuovo programma</button>
               <button class="btn primary" type="button" data-go-view="sheetView">Usa scheda</button>
+              <button class="btn" id="saveTemplateBtn" type="button">Salva nell’Archivio</button>
               <button class="btn good" id="saveBtn"><span class="icon">#</span>Salva ora</button>
             </div>
           </div>
 
           <section class="editor requires-client">
-            <div class="panel" id="sheetEditorPanel">
+            <details class="panel program-setup" id="sheetEditorPanel">
+              <summary>Dati scheda, settimane e duplicazione <span>Apri / chiudi</span></summary>
               <div class="sheet-toolbar">
                 <div class="history-controls">
                   <div class="field">
@@ -1197,13 +1338,25 @@
                 <div class="tabs" id="sheetTabs" aria-label="Allenamenti"><span>Allenamenti:</span></div>
                 <div class="actions">
                   <button class="btn" id="addSheetBtn"><span class="icon">+</span>Nuovo allenamento</button>
-                  <button class="btn primary" id="duplicateSheetBtn"><span class="icon">#</span>Duplica allenamento</button>
                   <button class="btn danger" id="removeSheetBtn"><span class="icon">x</span>Elimina allenamento</button>
                   <button class="btn good" id="addExerciseBtn"><span class="icon">+</span>Aggiungi esercizio</button>
                 </div>
               </div>
 
+              <section class="duplicate-section" aria-labelledby="duplicateSectionTitle">
+                <div><h3 id="duplicateSectionTitle">Duplica</h3><p>Crea una copia modificabile per questo cliente. Le registrazioni delle sedute restano nell’originale.</p></div>
+                <div class="actions">
+                  <button class="btn" id="duplicateProgramBtn" type="button">Duplica programma completo</button>
+                  <button class="btn" id="duplicateSheetBtn" type="button">Duplica allenamento selezionato</button>
+
+                </div>
+              </section>
+
               <div class="sheet-meta">
+                <div class="field field-wide">
+                  <label for="programName">Nome del programma</label>
+                  <input id="programName" maxlength="120" placeholder="Es. Forza base · 2 allenamenti">
+                </div>
                 <div class="field">
                   <label for="period">Mese di riferimento</label>
                   <input id="period" type="month">
@@ -1212,11 +1365,11 @@
                   <label for="goal">Obiettivo</label>
                   <input id="goal" value="Tonificazione e forza base">
                 </div>
-                <div class="field">
+                <div class="field hidden">
                   <label for="level">Livello</label>
                   <select id="level"><option>Base</option><option selected>Intermedio</option><option>Avanzato</option></select>
                 </div>
-                <div class="field">
+                <div class="field hidden">
                   <label for="frequency">Frequenza</label>
                   <input id="frequency" value="2 allenamenti / settimana">
                 </div>
@@ -1238,7 +1391,9 @@
                 <label for="generalNotes">Note interne studio</label>
                 <textarea id="generalNotes">Controllare tecnica sui multiarticolari. Se il cliente arriva affaticato, mantenere il carico dell'allenamento precedente.</textarea>
               </div>
-            </div>
+            </details>
+
+            <div id="coachingProgramEditor"></div>
 
             <div class="panel creation-preview" id="creationPreview" aria-live="polite"></div>
 
@@ -1249,6 +1404,7 @@
               <div class="actions"><button class="btn" id="compactBtn"><span class="icon">=</span>Vista compatta</button></div>
             </div>
             <div class="exercise-stack" id="exerciseStack"></div>
+            <div class="program-save-footer"><span>Le modifiche si salvano automaticamente. Puoi confermarle anche qui.</span><button class="btn good" id="saveBottomBtn" type="button">Salva scheda</button></div>
           </section>
         </section>
 
@@ -1275,7 +1431,94 @@
             <div class="presentation-meta" id="previewMeta"></div>
             <div id="operationalWeekNavigator"></div>
             <div class="readonly-exercise-stack" id="sheetPreviewStack"></div>
+            <div class="program-save-footer"><span>Salva la scheda e i dati della seduta.</span><button class="btn good" id="saveSheetBottomBtn" type="button">Salva scheda</button></div>
           </section>
+        </section>
+
+        <section class="app-view" id="gripView" aria-labelledby="gripTitle">
+          <div class="hero">
+            <div>
+              <p class="view-kicker">Dati del paziente</p>
+              <h1 id="gripTitle">Forza della presa · Hand Grip</h1>
+              <p class="subtitle">Registra il test all'inizio del percorso e nei controlli successivi. Il confronto mostra l'evoluzione separata della mano destra e sinistra.</p>
+            </div>
+          </div>
+
+          <div class="client-focus requires-client" id="gripClientFocus">
+            <div>
+              <p class="view-kicker">Cliente selezionato</p>
+              <h2 id="gripClientName">Nessun cliente</h2>
+              <p id="gripClientMeta">Seleziona prima un cliente dall'area Clienti.</p>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" data-go-view="clientsView">Cambia cliente</button>
+            </div>
+          </div>
+
+          <div class="grip-summary requires-client" id="gripSummary" aria-live="polite"></div>
+
+          <div class="grip-layout requires-client">
+            <form class="panel grip-form" id="handGripForm">
+              <div>
+                <h2>Nuova misurazione</h2>
+                <p>Inserisci il miglior valore ottenuto per ogni mano.</p>
+              </div>
+              <div class="grip-form-grid">
+                <div class="field field-wide">
+                  <label for="gripDate">Data del test</label>
+                  <input id="gripDate" type="date" required>
+                </div>
+                <div class="field">
+                  <label for="gripRight">Mano destra (kg)</label>
+                  <input id="gripRight" type="number" inputmode="decimal" min="0.1" max="200" step="0.1" placeholder="Es. 38,5">
+                </div>
+                <div class="field">
+                  <label for="gripLeft">Mano sinistra (kg)</label>
+                  <input id="gripLeft" type="number" inputmode="decimal" min="0.1" max="200" step="0.1" placeholder="Es. 36,0">
+                </div>
+                <div class="field">
+                  <label for="gripDominant">Mano dominante</label>
+                  <select id="gripDominant">
+                    <option value="">Non indicata</option>
+                    <option value="destra">Destra</option>
+                    <option value="sinistra">Sinistra</option>
+                    <option value="ambidestro">Ambidestro</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="gripAttempts">Tentativi per mano</label>
+                  <select id="gripAttempts">
+                    <option value="1">1 tentativo</option>
+                    <option value="2">2 tentativi</option>
+                    <option value="3" selected>3 tentativi</option>
+                    <option value="4">4 tentativi</option>
+                    <option value="5">5 tentativi</option>
+                  </select>
+                </div>
+                <div class="field field-wide">
+                  <label for="gripPosition">Posizione del test</label>
+                  <select id="gripPosition">
+                    <option value="seduto" selected>Seduto</option>
+                    <option value="in_piedi">In piedi</option>
+                  </select>
+                </div>
+                <div class="field field-wide">
+                  <label for="gripNotes">Note</label>
+                  <textarea id="gripNotes" placeholder="Dinamometro, regolazione impugnatura, dolore o altre osservazioni"></textarea>
+                </div>
+              </div>
+              <div class="grip-protocol"><strong>Protocollo per confronti affidabili:</strong> usa lo stesso dinamometro, la stessa regolazione dell'impugnatura e la stessa posizione. Registra il miglior valore dei tentativi indicati.</div>
+              <button class="btn good" id="gripSaveBtn" type="submit">Salva nello storico</button>
+            </form>
+
+            <section class="panel grip-history">
+              <div class="grip-history-head">
+                <h2>Storico Hand Grip</h2>
+                <p>Ogni controllo resta memorizzato e viene confrontato con la prima misurazione.</p>
+              </div>
+              <div id="gripHistory"></div>
+            </section>
+          </div>
         </section>
 
         <section class="app-view" id="libraryView" aria-labelledby="libraryTitle">
@@ -1401,8 +1644,34 @@
         <button class="btn ghost" id="closeNewProgramBtn" type="button" aria-label="Chiudi"><span class="icon">x</span></button>
       </div>
       <div class="modal-body">
-        <p class="subtitle">Definisci la struttura iniziale. Il programma verrà creato vuoto e gli esercizi saranno scelti successivamente dal PT.</p>
+        <p class="subtitle">Parti da zero o da una scheda esistente. Ogni copia è indipendente: le schede originali e lo storico delle sedute restano intatti.</p>
         <div class="form-grid">
+          <div class="field field-wide">
+            <label for="newProgramName">Nome del programma</label>
+            <input id="newProgramName" maxlength="120" required placeholder="Es. Forza base · settembre">
+          </div>
+          <div class="field field-wide hidden">
+            <label for="newProgramClientSelect">Cliente a cui intestare il programma</label>
+            <select id="newProgramClientSelect"></select>
+          </div>
+          <div class="field field-wide">
+            <label for="newProgramDestination">Destinazione al salvataggio</label>
+            <select id="newProgramDestination"><option value="archive">Archivio Programmi</option><option value="client">Assegna a un cliente</option></select>
+          </div>
+          <div class="field field-wide">
+            <label for="newProgramSource">Come vuoi creare il programma?</label>
+            <select id="newProgramSource">
+              <option value="empty">Crea da zero</option>
+              <option value="program">Duplica un programma salvato</option>
+              <option value="template">Importa dall’Archivio Programmi</option>
+            </select>
+          </div>
+          <div class="field field-wide hidden" id="newProgramSourceField">
+            <label for="newProgramSourceId">Scheda da duplicare</label>
+            <select id="newProgramSourceId"></select>
+            <p id="newProgramSourceHelp" class="subtitle" aria-live="polite"></p>
+            <button class="btn hidden" id="retryProgramSourcesBtn" type="button">Ricarica archivio</button>
+          </div>
           <div class="field">
             <label for="newProgramPeriod">Mese di riferimento</label>
             <input id="newProgramPeriod" type="month">
@@ -1426,7 +1695,7 @@
               <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field hidden">
             <label for="newProgramLevel">Livello</label>
             <select id="newProgramLevel"><option>Base</option><option selected>Intermedio</option><option>Avanzato</option></select>
           </div>
@@ -1434,7 +1703,7 @@
             <label for="newProgramGoal">Obiettivo</label>
             <input id="newProgramGoal" placeholder="Es. forza, postura, ricomposizione">
           </div>
-          <div class="field">
+          <div class="field hidden">
             <label for="newProgramFrequency">Frequenza</label>
             <input id="newProgramFrequency" value="2 allenamenti / settimana">
           </div>
@@ -1443,6 +1712,7 @@
             <input id="newProgramWarmup" placeholder="Es. 8 minuti cyclette + mobilità">
           </div>
         </div>
+        <p id="newProgramError" role="alert"></p>
       </div>
       <div class="modal-foot">
         <button class="btn" id="cancelNewProgramBtn" type="button">Annulla</button>
@@ -1451,18 +1721,90 @@
     </div>
   </div>
 
+  <dialog id="templateDialog" aria-labelledby="templateDialogTitle">
+    <form id="templateForm">
+      <div class="modal-head"><h2 id="templateDialogTitle">Salva in archivio generale</h2><button class="btn" id="closeTemplateBtn" type="button" aria-label="Chiudi archivio">Chiudi</button></div>
+      <div class="modal-body">
+        <p id="templateSaveHelp">Il programma sarà disponibile a tutti i PT dello studio. Le copie cliente restano indipendenti.</p>
+        <p id="templateSourceSummary"></p>
+        <label class="field" for="templateTitle">Nome del modello<input id="templateTitle" maxlength="120" required placeholder="Es. Forza base · 2 allenamenti"></label>
+        <label class="field" for="templateDescription">Descrizione per i PT<textarea id="templateDescription" maxlength="1000" rows="3" placeholder="Obiettivo e indicazioni generali per riutilizzare il modello"></textarea></label>
+        <label class="field" for="templateFolder">Cartella<select id="templateFolder"></select></label>
+        <button class="btn" id="inlineTemplateFolderBtn" type="button">Crea una cartella qui</button>
+        <label class="template-confirm"><input id="templatePrivacy" type="checkbox" required>Ho verificato che nomi e note tecniche non contengano informazioni personali del cliente.</label>
+        <p id="templateSaveError" role="alert"></p>
+      </div>
+      <div class="modal-foot"><button class="btn" id="cancelTemplateBtn" type="button">Annulla</button><button class="btn primary" id="confirmTemplateBtn" type="submit">Salva per tutti i PT</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="templateFolderDialog" aria-labelledby="templateFolderDialogTitle">
+    <form id="templateFolderForm">
+      <div class="modal-head"><h2 id="templateFolderDialogTitle">Nuova cartella</h2></div>
+      <div class="modal-body"><p id="templateFolderParent"></p><label class="field" for="templateFolderName">Nome cartella<input id="templateFolderName" required maxlength="120"></label><p id="templateFolderError" role="alert"></p></div>
+      <div class="modal-foot"><button class="btn" id="cancelTemplateFolderBtn" type="button">Annulla</button><button class="btn primary" id="saveTemplateFolderBtn" type="submit">Salva cartella</button></div>
+    </form>
+  </dialog>
+  <dialog id="libraryEditorDialog" aria-labelledby="libraryEditorTitle">
+    <div class="modal-head"><h2 id="libraryEditorTitle">Programma dell’archivio</h2><button class="btn" id="closeLibraryEditorBtn" type="button">Chiudi</button></div>
+    <div class="modal-body">
+      <p>Stai modificando solo il programma nell’archivio. Le schede già assegnate ai clienti non cambiano.</p>
+      <div class="form-grid">
+        <label class="field" for="libraryName">Nome programma<input id="libraryName" maxlength="120" required></label>
+        <label class="field" for="libraryFolder">Cartella<select id="libraryFolder"></select></label>
+        <button class="btn" id="libraryNewFolderBtn" type="button">Crea una cartella qui</button>
+        <label class="field" for="libraryDescription">Descrizione<textarea id="libraryDescription" maxlength="1000" rows="2"></textarea></label>
+        <label class="field" for="libraryGoal">Obiettivo<input id="libraryGoal" maxlength="2000"></label>
+        <label class="field hidden" for="libraryLevel">Livello<input id="libraryLevel" maxlength="120"></label>
+        <label class="field hidden" for="libraryFrequency">Frequenza<input id="libraryFrequency" maxlength="120"></label>
+        <label class="field" for="libraryWarmup">Riscaldamento generale<textarea id="libraryWarmup" maxlength="2000" rows="2"></textarea></label>
+      </div>
+      <div class="actions"><button class="btn" id="libraryAddWeekBtn" type="button">Aggiungi settimana</button><button class="btn" id="libraryRemoveWeekBtn" type="button">Rimuovi ultima settimana</button></div>
+      <div id="libraryProgramEditor"></div><p id="librarySaveError" role="alert"></p>
+    </div>
+    <div class="modal-foot"><span id="librarySaveStatus" role="status"></span><button class="btn" id="saveLibraryCopyBtn" type="button">Salva come nuova copia</button><button class="btn primary" id="saveLibraryProgramBtn" type="button">Salva programma in archivio</button></div>
+  </dialog>
+
+  <dialog id="duplicateDayDialog" aria-labelledby="duplicateDayTitle">
+    <form id="duplicateDayForm">
+      <div class="modal-head"><h2 id="duplicateDayTitle">Duplica allenamento</h2></div>
+      <div class="modal-body">
+        <p>La copia resterà nel programma aperto. Carichi e registrazioni delle sedute non verranno copiati.</p>
+        <label class="field" for="duplicateDayName">Nome della copia<input id="duplicateDayName" maxlength="120" required></label>
+      </div>
+      <div class="modal-foot"><button class="btn" id="cancelDuplicateDayBtn" type="button">Annulla</button><button class="btn primary" type="submit">Crea copia allenamento</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="templatePreviewDialog" aria-labelledby="templatePreviewTitle">
+    <div class="modal-head"><h2 id="templatePreviewTitle">Anteprima modello</h2><button class="btn" id="closeTemplatePreviewBtn" type="button">Chiudi anteprima</button></div>
+    <div class="modal-body"><p id="templatePreviewMeta"></p><p>Prescrizione del modello in sola lettura. Seleziona una settimana per verificare tutte le progressioni.</p><div id="templatePreviewEditor"></div></div>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite">Salvato</div>
 
+  <dialog id="actionConfirmDialog" aria-labelledby="actionConfirmTitle" aria-describedby="actionConfirmMessage">
+    <form method="dialog">
+      <div class="modal-head"><h2 id="actionConfirmTitle">Conferma operazione</h2></div>
+      <div class="modal-body"><p id="actionConfirmMessage"></p></div>
+      <div class="modal-foot"><button class="btn" value="cancel" autofocus>Annulla</button><button class="btn danger" value="confirm">Conferma</button></div>
+    </form>
+  </dialog>
+
+  <script src="js/coaching-editor.js?v=20260918-pt-ux"></script>
+  <script src="pt-essentials.js"></script>
   <script>
-    const SUPABASE_URL = "https://cdywqyqqmjhgkzwrrixc.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24";
     const STORAGE_PREFIX = "neacea_pt_studio_sheet_v3";
-    const SCHEMA_VERSION = 7;
+    const SCHEMA_VERSION = 8;
     let STORAGE_KEY = `${STORAGE_PREFIX}_demo`;
     const appState = {
       operators: [],
       clients: [],
       programs: [],
+      currentPrograms: {},
+      revisions: [],
+      loadHistory: [],
+      physicalMeasurements: [],
       currentPt: null,
       selectedClientId: "",
       selectedProgramId: "",
@@ -1474,7 +1816,10 @@
       manualPlan: [],
       dataLoaded: false,
       saveMode: "draft",
-      loading: false
+      loading: false,
+      saveConflict: null,
+      localStorageWarning: false,
+      gripSaveMode: "saved"
     };
     const CUSTOM_EXERCISES_KEY = "neacea_pt_custom_exercises_v1";
     const groups = ["Gambe", "Glutei", "Femorali", "Polpacci", "Petto", "Dorso", "Spalle", "Braccia", "Core", "Mobilita", "Cardio", "Full body"];
@@ -1628,7 +1973,14 @@
     }
 
     function persistCustomExercises() {
-      localStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(customExerciseLibrary));
+      try {
+        localStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(customExerciseLibrary));
+        return true;
+      } catch (error) {
+        appState.localStorageWarning = true;
+        console.warn("Archivio locale esercizi non disponibile", error);
+        return false;
+      }
     }
 
     function rebuildExerciseLibrary() {
@@ -1689,8 +2041,7 @@
       };
     }
 
-    async function loadExerciseArchiveFromSupabase() {
-      const rows = await sb("pt_exercise_archive", "?select=*&active=eq.true&order=group_name.asc,name.asc").catch(() => []);
+    function loadExerciseArchive(rows = []) {
       if (!Array.isArray(rows) || !rows.length) return;
       const remoteItems = rows.map(archiveExerciseFromRow).filter(item => item.name);
       customExerciseLibrary = mergeExerciseLibraries([], [...customExerciseLibrary, ...remoteItems]).map(item => ({ ...item, source: "custom" }));
@@ -1699,11 +2050,7 @@
     }
 
     async function pushCustomExerciseToSupabase(item) {
-      return sb("pt_exercise_archive", "?on_conflict=id", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-        body: archiveExerciseToRow(item)
-      });
+      return ptData("upsert_exercise", { exercise: archiveExerciseToRow(item) });
     }
 
     const defaultState = {
@@ -1721,6 +2068,11 @@
         generalNotes: "Controllare tecnica sui multiarticolari. Se il cliente arriva affaticato, mantenere il carico dell'allenamento precedente."
       },
       sessions: ["Settimana 1", "Settimana 2", "Settimana 3", "Settimana 4", "Settimana 5", "Settimana 6"],
+      workoutDates: {
+        A: ["", "", "", "", "", ""],
+        B: ["", "", "", "", "", ""],
+        C: ["", "", "", "", "", ""]
+      },
       sheets: {
         A: [
           makeExercise("Squat multipower", "Gambe", "Parti leggero. Controlla profondita e ginocchia.", ["3 x 8", "3 x 8", "3 x 8", "4 x 8", "4 x 8", "4 x 8"], "75 sec", "Media 3/5"),
@@ -1739,11 +2091,16 @@
     };
 
     let state = JSON.parse(JSON.stringify(defaultState));
+    let coachingProgramEditor = null;
     let lastAddedExerciseId = "";
     let cloudSaveTimer = null;
     let cloudSaveRunning = false;
     let cloudSaveQueued = false;
     let cloudSaveRetryDelay = 350;
+    let programMutationRunning = false;
+    let selectionTransitionRunning = false;
+    const gripDrafts = new Map();
+    const pendingGripSaves = new Map();
     const stateVersions = new WeakMap();
     const pendingExerciseIds = new Set();
 
@@ -1754,28 +2111,31 @@
     const toast = document.getElementById("toast");
     const presetPreview = document.getElementById("presetPreview");
 
-    function endpoint(table, query = "") {
-      return `${SUPABASE_URL}/rest/v1/${table}${query}`;
-    }
-
-    async function sb(table, query = "", options = {}) {
-      const response = await fetch(endpoint(table, query), {
-        method: options.method || "GET",
+    async function ptData(action, payload = {}) {
+      if (!appState.accessToken) throw new Error("Sessione PT mancante o scaduta.");
+      const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-data`, {
+        method: "POST",
         headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-          ...(options.headers || {})
+          Authorization: `Bearer ${appState.accessToken}`,
+          "Content-Type": "application/json"
         },
-        body: options.body ? JSON.stringify(options.body) : undefined
+        body: JSON.stringify({ action, ...payload })
       });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || response.statusText);
-      }
-      if (response.status === 204) return null;
       const text = await response.text();
-      return text ? JSON.parse(text) : null;
+      let result = {};
+      try { result = text ? JSON.parse(text) : {}; } catch (_) { result = { raw: text }; }
+      if (!response.ok || result.success === false) {
+        const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+        const endpointMissing = response.status === 404 && !contentType.includes("application/json");
+        const error = new Error(endpointMissing
+          ? "Accesso verificato, ma l'aggiornamento server del Portale PT non è ancora pubblicato."
+          : result.error || result.raw || response.statusText || "Richiesta non riuscita.");
+        error.status = response.status;
+        error.code = endpointMissing ? "PT_DATA_NOT_DEPLOYED" : (result.code || "");
+        error.current = result.current || null;
+        throw error;
+      }
+      return result;
     }
 
     function fullName(item) {
@@ -1871,12 +2231,12 @@
     }
 
     function isReadOnlySelection() {
-      return !!selectedClient() && isAdministrator(appState.currentPt) && !canEditClient();
+      return !!selectedClient() && !canEditClient();
     }
 
     function requireEditableClient() {
       if (canEditClient()) return true;
-      showToast("Modalità Proprietario: le schede degli altri PT sono disponibili solo in lettura");
+      showToast("Modalità Proprietario: i dati dei clienti degli altri PT sono disponibili solo in lettura");
       return false;
     }
 
@@ -1904,8 +2264,20 @@
     }
 
     function myClients() {
-      if (isAdministrator(appState.currentPt)) return appState.clients;
-      return appState.clients.filter(client => String(clientTrainerId(client)) === String(appState.currentPt?.id || ""));
+      return appState.clients.filter(client => client.session_access === true || String(clientTrainerId(client)) === String(appState.currentPt?.id || ""));
+    }
+
+    function isOperationalClient(client) {
+      const status = String(client?.stato_abbonamento || "").trim().toLowerCase();
+      // Some legacy confirmed clients have no data_conferma. Do not infer their status from that date.
+      return client?.active !== false && !/(ibern|archivi|sospes|inattiv|non\s+(?:rinnov|conferm|attiv)|da\s+conferm|in\s+attesa|eliminat)/.test(status);
+    }
+
+    function clientsInScope() {
+      if (!isAdministrator(appState.currentPt)) return myClients();
+      const trainer = appState.trainerFilter;
+      if (trainer === 'all') return appState.clients;
+      return trainer ? appState.clients.filter(c => String(clientTrainerId(c)) === String(trainer)) : myClients();
     }
 
     function selectedClient() {
@@ -1922,6 +2294,9 @@
         data,
         archived: data.archived === true,
         period: normalizePeriodKey(data.period || savedState.meta?.period, row.updated_at || row.created_at),
+        assignmentDate: String(savedState.meta?.assignedAt || data.assigned_at || row.created_at || "").slice(0, 10),
+        name: String(savedState.meta?.name || data.name || "").trim(),
+        created_at: row.created_at || row.updated_at || "",
         updated_at: row.updated_at || row.created_at || ""
       };
     }
@@ -1932,8 +2307,15 @@
         .sort((a, b) => String(b.period || "").localeCompare(String(a.period || "")) || String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
     }
 
+    function programLabel(program) {
+      const name = program?.id === appState.selectedProgramId ? state.meta.name : program?.name;
+      return [name, periodLabel(program?.period || state.meta.period)].filter(Boolean).join(" · ");
+    }
+
     function latestClientProgram(clientId) {
-      return programsForClient(clientId)[0] || null;
+      const programs = programsForClient(clientId);
+      return programs.find(p => p.id === appState.currentPrograms?.[clientId]) ||
+        [...programs].sort((a,b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || b.id.localeCompare(a.id))[0] || null;
     }
 
     function accessFunctionBase() {
@@ -1956,14 +2338,6 @@
       errorBox.classList.add("hidden");
     }
 
-    function resolveLoginPt(email) {
-      const matches = appState.operators.filter(op => String(op.email || "").toLowerCase() === email);
-      const pt = appState.loginOperatorId
-        ? matches.find(op => String(op.id) === String(appState.loginOperatorId))
-        : (matches.length === 1 ? matches[0] : null);
-      return { matches, pt };
-    }
-
     function id(prefix = "id") {
       return crypto.randomUUID
         ? `${prefix}_${crypto.randomUUID()}`
@@ -1977,11 +2351,14 @@
     function normalizeSetEntry(entry = {}, fallbackReps = "10") {
       return {
         id: entry.id || id("set"),
+        recorded: entry.recorded === true,
         reps: String(entry.reps ?? entry.repetitions ?? fallbackReps ?? "").trim(),
         load: String(entry.load ?? entry.carico ?? "").trim(),
         rir: String(entry.rir ?? entry.rpe ?? "").trim(),
         note: String(entry.note ?? "").trim(),
-        previousLoad: String(entry.previousLoad ?? entry.previous_load ?? "").trim()
+        sessionNote: String(entry.sessionNote ?? entry.session_note ?? entry.actualNote ?? "").trim(),
+        previousLoad: String(entry.previousLoad ?? entry.previous_load ?? "").trim(),
+        previousReps: String(entry.previousReps ?? entry.previous_reps ?? "").trim()
       };
     }
 
@@ -2010,7 +2387,9 @@
     function ensureExerciseWeekSets(exercise, weekCount) {
       const existing = Array.isArray(exercise.weekSets) ? exercise.weekSets : [];
       exercise.weekSets = Array.from({ length: weekCount }, (_, weekIndex) => {
+        if (exercise.coachingActiveWeeks && !exercise.coachingActiveWeeks.includes(weekIndex + 1)) return [];
         const week = existing[weekIndex];
+        if (exercise.coachingActiveWeeks && Array.isArray(week)) return week.map(entry => normalizeSetEntry(entry));
         if (Array.isArray(week) && week.length) return week.map(entry => normalizeSetEntry(entry));
         return setEntriesFromLegacy(exercise.plan?.[weekIndex] || "", exercise.feedback?.[weekIndex] || "");
       });
@@ -2047,7 +2426,13 @@
       next.currentSheet = next.sheetOrder.includes(candidate.currentSheet) ? candidate.currentSheet : next.sheetOrder[0] || "A";
       next.selectedPreset = presets[candidate.selectedPreset] ? candidate.selectedPreset : "reps";
       next.meta.period = normalizePeriodKey(next.meta.period, candidate.lastSavedAt || "");
+      const candidateDates = candidate.workoutDates && typeof candidate.workoutDates === "object"
+        ? candidate.workoutDates
+        : (candidate.sessionDates && typeof candidate.sessionDates === "object" ? candidate.sessionDates : {});
+      next.workoutDates = {};
       next.sheetOrder.forEach(sheetKey => {
+        const sheetDates = Array.isArray(candidateDates[sheetKey]) ? candidateDates[sheetKey] : [];
+        next.workoutDates[sheetKey] = next.sessions.map((_, weekIndex) => String(sheetDates[weekIndex] || "").slice(0, 10));
         next.sheets[sheetKey] = Array.isArray(next.sheets[sheetKey]) ? next.sheets[sheetKey] : [];
         next.sheets[sheetKey].forEach(exercise => {
           exercise.id = exercise.id || id("exercise");
@@ -2061,7 +2446,7 @@
           exercise.previousFeedback = Array.isArray(exercise.previousFeedback) ? exercise.previousFeedback : [];
           exercise.previousPlan = Array.isArray(exercise.previousPlan) ? exercise.previousPlan : [];
           exercise.previousPeriod = exercise.previousPeriod || "";
-          exercise.recovery = exercise.recovery || exercise.rest || "75 sec";
+          exercise.recovery = exercise.recovery ?? exercise.rest ?? "75 sec";
           exercise.effort = exercise.effort || "Media 3/5";
           exercise.recoveryNote = exercise.recoveryNote || "";
           exercise.effortNote = exercise.effortNote || "";
@@ -2079,62 +2464,105 @@
       return [];
     }
 
+    function legacyJson(value) {
+      if (value && typeof value === "object") return value;
+      try { return JSON.parse(String(value || "{}")); } catch (_) { return {}; }
+    }
+
     function stateFromLegacyProgram(data) {
-      const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
-      if (!sessions.length) return null;
+      const embedded = legacyJson(data?.datiJSON || data?.dati_json);
+      const source = { ...embedded, ...(data || {}) };
+      const sessions = Array.isArray(source.sessions) ? source.sessions : [];
       const next = clone(defaultState);
-      next.meta.goal = data.goal || data.obiettivo || next.meta.goal;
-      next.meta.period = normalizePeriodKey(data.period, data.updated_at || "");
-      next.meta.level = data.level || data.livello || next.meta.level;
-      next.meta.frequency = data.frequency ? `${data.frequency} allenamenti / settimana` : next.meta.frequency;
-      next.meta.warmup = sessions[0]?.warmup || next.meta.warmup;
-      next.meta.generalNotes = data.notes || data.note || next.meta.generalNotes;
+      next.meta.goal = source.goal || source.obiettivo || next.meta.goal;
+      next.meta.period = normalizePeriodKey(source.period || source.periodo, source.updated_at || "");
+      next.meta.level = source.level || source.livello || next.meta.level;
+      next.meta.frequency = source.frequency ? `${source.frequency} allenamenti / settimana` : next.meta.frequency;
+      next.meta.generalNotes = source.notes || source.note || next.meta.generalNotes;
       next.sheetOrder = [];
       next.sheets = {};
-      sessions.forEach((session, sessionIndex) => {
-        const key = String.fromCharCode(65 + sessionIndex);
-        next.sheetOrder.push(key);
-        const exercises = (session.blocks || []).flatMap(block => block.exercises || []);
-        next.sheets[key] = exercises.map((exercise, exerciseIndex) => {
-          const plan = progressionPlan(exercise.progression);
-          const item = makeExercise(
-            exercise.name || `Esercizio ${exerciseIndex + 1}`,
-            exercise.category || exercise.group || "Full body",
-            exercise.notes || "",
-            plan.length ? plan : next.sessions.map(() => exercise.reps || "3 x 10"),
-            exercise.rest || "75 sec",
-            exercise.effort || "Media 3/5"
-          );
-          item.id = exercise.id || item.id;
-          item.progressionName = exercise.progression?.name || exercise.progressionName || "";
-          return item;
+
+      if (sessions.length) {
+        next.meta.warmup = sessions[0]?.warmup || next.meta.warmup;
+        sessions.forEach((session, sessionIndex) => {
+          const key = String.fromCharCode(65 + sessionIndex);
+          next.sheetOrder.push(key);
+          const exercises = (session.blocks || []).flatMap(block => block.exercises || []);
+          next.sheets[key] = exercises.map((exercise, exerciseIndex) => {
+            const plan = progressionPlan(exercise.progression);
+            const item = makeExercise(
+              exercise.name || `Esercizio ${exerciseIndex + 1}`,
+              exercise.category || exercise.group || "Full body",
+              exercise.notes || "",
+              plan.length ? plan : next.sessions.map(() => exercise.reps || "3 x 10"),
+              exercise.rest || "75 sec",
+              exercise.effort || "Media 3/5"
+            );
+            item.id = exercise.id || item.id;
+            item.progressionName = exercise.progression?.name || exercise.progressionName || "";
+            return item;
+          });
         });
-      });
+      } else {
+        const days = Array.isArray(source.giorni) ? source.giorni : [];
+        const legacyExercises = source.esercizi || embedded.esercizi || [];
+        if (!days.length && !Array.isArray(legacyExercises) && typeof legacyExercises !== "object") return null;
+        const dayList = days.length ? days : [{ id: "A", nome: "Allenamento A" }];
+        const weekCandidates = [source.settimane, source.numero_settimane, source.numeroSettimane]
+          .map(Number).filter(value => Number.isFinite(value) && value > 0);
+        const allExercises = Array.isArray(legacyExercises) ? legacyExercises : Object.values(legacyExercises || {}).flat();
+        const progressionLengths = allExercises.map(exercise => progressionPlan(exercise?.progressione || exercise?.progression).length);
+        const weekCount = Math.max(1, Math.min(12, weekCandidates[0] || Math.max(4, ...progressionLengths)));
+        next.sessions = Array.from({ length: weekCount }, (_, index) => `Settimana ${index + 1}`);
+        dayList.forEach((day, dayIndex) => {
+          const key = String.fromCharCode(65 + dayIndex);
+          const dayId = String(day?.id || day?.giorno_id || day?.nome || dayIndex);
+          const nested = Array.isArray(day?.esercizi) ? day.esercizi : null;
+          const keyed = !Array.isArray(legacyExercises)
+            ? legacyExercises?.[dayId] || legacyExercises?.[day?.nome] || legacyExercises?.[key]
+            : null;
+          const exercises = nested || (Array.isArray(keyed) ? keyed : allExercises.filter(exercise => {
+            const exerciseDay = String(exercise?.giorno_id ?? exercise?.giornoId ?? exercise?.giorno ?? exercise?.day ?? "");
+            return !exerciseDay || [dayId, String(day?.nome || ""), key, String(dayIndex), String(dayIndex + 1)].includes(exerciseDay);
+          }));
+          next.sheetOrder.push(key);
+          next.sheets[key] = exercises.map((exercise, exerciseIndex) => {
+            const rawPlan = progressionPlan(exercise?.progressione || exercise?.progression);
+            const basePlan = exercise?.prescrizione || exercise?.serie_ripetizioni || exercise?.serieRipetizioni ||
+              [exercise?.serie, exercise?.ripetizioni || exercise?.reps].filter(Boolean).join(" x ") || "3 x 10";
+            const plan = next.sessions.map((_, weekIndex) => String(rawPlan[weekIndex]?.valore || rawPlan[weekIndex] || basePlan));
+            const item = makeExercise(
+              exercise?.nome || exercise?.name || `Esercizio ${exerciseIndex + 1}`,
+              exercise?.gruppo || exercise?.categoria || exercise?.category || exercise?.group || "Full body",
+              exercise?.note || exercise?.notes || "",
+              plan,
+              exercise?.recupero || exercise?.rest || "75 sec",
+              exercise?.intensita || exercise?.effort || "Media 3/5"
+            );
+            item.id = exercise?.id || item.id;
+            item.progressionName = exercise?.nome_progressione || exercise?.progressionName || "";
+            return item;
+          });
+        });
+      }
+      if (!next.sheetOrder.length) return null;
       next.currentSheet = next.sheetOrder[0] || "A";
       return normalizeState(next);
     }
 
-    async function loadOperators() {
-      const operators = await sb("operator_effective_roles", "?select=*&active=eq.true&order=cognome.asc,nome.asc")
-        .catch(() => sb("operators", "?select=*&active=eq.true&order=cognome.asc,nome.asc").catch(() => []));
-      appState.operators = (operators || []).map(op => ({
-        id: op.operator_id || op.id,
-        nome: op.nome,
-        cognome: op.cognome,
-        email: op.email,
-        roles: operatorRoles(op),
-        active: op.active !== false
-      })).filter(isPersonalTrainer);
-    }
-
     async function loadPortalData() {
       if (appState.dataLoaded) return;
-      const [clients, sessions, acquisitions, programs] = await Promise.all([
-        sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
-        sb("pt_calendar_sessions", "?select=*&order=date.asc,start_time.asc").catch(() => []),
-        sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
-        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
-      ]);
+      const result = await ptData("bootstrap");
+      const clients = result.clients || [];
+      const acquisitions = result.acquisitions || [];
+      const programs = result.programs || [];
+      appState.currentPt = result.operator || appState.currentPt;
+      appState.operators = (result.operators || []).map(op => ({
+        ...op,
+        id: op.operator_id || op.id,
+        roles: operatorRoles(op),
+        active: op.active !== false
+      }));
       appState.clients = (clients || []).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -2146,11 +2574,21 @@
           client_id: client.id,
           trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || client.operator_id),
           obiettivo: client.obiettivo || acq?.obiettivo || "",
-          note_operative: acq?.impressioni || client.notes || ""
+          anamnesisSource: acq || null,
+          note_operative: PTEssentials.facts(client,acq).map(([label,value])=>`${label}: ${PTEssentials.short(value,160)}`).join("\n")
         };
       });
       appState.programs = (programs || []).map(normalizeProgram);
-      await loadExerciseArchiveFromSupabase();
+      appState.currentPrograms = Object.fromEntries((result.currentPrograms || []).map(row => [row.cliente_id,row.program_id]));
+      appState.sessionLogEnabled = result.sessionLogEnabled === true;
+      appState.sessionHistoryVisible = result.sessionHistoryVisible === true;
+      appState.assignedSessions = result.assignedSessions || [];
+      appState.sessionRecords = result.sessionRecords || [];
+      appState.sessionOperators = result.sessionOperators || [];
+      appState.revisions = Array.isArray(result.revisions) ? result.revisions : [];
+      appState.loadHistory = Array.isArray(result.loadHistory) ? result.loadHistory : [];
+      appState.physicalMeasurements = Array.isArray(result.physicalMeasurements) ? result.physicalMeasurements : [];
+      loadExerciseArchive(result.exerciseArchive || []);
       appState.dataLoaded = true;
     }
 
@@ -2186,17 +2624,32 @@
 
     async function activatePtSession(pt, token) {
       appState.currentPt = pt;
+      appState.trainerFilter = "";
       appState.accessToken = token || "";
       document.getElementById("loginButton").textContent = "Carico la tua area...";
-      await loadPortalData();
+      try {
+        await loadPortalData();
+      } catch (error) {
+        const localPreview = location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost";
+        if (localPreview && error.code === "PT_DATA_NOT_DEPLOYED" && token) {
+          const publishedPortal = new URL("https://neacea-portale-personal-trainer.netlify.app/");
+          publishedPortal.searchParams.set("email", pt.email || "");
+          publishedPortal.searchParams.set("op", pt.id || "");
+          publishedPortal.searchParams.set("access", token);
+          window.location.replace(publishedPortal.toString());
+          return;
+        }
+        throw error;
+      }
+      pt = appState.currentPt || pt;
       document.getElementById("loginScreen").classList.add("hidden");
       document.getElementById("appShell").classList.remove("hidden");
       document.getElementById("currentPtName").textContent = fullName(pt);
       document.getElementById("avatar").textContent = initials(fullName(pt));
       renderAccessScope();
       renderClientList();
-      const firstClient = myClients()[0];
-      selectClient(firstClient?.client_id || "");
+      const firstClient = clientsInScope()[0];
+      await selectClient(firstClient?.client_id || "");
       showView("clientsView");
     }
 
@@ -2207,13 +2660,6 @@
         return;
       }
       clearLoginMessage();
-      const { matches, pt } = resolveLoginPt(email);
-      if (!pt) {
-        setLoginMessage(matches.length > 1
-          ? "Questa email e' collegata a piu operatori. Usa il link ricevuto via mail o chiedi un invio dedicato."
-          : "Email non trovata tra i Personal Trainer configurati.");
-        return;
-      }
       const button = document.getElementById("sendCodeButton");
       try {
         button.disabled = true;
@@ -2221,7 +2667,7 @@
         const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, operatorId: pt.id, name: fullName(pt) })
+          body: JSON.stringify({ email })
         });
         const text = await response.text();
         let result = {};
@@ -2243,11 +2689,8 @@
       const email = document.getElementById("loginEmail").value.trim().toLowerCase();
       const code = String(document.getElementById("loginCode").value || "").trim();
       clearLoginMessage();
-      const { matches, pt } = resolveLoginPt(email);
-      if (!pt) {
-        setLoginMessage(matches.length > 1
-          ? "Questa email e' collegata a piu operatori. Apri il link ricevuto via mail."
-          : "Email non trovata tra i Personal Trainer configurati.");
+      if (!email || !email.includes("@")) {
+        setLoginMessage("Inserisci una email PT valida.");
         return;
       }
       if (!code) {
@@ -2258,8 +2701,9 @@
         document.getElementById("loginButton").disabled = true;
         document.getElementById("sendCodeButton").disabled = true;
         document.getElementById("loginButton").textContent = "Verifica accesso...";
-        const access = await verifyAccess(email, code, pt.id);
-        await activatePtSession(pt, access.token);
+        const access = await verifyAccess(email, code, appState.loginOperatorId);
+        if (!access.operator) throw new Error("Profilo Personal Trainer non disponibile.");
+        await activatePtSession(access.operator, access.token);
       } catch (error) {
         setLoginMessage(error.message || "Accesso non riuscito.");
       } finally {
@@ -2292,8 +2736,13 @@
     }
 
     function readLocalState(key = STORAGE_KEY) {
+      let raw = "";
+      try { raw = localStorage.getItem(key) || ""; } catch (error) { appState.localStorageWarning = true; }
+      if (!raw) {
+        try { raw = sessionStorage.getItem(key) || ""; } catch (error) {}
+      }
       try {
-        const saved = JSON.parse(localStorage.getItem(key));
+        const saved = JSON.parse(raw);
         if (saved && saved.sheets && saved.sessions) {
           saved.sheetOrder = saved.sheetOrder || Object.keys(saved.sheets);
           saved.currentSheet = saved.currentSheet || saved.sheetOrder[0] || "A";
@@ -2301,6 +2750,29 @@
         }
       } catch (error) {}
       return null;
+    }
+
+    function writeLocalValue(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        appState.localStorageWarning = false;
+        return true;
+      } catch (error) {
+        appState.localStorageWarning = true;
+        console.warn("Bozza locale non disponibile", error);
+        try {
+          sessionStorage.setItem(key, value);
+          return true;
+        } catch (sessionError) {
+          console.warn("Bozza di sessione non disponibile", sessionError);
+          return false;
+        }
+      }
+    }
+
+    function removeLocalValue(key) {
+      try { localStorage.removeItem(key); } catch (error) { console.warn("Pulizia bozza locale non disponibile", error); }
+      try { sessionStorage.removeItem(key); } catch (error) { console.warn("Pulizia bozza di sessione non disponibile", error); }
     }
 
     function loadState() {
@@ -2321,10 +2793,9 @@
     function writeLocalState(savedAt = new Date().toISOString()) {
       if (!canEditClient()) return false;
       state.lastSavedAt = savedAt;
-      state.draftProgramId = appState.selectedProgramId || "";
+      state.draftProgramId = appState.selectedProgramId || state.draftProgramId || "";
       state.draftClientId = appState.selectedClientId || "";
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      return true;
+      return writeLocalValue(STORAGE_KEY, JSON.stringify(state));
     }
 
     function saveState(silent = true) {
@@ -2337,7 +2808,7 @@
     }
 
     function stateVersion(targetState = state) {
-      return stateVersions.get(targetState) || 0;
+      return stateVersions.get(targetState) ?? Number(targetState.pendingCloudSave?.version || 0);
     }
 
     function markExerciseSaveState(exerciseIds, mode, label) {
@@ -2362,7 +2833,7 @@
       cloudSaveTimer = setTimeout(flushCloudSave, 650);
     }
 
-    async function flushCloudSave() {
+    async function flushCloudSave(options = {}) {
       clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
       if (!canEditClient()) return false;
@@ -2377,20 +2848,21 @@
       const exerciseIds = [...pendingExerciseIds];
       markExerciseSaveState(exerciseIds, "saving", "Salvataggio...");
       try {
-        const saved = await saveProgramToSupabase(null, { silent: true, saveVersion: targetVersion });
+        const saved = await saveProgramToSupabase(null, { ...options, silent: options.silent !== false, queuedSave: true, saveVersion: targetVersion });
         if (saved && stateVersion(targetState) === targetVersion) {
           cloudSaveRetryDelay = 350;
           exerciseIds.forEach(exerciseId => pendingExerciseIds.delete(exerciseId));
           markExerciseSaveState(exerciseIds, "saved", "Salvato");
         } else if (!saved) {
-          cloudSaveQueued = true;
+          const conflict = appState.saveMode === "conflict";
+          cloudSaveQueued = !conflict;
           cloudSaveRetryDelay = 5000;
-          markExerciseSaveState(exerciseIds, "error", "Locale · riprovo");
+          markExerciseSaveState(exerciseIds, "error", conflict ? "Conflitto da risolvere" : "Locale · riprovo");
         }
         return saved;
       } finally {
         cloudSaveRunning = false;
-        if (cloudSaveQueued || stateVersion(targetState) > targetVersion) {
+        if (appState.saveMode !== "conflict" && (cloudSaveQueued || stateVersion(targetState) > targetVersion)) {
           clearTimeout(cloudSaveTimer);
           cloudSaveTimer = setTimeout(flushCloudSave, cloudSaveRetryDelay);
         }
@@ -2402,19 +2874,69 @@
       state.localDirty = true;
       stateVersions.set(state, stateVersion(state) + 1);
       writeLocalState();
+      if (appState.saveConflict) {
+        renderSaveState("conflict");
+        return true;
+      }
       renderSaveState("autosave");
       queueCloudSave(exerciseId);
       return true;
     }
 
+    function mergeLoadHistoryIntoState(program, targetState) {
+      if (!program || !targetState) return targetState;
+      const rows = appState.loadHistory.filter(row => {
+        if (String(row.cliente_id || row.data?.clienteId || "") !== String(program.client_id || "")) return false;
+        const linkedProgramId = row.data?.program_id || row.data?.schedaId || row.data?.scheda_id || "";
+        return String(linkedProgramId) === String(program.id || program.rowId || "");
+      });
+      rows.forEach(row => {
+        const data = row.data || {};
+        const rawSheet = String(data.workout_key || data.giorno || data.allenamento || "A");
+        const sheetKey = rawSheet.replace(/^Allenamento\s+/i, "").trim().toUpperCase();
+        if (!targetState.sheetOrder.includes(sheetKey)) return;
+        const weekIndex = Number.isFinite(Number(data.week_index))
+          ? Number(data.week_index)
+          : Math.max(0, Number(data.seduta || 1) - 1);
+        if (weekIndex < 0 || weekIndex >= targetState.sessions.length) return;
+        const exercises = targetState.sheets[sheetKey] || [];
+        const exerciseId = String(data.exercise_id || "");
+        const exerciseName = String(data.esercizio || data.exercise || "").trim().toLowerCase();
+        const exercise = exercises.find(item => exerciseId && String(item.id || "") === exerciseId) ||
+          exercises.find(item => exerciseName && String(item.name || "").trim().toLowerCase() === exerciseName);
+        if (!exercise) return;
+        ensureExerciseWeekSets(exercise, targetState.sessions.length);
+        const setIndex = Math.max(0, Number(data.serie || 1) - 1);
+        while (exercise.weekSets[weekIndex].length <= setIndex) {
+          exercise.weekSets[weekIndex].push(normalizeSetEntry({ reps: "" }));
+        }
+        const set = exercise.weekSets[weekIndex][setIndex];
+        if (!String(set.reps || "").trim() && (data.reps ?? data.rip) !== undefined) set.reps = String(data.reps ?? data.rip ?? "").trim();
+        if (!String(set.load || "").trim() && (data.load ?? data.kg) !== undefined) set.load = String(data.load ?? data.kg ?? "").trim();
+        if (!String(set.rir || "").trim() && (data.rir ?? data.rpe) !== undefined) set.rir = String(data.rir ?? data.rpe ?? "").trim();
+        if (!String(set.sessionNote || "").trim() && data.note) set.sessionNote = String(data.note).trim();
+        const sessionDate = String(data.session_date || data.data || "").slice(0, 10);
+        if (sessionDate && !targetState.workoutDates?.[sheetKey]?.[weekIndex]) targetState.workoutDates[sheetKey][weekIndex] = sessionDate;
+        syncExerciseWeekSummary(exercise, weekIndex);
+      });
+      return targetState;
+    }
+
     function stateFromProgram(program) {
+      if (!program) return null;
       const saved = program?.data?.pt_studio_state || program?.data?.studio_state || null;
       if (saved && saved.sheets && saved.sessions) {
         saved.sheetOrder = saved.sheetOrder || Object.keys(saved.sheets);
         saved.currentSheet = saved.currentSheet || saved.sheetOrder[0] || "A";
-        return normalizeState(saved);
+        // Modern full snapshots are authoritative, including intentionally cleared
+        // values. Merging cached history would resurrect removed sets or loads.
+        const next = normalizeState(saved);
+        if (!next.coachingEditorSnapshot && window.NeaceaPTEditor) next.coachingEditorSnapshot = window.NeaceaPTEditor.toSnapshot(next);
+        return next;
       }
-      return stateFromLegacyProgram(program?.data);
+      const legacy = stateFromLegacyProgram(program?.data);
+      if (legacy && window.NeaceaPTEditor) legacy.coachingEditorSnapshot = window.NeaceaPTEditor.toSnapshot(legacy);
+      return mergeLoadHistoryIntoState(program, legacy);
     }
 
     function previousExerciseHistory(name, group = "") {
@@ -2489,30 +3011,29 @@
 
     function renderClientList() {
       const term = appState.clientFilter.trim().toLowerCase();
-      const assignedClients = myClients();
+      const assignedClients = clientsInScope();
       const clients = assignedClients.filter(client => {
         const trainer = trainerForClient(client);
-        const matchesTrainer = !appState.trainerFilter || String(clientTrainerId(client)) === String(appState.trainerFilter);
         const matchesTerm = !term || [
           fullName(client),
           client.email,
           client.obiettivo,
           fullName(trainer)
         ].some(value => String(value || "").toLowerCase().includes(term));
-        return matchesTrainer && matchesTerm;
+        return matchesTerm;
       });
       document.getElementById("clientList").innerHTML = clients.length ? clients.map(client => `
         <button class="client-card ${client.client_id === appState.selectedClientId ? "active" : ""}" data-client-id="${escapeAttr(client.client_id)}" aria-pressed="${client.client_id === appState.selectedClientId}">
           <strong>${escapeHtml(fullName(client))}</strong>
           <span>${escapeHtml(client.obiettivo || client.email || "Cliente PT")}</span>
           ${isAdministrator(appState.currentPt) ? `<span>PT: ${escapeHtml(fullName(trainerForClient(client)) || "Non assegnato")}</span>` : ""}
-          <span>${programsForClient(client.client_id).length} programmi salvati${client.client_id === appState.selectedClientId ? " · Selezionato" : ""}</span>
+          <span>${programsForClient(client.client_id, true).length} programmi salvati${client.client_id === appState.selectedClientId ? " · Selezionato" : ""}</span>
+          ${!isOperationalClient(client) ? '<span>Storico · percorso non attivo o non confermato</span>' : ""}
         </button>
-      `).join("") : `<div class="client-card"><strong>${assignedClients.length ? "Nessun risultato" : "Nessun cliente"}</strong><span>${assignedClients.length ? "Prova con un altro nome, obiettivo o PT." : "Nessun cliente assegnato a questo PT."}</span></div>`;
+      `).join("") : `<div class="client-card"><strong>${assignedClients.length ? "Nessun risultato" : "Nessun cliente in questa vista"}</strong><span>${assignedClients.length ? "Prova con un altro nome, obiettivo o PT." : myClients().length ? "Per consultare le vecchie schede, scegli Storico nel filtro Clienti da mostrare." : "Nessun cliente assegnato a questo PT."}</span></div>`;
       document.querySelectorAll("[data-client-id]").forEach(button => {
-        button.addEventListener("click", () => {
-          selectClient(button.dataset.clientId);
-          showView(isReadOnlySelection() ? "programsView" : "builderView");
+        button.addEventListener("click", async () => {
+          if (await selectClient(button.dataset.clientId)) showView("programsView");
         });
       });
     }
@@ -2525,7 +3046,8 @@
       if (trainerFilter && owner) {
         const selectedValue = appState.trainerFilter;
         trainerFilter.innerHTML = `
-          <option value="">Tutti i Personal Trainer</option>
+          <option value="">I miei clienti</option>
+          <option value="all">Tutti i clienti dello studio</option>
           ${appState.operators.map(operator => `<option value="${escapeAttr(operator.id)}">${escapeHtml(fullName(operator))}</option>`).join("")}
         `;
         trainerFilter.value = selectedValue;
@@ -2535,27 +3057,34 @@
       document.getElementById("clientsSubtitle").textContent = owner
         ? "Seleziona un cliente per consultare, senza modificarle, le schede preparate dal Personal Trainer assegnato."
         : "Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.";
-      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti";
+      document.getElementById("clientPanelTitle").textContent = "Clienti dello studio";
     }
 
     function setEditorAvailability() {
+      coachingProgramEditor?.sync();
       const hasClient = !!selectedClient();
       const hasPt = !!appState.currentPt;
       const canEdit = canEditClient();
       const readOnly = isReadOnlySelection();
-      ["openSheetBtn", "openSelectedSheetBtn", "openSelectedProgramsBtn", "compactBtn"].forEach(id => {
+      document.querySelectorAll('#saveBottomBtn,#saveSheetBottomBtn').forEach(button => {button.disabled=!canEdit || cloudSaveRunning;button.classList.toggle('hidden',readOnly);});
+      ["openSheetBtn", "openSelectedSheetBtn", "openSelectedProgramsBtn", "openSelectedGripBtn", "compactBtn"].forEach(id => {
         const button = document.getElementById(id);
         if (button) button.disabled = !hasClient;
       });
-      ["saveBtn", "resetBtn", "newMonthBtn", "addSheetBtn", "removeSheetBtn", "addExerciseBtn", "duplicateSheetBtn", "addSessionBtn", "removeSessionBtn", "inlineAddExerciseBtn", "createNewProgramBtn"].forEach(id => {
+      ["saveBtn", "resetBtn", "newMonthBtn", "addSheetBtn", "removeSheetBtn", "addExerciseBtn", "duplicateProgramBtn", "duplicateSheetBtn", "addSessionBtn", "removeSessionBtn", "inlineAddExerciseBtn", "gripSaveBtn"].forEach(id => {
         const button = document.getElementById(id);
         if (button) button.disabled = !canEdit;
+      });
+      document.querySelectorAll('[data-new-program]').forEach(button => {
+        const hasAssignableClient = (appState.clients || []).some(client => canEditClient(client));
+        button.disabled = !hasAssignableClient;
+        button.classList.toggle("hidden", readOnly && !hasAssignableClient);
       });
       const calendarButton = document.getElementById("calendarBtn");
       if (calendarButton) calendarButton.disabled = !hasPt;
       const historySelect = document.getElementById("programHistory");
       if (historySelect) historySelect.disabled = !hasClient;
-      ["period", "goal", "level", "frequency", "warmup", "generalNotes", "inlineLine", "inlineExerciseSearch", "inlineGroup", "inlineProgression", "inlineRecovery", "inlineNotes"].forEach(id => {
+      ["programName", "period", "goal", "level", "frequency", "warmup", "generalNotes", "inlineLine", "inlineExerciseSearch", "inlineGroup", "inlineProgression", "inlineRecovery", "inlineNotes"].forEach(id => {
         const field = document.getElementById(id);
         if (field) field.disabled = !canEdit;
       });
@@ -2566,8 +3095,13 @@
       document.querySelectorAll("#exerciseStack input, #exerciseStack select, #exerciseStack textarea, #exerciseStack button, #sheetPreviewStack input, #sheetPreviewStack select, #sheetPreviewStack textarea, #sheetPreviewStack button, #sessionRow button").forEach(field => {
         field.disabled = !canEdit;
       });
+      document.querySelectorAll("#handGripForm input, #handGripForm select, #handGripForm textarea").forEach(field => {
+        field.disabled = !canEdit;
+      });
       const saveButton = document.getElementById("saveBtn");
       if (saveButton) saveButton.classList.toggle("hidden", readOnly);
+      const gripSaveButton = document.getElementById("gripSaveBtn");
+      if (gripSaveButton) gripSaveButton.classList.toggle("hidden", readOnly);
       const programActions = document.getElementById("programActionsPanel");
       if (programActions) programActions.classList.toggle("hidden", readOnly);
       const openSheetButton = document.getElementById("openSheetBtn");
@@ -2579,7 +3113,7 @@
       if (banner) {
         banner.classList.toggle("hidden", !readOnly);
         if (readOnly) {
-          banner.innerHTML = `<strong>Modalità Proprietario · sola lettura.</strong> Stai consultando la scheda gestita da ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Nessun dato può essere modificato o salvato dal tuo accesso.`;
+          banner.innerHTML = `<strong>Programma in sola lettura.</strong> Il programma è gestito da ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. ${selectedClient()?.session_access ? "Puoi registrare carichi, ripetizioni e note delle tue sedute nel Registro sedute, nella sezione Clienti." : "La modifica resta riservata al referente."}`;
         } else {
           banner.textContent = "";
         }
@@ -2587,11 +3121,40 @@
       document.querySelectorAll(".requires-client").forEach(element => {
         element.style.opacity = hasClient ? "1" : ".5";
       });
+      window.PTTemplates?.sync();
+      window.PTProgramFlow?.sync();
     }
 
-    function selectClient(clientId) {
-      if (state.localDirty && canEditClient()) flushCloudSave();
+    async function ensureCurrentProgramSaved() {
+      if (appState.gripSaveMode === "saving") { showToast("Attendi il salvataggio Hand Grip"); return false; }
+      if (!selectedClient() || !canEditClient()) return true;
+      const original = state, clientId = appState.selectedClientId;
+      const deadline = Date.now() + 20000;
+      while (cloudSaveRunning && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 80));
+      if (original !== state || clientId !== appState.selectedClientId) return false;
+      if (cloudSaveRunning || appState.saveConflict) { showToast("Completa il salvataggio o risolvi il conflitto prima di continuare"); return false; }
+      if (state.localDirty && !await flushCloudSave()) { showToast("Modifiche conservate sul dispositivo: completa il salvataggio prima di cambiare scheda"); return false; }
+      return original === state && clientId === appState.selectedClientId && !state.localDirty;
+    }
+
+    function switchGripDraft(clientId) {
+      const fields = ["gripDate", "gripRight", "gripLeft", "gripDominant", "gripAttempts", "gripPosition", "gripNotes"];
+      if (appState.selectedClientId) gripDrafts.set(appState.selectedClientId, Object.fromEntries(fields.map(key => [key, document.getElementById(key).value])));
+      const draft = gripDrafts.get(clientId) || { gripDate: localDateValue(), gripAttempts: "3", gripPosition: "seduto" };
+      fields.forEach(key => { document.getElementById(key).value = draft[key] || ""; });
+    }
+
+    async function selectClient(clientId) {
+      if (selectionTransitionRunning || programMutationRunning) return false;
+      if (clientId && clientId === appState.selectedClientId) return true;
+      selectionTransitionRunning = true;
+      try { if (!await ensureCurrentProgramSaved()) return false; }
+      finally { selectionTransitionRunning = false; }
+      clearTimeout(cloudSaveTimer); cloudSaveTimer = null;
+      switchGripDraft(clientId);
       appState.selectedClientId = clientId || "";
+      appState.saveConflict = null;
+      appState.gripSaveMode = "saved";
       const client = selectedClient();
       const program = latestClientProgram(clientId);
       const savedFromProgram = stateFromProgram(program);
@@ -2630,10 +3193,17 @@
       }
       renderClientList();
       renderAll();
+      return true;
     }
 
-    function selectProgram(programId) {
-      if (state.localDirty && canEditClient()) flushCloudSave();
+    async function selectProgram(programId) {
+      if (selectionTransitionRunning || programMutationRunning) return false;
+      if (programId && programId === appState.selectedProgramId) return true;
+      selectionTransitionRunning = true;
+      try { if (!await ensureCurrentProgramSaved()) return false; }
+      finally { selectionTransitionRunning = false; }
+      clearTimeout(cloudSaveTimer); cloudSaveTimer = null;
+      appState.saveConflict = null;
       const program = appState.programs.find(item => item.id === programId && item.client_id === appState.selectedClientId) || null;
       appState.selectedProgramId = program?.id || "";
       STORAGE_KEY = storageKeyFor(appState.selectedClientId, appState.selectedProgramId);
@@ -2655,6 +3225,7 @@
         }
       }
       renderAll();
+      return true;
     }
 
     function fitPlanToSessions(exercise) {
@@ -2679,7 +3250,7 @@
     }
 
     function renderAll() {
-      if (!state.sheets[state.currentSheet]) {
+      if (state.sheetOrder.length && !state.sheets[state.currentSheet]) {
         state.currentSheet = state.sheetOrder[0] || "A";
         state.sheets[state.currentSheet] = state.sheets[state.currentSheet] || [];
       }
@@ -2694,13 +3265,16 @@
       renderExercises();
       renderCreationPreview();
       renderSheetPreview();
+      renderGripView();
       renderMetrics();
       renderClientFocus();
+      window.PTSessionLog?.render();
       renderSaveState();
       setEditorAvailability();
     }
 
     function renderMeta() {
+      document.getElementById("programName").value = state.meta.name || "";
       document.getElementById("period").value = state.meta.period || currentPeriodKey();
       document.getElementById("goal").value = state.meta.goal;
       document.getElementById("level").value = state.meta.level;
@@ -2712,14 +3286,14 @@
     function renderProgramHistory() {
       const select = document.getElementById("programHistory");
       const programs = programsForClient();
-      const draftLabel = `Nuovo programma · ${periodLabel(state.meta.period || currentPeriodKey())}`;
+      const draftLabel = `${state.meta.name || "Nuovo programma"} · ${periodLabel(state.meta.period || currentPeriodKey())}`;
       select.innerHTML = `
         ${appState.selectedProgramId ? "" : `<option value="">${escapeHtml(draftLabel)}</option>`}
         ${programs.map(program => {
           const updated = program.updated_at
             ? new Date(program.updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
             : "";
-          return `<option value="${escapeAttr(program.id)}">${escapeHtml(periodLabel(program.period))}${updated ? ` · salvata ${escapeHtml(updated)}` : ""}</option>`;
+          return `<option value="${escapeAttr(program.id)}">${escapeHtml(programLabel(program))}${updated ? ` · salvata ${escapeHtml(updated)}` : ""}</option>`;
         }).join("")}
       `;
       select.value = appState.selectedProgramId || "";
@@ -2727,6 +3301,12 @@
 
     function stateExerciseCount(value) {
       return Object.values(value?.sheets || {}).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0);
+    }
+
+    function revisionsForProgram(programId) {
+      return appState.revisions
+        .filter(revision => String(revision.program_id || "") === String(programId || ""))
+        .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
     }
 
     function renderProgramManager() {
@@ -2738,18 +3318,20 @@
       }
       const editable = canEditClient();
       const assignedTrainer = trainerForClient(selectedClient());
-      const draftCard = editable && !appState.selectedProgramId ? `
+      const draftCard = editable && !appState.selectedProgramId && (state.localDirty || stateExerciseCount(state)) ? `
         <article class="program-card active">
           <div>
-            <span class="program-state local">Sincronizzazione automatica in corso</span>
-            <h3>${escapeHtml(periodLabel(state.meta.period))}</h3>
+            <span class="program-state local">${cloudSaveRunning ? "Salvataggio in corso" : "Bozza locale da salvare"}</span>
+            <h3>${escapeHtml([state.meta.name, periodLabel(state.meta.period)].filter(Boolean).join(" · "))}</h3>
             <p>${state.sheetOrder.length} allenamenti · ${stateExerciseCount(state)} esercizi · ${state.sessions.length} settimane</p>
           </div>
           <div class="actions">
             <button class="btn primary" type="button" data-open-current-draft="1">Apri la bozza</button>
           </div>
         </article>` : "";
-      const savedCards = programsForClient().map(program => {
+      const currentId = latestClientProgram(appState.selectedClientId)?.id;
+      const orderedPrograms = programsForClient().sort((a,b) => Number(b.id === currentId) - Number(a.id === currentId));
+      const savedCards = orderedPrograms.map((program, index) => {
         const isActive = program.id === appState.selectedProgramId;
         const programState = isActive ? state : stateFromProgram(program);
         const updated = program.updated_at
@@ -2760,88 +3342,357 @@
         const hasLocalChanges = isActive && state.localDirty;
         const lastAudit = Array.isArray(program.data?.audit_log) ? program.data.audit_log.at(-1) : null;
         const trainer = programTrainer(program) || assignedTrainer;
+        const revisions = revisionsForProgram(program.id);
+        const revisionPanel = revisions.length ? `
+          <details class="archive-panel revision-panel">
+            <summary>Versioni precedenti ripristinabili (${revisions.length})</summary>
+            <div class="revision-list">
+              ${revisions.slice(0, 20).map(revision => `
+                <div class="revision-row">
+                  <span>${escapeHtml(new Date(revision.created_at || Date.now()).toLocaleString("it-IT"))}${revision.created_by ? ` · ${escapeHtml(fullName(operatorFromAny(revision.created_by)) || revision.created_by)}` : ""}</span>
+                  ${editable ? `<button class="btn" type="button" data-restore-revision="${escapeAttr(revision.id)}" data-program-id="${escapeAttr(program.id)}">Ripristina questa versione</button>` : ""}
+                </div>`).join("")}
+            </div>
+          </details>` : "";
         return `
+          ${program.id === currentId ? '<h2 class="program-section-heading">Scheda attuale</h2>' : (index === 1 || index === 0 ? '<h2 class="program-section-heading">Storico schede</h2>' : '')}
           <article class="program-card ${isActive ? "active" : ""}">
             <div>
+              <p><strong>${program.id === currentId ? 'Scheda attuale' : 'Scheda precedente · storico'}${isActive ? ' · aperta' : ''}</strong></p>
               <span class="program-state ${hasLocalChanges ? "local" : ""}">${editable ? (hasLocalChanges ? "Sincronizzazione..." : "Salvato automaticamente") : "Sola lettura"}</span>
-              <h3>${escapeHtml(periodLabel(isActive ? programState?.meta?.period : program.period))}</h3>
+              <h3>${escapeHtml(programLabel(program))}</h3>
               <p>PT: ${escapeHtml(fullName(trainer) || "Non identificato")} · ${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}${lastAudit ? ` · ultimo intervento ${escapeHtml(lastAudit.email || fullName(operatorFromAny(lastAudit.by)) || "PT")}` : ""}</p>
+              <label class="field assignment-date-field">Data assegnazione<input type="date" data-assignment-date="${escapeAttr(program.id)}" value="${escapeAttr(program.assignmentDate || "")}" ${editable ? "" : "disabled"}></label>
             </div>
             <div class="actions">
               ${editable ? `
                 <button class="btn primary" type="button" data-open-program="${escapeAttr(program.id)}">Crea / modifica</button>
                 <button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Usa scheda</button>
                 <button class="btn" type="button" data-duplicate-program="${escapeAttr(program.id)}">Duplica</button>
-                <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Archivia</button>
+                ${program.id !== currentId ? `<button class="btn" type="button" data-current-program="${escapeAttr(program.id)}">Imposta come attuale</button>` : ''}
+                <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Elimina scheda</button>
               ` : `
                 <button class="btn primary" type="button" data-preview-program="${escapeAttr(program.id)}">Visualizza scheda</button>
                 <button class="btn" type="button" data-open-program="${escapeAttr(program.id)}">Vedi struttura</button>
               `}
             </div>
+            ${revisionPanel}
           </article>`;
       }).join("");
-      const archivedCards = programsForClient(appState.selectedClientId, true)
-        .filter(program => program.archived)
-        .map(program => `
-          <article class="program-card">
-            <div>
-              <span class="program-state">Archiviata · recuperabile</span>
-              <h3>${escapeHtml(periodLabel(program.period))}</h3>
-              <p>Archiviata ${escapeHtml(new Date(program.data.archived_at || program.updated_at || Date.now()).toLocaleString("it-IT"))}</p>
-            </div>
-            <div class="actions">
-              ${editable
-                ? `<button class="btn" type="button" data-restore-program="${escapeAttr(program.id)}">Ripristina</button>`
-                : `<button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Visualizza</button>`}
-            </div>
-          </article>`).join("");
       const emptyState = editable
         ? `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`
         : `<div class="empty-focus"><strong>Nessuna scheda salvata</strong>Il Personal Trainer assegnato non ha ancora salvato programmi per questo cliente.</div>`;
-      const archiveSection = archivedCards
-        ? `<details class="archive-panel"><summary>Schede archiviate (${programsForClient(appState.selectedClientId, true).filter(program => program.archived).length})</summary><div class="program-list">${archivedCards}</div></details>`
-        : "";
-      container.innerHTML = `${draftCard}${savedCards || (!draftCard ? emptyState : "")}${archiveSection}`;
+      container.innerHTML = `${draftCard}${savedCards || (!draftCard ? emptyState : "")}`;
       container.querySelectorAll("[data-open-program]").forEach(button => {
-        button.addEventListener("click", () => {
-          selectProgram(button.dataset.openProgram);
-          showView("builderView");
+        button.addEventListener("click", async () => {
+          if (await selectProgram(button.dataset.openProgram)) showView("builderView");
         });
       });
       container.querySelectorAll("[data-preview-program]").forEach(button => {
-        button.addEventListener("click", () => {
-          selectProgram(button.dataset.previewProgram);
-          showView("sheetView");
+        button.addEventListener("click", async () => {
+          if (await selectProgram(button.dataset.previewProgram)) showView("sheetView");
         });
       });
       container.querySelector("[data-open-current-draft]")?.addEventListener("click", () => showView("builderView"));
       container.querySelectorAll("[data-duplicate-program]").forEach(button => {
         button.addEventListener("click", async () => {
-          if (appState.selectedProgramId !== button.dataset.duplicateProgram) selectProgram(button.dataset.duplicateProgram);
-          await duplicateProgram();
+          await duplicateProgram(button.dataset.duplicateProgram);
         });
       });
       container.querySelectorAll("[data-delete-program]").forEach(button => {
         button.addEventListener("click", () => deleteProgram(button.dataset.deleteProgram));
       });
+      container.querySelectorAll("[data-current-program]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const clientId = appState.selectedClientId;
+          if (!await confirmAction('Impostare questa scheda come attuale? La precedente rimarrà nello storico.')) return;
+          button.disabled = true;
+          try {
+            const result = await ptData('set_current_program', {programId: button.dataset.currentProgram});
+            appState.currentPrograms[clientId] = result.currentProgramId;
+            renderProgramManager(); renderProgramHistory(); renderClientFocus();
+          } catch(error) { showToast(error.message); button.disabled = false; }
+        });
+      });
       container.querySelectorAll("[data-restore-program]").forEach(button => {
         button.addEventListener("click", () => restoreProgram(button.dataset.restoreProgram));
       });
+      container.querySelectorAll("[data-restore-revision]").forEach(button => {
+        button.addEventListener("click", () => restoreProgramRevision(button.dataset.restoreRevision, button.dataset.programId));
+      });
+      container.querySelectorAll("[data-assignment-date]").forEach(input => {
+        input.addEventListener("change", async () => {
+          if (!editable || !input.value) return;
+          if (await selectProgram(input.dataset.assignmentDate)) {
+            state.meta.assignedAt = input.value;
+            autosave("assignment-date");
+            showToast("Data di assegnazione aggiornata");
+          }
+        });
+      });
+    }
+
+    function localDateValue(date = new Date()) {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(date);
+      const pick = type => parts.find(part => part.type === type)?.value || "";
+      return `${pick("year")}-${pick("month")}-${pick("day")}`;
+    }
+
+    function gripNumber(value) {
+      if (value === null || value === undefined || String(value).trim() === "") return null;
+      const number = Number(String(value).replace(",", "."));
+      return Number.isFinite(number) && number > 0 ? Math.round(number * 10) / 10 : null;
+    }
+
+    function normalizeHandGripMeasurement(row) {
+      const data = row?.data && typeof row.data === "object" ? row.data : (row || {});
+      const rightKg = gripNumber(data.hand_grip_dx ?? data.handGripDx ?? data.gripDx ?? data.right_kg);
+      const leftKg = gripNumber(data.hand_grip_sx ?? data.handGripSx ?? data.gripSx ?? data.left_kg);
+      const type = String(data.tipo || data.test_type || "").toLowerCase().replace(/[\s-]+/g, "_");
+      if (!type.includes("hand_grip") && rightKg === null && leftKg === null) return null;
+      const measuredOn = String(data.measured_on || data.data || row?.updated_at || row?.created_at || "").slice(0, 10);
+      return {
+        id: row?.id || data.id || "",
+        clientId: row?.cliente_id || data.clienteId || data.cliente_id || "",
+        measuredOn,
+        rightKg,
+        leftKg,
+        dominantHand: String(data.mano_dominante || data.dominant_hand || ""),
+        attempts: Number(data.tentativi || data.attempts || 0) || null,
+        position: String(data.posizione || data.position || ""),
+        notes: String(data.note || data.notes || ""),
+        voided: Boolean(data.voided_at),
+        updatedAt: row?.updated_at || data.recorded_at || row?.created_at || ""
+      };
+    }
+
+    function handGripMeasurements(clientId = appState.selectedClientId) {
+      return appState.physicalMeasurements
+        .map(normalizeHandGripMeasurement)
+        .filter(item => item && !item.voided && String(item.clientId) === String(clientId || ""))
+        .sort((a, b) => `${a.measuredOn}|${a.updatedAt}`.localeCompare(`${b.measuredOn}|${b.updatedAt}`));
+    }
+
+    function gripDateLabel(value) {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return "Data non indicata";
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    }
+
+    function gripKg(value) {
+      return value === null ? "—" : `${value.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+    }
+
+    function gripDelta(current, first) {
+      if (current === null || first === null) return null;
+      const kg = Math.round((current - first) * 10) / 10;
+      const percent = first > 0 ? Math.round((kg / first) * 1000) / 10 : null;
+      return { kg, percent };
+    }
+
+    function gripDeltaMarkup(current, first, emptyText = "Serve un secondo controllo") {
+      const delta = gripDelta(current, first);
+      if (!delta) return `<small>${escapeHtml(emptyText)}</small>`;
+      const cssClass = delta.kg > 0 ? "positive" : (delta.kg < 0 ? "negative" : "");
+      const sign = delta.kg > 0 ? "+" : "";
+      const percent = delta.percent === null ? "" : ` · ${sign}${delta.percent.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`;
+      return `<small class="${cssClass}">${sign}${delta.kg.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg${percent}</small>`;
+    }
+
+    function renderGripView() {
+      const summary = document.getElementById("gripSummary");
+      const history = document.getElementById("gripHistory");
+      const dateInput = document.getElementById("gripDate");
+      if (!summary || !history || !dateInput) return;
+      if (!dateInput.value) dateInput.value = localDateValue();
+
+      const client = selectedClient();
+      const measurements = handGripMeasurements();
+      const first = measurements[0] || null;
+      const latest = measurements.at(-1) || null;
+      const hasProgress = measurements.length > 1;
+      summary.innerHTML = `
+        <div class="grip-metric">
+          <span>Prima misurazione</span>
+          <strong>${first ? escapeHtml(gripDateLabel(first.measuredOn)) : "—"}</strong>
+          <small>${first ? `DX ${escapeHtml(gripKg(first.rightKg))} · SX ${escapeHtml(gripKg(first.leftKg))}` : "Ancora nessun test registrato"}</small>
+        </div>
+        <div class="grip-metric">
+          <span>Ultima misurazione</span>
+          <strong>${latest ? escapeHtml(gripDateLabel(latest.measuredOn)) : "—"}</strong>
+          <small>${latest ? `DX ${escapeHtml(gripKg(latest.rightKg))} · SX ${escapeHtml(gripKg(latest.leftKg))}` : "Lo storico apparirà qui"}</small>
+        </div>
+        <div class="grip-metric">
+          <span>Progresso mano destra</span>
+          <strong>${latest ? escapeHtml(gripKg(latest.rightKg)) : "—"}</strong>
+          ${hasProgress ? gripDeltaMarkup(latest.rightKg, first.rightKg, "Valore non confrontabile") : "<small>Serve un secondo controllo</small>"}
+        </div>
+        <div class="grip-metric">
+          <span>Progresso mano sinistra</span>
+          <strong>${latest ? escapeHtml(gripKg(latest.leftKg)) : "—"}</strong>
+          ${hasProgress ? gripDeltaMarkup(latest.leftKg, first.leftKg, "Valore non confrontabile") : "<small>Serve un secondo controllo</small>"}
+        </div>`;
+
+      if (!client || !measurements.length) {
+        history.innerHTML = `<div class="grip-empty"><strong>${client ? "Nessuna misurazione" : "Seleziona un cliente"}</strong>${client ? "Registra il test iniziale per creare il riferimento del percorso." : "Lo storico Hand Grip è specifico per ogni cliente."}</div>`;
+        return;
+      }
+
+      history.innerHTML = `
+        <div class="grip-table-wrap">
+          <table class="grip-table">
+            <thead><tr><th>Data</th><th>Destra</th><th>Sinistra</th><th>Variazione dall'inizio</th><th>Protocollo</th><th>Note</th><th>Azioni</th></tr></thead>
+            <tbody>${[...measurements].reverse().map(item => {
+              const rightDelta = gripDelta(item.rightKg, first.rightKg);
+              const leftDelta = gripDelta(item.leftKg, first.leftKg);
+              const deltaLine = (label, delta) => {
+                if (!delta) return `${label} —`;
+                const sign = delta.kg > 0 ? "+" : "";
+                const cssClass = delta.kg > 0 ? "positive" : (delta.kg < 0 ? "negative" : "");
+                return `${label} <span class="grip-delta ${cssClass}">${sign}${delta.kg.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg</span>`;
+              };
+              const protocol = [item.attempts ? `${item.attempts} tentativi` : "", item.position === "in_piedi" ? "in piedi" : (item.position === "seduto" ? "seduto" : "")].filter(Boolean).join(" · ") || "—";
+              return `<tr>
+                <td><strong>${escapeHtml(gripDateLabel(item.measuredOn))}</strong></td>
+                <td>${escapeHtml(gripKg(item.rightKg))}</td>
+                <td>${escapeHtml(gripKg(item.leftKg))}</td>
+                <td>${deltaLine("DX", rightDelta)}<br>${deltaLine("SX", leftDelta)}</td>
+                <td>${escapeHtml(protocol)}${item.dominantHand ? `<br><small>Dominante: ${escapeHtml(item.dominantHand)}</small>` : ""}</td>
+                <td>${item.notes ? escapeHtml(item.notes) : "—"}</td>
+                <td>${canEditClient() ? `<button class="btn danger" type="button" data-void-grip="${escapeAttr(item.id)}">Annulla</button>` : "—"}</td>
+              </tr>`;
+            }).join("")}</tbody>
+          </table>
+        </div>`;
+      history.querySelectorAll("[data-void-grip]").forEach(button => {
+        button.addEventListener("click", () => voidHandGripMeasurement(button.dataset.voidGrip));
+      });
+    }
+
+    async function saveHandGripMeasurement(event) {
+      event?.preventDefault();
+      if (!requireEditableClient() || appState.gripSaveMode === "saving") return;
+      const measuredOn = document.getElementById("gripDate").value;
+      const rightKg = document.getElementById("gripRight").value;
+      const leftKg = document.getElementById("gripLeft").value;
+      if (!measuredOn) {
+        showToast("Inserisci la data del test");
+        document.getElementById("gripDate").focus();
+        return;
+      }
+      if (!rightKg && !leftKg) {
+        showToast("Inserisci almeno il valore di una mano");
+        document.getElementById("gripRight").focus();
+        return;
+      }
+
+      const button = document.getElementById("gripSaveBtn");
+      appState.gripSaveMode = "saving";
+      button.disabled = true;
+      button.textContent = "Salvataggio...";
+      renderSaveState();
+      try {
+        const measurement = {
+          clientId: appState.selectedClientId,
+          measuredOn,
+          rightKg,
+          leftKg,
+          dominantHand: document.getElementById("gripDominant").value,
+          attempts: document.getElementById("gripAttempts").value,
+          position: document.getElementById("gripPosition").value,
+          notes: document.getElementById("gripNotes").value
+        };
+        const signature = JSON.stringify(measurement);
+        let pending = pendingGripSaves.get(measurement.clientId);
+        if (pending?.signature !== signature) {
+          pending = { signature, measurementId: id("grip") };
+          pendingGripSaves.set(measurement.clientId, pending);
+        }
+        const result = await ptData("save_hand_grip", { ...measurement, measurementId: pending.measurementId });
+        pendingGripSaves.delete(measurement.clientId);
+        if (result.measurement) {
+          appState.physicalMeasurements = [
+            result.measurement,
+            ...appState.physicalMeasurements.filter(item => String(item.id) !== String(result.measurement.id))
+          ];
+        }
+        document.getElementById("gripRight").value = "";
+        document.getElementById("gripLeft").value = "";
+        document.getElementById("gripNotes").value = "";
+        appState.gripSaveMode = "saved";
+        renderGripView();
+        renderClientFocus();
+        showToast("Misurazione Hand Grip salvata nello storico");
+      } catch (error) {
+        console.error(error);
+        appState.gripSaveMode = "error";
+        showToast(error.message || "Non riesco a salvare la misurazione");
+      } finally {
+        button.textContent = "Salva nello storico";
+        setEditorAvailability();
+        renderSaveState();
+      }
+    }
+
+    async function voidHandGripMeasurement(measurementId) {
+      if (!requireEditableClient() || !measurementId || appState.gripSaveMode === "saving") return;
+      if (!await confirmAction("Annullare questa misurazione Hand Grip? Il dato resterà tracciato, ma non verrà più usato nei confronti.")) return;
+      appState.gripSaveMode = "saving";
+      renderSaveState();
+      try {
+        const result = await ptData("void_hand_grip", { measurementId });
+        if (result.measurement) {
+          const index = appState.physicalMeasurements.findIndex(item => String(item.id) === String(result.measurement.id));
+          if (index >= 0) appState.physicalMeasurements.splice(index, 1, result.measurement);
+        }
+        appState.gripSaveMode = "saved";
+        renderGripView();
+        renderClientFocus();
+        showToast("Misurazione annullata e conservata nel registro");
+      } catch (error) {
+        console.error(error);
+        appState.gripSaveMode = "error";
+        showToast(error.message || "Non riesco ad annullare la misurazione");
+      } finally {
+        setEditorAvailability();
+        renderSaveState();
+      }
     }
 
     function renderClientFocus() {
       const client = selectedClient();
+      for (const anchorId of ['programClientMeta','sheetClientMeta']) {
+        const id=anchorId+'Essentials';
+        let essentials=document.getElementById(id);
+        const anchor=document.getElementById(anchorId);
+        if(!essentials&&anchor){essentials=document.createElement('div');essentials.id=id;anchor.after(essentials);}
+        if(essentials)essentials.innerHTML=client?PTEssentials.render(client,client.anamnesisSource):'';
+      }
       const name = client ? fullName(client) : "Nessun cliente selezionato";
-      const objective = client?.obiettivo ? `Obiettivo: ${client.obiettivo}` : "Seleziona prima un cliente dall'area Clienti.";
+      const objective = client?.obiettivo ? `Obiettivo: ${client.obiettivo}` : client ? "Obiettivo non indicato" : "Seleziona prima un cliente dall'area Clienti.";
       const period = periodLabel(state.meta.period || currentPeriodKey());
-      ["programClientName", "sheetClientName", "libraryClientName"].forEach(id => {
+      ["programClientName", "sheetClientName", "libraryClientName", "gripClientName"].forEach(id => {
         const element = document.getElementById(id);
         if (element) element.textContent = name;
       });
       const programMeta = document.getElementById("programClientMeta");
       if (programMeta) programMeta.textContent = client ? `${objective} · ${programsForClient().length} programmi salvati` : objective;
       const sheetMeta = document.getElementById("sheetClientMeta");
-      if (sheetMeta) sheetMeta.textContent = client ? `${objective} · ${state.sheetOrder.length} allenamenti nel programma` : objective;
+      if (sheetMeta) sheetMeta.textContent = client ? `${!appState.selectedProgramId ? 'Nuova scheda' : latestClientProgram(appState.selectedClientId)?.id === appState.selectedProgramId ? 'Scheda attuale' : 'Scheda dello storico · modificarla non cambia la scheda attuale'} · ${objective} · ${state.sheetOrder.length} allenamenti nel programma` : objective;
+      const gripMeta = document.getElementById("gripClientMeta");
+      if (gripMeta) {
+        const count = handGripMeasurements().length;
+        gripMeta.textContent = client ? `${objective} · ${count} ${count === 1 ? "misurazione salvata" : "misurazioni salvate"}` : objective;
+      }
       ["sheetPeriodLabel", "libraryPeriodLabel"].forEach(id => {
         const element = document.getElementById(id);
         if (element) element.textContent = period;
@@ -2871,9 +3722,11 @@
       const viewLabels = {
         summaryView: "Riepilogo",
         clientsView: "Clienti",
-        programsView: "Programmi mensili",
+        programsView: "Schede cliente",
+        templatesView: "Archivio Programmi",
         builderView: "Crea programma",
         sheetView: "Usa scheda",
+        gripView: "Hand Grip",
         libraryView: "Esercizi e progressioni"
       };
       document.getElementById("crumbs").textContent = client
@@ -2888,6 +3741,7 @@
         saving: "Salvataggio...",
         supabase: "Salvata",
         error: "Da sincronizzare",
+        conflict: "Conflitto",
         readonly: "Sola lettura",
         "readonly-empty": "Nessuna scheda"
       })[appState.saveMode] || "Bozza";
@@ -2899,7 +3753,18 @@
     }
 
     function renderSaveState(prefix) {
+      if (prefix) appState.saveMode = prefix;
+      document.querySelectorAll('#saveBottomBtn,#saveSheetBottomBtn').forEach(button => {button.disabled=!canEditClient() || appState.saveMode==='saving';});
       const el = document.getElementById("saveState");
+      if (appState.activeView === "gripView") {
+        const count = handGripMeasurements().length;
+        if (!selectedClient()) el.innerHTML = "Hand Grip · <strong>seleziona un cliente</strong>";
+        else if (isReadOnlySelection()) el.innerHTML = `Hand Grip · <strong>sola lettura</strong> · ${count} ${count === 1 ? "misurazione" : "misurazioni"}`;
+        else if (appState.gripSaveMode === "saving") el.innerHTML = "Hand Grip · <strong>salvataggio...</strong>";
+        else if (appState.gripSaveMode === "error") el.innerHTML = "Hand Grip · <strong>salvataggio da riprovare</strong>";
+        else el.innerHTML = `Hand Grip · <strong>storico sincronizzato</strong> · ${count} ${count === 1 ? "misurazione" : "misurazioni"}`;
+        return;
+      }
       if (isReadOnlySelection()) {
         appState.saveMode = appState.selectedProgramId ? "readonly" : "readonly-empty";
         el.innerHTML = appState.selectedProgramId
@@ -2919,11 +3784,18 @@
           autosave: "Sincronizzazione...",
           saving: "Salvataggio...",
           supabase: "Salvata",
-          error: "Da sincronizzare"
+          error: "Da sincronizzare",
+          conflict: "Conflitto"
         })[appState.saveMode] || "Bozza";
       }
+      if (effectivePrefix === "conflict") {
+        el.innerHTML = `Una versione piu recente e' stata salvata da un'altra sessione. <strong>La tua bozza non e' stata sovrascritta.</strong> <button class="btn" type="button" onclick="resolveProgramConflict('reload')">Ricarica versione server</button> <button class="btn danger" type="button" onclick="resolveProgramConflict('force')">Sovrascrivi con la mia bozza</button>`;
+        return;
+      }
       if (effectivePrefix === "saving") {
-        el.innerHTML = "Modifica salvata sul dispositivo · <strong>sincronizzazione...</strong>";
+        el.innerHTML = appState.localStorageWarning
+          ? "Cache locale limitata · <strong>sincronizzazione sicura sul server...</strong>"
+          : "Modifica salvata sul dispositivo · <strong>sincronizzazione...</strong>";
         return;
       }
       if (effectivePrefix === "error") {
@@ -2943,7 +3815,33 @@
       el.innerHTML = `${labels[effectivePrefix] || "Salvata"} alle <strong>${time}</strong>`;
     }
 
+    async function resolveProgramConflict(mode) {
+      const conflict = appState.saveConflict;
+      if (!conflict) return;
+      if (mode === "reload") {
+        if (!await confirmAction("Ricaricare la versione salvata sul server? Le modifiche della bozza locale in conflitto verranno scartate.")) return;
+        const normalized = normalizeProgram(conflict.current);
+        const index = appState.programs.findIndex(program => program.id === normalized.id);
+        if (index >= 0) appState.programs.splice(index, 1, normalized);
+        else appState.programs.unshift(normalized);
+        state = stateFromProgram(normalized) || clientDefaultState(selectedClient());
+        state.localDirty = false;
+        removeLocalValue(STORAGE_KEY);
+        appState.saveConflict = null;
+        appState.saveMode = "supabase";
+        renderAll();
+        showToast("Versione server ricaricata");
+        return;
+      }
+      if (mode === "force") {
+        if (!await confirmAction("Sovrascrivere la versione piu recente sul server con la tua bozza locale? La versione precedente restera nello storico ripristinabile.")) return;
+        appState.saveConflict = null;
+        await saveProgramToSupabase(null, { force: true });
+      }
+    }
+
     function syncMetaFromInputs() {
+      state.meta.name = document.getElementById("programName").value.trim().slice(0, 120);
       ["period", "goal", "level", "frequency", "warmup", "generalNotes"].forEach(id => {
         state.meta[id] = document.getElementById(id).value;
       });
@@ -3013,6 +3911,7 @@
           previous_period: exercise.previousPeriod || "",
           plan_by_session: sourceState.sessions.map((sessionName, sessionIndex) => ({
             session: sessionName,
+            session_date: sourceState.workoutDates?.[sheetKey]?.[sessionIndex] || "",
             plan: exercise.plan[sessionIndex] || "",
             feedback: exercise.feedback[sessionIndex] || "",
             sets: clone(exercise.weekSets?.[sessionIndex] || []),
@@ -3028,6 +3927,7 @@
         sheets: sheets.map(sheet => ({
           key: sheet.key,
           name: sheet.name,
+          session_date: sourceState.workoutDates?.[sheet.key]?.[sessionIndex] || "",
           exercises: sheet.exercises.map(exercise => ({
             id: exercise.id,
             name: exercise.name,
@@ -3057,6 +3957,7 @@
         session_count: sourceState.sessions.length,
         exercise_count: exerciseCount(sourceState),
         session_names: [...sourceState.sessions],
+        workout_dates: clone(sourceState.workoutDates || {}),
         sheets,
         progression_sessions: progressionSessions
       };
@@ -3083,6 +3984,7 @@
 
     function programPayload(programId, savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt, clientId = appState.selectedClientId) {
       const studioState = normalizeState(sourceState);
+      delete studioState.pendingCloudSave;
       studioState.lastSavedAt = savedAt;
       studioState.draftProgramId = programId;
       studioState.localDirty = false;
@@ -3092,7 +3994,7 @@
         cliente_id: clientId,
         trainer_id: trainer?.id || "",
         created_by: trainer?.id || "",
-        name: `Programma PT${client ? ` - ${fullName(client)}` : ""} · ${periodLabel(studioState.meta.period)}`,
+        name: studioState.meta.name || `Programma PT${client ? ` - ${fullName(client)}` : ""} · ${periodLabel(studioState.meta.period)}`,
         period: studioState.meta.period || currentPeriodKey(),
         goal: studioState.meta.goal || "",
         level: studioState.meta.level || "",
@@ -3107,7 +4009,8 @@
         save_meta: {
           saved_at: savedAt,
           saved_by: trainer?.id || "",
-          source: "supabase"
+          request_id: sourceState.pendingCloudSave?.requestId || "",
+          source: "pt_data_api"
         },
         audit_log: nextProgramAudit(programId, savedAt, trainer)
       };
@@ -3115,6 +4018,8 @@
 
     async function saveProgramToSupabase(event, options = {}) {
       event?.preventDefault();
+      // Manual saves and autosave share one queue, including the first insert.
+      if (!options.queuedSave) return flushCloudSave({ ...options, silent: options.silent === true });
       const client = selectedClient();
       const silent = options.silent === true;
       if (!appState.currentPt) {
@@ -3138,38 +4043,49 @@
       const sourceProgramId = appState.selectedProgramId;
       const sourceStorageKey = STORAGE_KEY;
       const sourceTrainer = appState.currentPt;
+      const existingProgram = appState.programs.find(program => program.id === sourceProgramId || program.rowId === sourceProgramId) || null;
       const saveVersion = Number.isFinite(options.saveVersion) ? options.saveVersion : stateVersion(sourceState);
       try {
-        const programId = sourceProgramId || id("pt_light");
+        const programId = sourceProgramId || sourceState.draftProgramId || id("pt_light");
+        if (sourceState.pendingCloudSave?.version !== saveVersion) sourceState.pendingCloudSave = { version: saveVersion, requestId: id("save") };
         const savedAt = new Date().toISOString();
         sourceState.lastSavedAt = savedAt;
         sourceState.draftProgramId = programId;
         sourceState.localDirty = true;
-        localStorage.setItem(sourceStorageKey, JSON.stringify(sourceState));
+        writeLocalValue(sourceStorageKey, JSON.stringify(sourceState));
         const payload = programPayload(programId, savedAt, sourceState, client, sourceTrainer, sourceClientId);
-        await sb("schede_allenamento", "?on_conflict=id", {
-          method: "POST",
-          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-          body: {
-            id: programId,
-            cliente_id: sourceClientId,
-            data: payload,
-            updated_at: savedAt
-          }
+        const result = await ptData("upsert_program", {
+          programId,
+          clientId: sourceClientId,
+          data: payload,
+          expectedUpdatedAt: existingProgram?.updated_at || null,
+          force: options.force === true
         });
+        const savedRow = result.row || { id: programId, cliente_id: sourceClientId, data: payload, updated_at: savedAt };
         const hasNewerChanges = stateVersion(sourceState) > saveVersion;
+        if (!hasNewerChanges) {
+          stateVersions.set(sourceState, saveVersion);
+          delete sourceState.pendingCloudSave;
+        }
         sourceState.localDirty = hasNewerChanges;
+        sourceState.lastSavedAt = savedRow.updated_at || savedAt;
         const destinationStorageKey = storageKeyFor(sourceClientId, programId);
-        localStorage.setItem(destinationStorageKey, JSON.stringify(sourceState));
-        if (sourceStorageKey !== destinationStorageKey) localStorage.removeItem(sourceStorageKey);
-        const normalized = normalizeProgram({ id: programId, cliente_id: sourceClientId, data: payload, updated_at: savedAt });
+        writeLocalValue(destinationStorageKey, JSON.stringify(sourceState));
+        if (sourceStorageKey !== destinationStorageKey) removeLocalValue(sourceStorageKey);
+        const normalized = normalizeProgram(savedRow);
+        if (result.currentProgramId !== undefined) (appState.currentPrograms ||= {})[sourceClientId] = result.currentProgramId;
         const existingIndex = appState.programs.findIndex(program => program.id === programId || program.rowId === programId);
         if (existingIndex >= 0) appState.programs.splice(existingIndex, 1, normalized);
         else appState.programs.unshift(normalized);
+        if (result.revision?.id && !appState.revisions.some(revision => revision.id === result.revision.id)) {
+          appState.revisions.unshift(result.revision);
+        }
+        appState.saveConflict = null;
         const contextStillOpen = state === sourceState && appState.selectedClientId === sourceClientId && appState.selectedProgramId === sourceProgramId;
         if (contextStillOpen) {
           appState.selectedProgramId = programId;
           STORAGE_KEY = destinationStorageKey;
+          renderClientList();
           renderProgramHistory();
           renderProgramManager();
           renderClientFocus();
@@ -3181,9 +4097,17 @@
       } catch (error) {
         console.error(error);
         sourceState.localDirty = true;
-        localStorage.setItem(sourceStorageKey, JSON.stringify(sourceState));
-        if (state === sourceState) renderSaveState("error");
-        if (!silent) showToast("Sincronizzazione non riuscita: la modifica resta salvata sul dispositivo");
+        writeLocalValue(sourceStorageKey, JSON.stringify(sourceState));
+        if (error.code === "PROGRAM_CONFLICT" && error.current) {
+          appState.saveConflict = { current: error.current, programId: sourceProgramId };
+          if (state === sourceState) renderSaveState("conflict");
+          if (!silent) showToast("Scheda non sovrascritta: scegli quale versione conservare");
+        } else {
+          if (state === sourceState) renderSaveState("error");
+          if (!silent) showToast(appState.localStorageWarning
+            ? "Sincronizzazione non riuscita: lascia aperta la pagina e riprova"
+            : "Sincronizzazione non riuscita: la modifica resta salvata sul dispositivo");
+        }
         return false;
       } finally {
         if (saveButton) saveButton.disabled = false;
@@ -3460,12 +4384,12 @@
       }).join("")}`;
     }
 
-    function replaceExerciseFromLibrary(index, selectedKey) {
+    async function replaceExerciseFromLibrary(index, selectedKey) {
       const exercise = state.sheets[state.currentSheet][index];
       const replacement = exerciseLibrary.find(item => exerciseKey(item) === selectedKey);
       if (!exercise || !replacement || exerciseKey(exercise) === selectedKey) return;
       const hasRecordedLoads = exercise.feedback?.some(Boolean);
-      if (hasRecordedLoads && !confirmAction(`Sostituire “${exercise.name}” con “${replacement.name}”? I carichi registrati su questo esercizio verranno rimossi.`)) {
+      if (hasRecordedLoads && !await confirmAction(`Sostituire “${exercise.name}” con “${replacement.name}”? I carichi registrati su questo esercizio verranno rimossi.`)) {
         renderExercises();
         return;
       }
@@ -3509,7 +4433,41 @@
       showToast(presetKey === "manual" ? "Progressione impostata come manuale" : `Progressione ${preset.title} applicata`);
     }
 
+    function renderCoachingProgramEditor() {
+      const host = document.getElementById("coachingProgramEditor");
+      const builder = document.getElementById("builderView");
+      if (!host || !window.NeaceaPTEditor) {
+        builder.classList.remove("coaching-ready");
+        return false;
+      }
+      if (!coachingProgramEditor) {
+        coachingProgramEditor = window.NeaceaPTEditor.mount(host, {
+          getState: () => state,
+          canEdit: () => canEditClient(),
+          confirm: confirmAction,
+          onSelectionChange: () => { renderMetrics(); renderSheetPreview(); },
+          onChange: () => {
+            state.sheetOrder.forEach(key => {
+              state.workoutDates = state.workoutDates || {};
+              state.workoutDates[key] = state.workoutDates[key] || state.sessions.map(() => "");
+            });
+            autosave();
+            renderTabs();
+            renderMetrics();
+            renderSheetPreview();
+          }
+        });
+      } else coachingProgramEditor.sync();
+      builder.classList.add("coaching-ready");
+      return true;
+    }
+
     function renderExercises() {
+      if (renderCoachingProgramEditor()) {
+        renderMetrics();
+        renderSheetPreview();
+        return;
+      }
       title.textContent = `Allenamento ${state.currentSheet}`;
       const exercises = state.sheets[state.currentSheet];
       if (!exercises.length) {
@@ -3561,10 +4519,10 @@
               </div>
               <div class="field">
                 <label for="exercise-recovery-${index}">Recupero</label>
-                <input id="exercise-recovery-${index}" value="${escapeAttr(exercise.recovery)}" onchange="updateExercise(${index}, 'recovery', this.value)">
+                <input id="exercise-recovery-${index}" value="${escapeAttr(exercise.recovery)}" oninput="updateExercise(${index}, 'recovery', this.value)">
               </div>
             </div>
-            <textarea onchange="updateExercise(${index}, 'notes', this.value)" aria-label="Note trainer">${escapeHtml(exercise.notes)}</textarea>
+            <textarea oninput="updateExercise(${index}, 'notes', this.value)" aria-label="Note trainer">${escapeHtml(exercise.notes)}</textarea>
             ${state.compact ? renderCompact(exercise, index) : renderTable(exercise, index)}
           </div>
         </article>
@@ -3599,15 +4557,19 @@
 
     function operationalWeekModel(exercises = state.sheets[state.currentSheet] || []) {
       const progress = state.sessions.map((_, weekIndex) => {
-        const completedExercises = exercises.filter(exercise => {
+        const activeExercises = exercises.filter(e => !e.coachingActiveWeeks || e.coachingActiveWeeks.includes(weekIndex + 1));
+        const completedExercises = activeExercises.filter(exercise => {
           const sets = exercise.weekSets?.[weekIndex] || [];
           return sets.length > 0 && sets.every(set => String(set.reps || "").trim() && String(set.load || "").trim());
         }).length;
-        const touchedExercises = exercises.filter(exercise => (exercise.weekSets?.[weekIndex] || []).some(set => String(set.load || "").trim())).length;
+        const touchedExercises = activeExercises.filter(exercise => (exercise.weekSets?.[weekIndex] || []).some(set =>
+          [set.load, set.rir, set.sessionNote].some(value => String(value || "").trim()) ||
+          Boolean(state.workoutDates?.[state.currentSheet]?.[weekIndex])
+        )).length;
         return {
           filled: completedExercises,
-          completed: exercises.length > 0 && completedExercises === exercises.length,
-          partial: touchedExercises > 0 && completedExercises < exercises.length
+          completed: activeExercises.length > 0 && completedExercises === activeExercises.length,
+          partial: touchedExercises > 0 && completedExercises < activeExercises.length
         };
       });
       const currentIndex = progress.findIndex(week => !week.completed);
@@ -3618,7 +4580,7 @@
 
     function selectOperationalWeek(index) {
       state.activeWeekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(index) || 0));
-      if (canEditClient()) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (canEditClient()) writeLocalValue(STORAGE_KEY, JSON.stringify(state));
       renderExercises();
     }
 
@@ -3673,15 +4635,23 @@
       const weekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(state.activeWeekIndex) || 0));
       const sets = exercise.weekSets[weekIndex] || [];
       const weekName = state.sessions[weekIndex] || `Settimana ${weekIndex + 1}`;
+      const workoutDate = state.workoutDates?.[state.currentSheet]?.[weekIndex] || "";
       return `
         <div class="set-editor progress-table ${compact ? "compact" : ""}" data-set-editor="${escapeAttr(exercise.id)}" data-week-index="${weekIndex}">
           <div class="set-editor-head">
             <div><strong>${escapeHtml(weekName)}</strong><span> · ${sets.length} serie modificabili singolarmente</span></div>
+            <div class="workout-date-field">
+              <label for="${prefix}-date-${escapeAttr(state.currentSheet)}-${exerciseIndex}-${weekIndex}">Data seduta</label>
+              <input id="${prefix}-date-${escapeAttr(state.currentSheet)}-${exerciseIndex}-${weekIndex}" type="date" data-workout-date="${escapeAttr(state.currentSheet)}-${weekIndex}" value="${escapeAttr(workoutDate)}" oninput="updateWorkoutDate('${escapeAttr(state.currentSheet)}', ${weekIndex}, this.value)">
+            </div>
             <button class="btn" type="button" onclick="addExerciseSet(${exerciseIndex}, ${weekIndex})"><span class="icon">+</span>Aggiungi serie</button>
           </div>
           <div class="set-list">
             ${sets.map((set, setIndex) => {
-              const previousLoad = set.previousLoad || (setIndex === 0 ? exercise.previousFeedback?.[weekIndex] || "" : "");
+              const previousSet = weekIndex > 0 ? exercise.weekSets?.[weekIndex - 1]?.[setIndex] : null;
+              const previousLoad = previousSet?.load || (weekIndex === 0 ? set.previousLoad || (setIndex === 0 ? exercise.previousFeedback?.[weekIndex] || "" : "") : "");
+              const previousReps = previousSet?.reps || (weekIndex === 0 ? set.previousReps || "" : "");
+              const previousLabel = weekIndex > 0 ? "Settimana precedente" : "Riferimento precedente";
               return `<div class="set-row">
                 <span class="set-number">Serie ${setIndex + 1}</span>
                 <div class="set-field">
@@ -3696,8 +4666,12 @@
                   <label for="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}">RIR / RPE</label>
                   <input id="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}" value="${escapeAttr(set.rir)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'rir', this.value)" placeholder="es. 2 oppure RPE 8">
                 </div>
+                <div class="set-field set-note-field">
+                  <label for="${prefix}-note-${exerciseIndex}-${weekIndex}-${setIndex}">Nota della serie</label>
+                  <input id="${prefix}-note-${exerciseIndex}-${weekIndex}-${setIndex}" value="${escapeAttr(set.sessionNote)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'sessionNote', this.value)" placeholder="es. tecnica, dolore, assistenza">
+                </div>
                 <button class="set-remove" type="button" onclick="removeExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex})" ${sets.length <= 1 ? "disabled" : ""} aria-label="Elimina serie ${setIndex + 1}">−</button>
-                ${(set.note || previousLoad) ? `<span class="set-previous ${previousLoad ? "previous-load" : ""}">${set.note ? `Indicazione: ${escapeHtml(set.note)}` : ""}${set.note && previousLoad ? " · " : ""}${previousLoad ? `Carico precedente: ${escapeHtml(previousLoad)}` : ""}</span>` : ""}
+                ${(set.note || previousLoad || previousReps) ? `<span class="set-previous ${previousLoad || previousReps ? "previous-load" : ""}">${set.note ? `Indicazione: ${escapeHtml(set.note)}` : ""}${set.note && (previousLoad || previousReps) ? " · " : ""}${previousLoad || previousReps ? `${previousLabel}: ${previousLoad ? escapeHtml(previousLoad) : "—"}${previousReps ? ` × ${escapeHtml(previousReps)} rip.` : ""}` : ""}</span>` : ""}
               </div>`;
             }).join("")}
           </div>
@@ -3725,7 +4699,7 @@
           ? "Consultazione in sola lettura."
           : "Modifiche e carichi vengono salvati automaticamente.";
       document.getElementById("sheetPreviewTitle").textContent = `Allenamento ${state.currentSheet}`;
-      details.textContent = `${periodLabel(state.meta.period)} · ${state.sessions.length} settimane · ${exercises.length} esercizi`;
+      details.textContent = `${state.meta.name ? state.meta.name + " · " : ""}${periodLabel(state.meta.period)} · ${state.sessions.length} settimane · ${exercises.length} esercizi`;
       tabs.innerHTML = state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" type="button" data-preview-sheet="${escapeAttr(key)}">Allenamento ${escapeHtml(key)}</button>`).join("");
       tabs.querySelectorAll("[data-preview-sheet]").forEach(button => {
         button.addEventListener("click", () => {
@@ -3739,40 +4713,38 @@
         <div><span>Frequenza</span><strong>${escapeHtml(state.meta.frequency || "Da definire")}</strong></div>
         <div><span>Riscaldamento</span><strong>${escapeHtml(state.meta.warmup || "Da definire")}</strong></div>`;
       renderOperationalWeekNavigator(exercises);
-      stackPreview.innerHTML = exercises.length ? exercises.map((exercise, exerciseIndex) => `
+      const coachingDay = state.coachingEditorSnapshot?.program.days.find(day => day.letter === state.currentSheet);
+      const coachingWeek = coachingDay?.exercisesByWeek[weekModel.selectedIndex + 1] || [];
+      const operationalExercises = exercises.map((exercise, exerciseIndex) => ({ exercise, exerciseIndex }))
+        .filter(({ exercise }) => !exercise.coachingActiveWeeks || exercise.coachingActiveWeeks.includes(weekModel.selectedIndex + 1))
+        .sort((a, b) => {
+          if (!coachingDay) return a.exerciseIndex - b.exerciseIndex;
+          return coachingWeek.findIndex(e => e.key === a.exercise.id) - coachingWeek.findIndex(e => e.key === b.exercise.id);
+        });
+      if (coachingDay) {
+        const support = [...coachingDay.generalWarmup,
+          ...coachingDay.preparation.map(p => [p.name, p.setsReps, p.cue].filter(Boolean).join(" · ")),
+          ...coachingDay.rampUp.map(p => [p.exercise, ...p.steps].join(" · ")), ...coachingDay.notes];
+        meta.innerHTML += `<div><span>Preparazione e note seduta</span><strong>${support.map(escapeHtml).join("<br>") || "—"}</strong></div>`;
+      }
+      stackPreview.innerHTML = operationalExercises.length ? operationalExercises.map(({ exercise, exerciseIndex }) => `
         <article class="readonly-exercise">
           <div class="readonly-exercise-head">
             <span class="readonly-number">${exerciseIndex + 1}</span>
-            <strong>${escapeHtml(exercise.name)}</strong>
+            <strong>${escapeHtml(coachingWeek.find(e => e.key === exercise.id)?.name || exercise.name)}</strong>
             <div class="mini-actions">
               <span class="exercise-save-badge ${state.localDirty ? "saving" : "saved"}" data-exercise-save="${escapeAttr(exercise.id)}">${state.localDirty ? "Salvataggio..." : "Salvato"}</span>
-              <button class="mini-btn" title="Sposta su" aria-label="Sposta ${escapeAttr(exercise.name)} verso l'alto" onclick="moveExercise(${exerciseIndex}, -1)">↑</button>
-              <button class="mini-btn" title="Sposta giù" aria-label="Sposta ${escapeAttr(exercise.name)} verso il basso" onclick="moveExercise(${exerciseIndex}, 1)">↓</button>
             </div>
           </div>
           <div class="readonly-exercise-body">
-            <div class="operational-exercise-grid">
-              <div class="field">
-                <label for="use-exercise-${exerciseIndex}">Esercizio</label>
-                <select id="use-exercise-${exerciseIndex}" onchange="replaceExerciseFromLibrary(${exerciseIndex}, this.value)">${exerciseLibraryOptions(exercise)}</select>
-              </div>
-              <div class="field">
-                <label for="use-progression-${exerciseIndex}">Progressione</label>
-                <select id="use-progression-${exerciseIndex}" onchange="applyExerciseProgression(${exerciseIndex}, this.value)">${Object.entries(presets).map(([key, preset]) => `<option value="${escapeAttr(key)}" ${key === (exercise.progressionKey || "manual") ? "selected" : ""}>${escapeHtml(preset.title)}</option>`).join("")}</select>
-              </div>
-              <div class="field">
-                <label for="use-effort-${exerciseIndex}">Intensità</label>
-                <select id="use-effort-${exerciseIndex}" onchange="updateExercise(${exerciseIndex}, 'effort', this.value)">${["Facile 2/5", "Media 3/5", "Impegnativa 4/5", "Alta 5/5"].map(value => `<option ${value === exercise.effort ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
-              </div>
-              <div class="field">
-                <label for="use-recovery-${exerciseIndex}">Recupero</label>
-                <input id="use-recovery-${exerciseIndex}" value="${escapeAttr(exercise.recovery || "")}" onchange="updateExercise(${exerciseIndex}, 'recovery', this.value)">
-              </div>
-            </div>
-            <div class="field">
-              <label for="use-notes-${exerciseIndex}">Note tecniche</label>
-              <textarea id="use-notes-${exerciseIndex}" onchange="updateExercise(${exerciseIndex}, 'notes', this.value)">${escapeHtml(exercise.notes || "")}</textarea>
-            </div>
+            ${coachingDay ? (() => {
+              const prescription = coachingWeek.find(e => e.key === exercise.id);
+              const group = (coachingDay.groupsByWeek[weekModel.selectedIndex + 1] || []).find(g => g.exerciseKeys.includes(exercise.id));
+              return `<p>${[prescription?.rest && `Recupero ${prescription.rest}`, prescription?.techniqueName,
+                prescription?.techniqueNote, prescription?.note,
+                group && `${group.type} · ${group.rounds} giri · recupero ${group.restBetweenRounds} · ${group.note}`]
+                .filter(Boolean).map(escapeHtml).join(" · ")}</p>`;
+            })() : ""}
             ${renderWeekSetEditor(exercise, exerciseIndex, "use")}
           </div>
         </article>
@@ -3847,7 +4819,15 @@
     }
 
     function confirmAction(message) {
-      return window.confirm(message);
+      const dialog = document.getElementById("actionConfirmDialog");
+      if (dialog.open) return Promise.resolve(false);
+      document.getElementById("actionConfirmMessage").textContent = message;
+      const original = state, clientId = appState.selectedClientId;
+      dialog.returnValue = "cancel";
+      return new Promise(resolve => {
+        dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm" && state === original && clientId === appState.selectedClientId), { once: true });
+        dialog.showModal();
+      });
     }
 
     function openModal(name = "Goblet squat", group = "Gambe", focusTarget = "exercise") {
@@ -3943,9 +4923,9 @@
       showToast("Esercizio selezionato: controlla l'anteprima e conferma");
     }
 
-    function removeExercise(index) {
+    async function removeExercise(index) {
       const exercise = state.sheets[state.currentSheet][index];
-      if (!exercise || !confirmAction(`Eliminare “${exercise.name}” dalla scheda ${state.currentSheet}?`)) return;
+      if (!exercise || !await confirmAction(`Eliminare “${exercise.name}” dalla scheda ${state.currentSheet}?`)) return;
       state.sheets[state.currentSheet].splice(index, 1);
       renderExercises();
       autosave();
@@ -3974,7 +4954,7 @@
     function updateExercise(index, key, value) {
       const exercise = state.sheets[state.currentSheet][index];
       exercise[key] = value;
-      if (["name", "group", "recovery", "effort", "notes"].includes(key)) renderExercises();
+      if (["name", "group"].includes(key)) renderExercises();
       else renderMetrics();
       autosave(exercise.id);
     }
@@ -4000,11 +4980,35 @@
       const exercise = state.sheets[state.currentSheet][exerciseIndex];
       ensureExerciseWeekSets(exercise, state.sessions.length);
       const set = exercise.weekSets?.[weekIndex]?.[setIndex];
-      if (!set || !["reps", "load", "rir", "note"].includes(key)) return;
+      if (!set || !["reps", "load", "rir", "sessionNote"].includes(key)) return;
       set[key] = value;
+      set.recorded = true;
+      if (String(value || "").trim() && !state.workoutDates?.[state.currentSheet]?.[weekIndex]) {
+        updateWorkoutDate(state.currentSheet, weekIndex, currentLocalDate(), false);
+      }
       syncExerciseWeekSummary(exercise, weekIndex);
       autosave(exercise.id);
       renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
+    }
+
+    function currentLocalDate(date = new Date()) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function updateWorkoutDate(sheetKey, weekIndex, value, save = true) {
+      if (!state.sheetOrder.includes(sheetKey)) return;
+      state.workoutDates = state.workoutDates || {};
+      state.workoutDates[sheetKey] = Array.isArray(state.workoutDates[sheetKey])
+        ? state.workoutDates[sheetKey]
+        : state.sessions.map(() => "");
+      state.workoutDates[sheetKey][weekIndex] = String(value || "").slice(0, 10);
+      document.querySelectorAll(`[data-workout-date="${sheetKey}-${weekIndex}"]`).forEach(input => {
+        if (input.value !== state.workoutDates[sheetKey][weekIndex]) input.value = state.workoutDates[sheetKey][weekIndex];
+      });
+      if (save) autosave();
     }
 
     function addExerciseSet(exerciseIndex, weekIndex) {
@@ -4036,35 +5040,68 @@
         showToast("Massimo 12 settimane");
         return;
       }
+      const previousWeek = state.sessions.length;
       state.sessions.push(`Settimana ${state.sessions.length + 1}`);
+      if (state.coachingEditorSnapshot) {
+        const snapshot = clone(state.coachingEditorSnapshot);
+        snapshot.program.weeks = state.sessions.map((_, i) => i + 1);
+        snapshot.program.days.forEach(day => {
+          day.exercisesByWeek[previousWeek + 1] = clone(day.exercisesByWeek[previousWeek] || []);
+          day.groupsByWeek[previousWeek + 1] = clone(day.groupsByWeek[previousWeek] || []);
+        });
+        window.NeaceaPTEditor.applySnapshot(state, snapshot);
+      }
+      state.sheetOrder.forEach(sheetKey => {
+        state.workoutDates[sheetKey] = state.workoutDates[sheetKey] || [];
+        state.workoutDates[sheetKey].push("");
+      });
       fitAllExercises();
       renderAll();
       autosave();
       showToast("Settimana aggiunta");
     }
 
-    function removeLastSession() {
+    async function removeLastSession() {
       if (state.sessions.length <= 1) {
         showToast("Serve almeno una settimana");
         return;
       }
       const sessionName = state.sessions.at(-1);
-      if (!confirmAction(`Eliminare ${sessionName} e tutti i dati inseriti in quella colonna?`)) return;
+      if (!await confirmAction(`Eliminare ${sessionName} e tutti i dati inseriti in quella colonna?`)) return;
       state.sessions.pop();
+      if (state.coachingEditorSnapshot) {
+        state.coachingEditorSnapshot.program.weeks = state.sessions.map((_, i) => i + 1);
+        state.coachingEditorSnapshot.program.days.forEach(day => {
+          delete day.exercisesByWeek[state.sessions.length + 1];
+          delete day.groupsByWeek[state.sessions.length + 1];
+        });
+      }
+      state.sheetOrder.forEach(sheetKey => state.workoutDates?.[sheetKey]?.pop());
       fitAllExercises();
       renderAll();
       autosave();
       showToast("Ultima settimana rimossa");
     }
 
-    function removeSession(index) {
+    async function removeSession(index) {
       if (state.sessions.length <= 1) {
         showToast("Serve almeno una settimana");
         return;
       }
       const sessionName = state.sessions[index];
-      if (!confirmAction(`Eliminare ${sessionName} e tutti i dati inseriti in quella colonna?`)) return;
+      if (!await confirmAction(`Eliminare ${sessionName} e tutti i dati inseriti in quella colonna?`)) return;
+      if (state.coachingEditorSnapshot) {
+        const program = state.coachingEditorSnapshot.program;
+        const keptWeeks = program.weeks.filter((_, weekIndex) => weekIndex !== index);
+        program.days.forEach(day => {
+          day.exercisesByWeek = Object.fromEntries(keptWeeks.map((week, i) => [i + 1, day.exercisesByWeek[week] || []]));
+          day.groupsByWeek = Object.fromEntries(keptWeeks.map((week, i) => [i + 1, day.groupsByWeek[week] || []]));
+        });
+        program.weeks = keptWeeks.map((_, i) => i + 1);
+      }
       state.sessions.splice(index, 1);
+      state.sessions = state.sessions.map((_, i) => `Settimana ${i + 1}`);
+      state.sheetOrder.forEach(sheetKey => state.workoutDates?.[sheetKey]?.splice(index, 1));
       Object.values(state.sheets).flat().forEach(exercise => {
         exercise.plan.splice(index, 1);
         exercise.feedback.splice(index, 1);
@@ -4090,12 +5127,15 @@
       const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
       const previousOrder = [...state.sheetOrder];
       const nextSheets = {};
+      const nextWorkoutDates = {};
       previousOrder.forEach((oldKey, index) => {
         const nextKey = alphabet[index] || String(index + 1);
         nextSheets[nextKey] = state.sheets[oldKey] || [];
+        nextWorkoutDates[nextKey] = state.workoutDates?.[oldKey] || state.sessions.map(() => "");
       });
       state.sheetOrder = Object.keys(nextSheets);
       state.sheets = nextSheets;
+      state.workoutDates = nextWorkoutDates;
       state.currentSheet = state.sheetOrder[Math.max(0, Math.min(selectedIndex, state.sheetOrder.length - 1))] || "A";
     }
 
@@ -4108,21 +5148,23 @@
             id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())
           }))
         : [];
+      state.workoutDates[key] = state.sessions.map(() => "");
       state.currentSheet = key;
       renderAll();
       autosave();
       showToast(copyFromCurrent ? `Allenamento duplicato in ${key}` : `Allenamento ${key} creato`);
     }
 
-    function removeCurrentSheet() {
+    async function removeCurrentSheet() {
       if (state.sheetOrder.length <= 1) {
         showToast("Serve almeno un allenamento");
         return;
       }
       const removed = state.currentSheet;
       const removedIndex = state.sheetOrder.indexOf(removed);
-      if (!confirmAction(`Eliminare l'allenamento ${removed} con tutti i suoi esercizi?`)) return;
+      if (!await confirmAction(`Eliminare l'allenamento ${removed} con tutti i suoi esercizi?`)) return;
       delete state.sheets[removed];
+      delete state.workoutDates[removed];
       state.sheetOrder = state.sheetOrder.filter(key => key !== removed);
       relabelWorkouts(Math.min(removedIndex, state.sheetOrder.length - 1));
       renderAll();
@@ -4130,8 +5172,27 @@
       showToast(`Allenamento ${removed} eliminato`);
     }
 
-    function duplicateSheet() {
-      addSheet(true);
+    function duplicateSheet(copyName) {
+      if (!canEditClient()) return;
+      if (typeof copyName !== "string" && window.PTProgramFlow) return window.PTProgramFlow.openDay();
+      if (!state.sheetOrder.includes(state.currentSheet)) {
+        showToast("Seleziona un allenamento da duplicare");
+        return;
+      }
+      if (state.sheetOrder.length >= 26) {
+        showToast("Massimo 26 allenamenti");
+        return;
+      }
+      if (!window.NeaceaPTEditor) { addSheet(true); return; }
+      const key = nextSheetName();
+      const snapshot = window.NeaceaPTEditor.duplicateDaySnapshot(state, key, id);
+      if (typeof copyName === "string" && copyName.trim()) snapshot.program.days.at(-1).name = copyName.trim().slice(0, 120);
+      window.NeaceaPTEditor.applySnapshot(state, snapshot);
+      state.workoutDates[key] = state.sessions.map(() => "");
+      state.currentSheet = key;
+      renderAll();
+      autosave();
+      showToast(`Allenamento duplicato in ${key}`);
     }
 
     function duplicateSheetOld() {
@@ -4159,29 +5220,53 @@
       return saved;
     }
 
-    async function duplicateProgram() {
+    async function duplicateProgram(programId) {
+      if (!canEditClient()) return;
+      if (window.PTProgramFlow) return window.PTProgramFlow.open({ source: "program", programId: typeof programId === "string" ? programId : appState.selectedProgramId, current: typeof programId !== "string" });
       const client = selectedClient();
       if (!client) {
         showToast("Seleziona un cliente prima di duplicare il programma");
         return;
       }
-      if (!confirmAction(`Duplicare il programma ${periodLabel(state.meta.period)} di ${fullName(client)} come nuova bozza modificabile?`)) return;
+      if (!await confirmAction(`Duplicare il programma ${periodLabel(state.meta.period)} di ${fullName(client)} come nuova bozza modificabile?`)) return;
       const duplicated = normalizeState(clone(state));
       duplicated.lastSavedAt = null;
       duplicated.draftProgramId = "";
       duplicated.sourceProgramId = appState.selectedProgramId || state.sourceProgramId || "";
       Object.values(duplicated.sheets).flat().forEach(exercise => {
+        const previousId = exercise.id;
         exercise.id = id("exercise");
+        duplicated.coachingEditorSnapshot?.program.days.forEach(day => {
+          Object.values(day.exercisesByWeek).flat().forEach(item => { if (item.key === previousId) item.key = exercise.id; });
+          Object.values(day.groupsByWeek).flat().forEach(group => { group.exerciseKeys = group.exerciseKeys.map(key => key === previousId ? exercise.id : key); });
+        });
+        ensureExerciseWeekSets(exercise, duplicated.sessions.length);
+        exercise.weekSets = exercise.weekSets.map(sets => sets.map(set => normalizeSetEntry({
+          ...set,
+          id: id("set"),
+          previousLoad: set.load || set.previousLoad || "",
+          previousReps: set.reps || set.previousReps || "",
+          load: "",
+          rir: "",
+          recorded: false,
+          sessionNote: ""
+        })));
+        exercise.feedback = duplicated.sessions.map(() => "");
+        exercise.coachingRetiredSets = {};
+        if (exercise.coachingProjection) exercise.coachingProjection.sets = exercise.weekSets.map(sets => JSON.stringify(sets.map(set => [set.reps, set.rir, set.note])));
       });
+      duplicated.workoutDates = Object.fromEntries(duplicated.sheetOrder.map(key => [key, duplicated.sessions.map(() => "")]));
       await createAndPersistProgram(duplicated, "Programma duplicato, salvato e aperto");
     }
 
-    function openNewProgramModal() {
+    function openNewProgramModal(options) {
+      if (window.PTProgramFlow) return window.PTProgramFlow.open(options);
       const client = selectedClient();
       if (!client) {
         showToast("Seleziona un cliente prima di creare un programma");
         return;
       }
+      if (!requireEditableClient()) return;
       document.getElementById("newProgramClient").textContent = fullName(client);
       document.getElementById("newProgramPeriod").value = currentPeriodKey();
       document.getElementById("newProgramWorkouts").value = "1";
@@ -4195,16 +5280,19 @@
     }
 
     function closeNewProgramModal() {
+      if (window.PTProgramFlow?.busy()) return;
       newProgramModal.classList.remove("open");
     }
 
     async function createNewProgramFromInputs() {
+      if (window.PTProgramFlow) return window.PTProgramFlow.create();
       const client = selectedClient();
       if (!client) {
         closeNewProgramModal();
         showToast("Seleziona un cliente prima di creare un programma");
         return;
       }
+      if (!requireEditableClient()) return;
       const workoutCount = Math.max(1, Math.min(6, Number(document.getElementById("newProgramWorkouts").value) || 1));
       const weekCount = Math.max(1, Math.min(12, Number(document.getElementById("newProgramWeeks").value) || 4));
       const workoutKeys = "ABCDEF".slice(0, workoutCount).split("");
@@ -4213,6 +5301,7 @@
       next.sheetOrder = workoutKeys;
       next.sheets = Object.fromEntries(workoutKeys.map(key => [key, []]));
       next.sessions = Array.from({ length: weekCount }, (_, index) => `Settimana ${index + 1}`);
+      next.workoutDates = Object.fromEntries(workoutKeys.map(key => [key, next.sessions.map(() => "")]));
       next.meta.period = document.getElementById("newProgramPeriod").value || currentPeriodKey();
       next.meta.goal = document.getElementById("newProgramGoal").value.trim();
       next.meta.level = document.getElementById("newProgramLevel").value;
@@ -4235,7 +5324,8 @@
         showToast("Seleziona un cliente prima di creare il mese successivo");
         return;
       }
-      if (!confirmAction(`Creare il mese successivo per ${fullName(client)} mantenendo esercizi e progressioni?`)) return;
+      if (!await confirmAction(`Creare il mese successivo per ${fullName(client)} mantenendo esercizi e progressioni?`)) return;
+      if (!await ensureCurrentProgramSaved()) return;
 
       const sourcePeriod = state.meta.period || currentPeriodKey();
       const next = normalizeState(clone(state));
@@ -4244,6 +5334,7 @@
       next.sourcePeriod = sourcePeriod;
       next.lastSavedAt = null;
       next.draftProgramId = "";
+      next.workoutDates = Object.fromEntries(next.sheetOrder.map(key => [key, next.sessions.map(() => "")]));
       Object.values(next.sheets).flat().forEach(exercise => {
         ensureExerciseWeekSets(exercise, next.sessions.length);
         exercise.previousFeedback = next.sessions.map((_, index) => exercise.feedback?.[index] || exercise.plan?.[index] || exercise.previousFeedback?.[index] || "");
@@ -4252,50 +5343,78 @@
         exercise.weekSets = exercise.weekSets.map(sets => sets.map(set => normalizeSetEntry({
           ...set,
           previousLoad: set.load || set.previousLoad || "",
+          previousReps: set.reps || set.previousReps || "",
           load: "",
-          rir: ""
+          rir: "",
+          recorded: false,
+          sessionNote: ""
         })));
         exercise.feedback = next.sessions.map(() => "");
+        exercise.coachingRetiredSets = {};
+        if (exercise.coachingProjection) exercise.coachingProjection.sets = exercise.weekSets.map(sets => JSON.stringify(sets.map(set => [set.reps, set.rir, set.note])));
         next.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
         exercise.recoveryNote = "";
         exercise.effortNote = "";
       });
 
+      if (window.NeaceaPTEditor) window.NeaceaPTEditor.applySnapshot(next, window.NeaceaPTEditor.toSnapshot(state), { resetPrescription: true });
       await createAndPersistProgram(next, `${periodLabel(next.meta.period)} creato con i carichi precedenti e salvato`);
+    }
+
+    function applyProgramMutation(result) {
+      const normalized = normalizeProgram(result.row);
+      if (result.currentProgramId !== undefined) (appState.currentPrograms ||= {})[normalized.client_id] = result.currentProgramId;
+      const index = appState.programs.findIndex(item => item.id === normalized.id);
+      if (index >= 0) appState.programs.splice(index, 1, normalized);
+      else appState.programs.unshift(normalized);
+      if (result.revision?.id && !appState.revisions.some(revision => revision.id === result.revision.id)) {
+        appState.revisions.unshift(result.revision);
+      }
+      return normalized;
+    }
+
+    function handleProgramConflict(error, programId) {
+      if (error.code !== "PROGRAM_CONFLICT" || !error.current) return false;
+      const normalized = normalizeProgram(error.current);
+      const index = appState.programs.findIndex(item => item.id === programId);
+      if (index >= 0) appState.programs.splice(index, 1, normalized);
+      else appState.programs.unshift(normalized);
+      renderProgramHistory();
+      renderProgramManager();
+      showToast("Operazione fermata: scheda aggiornata da un'altra sessione. Controlla e riprova.");
+      return true;
+    }
+
+    async function runProgramMutation(programId, action, extra) {
+      if (programMutationRunning || selectionTransitionRunning || !canEditClient()) return null;
+      const clientId = appState.selectedClientId;
+      programMutationRunning = true;
+      document.getElementById("appShell").inert = true;
+      try {
+        if (!await ensureCurrentProgramSaved()) return null;
+        const program = appState.programs.find(item => item.id === programId && item.client_id === clientId);
+        if (!program || appState.selectedClientId !== clientId) return null;
+        const result = await ptData(action, { programId, expectedUpdatedAt: program.updated_at, ...extra });
+        return applyProgramMutation(result);
+      } finally {
+        programMutationRunning = false;
+        document.getElementById("appShell").inert = false;
+      }
     }
 
     async function deleteProgram(programId) {
       if (!requireEditableClient()) return;
       const program = appState.programs.find(item => item.id === programId);
-      if (!program || !confirmAction(`Archiviare la scheda di ${periodLabel(program.period)}? Potrai ripristinarla in qualsiasi momento.`)) return;
+      if (!program || !await confirmAction(`Spostare “${programLabel(program)}” nel Cestino? Potrai ripristinarla dalla nuova sezione Cestino.`)) return;
       try {
-        const archivedAt = new Date().toISOString();
-        const audit = Array.isArray(program.data?.audit_log) ? clone(program.data.audit_log) : [];
-        audit.push({ action: "archiviazione", at: archivedAt, by: appState.currentPt?.id || "", email: appState.currentPt?.email || "" });
-        const archivedData = {
-          ...program.data,
-          archived: true,
-          archived_at: archivedAt,
-          archived_by: appState.currentPt?.id || "",
-          audit_log: audit.slice(-60)
-        };
-        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(program.rowId || programId)}`, {
-          method: "PATCH",
-          headers: { Prefer: "return=minimal" },
-          body: { data: archivedData, updated_at: archivedAt }
-        });
-        const normalized = normalizeProgram({
-          id: program.rowId || programId,
-          cliente_id: program.client_id,
-          data: archivedData,
-          updated_at: archivedAt
-        });
-        const index = appState.programs.findIndex(item => item.id === programId);
-        if (index >= 0) appState.programs.splice(index, 1, normalized);
-        localStorage.removeItem(storageKeyFor(appState.selectedClientId, programId));
+        const normalized = await runProgramMutation(programId, "set_program_archived", { archived: true });
+        if (!normalized) return;
+        removeLocalValue(storageKeyFor(appState.selectedClientId, programId));
         if (appState.selectedProgramId === programId) {
-          const nextProgram = programsForClient()[0];
-          if (nextProgram) selectProgram(nextProgram.id);
+          state.localDirty = false;
+          clearTimeout(cloudSaveTimer); cloudSaveTimer = null;
+          const nextProgram = latestClientProgram(appState.selectedClientId);
+          if (nextProgram) await selectProgram(nextProgram.id);
           else {
             appState.selectedProgramId = "";
             STORAGE_KEY = storageKeyFor(appState.selectedClientId, "");
@@ -4307,48 +5426,50 @@
         renderClientList();
         renderProgramHistory();
         renderProgramManager();
-        showToast("Scheda archiviata: resta recuperabile");
+        showToast("Scheda eliminata e spostata nel cestino: puoi ripristinarla");
+        renderClientFocus();
       } catch (error) {
         console.error(error);
-        showToast("Non riesco ad archiviare la scheda. Riprova.");
+        if (!handleProgramConflict(error, programId)) showToast(error.message || "Non riesco a eliminare la scheda. Riprova.");
       }
     }
 
     async function restoreProgram(programId) {
       if (!requireEditableClient()) return;
       const program = appState.programs.find(item => item.id === programId);
-      if (!program?.archived || !confirmAction(`Ripristinare la scheda di ${periodLabel(program.period)}?`)) return;
+      if (!program?.archived || !await confirmAction(`Ripristinare “${programLabel(program)}” dal cestino?`)) return;
       try {
-        const restoredAt = new Date().toISOString();
-        const audit = Array.isArray(program.data?.audit_log) ? clone(program.data.audit_log) : [];
-        audit.push({ action: "ripristino", at: restoredAt, by: appState.currentPt?.id || "", email: appState.currentPt?.email || "" });
-        const restoredData = {
-          ...program.data,
-          archived: false,
-          restored_at: restoredAt,
-          restored_by: appState.currentPt?.id || "",
-          audit_log: audit.slice(-60)
-        };
-        await sb("schede_allenamento", `?id=eq.${encodeURIComponent(program.rowId || programId)}`, {
-          method: "PATCH",
-          headers: { Prefer: "return=minimal" },
-          body: { data: restoredData, updated_at: restoredAt }
-        });
-        const normalized = normalizeProgram({
-          id: program.rowId || programId,
-          cliente_id: program.client_id,
-          data: restoredData,
-          updated_at: restoredAt
-        });
-        const index = appState.programs.findIndex(item => item.id === programId);
-        if (index >= 0) appState.programs.splice(index, 1, normalized);
+        if (!await runProgramMutation(programId, "set_program_archived", { archived: false })) return;
+        renderClientFocus();
         renderClientList();
         renderProgramHistory();
         renderProgramManager();
         showToast("Scheda ripristinata");
       } catch (error) {
         console.error(error);
-        showToast("Non riesco a ripristinare la scheda. Riprova.");
+        if (!handleProgramConflict(error, programId)) showToast("Non riesco a ripristinare la scheda. Riprova.");
+      }
+    }
+
+    async function restoreProgramRevision(revisionId, programId) {
+      if (!requireEditableClient()) return;
+      const program = appState.programs.find(item => item.id === programId);
+      if (!program || !await confirmAction("Ripristinare questa versione storica? La versione attuale restera a sua volta recuperabile nello storico.")) return;
+      try {
+        const normalized = await runProgramMutation(programId, "restore_revision", { revisionId });
+        if (!normalized) return;
+        appState.selectedProgramId = normalized.id;
+        STORAGE_KEY = storageKeyFor(normalized.client_id, normalized.id);
+        removeLocalValue(STORAGE_KEY);
+        state = stateFromProgram(normalized) || clientDefaultState(selectedClient());
+        state.localDirty = false;
+        appState.saveConflict = null;
+        appState.saveMode = "supabase";
+        renderAll();
+        showToast("Versione storica ripristinata");
+      } catch (error) {
+        console.error(error);
+        if (!handleProgramConflict(error, programId)) showToast("Non riesco a ripristinare questa versione. Riprova.");
       }
     }
 
@@ -4371,8 +5492,13 @@
       if (viewId === "programsView") renderProgramManager();
       if (viewId === "builderView") renderCreationPreview();
       if (viewId === "sheetView") renderSheetPreview();
+      if (viewId === "gripView") renderGripView();
+      if (viewId === "templatesView") window.PTTemplates?.show();
+      if (viewId === "trashView") window.PTTemplates?.showTrash();
       renderMetrics();
       renderClientFocus();
+      window.PTSessionLog?.render();
+      renderSaveState();
       setEditorAvailability();
     }
 
@@ -4423,18 +5549,12 @@
       const sendCodeButton = document.getElementById("sendCodeButton");
       loginButton.disabled = true;
       sendCodeButton.disabled = true;
-      loginButton.textContent = "Carico dati...";
+      loginButton.textContent = "Preparo l'accesso...";
       try {
-        await loadOperators();
-        if (!appState.operators.length) {
-          setLoginMessage("Nessun Personal Trainer configurato nel database.");
-        } else if (accessToken) {
+        if (accessToken) {
           loginButton.textContent = "Verifico la sessione...";
           const verified = await verifyAccessToken(accessToken);
-          const pt = appState.operators.find(operator =>
-            String(operator.id || "") === String(verified.operatorId || "") &&
-            String(operator.email || "").toLowerCase() === String(verified.email || "").toLowerCase()
-          );
+          const pt = verified.operator;
           if (!pt) throw new Error("Il profilo PT collegato alla sessione non e' piu attivo.");
           await activatePtSession(pt, accessToken);
           window.history.replaceState(null, "", window.location.pathname);
@@ -4452,7 +5572,7 @@
     }
 
     ["period", "goal", "level", "frequency", "warmup", "generalNotes"].forEach(id => {
-      document.getElementById(id).addEventListener("change", event => {
+      document.getElementById(id).addEventListener("input", event => {
         state.meta[id] = event.target.value;
         autosave();
         if (id === "period") renderProgramHistory();
@@ -4460,16 +5580,20 @@
         renderSheetPreview();
       });
     });
+    document.getElementById("programName").addEventListener("input", event => {
+      state.meta.name = event.target.value.slice(0, 120);
+      autosave(); renderProgramHistory(); renderProgramManager(); renderSheetPreview();
+    });
 
     document.getElementById("exerciseSearch").addEventListener("input", renderLibrary);
     document.getElementById("clientSearch").addEventListener("input", event => {
       appState.clientFilter = event.target.value;
       renderClientList();
     });
-    document.getElementById("trainerFilter").addEventListener("change", event => {
-      appState.trainerFilter = event.target.value;
-      renderClientList();
-    });
+    // La vista clienti usa una sola ricerca testuale; i vecchi filtri tecnici
+    // restano compatibili se presenti in una cache HTML precedente.
+    document.getElementById("clientScope")?.addEventListener("change", () => renderClientList());
+    document.getElementById("trainerFilter")?.addEventListener("change", event => { appState.trainerFilter = event.target.value; renderClientList(); });
     document.getElementById("inlineLine").addEventListener("change", () => {
       renderInlineBuilder();
     });
@@ -4494,7 +5618,14 @@
       renderArchiveControls(event.target.value, document.getElementById("customExerciseGroup").value);
     });
     document.getElementById("saveCustomExerciseBtn").addEventListener("click", saveCustomExercise);
-    document.getElementById("programHistory").addEventListener("change", event => selectProgram(event.target.value));
+    document.getElementById("programHistory").addEventListener("change", async event => {
+      if (!await selectProgram(event.target.value)) renderProgramHistory();
+    });
+    window.addEventListener("beforeunload", event => {
+      if (state.localDirty || cloudSaveRunning || programMutationRunning || appState.gripSaveMode === "saving") {
+        event.preventDefault(); event.returnValue = "";
+      }
+    });
     document.getElementById("newMonthBtn").addEventListener("click", newMonthFromCurrent);
     document.getElementById("addExerciseBtn").addEventListener("click", () => openModal());
     document.getElementById("addSheetBtn").addEventListener("click", () => addSheet(false));
@@ -4505,15 +5636,35 @@
     document.getElementById("addSessionBtn").addEventListener("click", addSession);
     document.getElementById("removeSessionBtn").addEventListener("click", removeLastSession);
     document.getElementById("duplicateSheetBtn").addEventListener("click", duplicateSheet);
+    document.getElementById("duplicateProgramBtn").addEventListener("click", duplicateProgram);
     document.getElementById("calendarBtn").addEventListener("click", openStudioCalendar);
+    // These are training fields, not address-book/contact fields. Leave login autofill intact.
+    function suppressContactAutofill(root = document) {
+      const fields = [...(root.matches?.('input,textarea') ? [root] : []), ...root.querySelectorAll('input,textarea')];
+      fields.filter(field => !field.closest('#loginScreen')).forEach(field => {
+        field.setAttribute('autocomplete','off');
+        field.setAttribute('data-form-type','other');
+        field.setAttribute('data-1p-ignore','');
+        field.setAttribute('data-lpignore','true');
+      });
+    }
+    suppressContactAutofill();
+    new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+      if (node.nodeType === 1) suppressContactAutofill(node);
+    }))).observe(document.body,{childList:true,subtree:true});
     document.getElementById("saveBtn").addEventListener("click", saveProgramToSupabase);
+    document.getElementById("saveBottomBtn").addEventListener("click", saveProgramToSupabase);
+    document.getElementById("saveSheetBottomBtn").addEventListener("click", saveProgramToSupabase);
     document.getElementById("resetBtn").addEventListener("click", openNewProgramModal);
+    document.querySelectorAll('[data-new-program]').forEach(button => button.addEventListener("click", openNewProgramModal));
     document.getElementById("closeNewProgramBtn").addEventListener("click", closeNewProgramModal);
     document.getElementById("cancelNewProgramBtn").addEventListener("click", closeNewProgramModal);
     document.getElementById("createNewProgramBtn").addEventListener("click", createNewProgramFromInputs);
     document.getElementById("openSheetBtn").addEventListener("click", () => showView("builderView"));
     document.getElementById("openSelectedSheetBtn").addEventListener("click", () => showView("builderView"));
     document.getElementById("openSelectedProgramsBtn").addEventListener("click", () => showView("programsView"));
+    document.getElementById("openSelectedGripBtn").addEventListener("click", () => showView("gripView"));
+    document.getElementById("handGripForm").addEventListener("submit", saveHandGripMeasurement);
     document.getElementById("loginButton").addEventListener("click", login);
     document.getElementById("sendCodeButton").addEventListener("click", sendAccessCode);
     document.querySelectorAll(".nav-btn").forEach(button => {
@@ -4556,8 +5707,16 @@
 
     document.getElementById("newGroup").innerHTML = groups.map(group => `<option>${escapeHtml(group)}</option>`).join("");
     refreshExerciseNameDatalist();
+    window.addEventListener("pagehide", () => {
+      if (state.localDirty && canEditClient()) writeLocalState();
+    });
 
+    window.PTSessionContext = { getApp: () => appState, selectedClient, ptData, escapeHtml,
+      programData: program => program.data || {} };
     init();
   </script>
+  <script src="js/program-templates.js?v=20260918-library"></script>
+  <script src="js/program-workflow.js?v=20260918-library"></script>
+  <script src="js/session-log.js?v=20260928-fix-20260928"></script>
 </body>
 </html>
