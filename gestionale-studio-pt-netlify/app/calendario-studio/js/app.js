@@ -1925,6 +1925,21 @@ const App = {
     return names[d.getDay()];
   },
 
+  _packageSlotForDate(client, date) {
+    const serviceId = App._packageServiceId(client);
+    const candidates = App._packageAppointments(client, false).filter(a =>
+      a.serviceId === serviceId && ['prenotato', 'fatto'].includes(a.status) &&
+      Services.appointmentInCurrentPackageCycle(a, client)
+    ).sort((a, b) => `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`));
+    const reference = candidates.find(a => App._weekdayName(a.date) === App._weekdayName(date));
+    const sameSlot = candidates.length && candidates.every(a =>
+      a.startTime === candidates[0].startTime && a.operatorId === candidates[0].operatorId &&
+      a.durationMin === candidates[0].durationMin);
+    const slot = reference || (sameSlot ? candidates[0] : null);
+    return slot ? { startTime: slot.startTime, operatorId: slot.operatorId,
+      durationMin: slot.durationMin, bufferMin: slot.bufferMin } : null;
+  },
+
   _suggestPackageDates(client, count, options = {}) {
     const days = Array.isArray(options.days) ? options.days : (Array.isArray(client.giorniSettimana) ? client.giorniSettimana : []);
     if (!days.length || count <= 0) return [];
@@ -2060,7 +2075,7 @@ const App = {
       return `
         <tr>
           <td>
-            ${!App.isPortalPtMode() && canEditRow && isCurrentCycle && a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 ? `<input type="checkbox" name="pkg-batch-session" value="${a.id}" aria-label="Seleziona seduta del ${a.date} alle ${a.startTime}">` : ''}
+            ${!App.isPortalPtMode() && canEditRow && isCurrentCycle && a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 ? `<input type="checkbox" name="pkg-batch-session" onchange="App._updatePackageTimeBatchSummary()" value="${a.id}" aria-label="Seleziona seduta del ${a.date} alle ${a.startTime}">` : ''}
             <input id="pkg-date-${a.id}" class="form-input package-date-input" type="date" value="${a.date}" ${rowReadOnlyAttr}>
           </td>
           <td>
@@ -2171,12 +2186,13 @@ const App = {
             ${appointments.some(a => a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && Services.serviceUsesPackageSessions(a.serviceId) && !Services.appointmentInCurrentPackageCycle(a, client)) && metrics.toSchedule > 0 ? `<p>Ci sono sedute già in agenda fuori dal ciclo. Prima di generarne altre, controlla l’elenco: puoi usare “Includi nel ciclo” per una lezione anticipata.</p><button class="btn" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Controlla le sedute</button>` : ''}
             <div class="suggested-date-row">
               ${hasTotal
-                ? (suggested.length ? suggested.map(date => `<span>${App._fmtLongDate(date)}</span>`).join('') : '<em>Nessuna data da generare</em>')
+                ? (suggested.length ? suggested.map(date => { const slot = App._packageSlotForDate(client, date); const pt = operators.find(o => o.id === slot?.operatorId); return `<span>${App._fmtLongDate(date)} · ${slot?.startTime || 'orario da indicare'}${pt ? ' · ' + App._escapeHtml(App._operatorLabel(pt)) : ''}</span>`; }).join('') : '<em>Nessuna data da generare</em>')
                 : '<em>Imposta prima il numero di sessioni totali del pacchetto.</em>'}
             </div>
             <div class="package-generate-row">
-              <label>Ora</label>
-              <input id="pkg-gen-time" class="form-input" type="time" value="09:00" step="900">
+              <label>Orario diverso (facoltativo)</label>
+              <input id="pkg-gen-time" class="form-input" type="time" step="900">
+              <p>Se lasci vuoto, ogni giorno mantiene orario e PT dell’ultima seduta corrispondente del ciclo. Se manca un riferimento, indica l’orario.</p>
               <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._generateMissingPackageAppointments('${client.id}')">Genera mancanti</button>
             </div>
           </section>`}
@@ -2431,15 +2447,14 @@ const App = {
             <h4>Cambia orario a più sedute</h4>
             <p>Seleziona le lezioni prenotate del ciclo corrente. Restano invariati date, durata, PT e pagamenti. Le lezioni con più clienti si modificano singolarmente.</p>
             <div class="package-reschedule-fields">
-              <label>Dal <input id="pkg-batch-from" class="form-input" type="date" value="${today}"></label>
-              <label>Giorno <select id="pkg-batch-weekday" class="form-input"><option value="">Tutti i giorni</option>${['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'].map((day,i)=>`<option value="${i}">${day}</option>`).join('')}</select></label>
-              <button class="btn" onclick="App._selectPackageTimeBatch('${client.id}')">Seleziona sedute</button>
-              <button class="btn" onclick="document.querySelectorAll('[name=pkg-batch-session]').forEach(el=>el.checked=false)">Deseleziona tutte</button>
+              <label>Dal <input id="pkg-batch-from" onchange="App._selectPackageTimeBatch('${client.id}')" class="form-input" type="date" value="${today}"></label>
+              <label>Giorno <select id="pkg-batch-weekday" onchange="App._selectPackageTimeBatch('${client.id}')" class="form-input"><option value="">Tutti i giorni</option>${['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'].map((day,i)=>`<option value="${i}">${day}</option>`).join('')}</select></label>
+              <button class="btn" onclick="App._selectPackageTimeBatch('${client.id}')">Seleziona tutte quelle del filtro</button>
+              <button class="btn" onclick="document.querySelectorAll('[name=pkg-batch-session]').forEach(el=>el.checked=false);App._updatePackageTimeBatchSummary()">Deseleziona tutte</button>
               <label>Nuovo orario <input id="pkg-batch-time" class="form-input" type="time" step="900"></label>
-              <button class="btn" onclick="App._fillPackageTimeBatch()">Imposta sulle selezionate</button>
-              <button id="pkg-batch-save" class="btn-primary" onclick="App._savePackageTimeBatch('${client.id}')">Controlla e salva selezionate</button>
+              <button id="pkg-batch-save" class="btn-primary" onclick="App._savePackageTimeBatch('${client.id}')">Applica nuovo orario</button>
             </div>
-            <p>Puoi anche correggere l’orario di ciascuna riga prima di salvare. L’anteprima mostra tutte le modifiche.</p>
+            <p>Scegli il giorno, scrivi il nuovo orario e premi Applica nuovo orario. Puoi togliere la spunta alle sedute da escludere; prima del salvataggio vedrai il riepilogo.</p>
             <p id="pkg-batch-result" role="status" aria-live="polite"></p>
           </div>` : ''}
           <table class="package-timeline-table">
@@ -2463,6 +2478,7 @@ const App = {
     `;
     UI.openModal(html);
     if (!isArchived && !App.isPortalPtMode()) App._updateRenewalPlanPreview();
+    if (document.getElementById('pkg-batch-from')) App._selectPackageTimeBatch(client.id);
   },
 
   _selectedPackagePlanDays() {
@@ -3500,25 +3516,26 @@ const App = {
       el.checked = App._packageTimeBatchEligible(appt, client) && appt.date >= from &&
         (day === '' || new Date(appt.date + 'T12:00:00').getDay() === Number(day));
     });
+    App._updatePackageTimeBatchSummary();
   },
 
-  _fillPackageTimeBatch() {
-    const time = document.getElementById('pkg-batch-time').value;
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return UI.showToast('Indica il nuovo orario', 'error');
-    const selected = [...document.querySelectorAll('[name=pkg-batch-session]:checked')];
-    if (!selected.length) return UI.showToast('Seleziona almeno una seduta', 'error');
-    selected.forEach(el => { document.getElementById('pkg-time-' + el.value).value = time; });
-    document.getElementById('pkg-batch-result').textContent = `${selected.length} orari preparati. Premi Controlla e salva per confermare.`;
+  _updatePackageTimeBatchSummary() {
+    const count = [...document.querySelectorAll('[name=pkg-batch-session]:checked')].length;
+    const output = document.getElementById('pkg-batch-result');
+    if (output) output.textContent = `${count} sedute selezionate. Scrivi il nuovo orario e premi Applica nuovo orario.`;
   },
 
   async _savePackageTimeBatch(clientId) {
     if (App._packageBatchSaving || App.isPortalPtMode() || !App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     const selected = [...document.querySelectorAll('[name=pkg-batch-session]:checked')];
+    if (!selected.length) return UI.showToast('Seleziona almeno una seduta', 'error');
+    const commonTime = document.getElementById('pkg-batch-time')?.value || '';
+    if (commonTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(commonTime)) return UI.showToast('Indica un orario valido', 'error');
     const changes = [];
     for (const el of selected) {
       const before = State.getAppointments().find(a => a.id === el.value);
-      const time = document.getElementById('pkg-time-' + el.value)?.value;
+      const time = commonTime || document.getElementById('pkg-time-' + el.value)?.value;
       if (!App._packageTimeBatchEligible(before, client) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) {
         return UI.showToast('Selezione non più valida: riapri il Quadro pacchetto', 'error');
       }
@@ -3550,7 +3567,9 @@ const App = {
       Calendar.render();
       const message = savedCount === changes.length ? `${savedCount} sedute aggiornate` :
         `Salvate ${savedCount} di ${changes.length} sedute. Operazione interrotta: ricarica il quadro e verifica le restanti prima di riprovare.`;
-      if (output) output.textContent = message;
+      if (savedCount > 0) App.openPackageOverview(clientId);
+      const currentOutput = document.getElementById('pkg-batch-result');
+      if (currentOutput) currentOutput.textContent = message;
       UI.showToast(message, savedCount === changes.length ? 'success' : 'error');
     }
   },
@@ -3647,23 +3666,28 @@ const App = {
       return;
     }
 
-    const time = document.getElementById('pkg-gen-time')?.value || '09:00';
+    const time = document.getElementById('pkg-gen-time')?.value || '';
     const dates = App._suggestPackageDates(client, missing * 6);
     const created = [];
     const skipped = [];
 
     dates.some(date => {
       if (created.length >= missing) return true;
+      const slot = App._packageSlotForDate(client, date);
+      if (!time && !slot?.startTime) {
+        skipped.push(`${App._fmtLongDate(date)}: manca un orario di riferimento; indica l’orario`);
+        return false;
+      }
       const draft = {
         serviceId,
         clientIds: [client.id],
         operatorId: App.isPortalPtMode() && App.portalOperatorId()
           ? App.portalOperatorId()
-          : (client.ptAssegnato || null),
+          : (slot?.operatorId || client.ptAssegnato || null),
         date,
-        startTime: time,
-        durationMin: service.durationMin || 60,
-        bufferMin: service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
+        startTime: time || slot.startTime,
+        durationMin: slot?.durationMin || service.durationMin || 60,
+        bufferMin: slot?.bufferMin ?? service.bufferMin ?? CONFIG.defaultBufferMin ?? 10,
         status: 'prenotato',
         notes: App._withPtAudit(
           App._withPackageCycle(
