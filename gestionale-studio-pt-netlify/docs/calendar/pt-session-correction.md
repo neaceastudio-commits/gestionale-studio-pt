@@ -31,12 +31,22 @@ Per gli eventi già collegati ad Apple, il worker ammette modifiche di servizio/
 
 Runtime opzionali: `EMBEDDED_POSTGRES_MODULE`, `PLAYWRIGHT_MODULE`, `CHROME_PATH`. I browser test intercettano tutte le richieste; nessun dato reale viene modificato.
 
-## Rilascio ancora da eseguire
+## Procedura di rilascio
 
 1. Salvare in Git soltanto la modifica e le sue dipendenze, preservando le altre lavorazioni locali.
-2. Applicare `20261004152442_calendar_pt_session_correction.sql` dopo le migrazioni calendario/audit già richieste.
+2. Applicare `20261004152442_calendar_pt_session_correction.sql` e `20261004155434_calendar_pt_correction_json_participants.sql` dopo le migrazioni calendario/audit già richieste. La seconda supporta i partecipanti JSONB di produzione e gli array SQL del vecchio schema.
 3. Pubblicare il gateway `calendar-activity` con `lib/calendar-audit-endpoint.js` e il worker Apple CalDAV aggiornato (sito dedicato).
 4. Pubblicare gli asset del Calendario, incluso `pt-session-correction.js` e i riferimenti versionati di `index.html`.
 5. Verificare in produzione su dati di prova prima di correggere i clienti reali.
 
-Migrazione, deploy e correzioni dei dati reali non sono stati eseguiti in questa lavorazione. Lo script release generale supera i test funzionali, ma il controllo finale richiede file critici committati: il repository contiene modifiche locali preesistenti.
+## Pubblicato il 4 ottobre 2026
+
+- Branch di rilascio: `release/calendar-pt-correction`, commit applicativo `c12698f6e455786626b6b7eacb065405dfcec58e`.
+- Calendario: deploy `6ac277ab2fc6c2cd188dae05` sul dominio principale. Verificati esattamente cinque asset modificati: index, app, supabase, etichette audit e nuovo comando. Tutte le 14 funzioni e le pianificazioni preesistenti conservate.
+- Apple: deploy `6ac2813bd39d8e5280d6c23c` nel contesto `production`. Quattro funzioni, cron e monitor con le pianificazioni precedenti; endpoint protetti verificati. La prima pubblicazione manuale aveva conservato il contesto di anteprima: ripristinato temporaneamente il worker precedente e ripubblicato nel contesto di produzione. Nuovo ciclo automatico verificato alle 16:40:40 UTC: 171 appuntamenti elaborati, zero nuovi collegamenti in attesa e una segnalazione di revisione (`Pending link changed`).
+- Entrambe le migrazioni applicate a `neacea-gestionale-pt`. RPC invoker, permessi solo service role e nessun nuovo rilievo di sicurezza rispetto alla situazione precedente.
+- Verificata sullo schema reale l’unione di due sedute Fatto fittizie, in una transazione annullata: una sola seduta PT 1:2 e residui invariati. Nessuna riga TEST rimasta; nessuna correzione automatica dei clienti reali.
+- Suite locale sul commit distribuito: unità, autorizzazione, PostgreSQL nei due schemi, browser simulato, monitor/sync Apple e regressione Calendario. Verifica byte per byte degli asset sul dominio principale superata. Il tentativo aggiuntivo di browser con asset remoti si è fermato all’avvio di Chrome; il flusso browser sul medesimo codice locale aveva superato i test.
+- Ripristinati branch Netlify `main`, blocco build automatici e lock del deploy Calendario. Conservate le altre modifiche locali sul branch di lavoro `feature/whatsapp-agenda-pt-v1`.
+
+La sincronizzazione riportava già prima del rilascio una segnalazione `Missing completed appointment requires review`: un mapping di seduta completata senza la riga corrispondente. Non sono stati eliminati eventi o mapping per aggirare questa segnalazione.
