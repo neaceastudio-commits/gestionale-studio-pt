@@ -15,12 +15,19 @@ di default nuovi appuntamenti futuri non annullati creati dopo quel momento, con
 precedente all'attivazione. Non arretrare questo valore per trasferire lo storico.
 Gli eventi Apple già esistenti non vengono adottati. Il bootstrap una tantum
 autorizzato collega soltanto le sedute NEACEA future; non trasferisce lo storico passato. UID, titolo professionale, progresso da residuo salvato e filtri privacy
-riusano il formatter approvato del feed. Il contenuto descrittivo è una fotografia
-alla creazione: questa V1 sincronizza in seguito soltanto data, ora, durata e
-annullamento, non titoli o contatori descrittivi.
+riusano il formatter approvato del feed. Il contenuto descrittivo viene rigenerato dai dati NEACEA correnti quando cambia
+il PT o lo stato in NEACEA, aggiornando lo stesso evento e la baseline senza cambiare UID,
+href o marker. Apple può modificare soltanto data, ora, durata e cancellazione:
+modifiche al titolo o alla descrizione non cambiano mai il PT in NEACEA. Clienti
+e servizio restano protetti anche in uscita. I conflitti temporali divergenti
+continuano a essere rifiutati.
 
 Apple non può cambiare clienti, PT, servizio, pacchetto, residui, Fatto o no-show.
-Entrambi questi stati bloccano la singola coppia. Modifiche concorrenti divergenti
+Fatto e no-show bloccano soltanto le modifiche in ingresso da Apple. Tutti i
+cambi di stato NEACEA aggiornano Apple: Prenotato, Fatto e No-show rigenerano
+titolo e descrizione; Annullato rimuove l’evento. La riapertura di una seduta
+annullata ripristina esclusivamente il suo href, UID e marker originali, con
+scrittura condizionale. Un evento eliminato da Apple non viene ricreato. Modifiche concorrenti divergenti
 vengono rifiutate; nessuna correzione automatica del residuo. I salvataggi usano
 l'RPC audit esistente, snapshot atteso e identità Direzione ricontrollata nel DB.
 L'origine audit resta `calendar`, già supportata dal database; non sono aggiunte
@@ -75,7 +82,7 @@ esistenti. La sola scelta esplicita del singolo ID consente di collegare una
 seduta creata prima dell'attivazione, purché PT, futura e non annullata. Nessun
 elenco o import storico è accettato. Un mapping già collegato restituisce
 successo senza PUT; un pending manuale conserva la provenienza per il recupero
-dopo interruzione. Fatto/no-show restano protetti dalla sync. Nessuna scrittura
+dopo interruzione. Fatto/no-show restano protetti dalle modifiche in ingresso da Apple. Nessuna scrittura
 al DB per collegare un evento e nessun accesso ad altre collection iCloud.
 
 ## Bootstrap production autorizzato una tantum
@@ -94,3 +101,65 @@ manuale; non è necessario nel flusso normale. Le sedute future Fatto/no-show
 vengono rappresentate senza modificarne stato o residuo; le relative coppie
 restano protette dalle modifiche Apple. Il mapping conserva anche l'ultimo ETag
 letto; la sync continua a leggere l'ETag remoto prima di ogni PUT/DELETE.
+
+## Aggiornamento dei dati visualizzati
+
+Ogni batch confronta titolo, descrizione, luogo, categorie e stato ICS con il
+formatter NEACEA corrente per tutti gli eventi collegati, anche se PT, stato e
+orario della singola seduta non sono cambiati. Contatori cliente, completamento
+di altre sedute, rinnovi e programmazione aggiornano quindi anche gli eventi
+futuri dello stesso cliente. I contatori salvati restano la fonte autorevole:
+il worker li legge senza ricalcolarli o scriverli nel DB.
+Un solo snapshot condiviso per batch evita letture complete per ogni evento;
+il confronto ignora DTSTAMP/SEQUENCE e il folding ICS, evitando PUT continui.
+Le coppie preesistenti vengono riallineate senza cancellare mapping né reimportare
+eventi. Le modifiche temporali Apple seguono ancora i controlli e l’audit esistenti.
+
+Le regole RRULE/RDATE del componente VTIMEZONE aggiunto da Apple descrivono
+il cambio ora legale/solare e sono accettate. Il divieto di ricorrenza riguarda
+solo VEVENT: una seduta rimane sempre collegata uno a uno. Gli errori di ogni
+batch sono disponibili nello store privato last-run con chiave mapping e causa.
+
+## Ripianificazioni e coda nuove sedute (18 settembre 2026)
+
+Le righe prenotate eliminate dal gestionale non lasciano più eventi sospesi:
+la prima assenza viene registrata nel mapping, una seconda osservazione dopo
+almeno un minuto la conferma. Prima del DELETE si ricontrollano la riga, UID,
+marker, orario Apple invariato ed ETag. Modifiche Apple concorrenti, errori DB,
+identità estranee e sedute Fatto/no-show scomparse richiedono verifica e non
+vengono cancellate. Il mapping resta come `retired`, conservando UID/href/marker;
+non viene riutilizzato né cancellato. Nessuna scrittura a appuntamenti, pacchetti,
+residui o audit per questa pulizia.
+
+Ogni esecuzione riserva prima una corsia a quattro nuove sedute. La selezione
+usa tutte le pagine degli appuntamenti e l'inventario mapping in memoria.
+`creation-cursor` ruota i candidati, evitando che errori di una seduta blocchino
+le successive. Seguono gli eventi già collegati con il cursore esistente.
+`last-run` riporta anche `newPending`, `retired` e `missingSourcePending`.
+Gli eventi creati manualmente in Apple rimangono estranei alla sync: non vengono
+adottati né cancellati sulla base del titolo o del nome cliente.
+
+Test aggiuntivi: `node --test tests/apple-caldav-reconciliation.test.cjs`.
+La suite PostgreSQL usa un orologio fisso per non dipendere dal giorno di esecuzione.
+
+## Controllo serale cloud (22 settembre 2026)
+
+`apple-caldav-monitor` è separato dal worker e non scrive in Supabase né su Apple.
+Alle 23:30 Europe/Rome confronta inventario CalDAV reale (PROPFIND e GET con concorrenza limitata), tutti i mapping,
+appuntamenti futuri, identità, duplicati, orari, durata, PT, stati e contenuti.
+Gli eventi manuali con UID estranei ai mapping sono ignorati. Il worker deve avere
+un'esecuzione recente (entro 10 minuti). Un errore di lettura produce un controllo
+incompleto, mai un esito positivo. Ogni nuovo deploy esegue una verifica senza mail.
+
+Il cron ogni minuto attende la finestra locale 23:30–23:55 (anche cambio ora).
+Due osservazioni distanti almeno due minuti confermano anomalie nuove prima della
+mail a `neacea.desk@gmail.com`, da NEACEA Desk. I problemi identici non sono
+rinotificati; dopo una risoluzione possono essere segnalati se ricompaiono.
+Lo store separato `caldav-monitor-v1` conserva verifica, ultimo rapporto, chiavi
+note e claim giornaliero con lease; il payload di un invio è immutabile fino alla
+conferma Resend, con chiave idempotente per giorno. Nessuna mail quando tutto è
+allineato. `CALDAV_MONITOR_ENABLED=true`, `RESEND_API_KEY`, `EMAIL_AGENDA_FROM`
+sono configurati solo sul sito CalDAV. L'automazione locale Codex viene disattivata
+solo dopo la verifica production del sostituto cloud.
+
+Test: `node --test tests/apple-caldav-monitor.test.cjs`.

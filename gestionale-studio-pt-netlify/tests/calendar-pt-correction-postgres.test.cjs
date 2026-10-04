@@ -13,7 +13,8 @@ const {start,seed,rpc}=require('./helpers/calendar-postgres.cjs');
    ('d','pt11',array['test'],'pt','2026-09-19','17:00',60,10,'fatto','[CICLO-PACCHETTO-ID A]'),
    ('e','pt11',array['other'],'pt','2026-09-19','17:00',60,10,'fatto','[CICLO-PACCHETTO-ID B]');
    update clients set sessions_remaining=7;`);
-  for(const file of ['20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql'])await c.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations',file),'utf8'));
+  if(process.env.CORRECTION_JSONB==='1')await c.query('alter table appointments alter column client_ids type jsonb using to_jsonb(client_ids); alter table clients alter column package_types type jsonb using to_jsonb(package_types)');
+  for(const file of ['20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261004155434_calendar_pt_correction_json_participants.sql'])await c.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations',file),'utf8'));
   const row=async id=>(await c.query('select to_jsonb(a) r from appointments a where id=$1',[id])).rows[0].r;
   const apply=async(changes,actor='owner',role='service_role')=>{await c.query('set role '+role);try{return(await c.query('select calendar_correct_pt_sessions($1,$2,$3) r',[actor,crypto.randomUUID(),JSON.stringify(changes)])).rows[0].r;}finally{await c.query('reset role');}};
   const pair={before:await row('a'),partner:await row('b'),serviceId:'pt12'};

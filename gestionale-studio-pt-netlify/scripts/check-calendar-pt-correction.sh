@@ -10,6 +10,7 @@ node --test tests/calendar-pt-correction.test.cjs tests/calendar-audit-auth.test
 node tests/apple-caldav-display.test.cjs
 if [[ "${CALENDAR_POSTGRES_TEST:-0}" == "1" ]]; then
   node tests/calendar-pt-correction-postgres.test.cjs
+  CORRECTION_JSONB=1 node tests/calendar-pt-correction-postgres.test.cjs
   node tests/apple-caldav-production.test.cjs
 fi
 if [[ "${CALENDAR_BROWSER_TEST:-0}" == "1" ]]; then
