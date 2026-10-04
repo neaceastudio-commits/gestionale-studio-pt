@@ -25,6 +25,12 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
   }
+  if(input.operation==='correct_pt_sessions'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Correzione sedute riservata alla Direzione dal Calendario'});
+   const changes=input.payload?.changes;
+   if(!Array.isArray(changes)||changes.length<1||changes.length>100)return reply(400,{error:'Seleziona da 1 a 100 sedute'});
+   return reply(200,await db('rpc/calendar_correct_pt_sessions',{method:'POST',body:{p_actor_id:actor.id,p_request_id:crypto.randomUUID(),p_changes:changes}}));
+  }
   if(input.operation==='list'){
    if(actor.role!=='owner')return reply(403,{error:'Registro riservato alla Direzione'});
    return reply(200,await db('rpc/calendar_audit_read',{method:'POST',body:{p_actor_id:actor.id,p_filters:input.filters||{}}}));

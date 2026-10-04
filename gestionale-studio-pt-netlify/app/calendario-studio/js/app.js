@@ -1238,6 +1238,7 @@ const App = {
         </div>
 
         <div id="package-calendar-preview" style="margin-top:10px"></div>
+        ${isEdit && !App.isPortalPtMode() ? '<label class="checkbox-label" style="margin-top:12px"><input type="checkbox" id="cl-correct-sessions"> Dopo il salvataggio, correggi anche le sedute PT già in calendario e il riepilogo ore</label><p class="form-hint">Potrai scegliere periodo, secondo cliente e sedute da correggere, con anteprima prima della conferma.</p>' : ''}
 
         <div class="form-row" style="margin-top:12px">
           <div class="form-group">
@@ -1376,6 +1377,7 @@ const App = {
     };
 
     const saved = currentClient ? { ...currentClient, ...data } : { id: State.genId('c'), ...data, packageStart: App._dateStr(new Date()) };
+    const correctSessions = document.getElementById('cl-correct-sessions')?.checked;
     const button = document.getElementById('client-save-button');
     let errorBox = document.getElementById('client-save-error');
     if (!errorBox) { errorBox = document.createElement('p'); errorBox.id = 'client-save-error'; errorBox.setAttribute('role', 'alert'); errorBox.style.cssText = 'color:var(--red,#b91c1c);white-space:pre-wrap'; button?.closest('.modal-footer')?.before(errorBox); }
@@ -1391,6 +1393,7 @@ const App = {
       UI.closeModal();
       if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
       UI.showToast(clientId ? 'Cliente aggiornato' : 'Cliente salvato', 'success');
+      if (correctSessions) PTSessionCorrection.open(confirmed.id);
     } catch (error) {
       errorBox.textContent = 'Salvataggio non riuscito: ' + (error.message || error);
     } finally { App._clientSaveBusy = false; if (button?.isConnected) button.disabled = false; }

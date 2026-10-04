@@ -286,6 +286,29 @@ const SupabaseSync = (() => {
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
   }
 
+  async function correctPtSessions(changes) {
+    if (!window.CalendarAudit?.call) return { error: 'Rientra dal Portale con una sessione verificata' };
+    const result = await CalendarAudit.call('correct_pt_sessions', { changes });
+    if (result?.error) return result;
+    const ids = changes.flatMap(change => [change.before.id, ...(change.partner ? [change.partner.id] : [])]);
+    if (!Array.isArray(result?.appointments) || result.appointments.length !== ids.length
+      || ids.some(id => !result.appointments.some(a => a.id === id))) {
+      return { error: 'Risposta incompleta: ricarica il calendario per verificare il salvataggio' };
+    }
+    const confirmed = changes.every(change => {
+      const a = result.appointments.find(row => row.id === change.before.id);
+      const expectedIds = [...change.before.client_ids, ...(change.partner?.client_ids || [])];
+      const b = change.partner && result.appointments.find(row => row.id === change.partner.id);
+      return a.service_id === change.serviceId && a.status === change.before.status
+        && JSON.stringify(a.client_ids) === JSON.stringify(expectedIds)
+        && (!change.partner || b?.status === 'annullato');
+    });
+    if (!confirmed) return { error: 'Correzione non confermata dal server: ricarica il calendario' };
+    const saved = new Map(result.appointments.map(a => [a.id, appointmentFromDb(a)]));
+    State.saveAppointments(State.getAppointments().map(a => saved.get(a.id) || a));
+    return result;
+  }
+
   async function saveAppointmentAtomic(appt, before = null) {
     const result = await request('rpc/calendar_save_appointment', {
       method: 'POST', body: { p_appointment: appointmentToDb(appt), p_expected: before ? appointmentToDb(before) : null },
@@ -570,5 +593,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, correctPtSessions, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

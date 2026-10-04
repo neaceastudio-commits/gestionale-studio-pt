@@ -4,7 +4,7 @@ Il form cliente attende la conferma del gateway audit prima di chiudersi e aggio
 
 Per una seduta PT 1:2 il form mostra due selettori distinti. Entrambi i clienti appartengono allo stesso appuntamento, ciascuno con il proprio pacchetto e residuo. Lo stesso cliente non può essere selezionato due volte. Il salvataggio usa la RPC e il gateway audit esistenti.
 
-Questa modifica non converte o accorpa automaticamente sedute già esistenti. Il cambio pacchetto da solo non cambia il servizio degli appuntamenti. La sync CalDAV esistente protegge cliente/PT/servizio dei mapping già creati: la conversione di una seduta già collegata ad Apple richiede un intervento dedicato e non è inclusa qui.
+Il cambio pacchetto da solo non cambia il servizio degli appuntamenti. Per correggere esplicitamente sedute esistenti, incluse quelle passate, usare il nuovo percorso [Correzione sedute PT e ore](pt-session-correction.md), che richiede la propria migrazione e il rilascio coordinato Calendario/worker Apple.
 
 Verifiche locali (nessuna richiesta a servizi reali):
 
