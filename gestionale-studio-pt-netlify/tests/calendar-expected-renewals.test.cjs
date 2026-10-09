@@ -45,7 +45,12 @@ test('expected renewal: isolated balances, actual work, confirmation, activation
  // The ordinary package completes; activation carries the already performed new lesson.
  await db.exec("alter table clients disable trigger all;update clients set sessions_remaining=0 where id='a';alter table clients enable trigger all");
  const current=await get('clients','a');const rows=(await db.query('select to_jsonb(a) r from appointments a join calendar_expected_renewal_appointments m on m.appointment_id=a.id where m.proposal_id=$1',[p.id])).rows.map(r=>r.r);
- p=await call('activate',{id:p.id,version:p.version,clients:renewal.activationClients(p,[current],rows)});assert.equal(p.state,'activated');
+ const service=renewal.createService({db:async(table,options={})=>{
+  if(table==='rpc/calendar_expected_renewal')return call(options.body.p_action,options.body.p_payload,options.body.p_actor_id);
+  if(options.query?.startsWith('?id=eq.'))return [await get(table,decodeURIComponent(options.query.slice(7)))];
+  return (await db.query(`select to_jsonb(t) r from ${table} t order by id`)).rows.map(r=>r.r);
+ }});
+ p=await service.handle('owner',{action:'confirm',id:p.id,version:p.version});assert.equal(p.state,'activated');assert.equal(p.activationError,null);
  const activated=await get('clients','a');assert.equal(activated.sessions_remaining,8);assert.equal(activated.sessions_total,9);assert.equal(activated.stato_pagamento,'Da pagare');
  assert.ok(!JSON.parse(activated.notes.match(/\[NEACEA-PACKAGE-LEDGER-V1\]\s*([\s\S]*?)\s*\[\/NEACEA-PACKAGE-LEDGER-V1\]/)[1]).cycles.at(-1).payments.length);
  assert.equal((await get('appointments',apps[0].id)).status,'fatto');assert.ok(!(await get('appointments',apps[0].id)).notes.includes('[RINNOVO-PREVISTO '));

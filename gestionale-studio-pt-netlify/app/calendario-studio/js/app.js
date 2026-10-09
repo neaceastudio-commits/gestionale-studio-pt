@@ -2029,6 +2029,8 @@ const App = {
       ? 'Archiviato'
       : storedArchivedStatus;
     const metrics = Services.getClientSessionMetrics(client);
+    const expectedAppointments = State.getAppointments().filter(a => a.status !== 'annullato' &&
+      a.clientIds?.includes(clientId) && String(a.notes || '').includes('[RINNOVO-PREVISTO '));
     const packageLedger = App._packageLedger(client, metrics);
     const currentPackageCycle = packageLedger.parseError ? null : PackageLedger.currentCycle(packageLedger);
     const currentFinance = PackageLedger.cycleFinancial(currentPackageCycle || {
@@ -2085,10 +2087,11 @@ const App = {
       const svc = Services.getService(a.serviceId);
       const usesPackage = Services.serviceUsesPackageSessions(a.serviceId);
       const isCurrentCycle = usesPackage && Services.appointmentInCurrentPackageCycle(a, client);
-      const cycleLabel = usesPackage ? (isCurrentCycle ? 'Ciclo corrente' : 'Storico') : 'Servizio extra';
+      const renewalLabel = globalThis.PTSessionModel?.renewal(a) || '';
+      const cycleLabel = renewalLabel || (usesPackage ? (isCurrentCycle ? 'Ciclo corrente' : 'Storico') : 'Servizio extra');
       const canEditRow = !isArchived && App.canEditAppointment(a);
       const rowReadOnlyAttr = canEditRow ? '' : 'disabled';
-      const canInclude = canEditRow && !isCurrentCycle && usesPackage && a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && metrics.toSchedule > 0;
+      const canInclude = canEditRow && !renewalLabel && !isCurrentCycle && usesPackage && a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && metrics.toSchedule > 0;
       const operatorOptions = operators
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
@@ -2168,6 +2171,8 @@ const App = {
           </button>
         </div>`}
 
+        ${expectedAppointments.length ? `<div class="package-panel" id="pkg-expected-renewal"><strong>${expectedAppointments.length} lezioni del prossimo rinnovo</strong><p>Queste prenotazioni riservano il posto e restano separate dal pacchetto corrente fino all’attivazione.</p>${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="ExpectedRenewals.forClient('${client.id}')">Apri rinnovo previsto</button>`}</div>` : ''}
+        ${metrics.sessionAdjustment ? `<p class="package-lessons-only">Rettifica della Direzione: ${metrics.sessionAdjustment} lezione chiusa nel residuo. La rettifica non registra presenze né compensi PT.</p>` : ''}
         <div class="package-overview-kpis package-lessons-only">
           <div class="${hasTotal ? '' : 'warn'}"><span>Acquistate nel ciclo</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
           <div><span>Fatte nel ciclo</span><strong>${metrics.completed}</strong></div>
@@ -2340,7 +2345,7 @@ const App = {
           </div></details>
         </section>
 
-        <section class="package-panel package-renewal-panel package-finance-only" hidden><details><summary>Apri un nuovo rinnovo</summary>
+        <section class="package-panel package-renewal-panel package-finance-only" hidden>${expectedAppointments.length ? `<h4>Rinnovo già previsto</h4><p>Conferma o modifica le ${expectedAppointments.length} lezioni già prenotate.</p><button class="btn-primary" onclick="ExpectedRenewals.forClient('${client.id}')">Apri rinnovo previsto</button>` : `<details><summary>Apri un nuovo rinnovo</summary>
           <div class="package-section-heading">
             <div>
               <h4>Apri un nuovo rinnovo</h4>
@@ -2427,7 +2432,7 @@ const App = {
             <button id="pkg-renew-submit" class="btn-primary" data-ledger-ready="${packageLedger.parseError ? 'false' : 'true'}" onclick="App._renewPackageAppointments('${client.id}')" disabled>Rinnova e genera sedute</button>
           </div>
           <p>Le impostazioni del ciclo attuale non cambiano prima della conferma. Se non vengono trovate abbastanza date valide, il rinnovo viene annullato interamente.</p>
-         </details></section>`}
+         </details>`}</section>`}
 
         ${App.isPortalPtMode() || isArchived || !canOfferRenewalUndo ? '' : `
         <section class="package-panel package-renewal-undo-panel package-finance-only" hidden><details><summary>Annulla ultimo rinnovo</summary>
@@ -3480,7 +3485,7 @@ const App = {
       const rollbackOk = await App._rollbackPackageRenewalRemote(futureToCarry, created);
       App._packageRenewalBusy = false;
       UI.showToast(rollbackOk
-        ? 'Rinnovo annullato: il cliente non è stato aggiornato e le sedute sono state ripristinate'
+        ? 'Rinnovo non completato: ' + clientSync.error + ' Le sedute aggiuntive sono state ripristinate.'
         : 'Rinnovo non completato: verifica la sincronizzazione prima di riprovare', 'error');
       App._openPackageFinance(clientId);
       return;

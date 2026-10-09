@@ -104,7 +104,12 @@ function createService({db}) {
    if(s.appointments.some(a=>a.notes?.includes(tag(p))&&['fatto','noshow'].includes(a.status))&&next.plan.startDate!==p.plan.startDate)throw Error('La decorrenza resta invariata dopo la prima lezione svolta');
    return rpc(actor,'edit',{id:p.id,version:input.version,plan:next.plan,appointments:appointmentsFor(next,s.appointments.filter(a=>a.notes?.includes(tag(p))))});
   }
-  const r=await rpc(actor,input.action,{id:p.id,version:input.version});if(input.action==='confirm')await run(actor);return r;
+  const r=await rpc(actor,input.action,{id:p.id,version:input.version});
+  if(input.action==='confirm'){
+   const result=await run(actor),updated=await db('calendar_expected_renewals',{query:'?id=eq.'+encodeURIComponent(p.id)});
+   return {...(updated[0]||r),activationError:result.results.find(x=>x.id===p.id&&x.error)?.error||null};
+  }
+  return r;
  }
  return {run,handle,snapshot};
 }

@@ -166,6 +166,8 @@ const Services = (() => {
       start: currentLedgerCycle?.startDate || persistedStart || inferredStart || acquisitionStart,
       id: currentLedgerCycle?.id || '',
       legacy: currentLedgerCycle ? currentLedgerCycle.legacy === true : true,
+      sessionAdjustment: (currentLedgerCycle?.sessionAdjustments || []).reduce((sum, entry) =>
+        sum + (Number.isInteger(entry.sessions) && entry.sessions >= 0 ? entry.sessions : 0), 0),
       persisted: !!persistedStart,
       inferredFromAppointment: !persistedStart && !!inferredStart,
     };
@@ -222,7 +224,8 @@ const Services = (() => {
     const participantStatus = a => globalThis.PTSessionModel?.status(a, client.id) || a.status;
     const completed = currentAppts.filter(a => participantStatus(a) === 'fatto').length;
     const chargedAbsences = currentAppts.filter(a => a.serviceId === 'pt12' && globalThis.PTSessionModel?.read(a) && participantStatus(a) === 'noshow' && a.status !== 'annullato').length;
-    const consumed = completed + chargedAbsences;
+    const sessionAdjustment = cycleContext.sessionAdjustment || 0;
+    const consumed = completed + chargedAbsences + sessionAdjustment;
     const scheduled = currentAppts.filter(a => a.status === 'prenotato' && a.date >= today).length;
     const noShow = currentAppts.filter(a => participantStatus(a) === 'noshow').length;
     const lifetimeCompleted = packageAppts.filter(a => participantStatus(a) === 'fatto').length;
@@ -253,6 +256,7 @@ const Services = (() => {
       completed,
       consumed,
       chargedAbsences,
+      sessionAdjustment,
       lifetimeCompleted,
       previousCompleted,
       scheduled,

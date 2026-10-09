@@ -5,7 +5,7 @@ window.CalendarAudit = (() => {
   let accessToken=new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
   const token=()=>accessToken;
   async function call(operation,payload={},filters={}) {
-    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata',status:r.status}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
+    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),calendarRevision:'20261009s',operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata',status:r.status}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
   }
   async function dispatchWrite(table,{method,query,body}) {
     const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');

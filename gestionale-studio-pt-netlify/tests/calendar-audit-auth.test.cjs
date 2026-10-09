@@ -3,7 +3,7 @@ process.env.PT_ACCESS_SECRET='SIM_SESSION';process.env.SUPABASE_SERVICE_ROLE_KEY
 const {handler}=require('../netlify/functions/calendar-activity');
 const {verify}=require('../netlify/functions/lib/calendar-audit-auth');
 const token=(id='pt',level='pt')=>{const p=Buffer.from(JSON.stringify({operatorId:id,email:id+'@example.test',accessLevel:level,exp:Date.now()+60000})).toString('base64url');return p+'.'+crypto.createHmac('sha256',process.env.PT_ACCESS_SECRET).update(p).digest('base64url')};
-const event=body=>({httpMethod:'POST',body:JSON.stringify(body)});
+const event=body=>({httpMethod:'POST',body:JSON.stringify({calendarRevision:'20261009s',...body})});
 function mock(actor='pt') {const calls=[];const saved=global.fetch;global.fetch=async(url,options)=>{const body=options.body?JSON.parse(options.body):null;calls.push({url,body,method:options.method});const value=url.includes('operator_effective_roles')?[{operator_id:actor,email:actor+'@example.test',active:true,legacy_roles:[actor==='owner'?'owner':'PT'],system_roles:[]}]:url.includes('/operators?')?[{id:actor,portal_access_enabled:true,portal_access_version:0}]:[];return {ok:true,status:200,text:async()=>JSON.stringify(value)}};return {calls,restore:()=>global.fetch=saved}}
 test('signed session is required; modified payload and expiry rejected',()=>{assert.ok(verify(token()));assert.equal(verify(token()+'x'),null);assert.equal(verify(''),null);const p=Buffer.from(JSON.stringify({operatorId:'pt',email:'pt@example.test',exp:1})).toString('base64url');assert.equal(verify(p+'.'+crypto.createHmac('sha256','SIM_SESSION').update(p).digest('base64url')),null)});
 test('browser cannot supply actor name/email/role/source/correlation ID',async()=>{const m=mock();try{const result=await handler(event({accessToken:token(),operation:'save',actor_name:'FORGED',actor_email:'FORGED',actor_role:'owner',source:'system',request_id:'FORGED',payload:{appointment:{id:'a'}}}));assert.equal(result.statusCode,200);const call=m.calls.find(c=>c.url.includes('calendar_audit_write'));assert.equal(call.body.p_actor_id,'pt');assert.equal(call.body.p_actor_role,'pt');assert.equal(call.body.p_source,'calendar');assert.ok(!JSON.stringify(call.body).includes('FORGED'))}finally{m.restore()}});
@@ -30,5 +30,16 @@ test('paired renewal is owner-only, preserves idempotency UUID and never trusts 
   assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'renew_pt_pair',payload:{...payload,requestId:'bad'}}))).statusCode,400);
   assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'renew_pt_pair',actor_id:'FORGED',payload}))).statusCode,200);
   const call=m.calls.find(c=>c.url.includes('calendar_renew_pt_pair'));assert.equal(call.body.p_actor_id,'owner');assert.equal(call.body.p_request_id,payload.requestId);assert.ok(!JSON.stringify(call.body).includes('FORGED'));
+ }finally{m.restore()}
+});
+
+test('outdated calendar pages cannot overwrite balances or start a second renewal',async()=>{
+ const m=mock('owner');try{
+  for(const operation of ['save','delete','client','renew_pt_pair','save_pair_client','correct_pt_sessions']){
+   const result=await handler(event({calendarRevision:undefined,accessToken:token('owner','owner'),operation,payload:{rows:[{id:'c',sessions_remaining:4}]}}));
+   assert.equal(result.statusCode,409);assert.equal(JSON.parse(result.body).code,'CALENDAR_RELOAD_REQUIRED');
+  }
+  assert.ok(!m.calls.some(c=>c.url.includes('/rpc/')));
+  assert.equal((await handler(event({calendarRevision:undefined,accessToken:token('owner','owner'),operation:'session'}))).statusCode,200);
  }finally{m.restore()}
 });

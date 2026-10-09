@@ -20,7 +20,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   const f=path.join(__dirname,'../app/calendario-studio',u.pathname==='/'?'index.html':u.pathname.slice(1));return route.fulfill({contentType:f.endsWith('.js')?'application/javascript':f.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(f)});
  });
  await page.goto('https://calendar.test/?access=SIM');await page.waitForFunction(()=>State.getClients().length===1&&window.ExpectedRenewals);await page.waitForTimeout(700);
- await page.getByRole('button',{name:'Rinnovi previsti',exact:true}).click();await page.waitForSelector('[data-action=edit]');
+ await page.evaluate(()=>{
+  const c=State.getClients()[0];c.packageCycleStart='2026-07-23';c.sessionsRemaining=0;State.saveClients([c]);
+  State.saveAppointments([
+   ...Array.from({length:8},(_,i)=>({id:'old'+i,clientIds:['a'],serviceId:'pt11',date:'2026-08-'+String(i+1).padStart(2,'0'),startTime:'09:00',durationMin:60,operatorId:'pt',status:'fatto',notes:'[CICLO-PACCHETTO 2026-07-23]'})),
+   ...Array.from({length:8},(_,i)=>({id:'expected'+i,clientIds:['a'],serviceId:'pt11',date:'2099-10-'+String(i+10),startTime:'09:00',durationMin:60,operatorId:'pt',status:'prenotato',notes:'[RINNOVO-PREVISTO pending]'}))
+  ]);App.openPackageOverview('a');
+ });
+ assert.equal(await page.locator('td').filter({hasText:/^Rinnovo da confermare$/}).count(),8);
+ assert.equal(await page.locator('#pkg-renew-count').count(),0);
+ assert.match(await page.locator('#pkg-expected-renewal').innerText(),/8 lezioni/);
+ await page.locator('#pkg-expected-renewal button').click();await page.waitForSelector('[data-action=edit]');
  assert.match(await page.locator('#expected-renewals-body').innerText(),/non registra un incasso/);
  await page.click('[data-action=edit]');await page.check('[data-day="5"] [name=enabled]');await page.fill('[name=sessions0]','12');await page.fill('[name=amount0]','220');
  fail=true;await page.getByRole('button',{name:'Salva proposta',exact:true}).click();await page.waitForFunction(()=>document.getElementById('expected-status').textContent.includes('cambiata'));assert.equal(await page.inputValue('[name=sessions0]'),'12');
