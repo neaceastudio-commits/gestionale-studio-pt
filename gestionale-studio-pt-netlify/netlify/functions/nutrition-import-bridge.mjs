@@ -1,6 +1,6 @@
 // Standalone Anamnesi uses the existing authenticated Portal gateway.
 const endpoint='https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/nutrition-client-import';
-const headers={'Content-Type':'application/json','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'};
+const headers={'Content-Type':'application/json','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 export default async request=>{
  if(request.method!=='POST')return Response.json({error:'Metodo non consentito'},{status:405,headers});
  const authorization=request.headers.get('authorization')||'';

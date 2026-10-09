@@ -49,6 +49,8 @@ Deploy verificati:
 - Calendario: `6ac8b4ffe683f660199d8499`, commit applicativo `0287dc3`; branch di build ripristinato a main e build automatiche nuovamente disabilitate.
 - Portale: `6ac8b52d36cbbab7912f8c10`, manifest statico e funzioni estranee preservati.
 - Consenso: `6ac8b614c4027d5818799c77`.
-- Anamnesi: `6ac8b71b6651e3686af2bd63`, sorgente locale allineata e bridge autenticato verificato.
+- Anamnesi: `6ac8b7e0647e8400efe9b153`, sorgente locale allineata e bridge autenticato verificato.
 
 Gli advisor Supabase non hanno segnalato nuovi errori per questo rilascio; RLS senza policy su `pt_trainer_payments` è intenzionale, con accesso revocato ai ruoli pubblici e solo gateway della Direzione. Le segnalazioni preesistenti su altre viste rimangono fuori da questa modifica.
+
+Il bridge usa la modalità Netlify `stream` richiesta dal runtime API v2; verificato HTTP 401 senza sessione sul deploy prima della promozione.
