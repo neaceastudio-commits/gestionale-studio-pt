@@ -146,7 +146,7 @@ const Calendar = (() => {
                   </div>
                   <div class="appt-op">${Services.operatorFullName(a.operatorId)}</div>
                   <div class="appt-status">
-                    ${forcedOverlapBadge(a)}
+                    ${PTSessionModel.provisional(a)?'<span class="status-pill">Orario da confermare</span>':forcedOverlapBadge(a)}
                     <span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>
                     ${svc?.isGroup ? `<span class="circuit-badge">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>
@@ -236,7 +236,7 @@ const Calendar = (() => {
           <div class="event-svc" style="color:${svc?.color}">${svc?.label}</div>
           <div class="event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</div>
           <div class="event-op">${Services.operatorFullName(a.operatorId)}</div>
-          ${forcedOverlapBadge(a, true)}
+          ${PTSessionModel.provisional(a)?'<span class="status-pill">Da confermare</span>':forcedOverlapBadge(a, true)}
           ${svc?.isGroup ? `<div class="event-circuit">${a.clientIds.length}/${svc.maxClients} posti</div>` : ''}
         </div>`;
     });
@@ -322,7 +322,7 @@ const Calendar = (() => {
                     <span class="week-event-time">${a.startTime}</span>
                     <span class="week-event-svc" style="color:${svc?.color}">${svc?.label}</span>
                     <span class="week-event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</span>
-                    ${forcedOverlapBadge(a, true)}
+                    ${PTSessionModel.provisional(a)?'<span class="status-pill">Da confermare</span>':forcedOverlapBadge(a, true)}
                     ${svc?.isGroup ? `<span class="circuit-mini">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>`;
               }).join('')}

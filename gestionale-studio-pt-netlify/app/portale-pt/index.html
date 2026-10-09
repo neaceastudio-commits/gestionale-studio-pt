@@ -786,7 +786,7 @@
       <div class="panel-head">
         <div>
           <div class="panel-title">Scheda cliente PT</div>
-          <div class="muted" id="workspaceSubtitle">Seleziona un cliente per vedere dati, anamnesi, Visbody e foto.</div>
+          <div class="muted" id="workspaceSubtitle">Seleziona un cliente per vedere dati, anamnesi e Visbody.</div>
         </div>
         <button class="ghost-btn" style="background:#fff;color:var(--text);border-color:var(--border2)" onclick="closeClientWorkspace()">Chiudi</button>
       </div>
@@ -1299,7 +1299,7 @@
       try {
         const [datiFisici, foto] = await Promise.all([
           supabase('dati_fisici', `?select=*&cliente_id=eq.${encodeURIComponent(id)}&order=data_rilevazione.desc,created_at.desc`),
-          supabase('foto_allenamento', `?select=*&cliente_id=eq.${encodeURIComponent(id)}&order=data_scatto.desc,created_at.desc`)
+          Promise.resolve([])
         ]);
         state.datiFisici = datiFisici || [];
         state.foto = foto || [];
@@ -1380,34 +1380,7 @@
             <div style="margin-top:12px">${renderComposition(latest)}</div>
           </div>
 
-          <div class="anamnesis-card">
-            <div class="row">
-              <div>
-                <div class="panel-title">File dispositivi</div>
-                <div class="muted">Visbody e file tecnici collegati al cliente</div>
-              </div>
-              <button class="primary-btn" onclick="document.getElementById('ptFileUpload').click()">Carica file</button>
-            </div>
-            <input id="ptFileUpload" type="file" multiple style="display:none" onchange="uploadClientFiles(this.files, 'visbody'); this.value=''">
-            <div id="fileUploadProgress" class="upload-progress">Caricamento...</div>
-            <div class="file-list" style="margin-top:12px">${renderFileList()}</div>
-          </div>
 
-          <div class="anamnesis-card">
-            <div class="row">
-              <div>
-                <div class="panel-title">Foto cliente</div>
-                <div class="muted">Foto progressi e valutazioni visive nello stesso punto</div>
-              </div>
-              <button class="primary-btn" onclick="document.getElementById('ptPhotoUpload').click()">Carica foto</button>
-            </div>
-            <input id="ptPhotoUpload" type="file" accept="image/*" multiple style="display:none" onchange="uploadClientFiles(this.files, 'foto'); this.value=''">
-            <div class="upload-area" style="margin-top:12px" onclick="document.getElementById('ptPhotoUpload').click()" ondragover="event.preventDefault()" ondrop="handlePhotoDrop(event)">
-              Trascina qui le foto oppure clicca per selezionarle
-            </div>
-            <div id="photoUploadProgress" class="upload-progress">Caricamento...</div>
-            <div class="photo-grid" style="margin-top:12px">${renderPhotoGrid()}</div>
-          </div>
         </div>
       `;
     }

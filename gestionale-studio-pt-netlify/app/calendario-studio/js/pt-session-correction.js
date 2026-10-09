@@ -1,7 +1,7 @@
 /* Explicit correction of existing sessions; package selection alone never rewrites history. */
 (function (root) {
   const snapshot = a => ({id:a.id,service_id:a.serviceId,client_ids:a.clientIds,operator_id:a.operatorId,date:a.date,start_time:a.startTime,duration_min:a.durationMin,buffer_min:a.bufferMin || 0,status:a.status,notes:a.notes || ''});
-  const sameSlot = (a,b) => a.date===b.date && String(a.startTime).slice(0,5)===String(b.startTime).slice(0,5) && Number(a.durationMin)===Number(b.durationMin) && a.operatorId===b.operatorId && a.status===b.status;
+  const sameSlot = (a,b) => a.date===b.date && String(a.startTime).slice(0,5)===String(b.startTime).slice(0,5) && Number(a.durationMin)===Number(b.durationMin) && a.operatorId===b.operatorId && (a.status==='prenotato')===(b.status==='prenotato');
   function plan(appointments, {clientId,partnerId,serviceId,from,to}) {
     if (!['pt11','pt12'].includes(serviceId) || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from>to) throw Error('Controlla il periodo e il tipo PT.');
     if ([from,to].some(date=>{const parsed=new Date(date+'T12:00:00');return !Number.isFinite(parsed.getTime())||parsed.getFullYear()!==Number(date.slice(0,4))||parsed.getMonth()+1!==Number(date.slice(5,7))||parsed.getDate()!==Number(date.slice(8,10));})) throw Error('Controlla le date del periodo.');
@@ -14,7 +14,7 @@
         if (!partnerId) reason='Scegli il secondo cliente.';
         else {
           const matches=appointments.filter(b=>b.id!==a.id && eligible(b) && b.clientIds?.length===1 && b.clientIds[0]===partnerId && sameSlot(a,b));
-          if(matches.length!==1) reason=matches.length?'Più sedute del secondo cliente: verifica il calendario.':'Nessuna seduta corrispondente del secondo cliente (stesso PT, orario, durata e stato).';
+          if(matches.length!==1) reason=matches.length?'Più sedute del secondo cliente: verifica il calendario.':'Nessuna seduta corrispondente del secondo cliente (stesso PT, orario e durata).';
           else partner=matches[0];
         }
       } else if(a.serviceId===serviceId) reason='Tipo già corretto.';
@@ -29,13 +29,13 @@
     const client=Services.getClient(clientId); if(!client)return;
     const today=App._dateStr(new Date());
     UI.openModal(`<div class="modal-header"><h3>Correggi sedute PT — ${esc(Services.clientFullName(clientId))}</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div>
-      <div class="modal-body"><p>Correggi anche sedute passate scegliendo il periodo. Le sedute in coppia contano una sola volta nelle ore del trainer; ogni cliente conserva le proprie sessioni residue.</p>
+      <div class="modal-body"><p>Correggi anche sedute passate scegliendo il periodo. Le sedute in coppia contano una sola volta nelle ore del trainer; ogni assenza PT 1:2 scala una seduta anche al cliente assente.</p>
       <div id="pt-correction-settings" data-client="${esc(clientId)}" class="form-row">
       <div class="form-group"><label>Dal<input class="form-input" type="date" id="pt-correction-from" value="${today}" onchange="PTSessionCorrection.invalidate()"></label></div>
       <div class="form-group"><label>Al<input class="form-input" type="date" id="pt-correction-to" value="${today.slice(0,7)}-${new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate()}" onchange="PTSessionCorrection.invalidate()"></label></div>
       <div class="form-group"><label>Tipo corretto<select class="form-input" id="pt-correction-service" onchange="PTSessionCorrection.invalidate()"><option value="pt12">PT 1:2</option><option value="pt11">PT 1:1</option></select></label></div></div>
       <div class="form-group"><label>Secondo cliente (per unire due sedute)<select class="form-input" id="pt-correction-partner" onchange="PTSessionCorrection.invalidate()"><option value="">Seleziona…</option>${State.getClients().filter(c=>c.id!==clientId).map(c=>`<option value="${esc(c.id)}">${esc(Services.clientFullName(c.id))}</option>`).join('')}</select></label></div>
-      <p>Si uniscono solo sedute con stesso PT, data, orario, durata e stato. La seconda viene annullata e resta nel registro. Eventuali schede allenamento compilate sulla seconda seduta impediscono l’unione.</p>
+      <p>Si uniscono solo sedute con stesso PT, data, orario e durata. La seconda viene annullata e resta nel registro. Eventuali schede allenamento compilate sulla seconda seduta impediscono l’unione.</p>
       <button id="pt-correction-preview-button" class="btn-ghost" onclick="PTSessionCorrection.preview()">Mostra anteprima</button>
       <div id="pt-correction-preview"></div><p id="pt-correction-result" role="status" aria-live="polite"></p></div>
       <div class="modal-footer"><button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button><button id="pt-correction-save" class="btn-primary" disabled onclick="PTSessionCorrection.save()">Conferma correzione e aggiorna ore</button></div>`);
@@ -69,7 +69,7 @@
       const response=await SupabaseSync.correctPtSessions(chosen.map(r=>r.change));
       if(response?.error)throw Error(response.error);
       rows=[];previewElement.innerHTML='';
-      result.textContent='Correzioni salvate. Riepilogo ore aggiornato; sessioni residue invariate.';
+      result.textContent='Correzioni salvate. Riepilogo ore aggiornato; residui aggiornati secondo le presenze e le assenze della coppia.';
       Calendar.render();
     }catch(e){result.textContent='Correzione non confermata: '+e.message+' Ricarica i dati e verifica il calendario prima di riprovare.';rows=[];previewElement.innerHTML='';}
     finally{busy=false;controls.forEach(el=>el.disabled=false);saveButton.disabled=true;}

@@ -5,7 +5,7 @@ const model=require('../app/calendario-studio/js/pt-session-model');
  const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
  try{
   const page=await browser.newPage({timezoneId:'Europe/Rome'}),errors=[],writes=[],appointments=[];
-  const clients=['one','two'].map((id,i)=>({id,nome:'TEST',cognome:id,active:true,package_types:['PT 1:2','Nutrizione'],sessions_total:8,sessions_remaining:i+1,pt_assegnato:'pt',updated_at:'2026-10-01T00:00:00+00:00'}));
+  const clients=['one','two'].map((id,i)=>({id,pt_partner_id:i===0?'two':'one',nome:'TEST',cognome:id,active:true,package_types:['PT 1:2','Nutrizione'],sessions_total:8,sessions_remaining:i+1,pt_assegnato:'pt',updated_at:'2026-10-01T00:00:00+00:00'}));
   let fail=true;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{

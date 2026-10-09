@@ -27,8 +27,8 @@ function buildAgendas({ operators, clients, appointments }, day) {
       const names = participants.map(c => clean(`${c.nome || ''} ${c.cognome || ''}`) || 'Cliente');
       const time = String(a.start_time).slice(0, 5);
       if (!/^\d{2}:\d{2}$/.test(time)) { issues.push('invalid_time'); return null; }
-      if (participants.length === 1) return `${time} · ${names[0]} · ${SERVICES[a.service_id]} · ${progress(participants[0])}`;
-      return `${time} · ${participants.map((c, i) => `${names[i]} (${progress(c)})`).join(' + ')} · ${SERVICES[a.service_id]}`;
+      if (participants.length === 1) return `${time}${String(a.notes||'').includes('[ORARIO-PROVVISORIO]')?' (da confermare)':''} · ${names[0]} · ${SERVICES[a.service_id]} · ${progress(participants[0])}`;
+      return `${time}${String(a.notes||'').includes('[ORARIO-PROVVISORIO]')?' (da confermare)':''} · ${participants.map((c, i) => `${names[i]} (${progress(c)})`).join(' + ')} · ${SERVICES[a.service_id]}`;
     }).filter(Boolean);
     return { operatorId: op.id, operatorName: clean(`${op.nome || ''} ${op.cognome || ''}`), day, enabled: op.whatsapp_agenda_enabled === true,
       count: rows.length, lines, issues: [...new Set(issues)], text: `NEACEA · Agenda di oggi\n\n${lines.join('\n')}\n\nTotale: ${rows.length} sedute` };
@@ -65,7 +65,7 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
       all('operators', '?select=id,nome,cognome,active,roles&order=id'),
       all('operator_effective_roles', '?select=operator_id,active,system_roles,legacy_roles&order=operator_id'),
       all('clients', '?select=id,nome,cognome,sessions_total,sessions_remaining&order=id'),
-      all('appointments', '?select=id,date,start_time,service_id,client_ids,operator_id,status&status=eq.prenotato&service_id=in.(pt11,pt12)&date=eq.' + day + '&order=id')
+      all('appointments', '?select=id,date,start_time,service_id,client_ids,operator_id,status,notes&status=eq.prenotato&service_id=in.(pt11,pt12)&date=eq.' + day + '&order=id')
     ]);
     let config = [], migrationReady = true;
     try { config = await all('operators', '?select=id,whatsapp_phone,whatsapp_agenda_enabled&order=id'); }

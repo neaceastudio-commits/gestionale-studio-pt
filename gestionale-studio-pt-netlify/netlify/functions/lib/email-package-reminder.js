@@ -20,7 +20,7 @@ function candidates(clients,appointments,instant){
   const c=cycle(client);if(!c||(!c.id&&!c.start))continue;
   const rows=appointments.filter(a=>['pt11','pt12'].includes(a.service_id)&&a.client_ids?.includes(client.id)&&belongs(a,c)&&a.status==='prenotato').sort((a,b)=>(a.date+a.start_time+a.id).localeCompare(b.date+b.start_time+b.id));
   // Saved balance is authoritative. Reject overdue or excess bookings; the last session may still need scheduling.
-  if(rows.length<1||rows.length>2||rows[0].date!==day||String(rows[0].start_time).slice(0,5)<=time||(rows[1]&&rows[1].date<=day))continue;
+  if(rows.length<1||rows.length>2||String(rows[0].notes||'').includes('[ORARIO-PROVVISORIO]')||rows[0].date!==day||String(rows[0].start_time).slice(0,5)<=time||(rows[1]&&rows[1].date<=day))continue;
   result.push({key:'delivery/'+hash(client.id+'|'+(c.id||c.start)),clientId:client.id,email,name:client.nome||' ',appointmentId:rows[0].id,day});
  }
  return result;

@@ -15,7 +15,7 @@
   if(!App.guardStudioManagement())return;
   firstId=id;plan=null;renewFirst=renew;
   const client=Services.getClient(id);if(!client||!eligible(client))return UI.showToast('Serve un cliente attivo con pacchetto PT 1:2','error');
-  panel('Calendario e rinnovo PT 1:2',`<p>Una seduta condivisa per due persone. Pacchetti, incassi e presenze restano separati.</p><label>Partner <select id="pair-partner"><option value="">Seleziona la seconda persona</option>${State.getClients().filter(c=>c.id!==id&&eligible(c)).sort((a,b)=>name(a).localeCompare(name(b),'it')).map(c=>`<option value="${escape(c.id)}">${escape(name(c))}</option>`).join('')}</select></label>`,`<button class="btn-primary" onclick="PTPairSessions.configure()">Continua</button>`);
+  panel('Calendario e rinnovo PT 1:2',`<p>Una seduta condivisa per due persone. Pacchetti, incassi e presenze restano separati.</p><label>Partner <select id="pair-partner"><option value="">Seleziona la seconda persona</option>${State.getClients().filter(c=>c.id===client.ptPartnerId&&eligible(c)).sort((a,b)=>name(a).localeCompare(name(b),'it')).map(c=>`<option value="${escape(c.id)}" selected>${escape(name(c))}</option>`).join('')}</select></label>`,`<button class="btn-primary" onclick="PTPairSessions.configure()">Continua</button>`);
  }
  function configure(){
   const pair=[Services.getClient(firstId),Services.getClient(value('pair-partner'))];
@@ -45,7 +45,7 @@
   for(let n=0;rows.length<count&&n<730;n++,date.setDate(date.getDate()+1)){
    if(!days.includes(date.getDay()))continue;
    const day=localDateStr(date),minute=Number(time.slice(0,2))*60+Number(time.slice(3));
-   if(appointments.some(a=>a.status!=='annullato'&&a.date===day&&(a.operatorId===operatorId||a.clientIds?.some(id=>clients.some(c=>c.id===id)))&&Services.timeToMin(a.startTime)<minute+60&&Services.timeToMin(a.startTime)+Number(a.durationMin)>minute))throw Error(`Sovrapposizione il ${day} alle ${time}: cambia il piano prima di confermare`);
+   if(appointments.some(a=>a.status!=='annullato'&&!PTSessionModel.provisional(a)&&a.date===day&&(a.operatorId===operatorId||a.clientIds?.some(id=>clients.some(c=>c.id===id)))&&Services.timeToMin(a.startTime)<minute+60&&Services.timeToMin(a.startTime)+Number(a.durationMin)>minute))throw Error(`Sovrapposizione il ${day} alle ${time}: cambia il piano prima di confermare`);
    rows.push({id:'pair_'+crypto.randomUUID(),service_id:'pt12',client_ids:clients.map(c=>c.id),operator_id:operatorId,date:day,start_time:time,duration_min:60,buffer_min:10,status:'prenotato',notes:'Seduta condivisa PT 1:2'});
   }
   if(rows.length!==count)throw Error('Piano troppo lungo');

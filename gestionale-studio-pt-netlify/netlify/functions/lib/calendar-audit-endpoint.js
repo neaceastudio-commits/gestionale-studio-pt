@@ -25,6 +25,16 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
   }
+  if(input.operation==='save_pair_client'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Associazione riservata alla Direzione'});
+   return reply(200,await db('rpc/calendar_save_pair_client',{method:'POST',body:{p_actor_id:actor.id,p_request_id:crypto.randomUUID(),p_payload:input.payload||{}}}));
+  }
+  if(input.operation==='pt_payments'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Pagamenti riservati alla Direzione'});
+   const payload=input.payload||{};
+   if(!['list','register','void'].includes(payload.action)||!/^\d{4}-\d{2}-01$/.test(payload.period||''))return reply(400,{error:'Mese o azione non validi'});
+   return reply(200,await db('rpc/calendar_pt_payments',{method:'POST',body:{p_actor_id:actor.id,p_operation:payload.action,p_payload:payload}}));
+  }
   if(input.operation==='renew_pt_pair'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Rinnovo coppia riservato alla Direzione dal Calendario'});
    const {requestId,...payload}=input.payload||{};

@@ -32,7 +32,6 @@
       <button class="btn btn-ghost btn-sm" onclick="setSezione('home')" id="snav-home">Riepilogo</button>
       <button class="btn btn-ghost btn-sm" onclick="setSezione('fisici')" id="snav-fisici">Dati Fisici</button>
       <button class="btn btn-ghost btn-sm" onclick="setSezione('programma')" id="snav-programma">Programma</button>
-      <button class="btn btn-ghost btn-sm" onclick="setSezione('foto')" id="snav-foto">Foto</button>
       <button class="btn btn-ghost btn-sm" onclick="apriImpostazioni(clienteAtt && clienteAtt.id)" id="snav-imp">Impostazioni</button>
     </div>
     <button class="btn btn-ghost btn-sm" id="btn-back" onclick="tornaLista()" style="display:none">← Lista</button>
@@ -112,10 +111,6 @@
     <button class="sez-btn" id="sez-programma" onclick="setSezione('programma')">
       <div class="sez-name">Programma</div>
       <div class="sez-sub">Schede · Carichi · Progressione</div>
-    </button>
-    <button class="sez-btn" id="sez-foto" onclick="setSezione('foto')">
-      <div class="sez-name">Foto</div>
-      <div class="sez-sub">Galleria per visita</div>
     </button>
   </div>
 
@@ -252,38 +247,6 @@
     </div>
   </div>
 
-  <!-- ── SEZIONE: FOTO ── -->
-  <div id="sez-foto-body" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-family:var(--font-serif);font-size:22px;font-weight:300">Fotografie</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="foto-visita-filter" onchange="renderFoto()" style="border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--bg2);outline:none">
-          <option value="">Tutte le visite</option>
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="document.getElementById('foto-upload-input').click()">+ Carica foto</button>
-        <input type="file" id="foto-upload-input" accept="image/*" multiple style="display:none" onchange="uploadFotoVisita(this.files)">
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-body">
-        <div class="upload-area" id="foto-drop-area"
-             onclick="document.getElementById('foto-upload-input').click()"
-             ondragover="event.preventDefault();this.classList.add('drag')"
-             ondragleave="this.classList.remove('drag')"
-             ondrop="handleFotoDrop(event)">
-          <div class="upload-icon">Foto</div>
-          <div class="upload-text">Trascina le foto o clicca per selezionare</div>
-          <div class="upload-sub">JPG, PNG — ridimensionamento automatico a 1200px</div>
-        </div>
-        <div class="upload-progress" id="prog-foto"><div class="upload-bar" id="bar-foto"></div></div>
-      </div>
-    </div>
-
-    <div class="foto-grid" id="foto-grid">
-      <div class="empty" style="grid-column:1/-1"><div class="empty-title">Nessuna foto</div><div class="empty-sub">Le foto caricate appariranno qui</div></div>
-    </div>
-  </div>
 
 </div>
 

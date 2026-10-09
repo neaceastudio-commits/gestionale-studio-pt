@@ -332,6 +332,8 @@ const App = {
 
         <div class="form-group">
           <label>Note</label>
+          <label><input id="appt-provisional" type="checkbox" ${PTSessionModel.provisional(appt)?'checked':''}> Orario provvisorio — da concordare con il cliente</label>
+          <div class="form-hint">Non entra nelle ore prenotate o maturate. Conferma l’orario effettivo prima di registrare la seduta.</div>
           <textarea id="appt-notes" class="form-input" rows="2">${App._escapeHtml(globalThis.PTSessionModel?.strip(appt?.notes) || appt?.notes || '')}</textarea>
         </div>
 
@@ -660,7 +662,7 @@ const App = {
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
     let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
-    const notes   = document.getElementById('appt-notes')?.value || '';
+    const notes   = App._appointmentNotes();
     const svc     = Services.getService(svcId);
     const clientIds = [...(document.getElementById('appt-clients')?.selectedOptions || [])].map(el => el.value);
     const apptId = document.getElementById('appt-id')?.value || null;
@@ -817,7 +819,7 @@ const App = {
     const dur     = parseInt(document.getElementById('appt-duration')?.value) || 60;
     let opId      = document.getElementById('appt-operator')?.value || null;
     const status  = document.getElementById('appt-status')?.value || 'prenotato';
-    let notes     = document.getElementById('appt-notes')?.value || '';
+    let notes     = App._appointmentNotes();
     const svc     = Services.getService(svcId);
     const clientEls = [...(document.getElementById('appt-clients')?.selectedOptions || [])];
     const clientIds = clientEls.map(el => el.value);
@@ -1269,6 +1271,10 @@ const App = {
           </div>
         </div>
 
+        <div class="form-group"><label>Partner PT 1:2 (obbligatorio per il pacchetto in coppia)</label>
+          <select id="cl-pt-partner" class="form-input"><option value="">Seleziona secondo cliente</option>${State.getClients().filter(c=>c.id!==client?.id&&c.active!==false&&!/ibern/i.test(c.statoAbbonamento||'')).map(c=>`<option value="${App._escapeHtml(c.id)}" ${c.id===client?.ptPartnerId?'selected':''}>${App._escapeHtml([c.nome,c.cognome].filter(Boolean).join(' '))}</option>`).join('')}</select>
+          <div class="form-hint">Confermando PT 1:2 associ entrambi e imposti anche il partner come PT 1:2. I pacchetti e gli incassi restano individuali.</div>
+        </div>
         <div class="form-section-label">Giorni del pacchetto</div>
         <div class="checkbox-grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr))">
           ${dayOptions}
@@ -1327,6 +1333,10 @@ const App = {
     </div>`;
   },
 
+  _appointmentNotes() {
+    const text=(document.getElementById('appt-notes')?.value||'').replaceAll('[ORARIO-PROVVISORIO]','').trim();
+    return text+(document.getElementById('appt-provisional')?.checked?'\n[ORARIO-PROVVISORIO]':'');
+  },
   async _saveClient(clientId, packageOnly = false) {
     if (App._clientSaveBusy) return;
     if (packageOnly) {
@@ -1377,6 +1387,7 @@ const App = {
       ...(pkgs.length === 1 ? { tipoServizio: pkgs[0] } : {}),
       packageFrequency: frequency,
       giorniSettimana,
+      ptPartnerId: pkgs.includes('PT 1:2') ? document.getElementById('cl-pt-partner')?.value || null : null,
       sessionsTotal: sessTotal, sessionsRemaining: sessRem,
       packageCycleStart: currentClient
         ? currentClient.packageCycleStart

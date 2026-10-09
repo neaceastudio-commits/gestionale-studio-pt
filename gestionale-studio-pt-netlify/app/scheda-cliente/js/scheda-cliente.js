@@ -62,6 +62,7 @@ async function apriScheda(id) {
 //  SEZIONI
 // ═══════════════════════════════════════════════════════
 function setSezione(sez) {
+  if (sez === 'foto') sez = 'home';
   if (sez === 'impostazioni') {
     if (accessoCentralePt.attivo) {
       toast('Impostazioni riservate allo studio', 'err');
@@ -72,7 +73,7 @@ function setSezione(sez) {
   }
 
   sezioneAtt = sez;
-  ['home','fisici','programma','foto'].forEach(s => {
+  ['home','fisici','programma'].forEach(s => {
     const body = document.getElementById('sez-' + s + '-body');
     if (body) body.style.display = s === sez ? '' : 'none';
     document.getElementById('sez-' + s)?.classList.toggle('active', s === sez);
@@ -82,7 +83,6 @@ function setSezione(sez) {
   if (sez === 'home')      renderRiepilogo();
   if (sez === 'fisici')    renderDatiFisici();
   if (sez === 'programma') renderProgramma();
-  if (sez === 'foto')      renderFoto();
 }
 
 

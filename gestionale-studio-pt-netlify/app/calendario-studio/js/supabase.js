@@ -60,6 +60,7 @@ const SupabaseSync = (() => {
       indirizzo: r.indirizzo || '',
       contattoEmergenza: r.contatto_emergenza || '',
       serverUpdatedAt: r.updated_at || null,
+      ptPartnerId: r.pt_partner_id || null,
       packageTypes: Array.isArray(r.package_types) ? r.package_types : [],
       packageFrequency: r.package_frequency || r.sessioni_pref || '',
       sessionsTotal: r.sessions_total || 0,
@@ -96,6 +97,7 @@ const SupabaseSync = (() => {
       documento: c.documento || '',
       indirizzo: c.indirizzo || '',
       contatto_emergenza: c.contattoEmergenza || c.contatto_emergenza || '',
+      pt_partner_id: c.ptPartnerId || null,
       package_types: Array.isArray(c.packageTypes) ? c.packageTypes : [],
       package_frequency: c.packageFrequency || '',
       sessions_total: parseInt(c.sessionsTotal) || 0,
@@ -481,6 +483,20 @@ const SupabaseSync = (() => {
   }
 
   async function saveClientEdit(previous, candidate) {
+    const intended=clientToDb(candidate), original=previous?clientToDb(previous):null;
+    if(original && Object.keys(intended).every(key=>key==='updated_at'||JSON.stringify(intended[key])===JSON.stringify(original[key]))) {
+      const existing=await request('clients',{query:'?select=*&id=eq.'+encodeURIComponent(candidate.id)});
+      return existing?.length===1?clientFromDb(existing[0]):{error:'Cliente non confermato dal server'};
+    }
+    if ((candidate.packageTypes || []).includes('PT 1:2')) {
+      if (!candidate.ptPartnerId) return {error:'Seleziona il secondo cliente per PT 1:2'};
+      const result=await CalendarAudit.call('save_pair_client',{client:clientToDb(candidate),expectedUpdatedAt:previous?.serverUpdatedAt||null});
+      if(result?.error)return result;
+      await pullAll();
+      const row=Array.isArray(result)&&result.find(r=>r.id===candidate.id);
+      return row?clientFromDb(row):{error:'Associazione non confermata dal server'};
+    }
+
     if (!window.CalendarAudit?.write) return { error: 'Sessione audit non disponibile: rientra dal Portale' };
     const next = clientToDb(candidate), old = previous ? clientToDb(previous) : null;
     let result;

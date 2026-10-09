@@ -88,6 +88,7 @@ function staffFromDb(r) {
 }
 
 async function apiGet(action, params = {}) {
+  if (action === 'getFoto') return {foto: []};
   if (action === 'getClienti') {
     const rows = await sb('clients', { query: '?select=*&active=eq.true&order=cognome.asc,nome.asc' });
     if (rows.error) return rows;
@@ -115,6 +116,7 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(payload) {
+  if (/foto/i.test(payload?.action||'')) return {error:'La sezione foto è stata rimossa.'};
   const p = { ...payload };
   const action = p.action;
   delete p.action;
@@ -251,48 +253,7 @@ function blobFromBase64(base64, mimeType) {
   return new Blob([bytes], { type: mimeType || 'image/jpeg' });
 }
 
-async function uploadFotoStorage({ clienteId, base64, filename, mimeType, data }) {
-  if (!clienteId || !base64) return { error: 'Foto o cliente mancanti' };
-  const viaFunction = await callFotoFunction({
-    action: 'uploadFoto',
-    clienteId,
-    base64,
-    filename,
-    mimeType,
-    data,
-  });
-  if (viaFunction && viaFunction.success) return viaFunction;
-  if (viaFunction && viaFunction.error) return viaFunction;
-
-  const bucket = storageBucket();
-  const date = data || oggi();
-  const ext = extFromMime(mimeType, filename);
-  const path = [
-    safeStorageSegment(clienteId),
-    date,
-    Date.now() + '-' + Math.random().toString(16).slice(2) + '-' + safeStorageSegment(filename || 'foto') + '.' + ext,
-  ].join('/');
-
-  const res = await fetch(SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/' + bucket + '/' + encodeStoragePath(path), {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': mimeType || 'image/jpeg',
-      upsert: 'false',
-    },
-    body: blobFromBase64(base64, mimeType || 'image/jpeg'),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    return { error: storageErrorMessage(text || res.statusText) };
-  }
-  return {
-    bucket,
-    path,
-    url: SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/' + bucket + '/' + encodeStoragePath(path),
-  };
-}
+async function uploadFotoStorage() { return {error:'La sezione foto è stata rimossa.'}; }
 
 async function callFotoFunction(payload) {
   try {
@@ -341,6 +302,8 @@ async function deleteStorageObject(bucket, path) {
 }
 
 async function deleteFoto(p) {
+  return {error: 'La sezione foto è stata rimossa.'};
+
   const rows = await sb('foto_allenamento', { query: '?id=eq.' + encodeURIComponent(p.id) + '&select=*' });
   const row = Array.isArray(rows) ? rows[0] : null;
   const data = row && row.data ? row.data : {};

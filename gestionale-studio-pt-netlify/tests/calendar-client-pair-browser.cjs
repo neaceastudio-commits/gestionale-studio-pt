@@ -11,7 +11,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const errors = [], writes = [];
     let fail = false, release, pending;
     const clients = [
-      { id: 'test-a', nome: 'TEST', cognome: 'UNO', active: true, package_types: ['PT 1:1'], tipo_servizio: 'PT 1:1', sessions_total: 12, sessions_remaining: 8, giorni_settimana: ['Lunedì'] },
+      { id: 'test-a', nome: 'TEST', cognome: 'UNO', active: true, package_types: ['PT 1:1'], tipo_servizio: 'PT 1:1', sessions_total: 12, sessions_remaining: 8, giorni_settimana: ['Lunedì'],updated_at:'2026-10-01T00:00:00Z' },
       { id: 'test-b', nome: 'TEST', cognome: 'DUE', active: true, package_types: ['PT 1:2'], tipo_servizio: 'PT 1:2', sessions_total: 8, sessions_remaining: 5 }
     ];
     const appointments = [];
@@ -28,6 +28,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
         writes.push(body);
         if (pending) await pending;
         if (fail) return route.fulfill({ status: 409, json: { error: 'TEST: salvataggio rifiutato' } });
+        if (body.operation === 'save_pair_client') {
+          if(body.payload.expectedUpdatedAt!==clients[0].updated_at)return route.fulfill({status:409,json:{error:'TEST: cliente cambiato'}});
+          Object.assign(clients[0],body.payload.client);Object.assign(clients[1],{pt_partner_id:'test-a',package_types:['PT 1:2']});
+          return route.fulfill({json:clients});
+        }
         if (body.operation === 'client') {
           assert.equal(body.payload.method, 'PATCH');
           const patch = body.payload.rows[0], index = clients.findIndex(c => c.id === patch.id);
@@ -51,22 +56,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.evaluate(() => App._renderClientModal('test-a', true));
     await page.locator('input[name="pkg"][value="PT 1:1"]').uncheck();
     await page.locator('input[name="pkg"][value="PT 1:2"]').check();
+    await page.selectOption('#cl-pt-partner','test-b');
     pending = new Promise(resolve => { release = resolve; });
     await page.locator('#client-save-button').click();
     await page.waitForFunction(() => document.querySelector('#client-save-button').disabled);
     assert.equal(await page.locator('#modal-overlay').evaluate(e => e.classList.contains('open')), true);
     assert.deepEqual(await page.evaluate(() => State.getClients()[0].packageTypes), ['PT 1:1']);
     // A concurrent completed session must not be overwritten by the package form.
-    clients[0].sessions_remaining = 7;
+    clients[0].sessions_remaining = 7;clients[0].updated_at='2026-10-02T00:00:00Z';
     release(); pending = null;
-    await page.waitForFunction(() => !document.querySelector('#modal-overlay.open'));
-    const patch = writes[0].payload.rows[0];
-    assert.deepEqual(patch.package_types, ['PT 1:2']);
-    assert.equal(patch.tipo_servizio, 'PT 1:2');
-    assert.equal('sessions_total' in patch, false);
-    assert.equal('sessions_remaining' in patch, false);
-    assert.equal('data_conferma' in patch, false);
-    assert.equal(await page.evaluate(() => State.getClients()[0].sessionsRemaining), 7);
+    await page.waitForFunction(()=>document.getElementById('client-save-error').textContent.includes('cambiato'));
+    assert.equal(clients[0].sessions_remaining,7);
+    await page.reload();await page.waitForFunction(()=>State.getClients().length===2);await page.waitForTimeout(600);
+    await page.evaluate(()=>App._renderClientModal('test-a',true));
+    await page.uncheck('input[name="pkg"][value="PT 1:1"]');await page.check('input[name="pkg"][value="PT 1:2"]');await page.selectOption('#cl-pt-partner','test-b');
+    await page.click('#client-save-button');await page.waitForFunction(()=>!document.querySelector('#modal-overlay.open'));
+    assert.equal(clients[0].sessions_remaining,7);
     await page.reload(); await page.waitForFunction(() => State.getClients().length === 2);
     assert.deepEqual(await page.evaluate(() => { const c = State.getClients()[0]; return [c.packageTypes, c.tipoServizio, c.sessionsTotal, c.sessionsRemaining]; }), [['PT 1:2'], 'PT 1:2', 12, 7]);
 
@@ -104,6 +109,6 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.deepEqual(clients.map(c => c.sessions_remaining), [7, 5]);
     assert.ok(await page.evaluate(() => { const a = State.getAppointments()[0]; const html = App._appointmentMiniCard(a); return html.includes('TEST UNO') && html.includes('TEST DUE'); }));
     assert.deepEqual(errors, []);
-    console.log('PASS: package PATCH + persisted service, awaited save, persistent errors, concurrent balance preserved, no-op GET, two visible participants, one audited PT 1:2 appointment, independent balances');
+    console.log('PASS: reciprocal pair + persisted service, awaited save, persistent errors, stale edit rejected, no-op GET, two visible participants, one audited PT 1:2 appointment, independent balances');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

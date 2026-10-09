@@ -10,7 +10,7 @@ const {start,seed,rpc}=require('./helpers/calendar-postgres.cjs');
  process.env.PT_ACCESS_SECRET='SIM_RELEASE';process.env.SUPABASE_SERVICE_ROLE_KEY='SIM_SERVER';
  const signed=Buffer.from(JSON.stringify({operatorId:'pt',email:'pt@example.test',accessLevel:'pt',exp:Date.now()+60000})).toString('base64url');const access=signed+'.'+crypto.createHmac('sha256','SIM_RELEASE').update(signed).digest('base64url');
  const originalFetch=global.fetch;let created;
- try{global.fetch=async(url,options)=>{let value;if(url.includes('operator_effective_roles'))value=(await c.query("select * from operator_effective_roles where operator_id='pt'")).rows;else{const b=JSON.parse(options.body);value=await write(b.p_operation,b.p_payload,b.p_actor_id,b.p_actor_role,b.p_source)}return{ok:true,text:async()=>JSON.stringify(value)}};
+ try{global.fetch=async(url,options)=>{let value;if(url.includes('operator_effective_roles'))value=(await c.query("select * from operator_effective_roles where operator_id='pt'")).rows;else if(url.includes('/operators?'))value=[{id:'pt',portal_access_enabled:true,portal_access_version:0}];else{const b=JSON.parse(options.body);value=await write(b.p_operation,b.p_payload,b.p_actor_id,b.p_actor_role,b.p_source)}return{ok:true,text:async()=>JSON.stringify(value)}};
  const response=await require('../netlify/functions/calendar-activity').handler({httpMethod:'POST',body:JSON.stringify({accessToken:access,operation:'save',payload:{appointment:row,expected:null}})});assert.equal(response.statusCode,200,response.body);created=JSON.parse(response.body);
  }finally{global.fetch=originalFetch}
  let r=created;assert.equal((await read('owner'))[0].actor_email,'pt@example.test');assert.equal((await read('owner'))[0].action,'appointment_created');

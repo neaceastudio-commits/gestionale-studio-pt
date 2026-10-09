@@ -389,9 +389,9 @@
       return `<div class="pt-hours-card">
         <div class="pt-hours-person">
           <strong>${esc(operatorLabel(row.op))}</strong>
-          <span>${row.pt ? 'PT maturate: ' + esc(fmtHours(row.pt.earnedMin)) : 'Agenda: ' + esc(fmtHours(row.totalMin))}</span>
+          <span>${row.pt ? 'Ore di seduta remunerate: ' + esc(fmtHours(row.pt.earnedMin)) : 'Agenda: ' + esc(fmtHours(row.totalMin))}</span>
         </div>
-        ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore con almeno un presente: ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
+        ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore occupate in agenda (senza duplicare sovrapposizioni): ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
         ${services}
         ${row.issues?.length ? `<p role="alert"><strong>Conteggio incompleto: ${row.issues.length} sedute da correggere, escluse dai totali.</strong></p><ul>${row.issues.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       </div>`;
@@ -406,8 +406,8 @@
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
-        <p class="pt-help">PT: compensi maturati sulle sedute chiuse, una sola quota per appuntamento. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
-        <div class="pt-hours-list">${body}</div>
+        <p class="pt-help">PT: ogni seduta individuale chiusa matura 10 €/h, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
+        <button class="btn-primary" onclick="PTAvailabilityOverview.closeHoursSummary();PTTrainerPayments.open('${esc(month)}')">Pagamenti PT: registra e consulta</button><div class="pt-hours-list">${body}</div>
       </aside>
     </div>`;
   }
