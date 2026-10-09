@@ -79,7 +79,7 @@ function normalizeSchedule(schedule = []) {
     const key = `${weekday}|${time}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    normalized.push({ weekday, time, sourceDay: String(item?.weekday ?? item?.day ?? '') });
+    normalized.push({ weekday, time, durationMin: Number(item.durationMin ?? 60), sourceDay: String(item?.weekday ?? item?.day ?? '') });
   }
   return normalized.sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time));
 }
@@ -202,7 +202,7 @@ function operatorCanWork(operator, candidate, availability) {
   return false;
 }
 
-function candidateFor({ clientId, operatorId, serviceId, date, time, index, total }) {
+function candidateFor({ clientId, operatorId, serviceId, date, time, durationMin, index, total }) {
   const meta = SERVICE_META[serviceId] || { durationMin: 60, bufferMin: 10 };
   return {
     serviceId,
@@ -210,7 +210,7 @@ function candidateFor({ clientId, operatorId, serviceId, date, time, index, tota
     operatorId: operatorId || null,
     date,
     startTime: time,
-    durationMin: meta.durationMin,
+    durationMin: durationMin ?? meta.durationMin,
     bufferMin: meta.bufferMin,
     status: 'prenotato',
     notes: `[PROGRAMMA-PACCHETTO] seduta ${index}/${total}`,
@@ -226,16 +226,23 @@ function planPackageAppointments({
   startDate,
   maxLookaheadDays = 370,
   roomCapacity = ROOM_CAPACITY,
-  operators, availability = [], clients,
+  operators, availability = [], clients, flexMode = false,
 } = {}) {
   if (!client?.id) return { ok: false, code: 'missing_client', created: [], skipped: [] };
   if (client.active === false) return { ok: false, code: 'inactive_client', created: [], skipped: [] };
   const start = parseDate(startDate);
   if (!start) return { ok: false, code: 'invalid_start_date', created: [], skipped: [] };
   const slots = normalizeSchedule(schedule);
+  if (slots.some(s => !Number.isInteger(s.durationMin) || s.durationMin < 15 || s.durationMin > 240 || s.durationMin % 15)) return { ok: false, code: 'invalid_duration', created: [], skipped: [] };
+  if (slots.length !== schedule.length) return { ok: false, code: 'invalid_schedule', created: [], skipped: [] };
   if (!slots.length) return { ok: false, code: 'missing_schedule', created: [], skipped: [] };
   if (!SERVICE_META[serviceId]) return { ok: false, code: 'unsupported_service', created: [], skipped: [] };
 
+  if (operators) {
+    const op = operators.find(o => String(o.id) === String(operatorId));
+    const roles = [...(op?.roles || []), ...(op?.system_roles || []), ...(op?.legacy_roles || []), op?.role || ''].map(r => String(r).toLowerCase());
+    if (!op || op.active === false || !roles.some(r => ['pt', 'personal_trainer', 'personal trainer', ...(serviceId === 'circuit' ? ['circuit'] : [])].includes(r))) return { ok: false, code: 'invalid_operator', created: [], skipped: [] };
+  }
   const allowance = schedulingAllowance(client, appointments, { serviceId, fromDate: dateString(start) });
   if (allowance.toSchedule <= 0) {
     return { ok: true, code: 'fully_scheduled', allowance, created: [], skipped: [], endDate: null };
@@ -247,6 +254,7 @@ function planPackageAppointments({
   const working = [...appointments];
   const created = [];
   const skipped = [];
+  const warnings = [];
 
   for (let offset = 0; offset <= maxLookaheadDays && created.length < allowance.toSchedule; offset += 1) {
     const date = new Date(start);
@@ -263,12 +271,14 @@ function planPackageAppointments({
         serviceId,
         date: dateValue,
         time: slot.time,
+        durationMin: slot.durationMin,
         index: sequence,
         total: allowance.total || allowance.remaining,
       });
       const conflicts = slotConflicts(candidate, working, { roomCapacity, clients });
       if (operators && !operatorCanWork(operators.find(op => String(op.id) === String(operatorId)), candidate, availability)) conflicts.push({ type: 'operator_unavailable' });
-      if (conflicts.length) {
+      if (conflicts.length && flexMode) warnings.push({ date: dateValue, time: slot.time, conflicts });
+      if (conflicts.length && !flexMode) {
         skipped.push({ date: dateValue, time: slot.time, conflicts });
         continue;
       }
@@ -292,6 +302,7 @@ function planPackageAppointments({
   return {
     ok: true,
     code: 'planned',
+    warnings,
     allowance,
     created,
     skipped,

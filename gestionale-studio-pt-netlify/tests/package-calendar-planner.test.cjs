@@ -76,3 +76,20 @@ test('il calcolo capienza del Calendario coincide con il pianificatore', () => {
   for (const file of ['config.js','services.js']) vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/calendario-studio/js',file),'utf8'),context);
   assert.equal(vm.runInContext("Services.getRoomLoadAt('2026-09-15','17:00',60,'pt')",context),5);
 });
+
+test('flex mantiene le date richieste e durate distinte anche con PT/sala occupati', () => {
+  const operators=[{id:'test-pt',roles:['PT'],active:true}];
+  const appointments=[{id:'busy',date:'2026-09-15',start_time:'17:00',duration_min:60,operator_id:'test-pt',client_ids:['other'],service_id:'pt11',status:'prenotato'}];
+  const schedule=[{weekday:'Martedì',time:'17:00',durationMin:30},{weekday:'Giovedì',time:'18:15',durationMin:45}];
+  const result=planner.planPackageAppointments({...options,schedule,operators,appointments,availability:[],flexMode:true});
+  assert.equal(result.ok,true);assert.equal(result.created.length,8);assert.equal(result.skipped.length,0);
+  assert.deepEqual(result.created.slice(0,2).map(a=>[a.date,a.startTime,a.durationMin]),[['2026-09-15','17:00',30],['2026-09-17','18:15',45]]);
+  assert.ok(result.warnings[0].conflicts.some(c=>c.type==='operator'));assert.ok(result.warnings[0].conflicts.some(c=>c.type==='operator_unavailable'));
+  assert.equal(client.sessionsRemaining,8);
+  assert.equal(planner.planPackageAppointments({...options,schedule,operators,appointments,availability:[],flexMode:false}).ok,false);
+});
+test('flex non aggira identità PT o durate invalide; accetta tutti i multipli 15..240',()=>{
+ for(let n=15;n<=240;n+=15)assert.equal(planner.planPackageAppointments({...options,schedule:[{weekday:'Martedì',time:'17:00',durationMin:n}],flexMode:true}).created[0].durationMin,n);
+ for(const n of [0,14,20,241,NaN])assert.equal(planner.planPackageAppointments({...options,schedule:[{weekday:'Martedì',time:'17:00',durationMin:n}],flexMode:true}).code,'invalid_duration');
+ for(const op of [{id:'test-pt',active:false,roles:['PT']},{id:'test-pt',roles:['Nutrizionista']}])assert.equal(planner.planPackageAppointments({...options,operators:[op],flexMode:true}).code,'invalid_operator');
+});
