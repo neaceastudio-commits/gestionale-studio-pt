@@ -1,7 +1,7 @@
 {
   "verified_at": "2026-10-09",
   "project_id": "cdywqyqqmjhgkzwrrixc",
-  "note": "Inventario in sola lettura. Il timestamp remoto può differire dal filename locale: confrontare il nome prima di proporre una nuova applicazione.",
+  "note": "Inventario in sola lettura. Il timestamp remoto pu\u00f2 differire dal filename locale: confrontare il nome prima di proporre una nuova applicazione.",
   "migrations": [
     {
       "version": "20260830223112",
@@ -114,6 +114,10 @@
     {
       "version": "20261009083023",
       "name": "calendar_pt_pair_rules"
+    },
+    {
+      "version": "20261009093137",
+      "name": "calendar_pair_payments_review"
     }
   ]
 }

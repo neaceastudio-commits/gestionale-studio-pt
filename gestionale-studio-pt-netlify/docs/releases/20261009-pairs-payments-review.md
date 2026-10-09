@@ -27,11 +27,28 @@ Branch: `feature/whatsapp-agenda-pt-v1`.
 
 ## Verifiche
 
-256 test automatici superati, zero fallimenti e zero saltati; inclusi autorizzazioni, migrazione PostgreSQL locale, assenze miste, residui, pagamenti duplicati/rettificati e ore simultanee.
+257 test automatici superati, zero fallimenti e zero saltati; inclusi autorizzazioni, migrazione PostgreSQL locale, assenze miste, residui, pagamenti duplicati/rettificati e ore simultanee.
 Browser: associazione obbligatoria, salvataggio concorrente rifiutato senza perdere residui, rinnovo condiviso, presenze, compenso unico, registrazione/rettifica dei pagamenti su mobile.
 
-## Stato prima dell’approvazione di produzione
+## Rilascio e verifiche online
 
-La migrazione `20261009091426_calendar_pair_payments_review.sql` è verificata localmente. Il controllo automatico ha rifiutato l’applicazione online richiedendo un’approvazione esplicita per il database di produzione. Nessuna rettifica reale o migrazione di questo rilascio è stata applicata.
+Autorizzazione esplicita ricevuta per migrazione, rettifiche e pubblicazione. Migrazione applicata come `20261009093137_calendar_pair_payments_review`.
 
-Per completare: applicare la migrazione, eseguire le rettifiche tramite transazioni auditate con controllo delle versioni, pubblicare Calendario/Portale/moduli preservando i manifest esistenti e verificare file e comportamenti online. Gli endpoint che dipendono dalla migrazione non vanno pubblicati prima della sua applicazione.
+- 40 righe delle due coppie consolidate in 20 appuntamenti; 20 righe annullate e conservate nel registro.
+- Residui dopo la rettifica delle assenze: Patrizia 6, Vincenza 6, Cristiano 1, Silvia 1.
+- Cinque sedute di Fabrizio assegnate ad Alessandro; Valentina del 16 luglio riclassificata PT 1:1; Alessia del 28 ottobre marcata con orario provvisorio.
+- Sette etichette corrette dopo autorizzazione nominativa: Simone Cao, Maura Ganga, Aurora Margini, Maria Mura, Luciana Pibiri, Valentina Pilia e Camilla Pinna. Altri servizi, importi e residui conservati.
+- Nessuna seduta attiva PT 1:2 con un solo partecipante e nessuna seduta PT svolta senza operatore.
+- Verifica browser sul Calendario pubblicato: 743 appuntamenti caricati, zero sedute escluse per anomalie nei riepiloghi giugno/luglio/settembre/ottobre, nessun errore JavaScript, nessuno scorrimento orizzontale mobile.
+- Zero pagamenti reali inseriti: il registro è pronto, senza inventare lo storico degli importi versati.
+- Consenso conserva minorenni/tutori. Anamnesi usa il gateway Nutrizione tramite `nutrition-import-bridge`, con sessione verificata dal servizio esistente. Nessun segreto copiato.
+
+La Direzione ha chiesto di lasciare a sé la chiusura della lezione ancora prenotata di Cristiano/Silvia e il rinnovo dalla seduta successiva: non sono stati registrati presenza, rinnovo o incasso presunti.
+
+Deploy verificati:
+- Calendario: `6ac8b4ffe683f660199d8499`, commit applicativo `0287dc3`; branch di build ripristinato a main e build automatiche nuovamente disabilitate.
+- Portale: `6ac8b52d36cbbab7912f8c10`, manifest statico e funzioni estranee preservati.
+- Consenso: `6ac8b614c4027d5818799c77`.
+- Anamnesi: `6ac8b71b6651e3686af2bd63`, sorgente locale allineata e bridge autenticato verificato.
+
+Gli advisor Supabase non hanno segnalato nuovi errori per questo rilascio; RLS senza policy su `pt_trainer_payments` è intenzionale, con accesso revocato ai ruoli pubblici e solo gateway della Direzione. Le segnalazioni preesistenti su altre viste rimangono fuori da questa modifica.
