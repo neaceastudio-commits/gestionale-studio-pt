@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/apple-calendar.css?v=1">
   <link rel="stylesheet" href="css/calendar-audit-view.css?v=1">
 <link rel="stylesheet" href="css/pt-trainer-payments.css?v=20261009">
+<link rel="stylesheet" href="css/expected-renewals.css?v=1">
 </head>
 <body>
 
@@ -34,6 +35,7 @@
   </div>
 
   <div class="topbar-right">
+    <button id="expected-renewals-button" hidden class="topbar-btn" onclick="ExpectedRenewals.open()">Rinnovi previsti</button>
     <span id="topbar-clock" style="font-size:11px;color:rgba(255,255,255,.5);font-weight:600"></span>
     <button class="topbar-btn apple-calendar-topbar" onclick="App.openAppleCalendar()"> Apple Calendar</button>
     <button class="topbar-btn primary" onclick="App.openNewAppointment()">+ Appuntamento</button>
@@ -86,18 +88,19 @@
 <script src="js/state.js?v=30"></script>
 <script src="js/supabase.js?v=42"></script>
 <script src="js/package-ledger.js?v=5"></script>
-<script src="js/pt-session-model.js?v=1"></script>
-<script src="js/services.js?v=44"></script>
-<script src="js/calendar.js?v=36"></script>
+<script src="js/pt-session-model.js?v=20261009r"></script>
+<script src="js/services.js?v=20261009r"></script>
+<script src="js/calendar.js?v=20261009r"></script>
 <script src="js/clients.js?v=47"></script>
 <script src="js/operators.js?v=31"></script>
 <script src="js/sheets.js?v=30"></script>
 <script src="js/calendar-audit-view.js?v=3"></script>
-<script src="js/calendar-audit.js?v=6"></script>
+<script src="js/calendar-audit.js?v=20261009r"></script>
 <script src="js/pt-session-correction.js?v=1"></script>
 <script src="js/pt-trainer-payments.js?v=20261009"></script>
-<script src="js/pt-pair-sessions.js?v=1"></script>
-<script src="js/app.js?v=75"></script>
+<script src="js/pt-pair-sessions.js?v=20261009r"></script>
+<script src="js/app.js?v=20261009r"></script>
+<script src="js/expected-renewals.js?v=1"></script>
 <script src="js/whatsapp-agenda.js?v=1"></script>
 <script src="js/apple-calendar.js?v=1"></script>
 <script src="js/apple-operativo.js?v=1"></script>

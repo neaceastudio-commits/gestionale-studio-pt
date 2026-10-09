@@ -27,8 +27,8 @@ function buildAgendas({ operators, clients, appointments }, day) {
       const names = participants.map(c => clean(`${c.nome || ''} ${c.cognome || ''}`) || 'Cliente');
       const time = String(a.start_time).slice(0, 5);
       if (!/^\d{2}:\d{2}$/.test(time)) { issues.push('invalid_time'); return null; }
-      if (participants.length === 1) return `${time}${String(a.notes||'').includes('[ORARIO-PROVVISORIO]')?' (da confermare)':''} · ${names[0]} · ${SERVICES[a.service_id]} · ${progress(participants[0])}`;
-      return `${time}${String(a.notes||'').includes('[ORARIO-PROVVISORIO]')?' (da confermare)':''} · ${participants.map((c, i) => `${names[i]} (${progress(c)})`).join(' + ')} · ${SERVICES[a.service_id]}`;
+      if (participants.length === 1) return `${time}${String(a.notes||'').includes('[ORARIO-PROVVISORIO]')?' (orario da confermare)':''}${String(a.notes||'').includes('[RINNOVO-PREVISTO ')?(String(a.notes).includes('[RINNOVO-CONFERMATO ')?' (rinnovo confermato)':' (rinnovo da confermare)'):''} · ${names[0]} · ${SERVICES[a.service_id]} · ${progress(participants[0])}`;
+      return `${time}${String(a.notes||'').includes('[ORARIO-PROVVISORIO]')?' (orario da confermare)':''}${String(a.notes||'').includes('[RINNOVO-PREVISTO ')?(String(a.notes).includes('[RINNOVO-CONFERMATO ')?' (rinnovo confermato)':' (rinnovo da confermare)'):''} · ${participants.map((c, i) => `${names[i]} (${progress(c)})`).join(' + ')} · ${SERVICES[a.service_id]}`;
     }).filter(Boolean);
     return { operatorId: op.id, operatorName: clean(`${op.nome || ''} ${op.cognome || ''}`), day, enabled: op.whatsapp_agenda_enabled === true,
       count: rows.length, lines, issues: [...new Set(issues)], text: `NEACEA · Agenda di oggi\n\n${lines.join('\n')}\n\nTotale: ${rows.length} sedute` };

@@ -154,6 +154,7 @@ const Services = (() => {
     const appointmentStarts = State.getAppointments()
       .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
       .filter(a => serviceUsesPackageSessions(a.serviceId))
+      .filter(a => !String(a.notes||'').includes('[RINNOVO-PREVISTO '))
       .map(extractAppointmentPackageCycle)
       .filter(Boolean)
       .sort();
@@ -172,10 +173,12 @@ const Services = (() => {
 
   function appointmentInCurrentPackageCycle(appt, client) {
     if (!appt || !client) return false;
+    if(String(appt.notes||'').includes('[RINNOVO-PREVISTO ')) return false;
     const context = getPackageCycleContext(client);
     const participant = globalThis.PTSessionModel?.cycle(appt, client.id);
     if (participant) {
-      if (context.id) return participant.cycleId === context.id;
+      if (context.id && participant.cycleId) return participant.cycleId === context.id;
+      if (context.id && !context.legacy) return false;
       return !context.start || participant.start === context.start;
     }
     const appointmentCycle = extractAppointmentPackageCycle(appt);

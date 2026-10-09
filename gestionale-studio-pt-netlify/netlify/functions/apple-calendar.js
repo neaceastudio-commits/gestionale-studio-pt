@@ -157,11 +157,15 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
     const progresses = people.map(p => p.info?.progress);
     const common = progresses.length && progresses.every(p => p && p.n === progresses[0]?.n && p.total === progresses[0]?.total) ? progresses[0] : null;
     const titleService = row.status === 'noshow' ? '⚠ NO-SHOW' : `${row.status === 'fatto' ? '✓ ' : ''}${service.label}`;
-    const summary = [titleService, clientNames.join(', '), common ? `${common.n}/${common.total}` : ''].filter(Boolean).join(' · ');
+    const renewal = String(row.notes||'').includes('[RINNOVO-PREVISTO ');
+    const renewalConfirmed = String(row.notes||'').includes('[RINNOVO-CONFERMATO ');
+    const renewalLabel = renewal ? (renewalConfirmed ? 'Rinnovo confermato' : 'Rinnovo da confermare') : '';
+    const summary = [renewalLabel, titleService, clientNames.join(', '), common && !renewal ? `${common.n}/${common.total}` : ''].filter(Boolean).join(' · ');
     const formatDate = value => value ? value.split('-').reverse().join('/') : 'Da definire';
     const note = operationalNote(row.notes);
     const description = [
       'NEACEA STUDIO',
+      ...(renewal ? [renewalLabel, 'Posto riservato. Il pagamento viene registrato separatamente.'] : []),
       ...people.flatMap(({ name, info }) => {
         const progress = info?.progress;
         return [`Cliente: ${name}`, `Servizio: ${service.label}`, `Personal Trainer: ${operatorName || '—'}`,
@@ -188,7 +192,7 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
       `DESCRIPTION:${calendarText(description)}`,
       'LOCATION:NEACEA Studio',
       `CATEGORIES:${calendarText(service.label)}`,
-      'STATUS:CONFIRMED',
+      renewal && !renewalConfirmed ? 'STATUS:TENTATIVE' : 'STATUS:CONFIRMED',
       'TRANSP:OPAQUE',
       'END:VEVENT',
     );

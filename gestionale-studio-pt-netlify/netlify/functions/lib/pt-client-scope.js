@@ -14,7 +14,7 @@ function clientScope(clients, appointments, records) {
   const assignments = appointments.filter(a => ['pt11', 'pt12'].includes(a.service_id)
     && ['prenotato', 'fatto'].includes(a.status)).map(a => ({
       ...a,
-      client_ids: (a.client_ids || []).filter(id => contexts.has(id) && session.status(a,id) !== 'noshow' && packageCycle.inCycle(a, contexts.get(id))),
+      client_ids: (a.client_ids || []).filter(id => contexts.has(id) && session.status(a,id) !== 'noshow' && (String(a.notes||'').includes('[RINNOVO-PREVISTO ') || packageCycle.inCycle(a, contexts.get(id)))),
     })).filter(a => a.client_ids.length);
   const saved = new Set(records.map(r => JSON.stringify([r.appointment_id, r.cliente_id, r.operator_id])));
   return {

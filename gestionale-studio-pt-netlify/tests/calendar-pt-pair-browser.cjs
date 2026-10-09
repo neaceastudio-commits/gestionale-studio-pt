@@ -16,6 +16,7 @@ const model=require('../app/calendario-studio/js/pt-session-model');
    if(u.pathname.endsWith('apple-caldav-link'))return route.fulfill({json:{eligible:false,linked:false}});
    if(u.pathname.endsWith('calendar-activity')){
     const body=req.postDataJSON();if(body.operation==='session')return route.fulfill({json:{actor:{id:'staff_1',role:'owner'}}});
+    if(body.operation==='expected_renewals'&&body.payload.action==='list')return route.fulfill({json:{proposals:[]}});
     writes.push(body);
     if(body.operation==='renew_pt_pair'){
      if(fail)return route.fulfill({status:409,json:{error:'TEST: salvataggio non confermato'}});

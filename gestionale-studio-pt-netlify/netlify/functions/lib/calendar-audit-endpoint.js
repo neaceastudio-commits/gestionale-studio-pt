@@ -25,6 +25,10 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
   }
+  if(input.operation==='expected_renewals'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Rinnovi riservati alla Direzione'});
+   return reply(200,await require('./expected-renewals').createService({db}).handle(actor.id,input.payload||{}));
+  }
   if(input.operation==='save_pair_client'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Associazione riservata alla Direzione'});
    return reply(200,await db('rpc/calendar_save_pair_client',{method:'POST',body:{p_actor_id:actor.id,p_request_id:crypto.randomUUID(),p_payload:input.payload||{}}}));

@@ -8,5 +8,5 @@ function read(appointment) {
  return data;
 }
 const cycle=(appointment,id)=>read(appointment)?.participants?.[id]||null;
-const status=(appointment,id)=>cycle(appointment,id)?.status||appointment.status;
+const status=(appointment,id)=>appointment.service_id==='pt12' ? cycle(appointment,id)?.status||appointment.status : appointment.status;
 module.exports={read,cycle,status};

@@ -3,12 +3,13 @@
  'use strict';
  const tag='NEACEA-PT-SESSION-V1', re=/\n?\[NEACEA-PT-SESSION-V1\]([\s\S]*?)\[\/NEACEA-PT-SESSION-V1\]\n?/g;
  function read(a){const matches=[...String(a?.notes||'').matchAll(new RegExp(re.source,'g'))];if(!matches.length)return null;try{const d=JSON.parse(matches.at(-1)[1]);if(d.version!==1||!d.participants||typeof d.participants!=='object')throw Error();return d;}catch{throw Error('Dati della seduta PT non validi: verifica con la Direzione');}}
+ const renewal=a=>String(a?.notes||'').includes('[RINNOVO-PREVISTO ') ? (String(a.notes).includes('[RINNOVO-CONFERMATO ')?'Rinnovo confermato':'Rinnovo da confermare') : '';
  const provisional=a=>String(a?.notes||'').includes('[ORARIO-PROVVISORIO]');
  const strip=notes=>String(notes||'').replace(re,'\n').trim();
  const write=(a,data)=>({...a,notes:strip(a.notes)+'\n['+tag+']'+JSON.stringify(data)+'[/'+tag+']'});
  const ids=a=>a.clientIds||a.client_ids||[];
  const service=a=>a.serviceId||a.service_id;
- const status=(a,id)=>read(a)?.participants?.[id]?.status||a.status;
+ const status=(a,id)=>service(a)==='pt12' ? read(a)?.participants?.[id]?.status||a.status : a.status;
  const cycle=(a,id)=>read(a)?.participants?.[id]||null;
  function prepare(a,clients,context,before){
    if(service(a)!=='pt12')return a;
@@ -39,5 +40,5 @@
    for(const [key,slots] of occupied){slots.sort((a,b)=>a[0]-b[0]);let end=-Infinity,n=0;for(const [start,stop] of slots){n+=Math.max(0,stop-Math.max(start,end));end=Math.max(end,stop);}totals.get(key.split('|')[0]).workedMin+=n;}
    return {totals:[...totals.values()],issues};
  }
- const api={read,write,strip,provisional,ids,service,status,cycle,prepare,attendance,summary};root.PTSessionModel=api;if(typeof module!=='undefined')module.exports=api;
+ const api={read,write,strip,provisional,renewal,ids,service,status,cycle,prepare,attendance,summary};root.PTSessionModel=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

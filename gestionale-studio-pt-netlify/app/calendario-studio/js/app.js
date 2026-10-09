@@ -3241,6 +3241,7 @@ const App = {
   },
 
   async _renewPackageAppointments(clientId) {
+    if (typeof ExpectedRenewals !== 'undefined' && await ExpectedRenewals.forClient(clientId)) return;
     if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
     const currentClient = State.getClients().find(client => client.id === clientId);
     if (!currentClient) return;

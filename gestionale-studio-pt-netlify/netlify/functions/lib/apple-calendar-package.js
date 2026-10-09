@@ -12,12 +12,17 @@ function context(client, rows) {
   try { const parsed = JSON.parse(blocks.at(-1)?.[1] || '{"cycles":[]}'); if (Array.isArray(parsed.cycles)) cycles = parsed.cycles; } catch (_) { /* Browser falls back to legacy context for malformed ledgers. */ }
   const cycle = [...cycles].reverse().find(c => !c.closedAt) || cycles.at(-1);
   const persisted = String(String(client.notes || '').match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/i)?.[1] || client.data_conferma || '').slice(0, 10);
-  const inferred = rows.map(a => marker(a.notes)).filter(Boolean).sort().at(-1) || '';
+  const inferred = rows.filter(a => !a.notes?.includes('[RINNOVO-PREVISTO ')).map(a => marker(a.notes)).filter(Boolean).sort().at(-1) || '';
   return { clientId: client.id, start: cycle?.startDate || persisted || inferred || String(client.data_inizio || client.package_start || '').slice(0, 10), id: cycle?.id || '', legacy: cycle ? cycle.legacy === true : true, persisted: !!persisted, inferredFromAppointment: !persisted && !!inferred };
 }
 function inCycle(a, ctx) {
+  if(String(a.notes||'').includes('[RINNOVO-PREVISTO ')) return false;
   const participant = session.cycle(a, ctx.clientId);
-  if (participant) return ctx.id ? participant.cycleId === ctx.id : !ctx.start || participant.start === ctx.start;
+  if (participant) {
+    if (ctx.id && participant.cycleId) return participant.cycleId === ctx.id;
+    if (ctx.id && !ctx.legacy) return false;
+    return !ctx.start || participant.start === ctx.start;
+  }
   const id = cycleId(a.notes);
   if (ctx.id && id) return id === ctx.id;
   if (ctx.id && !ctx.legacy) return false;
