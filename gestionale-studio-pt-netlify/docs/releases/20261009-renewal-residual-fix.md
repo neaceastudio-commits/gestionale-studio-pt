@@ -29,3 +29,9 @@ La chiusura del residuo dichiarata dalla Direzione può essere conservata nel ci
 Commit codice `2fd18c0369f5e6aae5a4f6c90e7d7d5784a18c2c`, pubblicato tramite Git nel deploy Calendario `6ac8c85ca545c3069ad20dab`. Asset online confrontati integralmente con i file locali testati; pianificazioni invariate. Produzione nuovamente bloccata; collegamento Git ripristinato a `main` con build automatiche sospese. Nessuna migrazione dello schema necessaria.
 
 Il browser sul sito pubblico conferma Luciana con 0 svolte, 8 residue, 8 prenotate e otto righe «Ciclo corrente»; le lezioni precedenti risultano «Storico». Nessun errore JavaScript. Verificate nel database le due proposte attivate, otto appuntamenti individuali per Luciana e dodici condivisi per la coppia.
+
+## Veronica — vecchia prenotazione sostituita
+
+Il rinnovo da otto lezioni era confermato, ma non attivato: la prenotazione del 30 settembre alle 10:00 restava aperta oltre alle otto sedute effettivamente svolte. L'utente ha chiarito «Era sostituita: annulla la vecchia prenotazione». La prenotazione è stata annullata e la proposta attivata nella stessa transazione auditata, con controllo dei dati concorrenti.
+
+Verifica reale: otto residue, otto prenotate dal 14 ottobre al 6 novembre (mercoledì e venerdì 09:00, Gianluca); mantenuti tutti gli ID delle nuove prenotazioni. Nessuna presenza o pagamento aggiunto. Browser aggiornato: otto righe «Ciclo corrente», precedenti nello storico. Il precedente «Storico» dello screenshot apparteneva alla pagina rimasta aperta: prima della rettifica il sito aggiornato mostrava già «Rinnovo confermato». Nessuna nuova modifica al codice o pubblicazione necessaria.
