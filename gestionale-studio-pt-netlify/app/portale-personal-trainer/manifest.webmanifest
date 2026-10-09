@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "NEACEA Portale Personal Trainer",
+  "short_name": "NEACEA PT",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#102f55",
+  "theme_color": "#0d4c59",
+  "icons": [
+    { "src": "icons/neacea-pt-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/neacea-pt-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
