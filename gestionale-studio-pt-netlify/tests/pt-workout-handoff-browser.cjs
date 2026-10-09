@@ -13,7 +13,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const fs=r
  await page.getByLabel('Data della seduta assegnata').selectOption('a');
  assert.equal(await page.getByLabel('Allenamento da compilare').inputValue(),'B');
  assert.equal(await page.getByLabel('Carico',{exact:true}).inputValue(),'');
- assert.match(await page.locator('fieldset .pt-load-reference').innerText(),/Carico\s+40\s+Ripetizioni\s+8/);
+ assert.match(await page.locator('fieldset .pt-load-reference').innerText(),/Ripetizioni\s+8\s+Carico\s+40/);
  assert.match(await page.locator('[data-load-reference="Squat"]').innerText(),/30\/09\/2026/);
  assert.match(await page.locator('[data-load-reference="Rematore"]').innerText(),/Nessun carico precedente/);
  assert.equal(await page.locator('#workoutHandoff .pt-load-reference').count(),0);

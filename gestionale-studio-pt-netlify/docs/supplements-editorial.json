@@ -1,0 +1,910 @@
+[
+  {
+    "id": "0a7fceca-8f4c-47ad-ace2-4b9fb8a60ab5",
+    "name": "Avena Farina Gluten Free",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2022/05/WN064_avena-farina-vaniglia-1-kg_singolo-1.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "2bfd9b53-fab9-4a0a-99f4-48a059f6ecff",
+        "label": "Vaniglia",
+        "format": "1 kg",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2022/05/WN064_avena-farina-vaniglia-1-kg_singolo-1.png",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/avena-farina-gluten-free-1-kg/",
+        "updated_at": "2026-09-28T21:48:28.789251+00:00"
+      },
+      {
+        "id": "74e434af-0054-438d-ae6b-cc94844d6ce0",
+        "label": "Cocco Cioccolato Bianco",
+        "format": "1 kg",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2024/01/WN204_avena-farina-cocco-1-Kg_singolo.png",
+        "content": {
+          "usage": "Mescolare 50 g con 100-150 ml di acqua, latte o yogurt, regolando il liquido per la densità desiderata.",
+          "allergens": "Può contenere soia. Senza glutine.",
+          "nutrition": "Per 50 g: 183 kcal; carboidrati 31 g; proteine 6 g; fibre 4,7 g; grassi 3 g.",
+          "ingredients": "Farina di avena, cocco rapè, aromi, sucralosio."
+        },
+        "source_url": "https://www.whynature.it/prodotto/avena-farina-gluten-free-1-kg/",
+        "updated_at": "2026-09-28T21:48:28.795809+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/avena-farina-gluten-free-1-kg/",
+    "source_name": "WHYnature",
+    "description": "La versatilità dell’avena, dal primo pasto alle tue ricette.",
+    "tag_labels": [
+      "Alimenti sportivi",
+      "Senza glutine"
+    ],
+    "content": {
+      "what": "Farina di avena aromatizzata senza glutine, da utilizzare a colazione o come ingrediente in cucina.",
+      "usage": "Mescolare 50 g con 100 ml di acqua, latte o yogurt; regolare il liquido per la densità desiderata.",
+      "effects": "I carboidrati dell’avena forniscono energia per la giornata e l’attività fisica; una parte può essere immagazzinata come glicogeno, la riserva di muscoli e fegato. Apporta anche fibre e proteine. A colazione o prima dell’allenamento, con un intervallo adatto alla digestione, aiuta a comporre un pasto energetico. Senza glutine non significa senza carboidrati o meno calorico.",
+      "warnings": "Inserire le porzioni nel proprio piano alimentare. Prima del consumo leggere ingredienti e allergeni sulla confezione: possono cambiare tra gusti e lotti.",
+      "allergens": "Contiene latte. Senza glutine.",
+      "nutrition": "Per 50 g: 188 kcal; carboidrati 33 g; proteine 6 g; fibre 2 g; grassi 3,1 g.",
+      "ingredients": "Avena senza glutine (97,3%), aromi (latte), sucralosio."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "AIS · Alimenti per lo sport",
+        "url": "https://www.ausport.gov.au/ais/nutrition/supplements/group_a"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "f7e5d3d7-04cd-4592-b819-155eea111101",
+    "name": "Bromelina",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2026/06/wn190-1780911619.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "256666a8-5c55-4665-ae05-993ac1517cd8",
+        "label": "Standard",
+        "format": "60 cpr",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2026/06/wn190-1780911619.png",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/bromelina/",
+        "updated_at": "2026-09-28T21:48:28.799646+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/bromelina/",
+    "source_name": "WHYnature",
+    "description": "Un enzima di origine vegetale, in una compressa.",
+    "tag_labels": [
+      "Estratti",
+      "Quotidiano"
+    ],
+    "content": {
+      "what": "Integratore a base di bromelina, un enzima ricavato dal gambo dell’ananas.",
+      "usage": "Il produttore indica 1 compressa al giorno, con un bicchiere d’acqua.",
+      "effects": "Scinde le proteine in frammenti più piccoli: questa è la sua attività proteolitica. Il valore in GDU misura l’attività dell’enzima, non l’efficacia contro gonfiore o dolore. Gli studi sull’assunzione orale non consentono di promettere benefici generali per recupero muscolare, ritenzione idrica o dimagrimento. Non va presentata come un bruciagrassi o come una terapia antinfiammatoria.",
+      "warnings": "Non superare la dose indicata. Gli integratori non sostituiscono una dieta varia ed equilibrata e uno stile di vita sano. Tenere fuori dalla portata dei bambini sotto i 3 anni.",
+      "allergens": "Dichiarato senza glutine e senza lattosio dal produttore. Verificare l’etichetta in caso di allergie.",
+      "nutrition": "Per compressa: bromelina 500 mg. Attività dichiarata della materia prima: 2.500 GDU/g.",
+      "ingredients": "Bromelina da ananas; cellulosa; sali di magnesio degli acidi grassi; biossido di silicio."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "NIH NCCIH · Bromelina",
+        "url": "https://www.nccih.nih.gov/health/bromelain"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "38a59f5e-a673-40ca-917a-c2a0eb17ce52",
+    "name": "Cluster Dextrin Pure",
+    "brand": "WHYsport",
+    "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w204-1784678715.webp",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "d15ccd25-a12f-4007-9c7e-dab173760360",
+        "label": "Standard",
+        "format": "500 g",
+        "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w204-1784678715.webp",
+        "content": {},
+        "source_url": "https://www.whysport.it/shop/energetici/cluster-dextrine-pure/",
+        "updated_at": "2026-09-28T21:48:28.801738+00:00"
+      }
+    ],
+    "source_url": "https://www.whysport.it/shop/energetici/cluster-dextrine-pure/",
+    "source_name": "WHYsport",
+    "description": "Carboidrati in polvere per il tuo piano di allenamento.",
+    "tag_labels": [
+      "Carboidrati",
+      "Energia"
+    ],
+    "content": {
+      "what": "Polvere a base di destrine cicliche altamente ramificate, note anche come Cluster Dextrin®.",
+      "usage": "Seguire la preparazione indicata sulla confezione e la quantità concordata con il professionista. La porzione nutrizionale non è una prescrizione individuale.",
+      "effects": "Fornisce carboidrati da utilizzare come carburante durante l’esercizio prolungato e per ricostituire le riserve di glicogeno dopo lo sforzo. La polvere permette di dosare l’apporto nella bevanda quando mangiare è poco pratico. Le destrine sono carboidrati digeribili: “0 g di zuccheri” non significa assenza di calorie o di effetto sulla glicemia. Diluizione e tolleranza vanno provate in allenamento.",
+      "warnings": "Pianificare insieme apporto di carboidrati e idratazione. Rispettare le indicazioni di utilizzo e conservazione in etichetta.",
+      "allergens": "Controllare gli allergeni dichiarati sulla confezione prima dell’uso.",
+      "nutrition": "Porzione di riferimento del produttore: 25 g, con 25 g di carboidrati e 0 g di zuccheri.",
+      "ingredients": "100% destrine cicliche altamente ramificate (HBCD)."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "AIS · Alimenti per lo sport",
+        "url": "https://www.ausport.gov.au/ais/nutrition/supplements/group_a"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "9de2f438-4b02-439c-b5e9-eb6778688ba1",
+    "name": "Collagene Rigenera",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2019/11/wn192-1788248691.webp",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "6b640bd3-f965-4bf9-8276-79b9f2bb791d",
+        "label": "Vaniglia",
+        "format": "333 g",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2019/11/wn192-1788248691.webp",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/collagene-rigenera/",
+        "updated_at": "2026-09-28T21:48:28.812371+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/collagene-rigenera/",
+    "source_name": "WHYnature",
+    "description": "Collagene idrolizzato, vitamina C e magnesio.",
+    "tag_labels": [
+      "Collagene",
+      "Quotidiano"
+    ],
+    "content": {
+      "what": "Integratore in polvere di collagene idrolizzato con magnesio, vitamina C e acido ialuronico, al gusto vaniglia.",
+      "usage": "1 misurino (11,1 g) al giorno in acqua, latte, bevanda vegetale o yogurt, preferibilmente a colazione.",
+      "effects": "Il collagene idrolizzato apporta piccoli frammenti proteici e aminoacidi. La vitamina C contribuisce alla normale formazione del collagene per la funzione di cartilagini, ossa e pelle; il magnesio sostiene la normale funzione muscolare e il mantenimento delle ossa. Queste funzioni dei nutrienti non significano che il prodotto ricostruisca una cartilagine lesionata o curi un dolore articolare.",
+      "warnings": "Non superare la dose indicata. Gli integratori non sostituiscono una dieta varia ed equilibrata e uno stile di vita sano. Tenere fuori dalla portata dei bambini sotto i 3 anni. In gravidanza, nei bambini o per uso prolungato, sentire il medico.",
+      "allergens": "Senza glutine. Collagene di origine suina: non adatto a un’alimentazione vegetariana o vegana.",
+      "nutrition": "Per 11,1 g: collagene 10 g; magnesio 150 mg; vitamina C 32 mg; acido ialuronico 25 mg.",
+      "ingredients": "Componenti principali: collagene idrolizzato, citrato di magnesio, vitamina C, sodio ialuronato; con aromi ed edulcorante."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "NIH ODS · Vitamina C",
+        "url": "https://ods.od.nih.gov/factsheets/VitaminC-HealthProfessional/"
+      },
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "702b632f-5b13-45ae-a49c-30e4056bc660",
+    "name": "Crema di Arachidi Peanut Butter",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2019/05/WN055_crema-arachidi-smooth-350-g_singolo.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "411f6d7d-16fa-4f49-8d33-12bd27100826",
+        "label": "Smooth",
+        "format": "350 g",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2019/05/WN055_crema-arachidi-smooth-350-g_singolo.png",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/crema-di-arachidi-peanu-butter-smooth/",
+        "updated_at": "2026-09-28T21:48:28.81417+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/crema-di-arachidi-peanu-butter-smooth/",
+    "source_name": "WHYnature",
+    "description": "Un solo ingrediente. Consistenza morbida.",
+    "tag_labels": [
+      "Alimenti sportivi",
+      "Arachidi"
+    ],
+    "content": {
+      "what": "Crema di arachidi nella versione Smooth, dalla consistenza omogenea.",
+      "usage": "Spalmare o aggiungere a yogurt, porridge e ricette. Definire la porzione in base al proprio piano alimentare.",
+      "effects": "Aggiunge soprattutto grassi, energia e proteine vegetali al pasto. È pratica quando serve aumentare l’apporto energetico senza aggiungere molto volume: per esempio su pane o nel porridge. La quantità conta, perché una piccola porzione può apportare molte calorie. Non svolge la stessa funzione di un gel durante lo sforzo e non è un prodotto dimagrante.",
+      "warnings": "Inserire le porzioni nel proprio piano alimentare. Prima del consumo leggere ingredienti e allergeni sulla confezione: possono cambiare tra gusti e lotti.",
+      "allergens": "Contiene arachidi. Può contenere altra frutta a guscio.",
+      "nutrition": "Composizione: 100% arachidi. Formato: 350 g.",
+      "ingredients": "Arachidi."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "94157b71-6ca2-47c1-babd-1189106bb5dc",
+    "name": "Crema di Arachidi Peanut Butter Iperproteico",
+    "brand": "WHYsport",
+    "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w330-1784678876.webp",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "d1f8540f-b8e3-4240-853c-4e4b00f0ac6d",
+        "label": "Crunch",
+        "format": "350 g",
+        "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w330-1784678876.webp",
+        "content": {},
+        "source_url": "https://www.whysport.it/shop/alimentazione/crema-di-arachidi-peanut-butter-iperproteica-crunchy/",
+        "updated_at": "2026-09-28T21:48:28.815907+00:00"
+      }
+    ],
+    "source_url": "https://www.whysport.it/shop/alimentazione/crema-di-arachidi-peanut-butter-iperproteica-crunchy/",
+    "source_name": "WHYsport",
+    "description": "La croccantezza delle arachidi, con proteine del latte.",
+    "tag_labels": [
+      "Alimenti sportivi",
+      "Proteine"
+    ],
+    "content": {
+      "what": "Crema di arachidi croccante arricchita con proteine del latte.",
+      "usage": "Utilizzare come crema spalmabile o nelle ricette. Concordare la porzione in base ai propri obiettivi.",
+      "effects": "Combina le proteine delle arachidi con quelle del latte per aumentare l’apporto proteico di colazioni e spuntini. Le proteine contribuiscono al mantenimento e alla crescita della massa muscolare, insieme a un’alimentazione adeguata e all’allenamento. Contiene anche una quota importante di grassi: la porzione va scelta considerando sia le proteine sia le calorie complessive.",
+      "warnings": "Inserire le porzioni nel proprio piano alimentare. Prima del consumo leggere ingredienti e allergeni sulla confezione: possono cambiare tra gusti e lotti.",
+      "allergens": "Contiene arachidi e latte. Può contenere altra frutta a guscio. Senza glutine.",
+      "nutrition": "Per 100 g: proteine 50 g; carboidrati 16 g; grassi 32 g. Questi valori non indicano la porzione consigliata.",
+      "ingredients": "Arachidi tostate (75%), proteine del latte (18%), arachidi in pezzi (5%), olio di cocco."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "b6d48767-5027-425a-bf34-a648ed69c00d",
+    "name": "Gel Give Me Five",
+    "brand": "WHYsport",
+    "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w370-1784679011.webp",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "2e9f951b-ad04-427a-a63c-80bea68d8907",
+        "label": "Lemon Cola",
+        "format": "50 ml",
+        "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w370-1784679011.webp",
+        "content": {},
+        "source_url": "https://www.whysport.it/shop/energetici/give-me-five/",
+        "updated_at": "2026-09-28T21:48:28.816829+00:00"
+      }
+    ],
+    "source_url": "https://www.whysport.it/shop/energetici/give-me-five/",
+    "source_name": "WHYsport",
+    "description": "Cinque fonti di carboidrati, nel formato da portare con te.",
+    "tag_labels": [
+      "Carboidrati",
+      "Energia"
+    ],
+    "content": {
+      "what": "Gel pronto all’uso a base di carboidrati e sodio, in confezione monodose da 50 ml.",
+      "usage": "Pronto da consumare. Numero di gel e momento d’assunzione vanno concordati in base alla sessione e alle indicazioni della confezione.",
+      "effects": "Porta carboidrati in un formato rapido da consumare durante corsa, ciclismo o altre attività prolungate, quando le riserve energetiche vengono utilizzate e mangiare cibi solidi è scomodo. Il sodio contribuisce all’apporto di elettroliti, ma il gel non sostituisce l’acqua. Il numero di gel va calcolato dai carboidrati effettivi per confezione e dalla durata dell’attività.",
+      "warnings": "Non superare la dose indicata. Gli integratori non sostituiscono una dieta varia ed equilibrata e uno stile di vita sano. Tenere fuori dalla portata dei bambini sotto i 3 anni.",
+      "allergens": "Verificare gli allergeni della variante Lemon Cola sull’etichetta prima del consumo.",
+      "nutrition": "La formula comprende cinque fonti di carboidrati e sodio. I valori della variante Lemon Cola vanno letti sulla confezione da 50 ml.",
+      "ingredients": "Per la composizione completa e le quantità della singola variante, fare riferimento all’etichetta."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "AIS · Gel sportivi",
+        "url": "https://www.ausport.gov.au/ais/nutrition/supplements/group_a/sports-foods2/sports-gels"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "3687a62a-68f9-4c99-986c-dc319b4d714f",
+    "name": "Low Sugar Pancake Gluten Free",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2022/06/WN174_pancake-cookies-800-g_singolo.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "ab36c554-a7a8-4519-bb3f-7115952eb5e5",
+        "label": "Cookies",
+        "format": "800 g",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2022/06/WN174_pancake-cookies-800-g_singolo.png",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/low-sugar-pancake-gluten-free-800g/",
+        "updated_at": "2026-09-28T21:48:28.817369+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/low-sugar-pancake-gluten-free-800g/",
+    "source_name": "WHYnature",
+    "description": "Pancake proteici al gusto cookies, pronti in pochi passaggi.",
+    "tag_labels": [
+      "Alimenti sportivi",
+      "Senza glutine"
+    ],
+    "content": {
+      "what": "Preparato in polvere per pancake a basso contenuto di zuccheri, a base di avena e proteine.",
+      "usage": "Mescolare 50 g di preparato con 50 ml di acqua. Versare metà impasto in padella antiaderente e cuocere sui due lati; ripetere con il restante impasto.",
+      "effects": "Una porzione di 50 g apporta 15 g di proteine e 23 g di carboidrati: le prime contribuiscono al mantenimento e alla crescita muscolare, i secondi all’apporto energetico. Può comporre una colazione o uno spuntino dopo l’allenamento. Il basso contenuto di zuccheri non elimina le calorie: latte, creme e altri condimenti modificano il totale del pasto.",
+      "warnings": "Inserire le porzioni nel proprio piano alimentare. Prima del consumo leggere ingredienti e allergeni sulla confezione: possono cambiare tra gusti e lotti.",
+      "allergens": "Contiene latte, uova e soia. Senza glutine.",
+      "nutrition": "Per 50 g: 187 kcal; proteine 15 g; carboidrati 23 g; zuccheri 1,1 g; grassi 3,1 g; fibre 4,3 g.",
+      "ingredients": "Ingredienti principali: avena senza glutine, proteine del siero e del latte, albume d’uovo; con edulcorante."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "eb82140f-1576-4973-9532-20a27da21251",
+    "name": "Magnesio Bisglicinato",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2026/06/wn276-1781768135.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "be440994-85dd-4040-8ed6-789b19ff1d4a",
+        "label": "Standard",
+        "format": "90 cpr",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2026/06/wn276-1781768135.png",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/magnesio-bisglicinato-90-cpr/",
+        "updated_at": "2026-09-28T21:48:28.818127+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/magnesio-bisglicinato-90-cpr/",
+    "source_name": "WHYnature",
+    "description": "Magnesio in compresse per l’integrazione quotidiana.",
+    "tag_labels": [
+      "Minerali",
+      "Quotidiano"
+    ],
+    "content": {
+      "what": "Integratore di magnesio nella forma bisglicinato, in confezione da 90 compresse.",
+      "usage": "Il produttore indica 3 compresse al giorno, con acqua, durante un pasto.",
+      "effects": "Il magnesio partecipa alle reazioni con cui le cellule utilizzano l’energia e alla trasmissione dei segnali tra nervi e muscoli. Contribuisce alla normale funzione muscolare, all’equilibrio elettrolitico e alla riduzione di stanchezza e affaticamento. L’integrazione è da valutare quando l’apporto è insufficiente; non garantisce più forza né la scomparsa dei crampi, che possono avere cause diverse.",
+      "warnings": "Non superare la dose indicata. Gli integratori non sostituiscono una dieta varia ed equilibrata e uno stile di vita sano. Tenere fuori dalla portata dei bambini sotto i 3 anni.",
+      "allergens": "Senza glutine. In caso di allergie controllare la composizione completa sull’etichetta.",
+      "nutrition": "Per 3 compresse: magnesio 300 mg, pari all’80% dei valori nutritivi di riferimento (VNR).",
+      "ingredients": "Fonte del minerale: bisglicinato di magnesio. Per gli eccipienti consultare la confezione."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "NIH ODS · Magnesio",
+        "url": "https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/"
+      },
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "5e563dd9-3fef-4e2d-99af-137ae34f3ad2",
+    "name": "Maltodestrine",
+    "brand": "WHYsport",
+    "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w095-1784678572.webp",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "eef90696-2cd3-4991-9aac-7e5ffeebb9c5",
+        "label": "Standard",
+        "format": "1 kg",
+        "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w095-1784678572.webp",
+        "content": {},
+        "source_url": "https://www.whysport.it/shop/energetici/100-maltodestrine/",
+        "updated_at": "2026-09-28T21:48:28.818667+00:00"
+      }
+    ],
+    "source_url": "https://www.whysport.it/shop/energetici/100-maltodestrine/",
+    "source_name": "WHYsport",
+    "description": "Una fonte di carboidrati semplice da dosare.",
+    "tag_labels": [
+      "Carboidrati",
+      "Energia"
+    ],
+    "content": {
+      "what": "Polvere composta da maltodestrine, con destrosio equivalenza (DE) 19.",
+      "usage": "Seguire le indicazioni di preparazione in etichetta. Quantità, diluizione e momento d’utilizzo vanno adattati con il professionista.",
+      "effects": "Durante la digestione vengono scisse in glucosio, utilizzabile come energia. In bevanda permettono di aggiungere carboidrati durante attività lunghe o di contribuire al ripristino del glicogeno dopo allenamenti impegnativi. Sono utili soprattutto quando il fabbisogno è elevato e gli alimenti risultano poco pratici. Il basso valore “di cui zuccheri” non equivale a un basso impatto sulla glicemia.",
+      "warnings": "La porzione nutrizionale di 40 g non è una dose adatta automaticamente a tutti. Considerare l’apporto totale di carboidrati e liquidi.",
+      "allergens": "Senza glutine. Controllare eventuali altre indicazioni relative agli allergeni sulla confezione.",
+      "nutrition": "Per 40 g, porzione di riferimento: 154 kcal; carboidrati 39 g, di cui zuccheri 2,4 g.",
+      "ingredients": "100% maltodestrine (DE 19)."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "AIS · Alimenti per lo sport",
+        "url": "https://www.ausport.gov.au/ais/nutrition/supplements/group_a"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "eac3b456-56f7-4fec-9a2b-9e50a8202be4",
+    "name": "NAC 600 Plus",
+    "brand": "WHYnature",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2023/02/WN189_nac-600-plus-60-cpr_singolo-1.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "c0e83fea-44a1-4061-a7bd-0de938bbacc4",
+        "label": "Standard",
+        "format": "60 cpr",
+        "image_url": "https://www.whynature.it/wp-content/uploads/2023/02/WN189_nac-600-plus-60-cpr_singolo-1.png",
+        "content": {},
+        "source_url": "https://www.whynature.it/prodotto/nac-600-plus/",
+        "updated_at": "2026-09-28T21:48:28.820268+00:00"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/nac-600-plus/",
+    "source_name": "WHYnature",
+    "description": "N-acetilcisteina, colina e vitamina C.",
+    "tag_labels": [
+      "Quotidiano",
+      "Vitamina C"
+    ],
+    "content": {
+      "what": "Integratore in compresse che combina N-acetilcisteina (NAC), colina e vitamina C.",
+      "usage": "Il produttore indica 1 compressa al giorno con un bicchiere d’acqua.",
+      "effects": "La NAC fornisce cisteina, un componente usato dall’organismo per produrre glutatione, coinvolto nelle difese antiossidanti. La vitamina C contribuisce alla protezione delle cellule dallo stress ossidativo; la colina al normale metabolismo dei grassi e alla funzione epatica. Questi ruoli non dimostrano un effetto “detox” del prodotto né garantiscono un recupero sportivo più rapido.",
+      "warnings": "Non superare la dose indicata. Gli integratori non sostituiscono una dieta varia ed equilibrata e uno stile di vita sano. Tenere fuori dalla portata dei bambini sotto i 3 anni.",
+      "allergens": "In caso di allergie, verificare la lista completa degli ingredienti riportata sulla confezione.",
+      "nutrition": "Per 1 compressa: NAC 600 mg; colina 100 mg; vitamina C 100 mg (125% VNR).",
+      "ingredients": "Componenti caratterizzanti: N-acetilcisteina, colina e vitamina C. Per gli eccipienti consultare l’etichetta."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "NAC · Rassegna biochimica (2018)",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/29742938/"
+      },
+      {
+        "name": "NIH ODS · Vitamina C",
+        "url": "https://ods.od.nih.gov/factsheets/VitaminC-HealthProfessional/"
+      },
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "92f45982-886a-449b-b292-8e43a982e77e",
+    "name": "Perfect Cream",
+    "brand": "WHYsport",
+    "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w374-1784333526.webp",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "4d0ed106-4cfc-4cf6-ad84-02d439630b6f",
+        "label": "Pistacchio",
+        "format": "300 g",
+        "image_url": "https://www.whysport.it/wp-content/uploads/2026/07/w374-1784333526.webp",
+        "content": {},
+        "source_url": "https://www.whysport.it/shop/alimentazione/perfect-cream/",
+        "updated_at": "2026-09-28T21:48:28.820861+00:00"
+      }
+    ],
+    "source_url": "https://www.whysport.it/shop/alimentazione/perfect-cream/",
+    "source_name": "WHYsport",
+    "description": "Il gusto del pistacchio, in una crema proteica.",
+    "tag_labels": [
+      "Alimenti sportivi",
+      "Proteine"
+    ],
+    "content": {
+      "what": "Crema spalmabile proteica con edulcorante, a base di proteine isolate del siero del latte Isolac®.",
+      "usage": "Utilizzare come crema spalmabile o nelle ricette, nella porzione prevista dal proprio piano alimentare.",
+      "effects": "Permette di aggiungere proteine del siero del latte a una colazione o a uno spuntino dolce. Le proteine apportano aminoacidi utilizzati dall’organismo anche per il tessuto muscolare. La quantità utile dipende dai grammi di crema consumati e dai valori del gusto pistacchio: una spalmata non equivale automaticamente a una porzione di proteine in polvere. Va conteggiato l’intero apporto calorico.",
+      "warnings": "Inserire le porzioni nel proprio piano alimentare. Prima del consumo leggere ingredienti e allergeni sulla confezione: possono cambiare tra gusti e lotti.",
+      "allergens": "Contiene latte e pistacchio. Senza glutine e senza olio di palma. Un ridotto contenuto di lattosio non rende il prodotto adatto a chi è allergico al latte.",
+      "nutrition": "Formato: 300 g. Proteine del siero del latte isolate. Per i valori della variante pistacchio consultare l’etichetta.",
+      "ingredients": "Contiene proteine del latte e pistacchio. La composizione completa della variante è indicata sulla confezione."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "ec23cd7c-5a0a-40bb-aec7-4b991922cb38",
+    "name": "PW1 Pre Workout",
+    "brand": "WHYsport Professional",
+    "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/03/WP012_pw1-pre-workout-caff.-arumi-300-g_singolo.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "d0515df9-fedc-49a4-a57b-4744c8316530",
+        "label": "Con caffeina · Agrumi",
+        "format": "300 g",
+        "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/03/WP012_pw1-pre-workout-caff.-arumi-300-g_singolo.png",
+        "content": {},
+        "source_url": "https://www.whysportprofessional.it/pw1",
+        "updated_at": "2026-09-28T21:48:28.822224+00:00"
+      },
+      {
+        "id": "ad065ef8-bb30-4a72-9d51-6274aec02742",
+        "label": "Senza caffeina · Tè alla Pesca",
+        "format": "300 g",
+        "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/04/WP013_pw1-pre-workout-no-caff.-te-alla-pesca-300-g_singolo.png",
+        "content": {
+          "what": "Versione PW1 presentata dal produttore come senza caffeina, al gusto tè alla pesca, con aminoacidi, estratti vegetali e vitamine B3 e B6.",
+          "usage": "Prima dell’uso verificare dose e composizione sulla confezione della variante senza caffeina insieme al professionista.",
+          "warnings": "La pagina ufficiale contiene indicazioni discordanti sulla caffeina. Confermare la composizione sull’etichetta prima dell’assunzione. Non usare in gravidanza o nei bambini. Con anticoagulanti o antiaggreganti consultare il medico.",
+          "allergens": "Verificare ingredienti e allergeni sulla confezione prima dell’uso.",
+          "nutrition": "Formula con leucina, arginina AKG, beta-alanina, citrullina, estratti vegetali e vitamine B3 e B6.",
+          "effects": "La beta-alanina è un precursore della carnosina muscolare, che aiuta a tamponare l’acidità durante sforzi intensi; gli studi valutano assunzioni regolari, non soltanto una dose prima della seduta. Le vitamine B3 e B6 contribuiscono al metabolismo energetico e alla riduzione della stanchezza. Per questa variante occorre verificare quantità e composizione in etichetta: la pagina ufficiale è discordante sulla caffeina."
+        },
+        "source_url": "https://www.whysportprofessional.it/pw1-senza-caffeina",
+        "review_required": true,
+        "updated_at": "2026-09-28T22:10:13.391673+00:00"
+      }
+    ],
+    "source_url": "https://www.whysportprofessional.it/prodotti/",
+    "source_name": "WHYsport Professional",
+    "description": "Una formula dedicata al momento prima dell’allenamento.",
+    "tag_labels": [
+      "Pre-workout",
+      "Aminoacidi"
+    ],
+    "content": {
+      "what": "Integratore in polvere con aminoacidi, estratti vegetali e vitamine B3 e B6. Questa variante al gusto agrumi contiene caffeina.",
+      "usage": "Sciogliere 15 g in 200-300 ml d’acqua, 20-30 minuti prima dell’attività, secondo l’indicazione del produttore.",
+      "effects": "La caffeina può aumentare la vigilanza e ridurre la percezione dello sforzo; la risposta varia con sensibilità individuale e abitudine al consumo. Le vitamine B3 e B6 contribuiscono al normale metabolismo energetico e alla riduzione della stanchezza. Gli effetti studiati sui singoli aminoacidi non dimostrano automaticamente l’efficacia dell’intera miscela: dosi, regolarità e tipo di allenamento contano.",
+      "warnings": "Contiene caffeina: non raccomandato per bambini, gravidanza e allattamento. Non superare la dose. Con anticoagulanti o antiaggreganti, o per uso prolungato, consultare il medico. Non sostituisce una dieta varia.",
+      "allergens": "Senza glutine. Valutare l’apporto totale di caffeina anche da caffè e altre bevande.",
+      "nutrition": "Per dose giornaliera: caffeina 200 mg. Sono presenti aminoacidi, estratti di barbabietola, ashwagandha e ginkgo.",
+      "ingredients": "Formula con edulcoranti. Per la lista completa degli ingredienti leggere l’etichetta della variante."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "NIH ODS · Sport e integratori",
+        "url": "https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "cc95b47c-8905-43af-adab-d91ae204cfb9",
+    "name": "Creatine Monohydrate",
+    "brand": "Powerbar · Black Line",
+    "image_url": "https://www.powerbar.com/cdn/shop/files/Black-Line-Packshot-Creatine.png?v=1784627539&width=1000",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "21bcc2cd-3ffd-41a8-8e05-901a9a386a33",
+        "label": "Neutro",
+        "format": "300 g",
+        "image_url": "https://www.powerbar.com/cdn/shop/files/Black-Line-Packshot-Creatine.png?v=1784627539&width=1000",
+        "content": {},
+        "source_url": "https://www.powerbar.com/de-de/products/creatine-monohydrate",
+        "updated_at": "2026-09-28T21:48:28.823035+00:00"
+      }
+    ],
+    "source_url": "https://www.powerbar.com/de-de/products/creatine-monohydrate",
+    "source_name": "Powerbar",
+    "description": "Creatina monoidrato Creapure®, in polvere e dal gusto neutro.",
+    "tag_labels": [
+      "Creatina",
+      "Performance"
+    ],
+    "content": {
+      "what": "Integratore alimentare in polvere a base di creatina monoidrato Creapure®.",
+      "usage": "Il produttore indica una porzione al giorno: mescolare 3,4 g di polvere in 200 ml di acqua o succo.",
+      "effects": "Aumenta la disponibilità di creatina e fosfocreatina nei muscoli, utili a rigenerare rapidamente l’ATP, l’energia immediata della contrazione. Migliora la prestazione negli sforzi brevi, intensi e ripetuti, come serie con pesi o sprint. L’effetto si ottiene con 3 g di creatina al giorno negli adulti che svolgono attività ad alta intensità. Conta l’assunzione regolare, non una spinta stimolante immediata.",
+      "audience": "Adulti che praticano esercizio fisico ad alta intensità.",
+      "warnings": "Non superare la dose consigliata. Tenere lontano dai bambini. Non indicato per bambini e adolescenti. Può causare aumento di peso. Non sostituisce una dieta varia ed equilibrata e uno stile di vita sano.",
+      "allergens": "Può contenere uova, soia e latte. Controllare l’etichetta della confezione.",
+      "nutrition": "Per porzione di 3,4 g:\nCreatina: 3,0 g\nPer 100 g: creatina 87,9 g.",
+      "usefulness": "Può essere considerata nel contesto di allenamenti che prevedono sforzi brevi e intensi.",
+      "ingredients": "100% creatina monoidrato Creapure®."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "NIH ODS · Sport e integratori",
+        "url": "https://ods.od.nih.gov/factsheets/ExerciseAndAthleticPerformance-HealthProfessional/"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "77fb319d-8a14-4b5d-b68a-a1127b11af86",
+    "name": "Hydro 90 BV 104",
+    "brand": "WHYsport Professional",
+    "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/04/WP001_hydro-90-bv-104-crema-biscotto-900-g_singolo.png",
+    "updated_at": "2026-09-28T22:10:13.391673+00:00",
+    "variants": [
+      {
+        "id": "d998e3ca-2c28-4c76-85a4-72eb66e825dc",
+        "label": "Wafer Nocciola",
+        "format": "900 g",
+        "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/04/WP001_hydro-90-bv-104-crema-biscotto-900-g_singolo.png",
+        "content": {},
+        "source_url": "https://www.whysportprofessional.it/hydro-90-900g/",
+        "updated_at": "2026-09-28T21:48:28.823692+00:00"
+      },
+      {
+        "id": "dcef1955-5c2e-4890-8b9e-9483d024386e",
+        "label": "Cioccolato Fondente",
+        "format": "900 g",
+        "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/04/WP001_hydro-90-bv-104-crema-biscotto-900-g_singolo.png",
+        "content": {},
+        "source_url": "https://www.whysportprofessional.it/hydro-90-900g/",
+        "updated_at": "2026-09-28T21:48:28.823938+00:00"
+      },
+      {
+        "id": "1f7ffab3-96e9-4c27-948d-664b104c4004",
+        "label": "Cioccolato",
+        "format": "900 g",
+        "image_url": "https://www.whysportprofessional.it/wp-content/uploads/2026/04/WP001_hydro-90-bv-104-crema-biscotto-900-g_singolo.png",
+        "content": {},
+        "source_url": "https://www.whysportprofessional.it/hydro-90-900g/",
+        "updated_at": "2026-09-28T21:48:28.824168+00:00"
+      }
+    ],
+    "source_url": "https://www.whysportprofessional.it/hydro-90-900g/",
+    "source_name": "WHYsport Professional",
+    "image_note": "Foto ufficiale rappresentativa della linea Hydro 90 da 900 g; la confezione fotografata è al gusto crema biscotto. I gusti disponibili sono indicati nelle varianti.",
+    "description": "Proteine isolate e idrolizzate del siero del latte.",
+    "tag_labels": [
+      "Proteine",
+      "Senza glutine"
+    ],
+    "content": {
+      "what": "Integratore proteico in polvere a base di proteine del siero del latte isolate e idrolizzate Optipep®.",
+      "usage": "Sciogliere 30 g in 150 ml di acqua. Inserire la porzione nel proprio piano proteico giornaliero.",
+      "effects": "Fornisce aminoacidi essenziali attraverso le proteine del siero, che contribuiscono alla crescita e al mantenimento della massa muscolare. È pratica per raggiungere l’apporto proteico giornaliero quando i pasti non bastano. L’idrolisi divide le proteine in frammenti più piccoli; non garantisce più muscolo rispetto a un apporto proteico già adeguato. Il beneficio dipende anche dall’allenamento e dall’alimentazione complessiva.",
+      "warnings": "Non superare la dose indicata. Gli integratori non sostituiscono una dieta varia ed equilibrata e uno stile di vita sano. Tenere fuori dalla portata dei bambini sotto i 3 anni. In gravidanza, nei bambini o per uso prolungato, consultare il medico.",
+      "allergens": "Contiene latte e soia. Senza glutine. La presenza di lattasi non elimina l’allergene latte.",
+      "nutrition": "Porzione indicata dalla linea: 30 g. I valori nutrizionali specifici del gusto vanno verificati sulla confezione.",
+      "ingredients": "Componenti della linea: proteine del siero, inulina, lattasi, bromelina, papaina e Lactobacillus acidophilus. Ingredienti e aromi possono variare con il gusto."
+    },
+    "verified_at": "2026-09-28T22:10:13.391673+00:00",
+    "source_review_note": "Contenuti sintetizzati da fonti ufficiali; i dati non verificati della singola variante sono rimandati all’etichetta.",
+    "effects_sources": [
+      {
+        "name": "Commissione UE · Indicazioni nutrizionali",
+        "url": "https://ec.europa.eu/food/food-feed-portal/backend/claims/files/euregister.pdf"
+      }
+    ],
+    "effects_reviewed_at": "2026-09-29"
+  },
+  {
+    "id": "1214c142-9b11-4a56-8d2d-256aee0935b4",
+    "name": "OMEGOR Krill",
+    "brand": "OMEGOR",
+    "description": "Integratore di olio di krill antartico: EPA e DHA, fosfolipidi, colina e astaxantina. Confezione da 60 capsule.",
+    "content": {
+      "what": "Integratore di olio di krill antartico: EPA e DHA, fosfolipidi, colina e astaxantina. Confezione da 60 capsule.",
+      "usage": "La scheda del produttore indica 2–6 capsule al giorno. La dose va scelta secondo etichetta e necessità individuali.",
+      "effects": "Due capsule forniscono 260 mg di EPA+DHA, superando i 250 mg al giorno associati al contributo alla normale funzione cardiaca. Per raggiungere 250 mg di DHA, quantità associata alla normale funzione cerebrale e visiva, la scheda indica 6 capsule. La colina contribuisce al metabolismo dei lipidi e alla normale funzione epatica.",
+      "warnings": "Non superare le dosi in etichetta. Non sostituisce una dieta equilibrata. In caso di terapie anticoagulanti o antiaggreganti, consultare il medico prima dell’uso. Tenere lontano dai bambini piccoli.",
+      "allergens": "Contiene crostacei. Non adatto a una dieta vegana.",
+      "nutrition": "Per 2 capsule: olio di krill 1.180 mg; fosfolipidi 660 mg; omega-3 318 mg (EPA 177 mg, DHA 83 mg); colina 82,6 mg; astaxantina 100 µg.",
+      "usefulness": "Fonte marina di omega-3 veicolati anche da fosfolipidi.",
+      "ingredients": "Olio di krill Euphausia superba; capsula di gelatina; glicerolo, sorbitolo e acqua."
+    },
+    "image_url": "https://cdn.shopify.com/s/files/1/0549/9302/7107/files/krill-fronte-1_1280x1280_210ab237-4fcf-4c68-8269-3fca5308cf19.png?v=1772035416",
+    "image_scale": 1,
+    "source_url": "https://www.omegor.com/products/omegor-krill-60-capsule",
+    "source_name": "OMEGOR · sito ufficiale",
+    "tag_labels": [
+      "Omega-3",
+      "Quotidiano",
+      "Benessere"
+    ],
+    "variants": [
+      {
+        "id": "a34427a4-3703-41f4-979e-b84103a51026",
+        "label": "Standard",
+        "format": "60 softgels",
+        "content": {}
+      }
+    ]
+  },
+  {
+    "id": "830d17e7-6b40-463d-8c34-23ed8bbcb73f",
+    "name": "OMEGOR Veg",
+    "brand": "OMEGOR",
+    "description": "Integratore di EPA e DHA da microalghe Schizochytrium, con vitamina E. Confezione da 60 capsule vegetali.",
+    "content": {
+      "what": "Integratore di EPA e DHA da microalghe Schizochytrium, con vitamina E. Confezione da 60 capsule vegetali.",
+      "usage": "Il produttore indica 1 capsula al giorno.",
+      "effects": "Una capsula apporta 375 mg di EPA+DHA: supera i 250 mg giornalieri associati al contributo alla normale funzione cardiaca. I 250 mg di DHA contribuiscono alla normale funzione cerebrale e visiva. La vitamina E protegge le cellule dallo stress ossidativo.",
+      "warnings": "Non superare le dosi in etichetta. Non sostituisce una dieta equilibrata. In caso di terapie anticoagulanti o antiaggreganti, consultare il medico prima dell’uso. Tenere lontano dai bambini piccoli.",
+      "allergens": "Il produttore dichiara assenza di allergeni e glutine. Adatto all’alimentazione vegana.",
+      "nutrition": "Per 1 capsula: olio algale 835 mg; omega-3 459 mg, di cui EPA 125 mg e DHA 250 mg; vitamina E 6 mg (50% VNR).",
+      "usefulness": "Un’opzione per integrare EPA e DHA senza ingredienti di origine animale.",
+      "ingredients": "Olio algale con olio di girasole, rosmarino, tocoferoli e palmitato di ascorbile; capsula di amido di mais, glicerolo, carragenina e bicarbonato di sodio; vitamina E."
+    },
+    "image_url": "https://cdn.shopify.com/s/files/1/0549/9302/7107/files/Veg-fronte.png?v=1754312087",
+    "image_scale": 1,
+    "source_url": "https://www.omegor.com/products/omegor-veg-olio-algale-omega3-vegano",
+    "source_name": "OMEGOR · sito ufficiale",
+    "tag_labels": [
+      "Omega-3",
+      "Quotidiano",
+      "Vegan",
+      "Senza glutine"
+    ],
+    "variants": [
+      {
+        "id": "66830e49-437f-4425-b3e6-ddcae787bf10",
+        "label": "Standard",
+        "format": "60 softgels",
+        "content": {}
+      }
+    ]
+  },
+  {
+    "id": "29dd45fb-07be-45f8-9940-e04f562678bc",
+    "name": "OMEGOR Vitality 500",
+    "brand": "OMEGOR",
+    "description": "Integratore di omega-3 da olio di pesce in forma di trigliceridi, con vitamina E. Confezione da 60 capsule.",
+    "content": {
+      "what": "Integratore di omega-3 da olio di pesce in forma di trigliceridi, con vitamina E. Confezione da 60 capsule.",
+      "usage": "Il produttore indica 2–8 capsule al giorno, prima o durante i pasti. Concordare la dose con il professionista, soprattutto per dosaggi elevati.",
+      "effects": "Due capsule apportano 803 mg di EPA+DHA: superano i 250 mg giornalieri associati al contributo alla normale funzione cardiaca. Forniscono 268 mg di DHA, oltre i 250 mg necessari per il contributo alla normale funzione cerebrale e visiva. La vitamina E contribuisce alla protezione delle cellule dallo stress ossidativo.",
+      "warnings": "Non superare le dosi in etichetta. Non sostituisce una dieta equilibrata. In caso di terapie anticoagulanti o antiaggreganti, consultare il medico prima dell’uso. Tenere lontano dai bambini piccoli.",
+      "allergens": "Contiene pesce. Il produttore dichiara assenza di glutine.",
+      "nutrition": "Per 2 capsule: olio di pesce 1.000 mg; omega-3 900 mg, di cui EPA 535 mg e DHA 268 mg; vitamina E 10 mg (83% VNR).",
+      "usefulness": "Fonte concentrata di EPA e DHA quando l’apporto alimentare va integrato.",
+      "ingredients": "Olio di pesce concentrato al 90% in omega-3; vitamina E; capsula di gelatina bovina e glicerolo."
+    },
+    "image_url": "https://cdn.shopify.com/s/files/1/0549/9302/7107/files/Vitality-500-laterale.png?v=1754315091",
+    "image_scale": 1,
+    "source_url": "https://www.omegor.com/products/omegor-vitality-500",
+    "source_name": "OMEGOR · sito ufficiale",
+    "tag_labels": [
+      "Omega-3",
+      "Quotidiano",
+      "Senza glutine"
+    ],
+    "variants": [
+      {
+        "id": "d356970a-27ec-4dae-9ab3-740b0b66809c",
+        "label": "Standard",
+        "format": "60 softgels",
+        "content": {}
+      }
+    ]
+  },
+  {
+    "id": "679eb2c5-8ed6-45a2-b31d-57ad17ee8d7f",
+    "name": "Ashwagandha 1000",
+    "brand": "WHYnature",
+    "description": "Estratto di radice KSM-66®, titolato al 5% in withanolidi.",
+    "status": "draft",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2024/04/WN210_ashwagandha-1000-60-cpr_singolo.webp",
+    "image_scale": "1",
+    "content": {
+      "what": "Integratore di estratto secco della radice di Withania somnifera KSM-66®, in 60 compresse. La titolazione al 5% indica la quota di withanolidi presenti nell’estratto.",
+      "effects": "Alcuni studi indicano una riduzione dello stress percepito e piccoli miglioramenti del sonno con determinati estratti di ashwagandha. Sono risultati osservati con assunzione continuativa, non una spinta immediata come quella di uno stimolante. Gli studi sono piccoli e usano preparazioni diverse: non garantiscono lo stesso effetto con questa confezione. Non è dimostrato un beneficio affidabile per forza, dimagrimento o prestazione sportiva.",
+      "usefulness": "Può essere valutata con un professionista nei periodi di stress, dopo aver considerato sonno, abitudini quotidiane e possibili interazioni. Non sostituisce la gestione delle cause di insonnia o stress persistenti.",
+      "audience": "Adulti, dopo valutazione di compatibilità con condizioni di salute e farmaci assunti.",
+      "usage": "Il produttore indica 2 compresse al giorno, preferibilmente al pasto. Non aumentare la dose per cercare un effetto più rapido. Confezione da 30 dosi alla posologia indicata.",
+      "nutrition": "Per 2 compresse: estratto KSM-66® 1.000 mg, di cui withanolidi 50 mg. Per 1 compressa: estratto 500 mg, withanolidi 25 mg.",
+      "ingredients": "Estratto di radice KSM-66®; cellulosa microcristallina; sali di magnesio degli acidi grassi; biossido di silicio.",
+      "allergens": "Il produttore dichiara senza glutine. Per allergie o altre esclusioni alimentari verificare anche l’etichetta del lotto.",
+      "warnings": "Evitare in gravidanza e allattamento. Con disturbi tiroidei, autoimmuni, epatici o prima di un intervento, consultare il medico. Può interagire con sedativi, anticonvulsivanti, farmaci tiroidei, immunosoppressori, antidiabetici e antipertensivi. Possibili sonnolenza e disturbi gastrointestinali; segnalati rari danni epatici. La sicurezza a lungo termine non è stabilita. Non superare la dose; tenere lontano dai bambini. Non sostituisce una dieta equilibrata."
+    },
+    "variants": [
+      {
+        "id": "6d3be377-b087-42d6-a28a-e98101881d02",
+        "label": "Standard",
+        "active": true,
+        "format": "60 cpr",
+        "content": {},
+        "image_url": "https://www.whynature.it/wp-content/uploads/2024/04/WN210_ashwagandha-1000-60-cpr_singolo.webp"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/ashwagandha-1000-60-cpr/",
+    "source_name": "WHYnature",
+    "tag_labels": [
+      "Estratti vegetali",
+      "Quotidiano"
+    ],
+    "sheet_date": "10/2026",
+    "effects_sources": [
+      {
+        "name": "NIH / NCCIH - Ashwagandha",
+        "url": "https://www.nccih.nih.gov/health/ashwagandha"
+      }
+    ]
+  },
+  {
+    "id": "3f968acf-d550-494e-912b-27b24e009bc3",
+    "name": "Wafer Zero",
+    "brand": "WHYnature",
+    "description": "Wafer croccante da 35 g, con proteine e copertura al cioccolato.",
+    "status": "draft",
+    "image_url": "https://www.whynature.it/wp-content/uploads/2021/04/WN129_wafer-zero-cocco-35-g_singolo.png",
+    "image_scale": "1",
+    "content": {
+      "what": "Snack proteico in confezione singola da 35 g. Disponibile nei gusti Cocco Fondente e Pistacchio Cioccolato Bianco, con composizione e valori nutrizionali differenti.",
+      "effects": "Un wafer apporta 10,5 g di proteine: contribuisce all’apporto proteico della giornata insieme ai pasti. Fornisce anche energia, grassi e carboidrati, da conteggiare nello spuntino. Il nome “Zero” non significa zero calorie, zero carboidrati o assenza di zuccheri. Non è un prodotto bruciagrassi e non sostituisce automaticamente un pasto completo.",
+      "usefulness": "Pratico come spuntino fuori casa o in studio quando serve una porzione già confezionata. La scelta del gusto cambia anche la quantità di fibre, carboidrati e polioli.",
+      "audience": "Persone che desiderano uno snack confezionato con proteine, compatibilmente con allergie e fabbisogno energetico.",
+      "usage": "Porzione di riferimento: 1 wafer da 35 g. Pronto al consumo, da inserire nel proprio piano alimentare. Il box contiene 24 confezioni singole.",
+      "warnings": "Non sostituisce una dieta varia ed equilibrata. Contiene edulcoranti e polioli: un consumo eccessivo può avere effetti lassativi. Controllare ingredienti e allergeni del gusto sulla confezione; possono cambiare tra lotti."
+    },
+    "variants": [
+      {
+        "id": "daa02eee-dd56-461c-a9a9-93c9bfff4ef1",
+        "label": "Cocco Fondente",
+        "active": true,
+        "format": "35 g · box 24 pz",
+        "content": {
+          "what": "Wafer proteico da 35 g con cocco e copertura al cioccolato fondente, senza glutine.",
+          "nutrition": "Per 1 wafer (35 g): 174 kcal; proteine 10,5 g; carboidrati 6 g, zuccheri 1,6 g e polioli 1,8 g; grassi 11 g, saturi 4,2 g; fibre 5,3 g.",
+          "ingredients": "Ingredienti principali: proteine del latte, olio di girasole, cioccolato con edulcoranti, frutto-oligosaccaridi, collagene e cocco. Lista completa sulla confezione.",
+          "allergens": "Contiene latte e soia. Può contenere uova, frutta a guscio (pistacchi e nocciole) e arachidi. Senza glutine. Contiene collagene: non adatto a una dieta vegana."
+        },
+        "image_url": "https://www.whynature.it/wp-content/uploads/2021/04/WN129_wafer-zero-cocco-35-g_singolo.png"
+      },
+      {
+        "id": "f6b25057-82f2-40fd-b44c-785c0517717e",
+        "label": "Pistacchio Cioccolato Bianco",
+        "active": true,
+        "format": "35 g · box 24 pz",
+        "content": {
+          "what": "Wafer proteico da 35 g con crema al pistacchio e copertura al cioccolato bianco, senza glutine.",
+          "nutrition": "Per 1 wafer (35 g): 184 kcal; proteine 10,5 g; carboidrati 12 g, zuccheri 0,5 g e polioli 9,1 g; grassi 12 g, saturi 5 g; fibre 0,07 g; sale 0,04 g.",
+          "ingredients": "Ingredienti principali: crema al pistacchio (56%), cioccolato bianco con edulcorante (10%), collagene e proteine del latte. Lista completa sulla confezione.",
+          "allergens": "Contiene latte, soia e pistacchi. Può contenere uova, altra frutta a guscio (nocciole) e arachidi. Senza glutine. Contiene collagene: non adatto a una dieta vegana."
+        },
+        "image_url": "https://www.whynature.it/wp-content/uploads/2021/04/WN130_wafer-zero-pistacchio-35-g_singolo.png"
+      }
+    ],
+    "source_url": "https://www.whynature.it/prodotto/wafer-zero/",
+    "source_name": "WHYnature",
+    "tag_labels": [
+      "Snack proteici",
+      "Senza glutine"
+    ],
+    "sheet_date": "10/2026"
+  }
+]

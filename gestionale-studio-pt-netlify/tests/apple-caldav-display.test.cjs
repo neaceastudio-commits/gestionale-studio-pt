@@ -12,10 +12,11 @@ class Store {
  const env={SITE_NAME:'neacea-caldav-gianluca',SITE_ID:'TEST',APPLE_CALDAV_SITE_ID:'TEST',APPLE_CALDAV_ACTOR_ID:'staff_1',APPLE_CALDAV_USER:'ventofresco55@gmail.com',APPLE_CALDAV_SYNC_ENABLED:'true',APPLE_CALDAV_URL:'https://p00-caldav.icloud.com/test/',APPLE_CALDAV_START_AT:'2026-09-01T00:00:00Z'};
  const clients=['Alice','Bob'].map(id=>({id,nome:id,active:true,sessions_total:12,sessions_remaining:12}));
  const appointments=[['a','Alice','2026-09-14'],['b','Alice','2026-09-16'],['c','Bob','2026-09-18']].map(([id,client,date])=>({id,client_ids:[client],service_id:'pt11',operator_id:'staff_1',date,start_time:'19:00:00',duration_min:60,status:'prenotato',created_at:'2026-09-13T12:00:00Z'}));
- let fullReads=0,puts=0,failHref='';const objects=new Map,store=new Store;
+ const corrections=[];let fullReads=0,puts=0,failHref='';const objects=new Map,store=new Store;
  const cal={verify:async()=>{},read:async h=>structuredClone(objects.get(h)||null),put:async(h,ics,etag)=>{if(h===failHref)throw Error('412');assert.equal(objects.get(h)?.etag,etag);objects.set(h,{ics,etag:String(++puts)})},delete:async(h,etag)=>{assert.equal(objects.get(h)?.etag,etag);objects.delete(h)}};
  const db=async(table,{query='',method}={})=>{
   assert.ok(!method||method==='GET','Display sync must never write to NEACEA');
+  if(table==='calendar_audit_log')return corrections.filter(log=>'eq.'+log.after_data.id===new URLSearchParams(query.slice(1)).get('entity_id'));
   if(table==='clients'){fullReads++;return structuredClone(clients)}
   if(table==='operators')return [{id:'staff_1',nome:'Gianluca',active:true}];
   if(table==='operator_effective_roles')return [{operator_id:'staff_1',system_roles:['owner']}];
@@ -45,5 +46,12 @@ class Store {
  // Scheduling changes refresh the sibling description as well as the moved event.
  appointments[1].start_time='18:00:00';assert.equal((await s.run()).errors,0);assert.match(text('a'),/Mercoledì 18:00/);
  const stable2=puts;await s.run();assert.equal(puts,stable2);
+ // Unverified participant/service edits remain blocked. A recorded correction refreshes
+ // the original Apple event, retaining its UID and without creating another event.
+ const prior=structuredClone(appointments[0]);appointments[0].service_id='pt12';appointments[0].client_ids=['Alice','Bob'];
+ assert.equal((await s.run()).errors,1);assert.match(text('a'),/PT 1:1/);
+ corrections.push({before_data:prior,after_data:structuredClone(appointments[0])});
+ assert.equal((await s.run()).errors,0);assert.match(text('a'),/PT 1:2/);assert.match(text('a'),/Alice/);assert.match(text('a'),/Bob/);
+ const afterCorrection=puts;assert.equal((await s.run()).errors,0);assert.equal(puts,afterCorrection);assert.equal(objects.size,3);
  console.log('PASS all-client display refresh: completed and untouched future events, saved counters, scheduling, retry, identity, no duplicates/DB writes, one shared snapshot and idempotency');
 })().catch(e=>{console.error(e);process.exitCode=1});

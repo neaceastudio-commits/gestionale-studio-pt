@@ -1,0 +1,23 @@
+{
+  "id": "creatine-preview",
+  "name": "Creatine Monohydrate",
+  "brand": "Powerbar · Black Line",
+  "image_scale": 2.3,
+  "description": "Creatina monoidrato Creapure®, in polvere e dal gusto neutro.",
+  "image_url": "assets/powerbar-creatine.png",
+  "verified_at": "2026-09-28T20:00:00Z",
+  "content": {
+    "what": "Integratore alimentare in polvere a base di creatina monoidrato Creapure®.",
+    "effects": "La creatina aumenta le prestazioni fisiche in attività ripetitive, di elevata intensità e di breve durata. L’effetto si ottiene con 3 g di creatina al giorno.",
+    "usefulness": "Può essere considerata nel contesto di allenamenti che prevedono sforzi brevi e intensi.",
+    "audience": "Adulti che praticano esercizio fisico ad alta intensità.",
+    "usage": "Il produttore indica una porzione al giorno: mescolare 3,4 g di polvere in 200 ml di acqua o succo.",
+    "nutrition": "Per porzione di 3,4 g:\nCreatina: 3,0 g\nPer 100 g: creatina 87,9 g.",
+    "ingredients": "Creatina monoidrato.",
+    "allergens": "Può contenere uova, soia e latte. Verificare sempre l’etichetta della confezione disponibile in studio.",
+    "warnings": "Non superare la dose consigliata. Tenere lontano dai bambini. Non indicato per bambini e adolescenti. Può causare aumento di peso. Non sostituisce una dieta varia ed equilibrata e uno stile di vita sano."
+  },
+  "tags": [{"id":"creatina","family":"Tipologia","label":"Creatina","color":"#033d27"},{"id":"performance","family":"Obiettivo","label":"Performance","color":"#033d27"}],
+  "variants": [{"id":"creatine-neutral","label":"Neutro","format":"300 g","available":false,"content":{}}],
+  "sources": [{"source_url":"https://www.powerbar.com/de-de/products/creatine-monohydrate","source_name":"Powerbar · scheda ufficiale","verified_at":"2026-09-28T20:00:00Z"}]
+}

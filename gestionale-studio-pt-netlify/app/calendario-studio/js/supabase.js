@@ -59,6 +59,7 @@ const SupabaseSync = (() => {
       documento: r.documento || '',
       indirizzo: r.indirizzo || '',
       contattoEmergenza: r.contatto_emergenza || '',
+      serverUpdatedAt: r.updated_at || null,
       packageTypes: Array.isArray(r.package_types) ? r.package_types : [],
       packageFrequency: r.package_frequency || r.sessioni_pref || '',
       sessionsTotal: r.sessions_total || 0,
@@ -200,7 +201,7 @@ const SupabaseSync = (() => {
         appt.serviceId === trainingServiceId
       );
 
-      if (trainingServiceId && total && days.length) {
+      if (trainingServiceId && !pkgs.includes('PT 1:2') && total && days.length) {
         const missing = Math.max(0, total - existingTraining.length);
         const usedDates = new Set(existingTraining.map(appt => appt.date));
         const dates = nextPackageDates(client.packageStart, days, total + existingTraining.length)
@@ -284,6 +285,45 @@ const SupabaseSync = (() => {
     if (!operators?.error && Array.isArray(operators)) State.saveOperators(operators.map(operatorFromDb));
     if (!appointments?.error && Array.isArray(appointments)) State.saveAppointments(appointments.map(appointmentFromDb));
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
+  }
+
+  async function correctPtSessions(changes) {
+    if (!window.CalendarAudit?.call) return { error: 'Rientra dal Portale con una sessione verificata' };
+    const result = await CalendarAudit.call('correct_pt_sessions', { changes });
+    if (result?.error) return result;
+    const ids = changes.flatMap(change => [change.before.id, ...(change.partner ? [change.partner.id] : [])]);
+    if (!Array.isArray(result?.appointments) || result.appointments.length !== ids.length
+      || ids.some(id => !result.appointments.some(a => a.id === id))) {
+      return { error: 'Risposta incompleta: ricarica il calendario per verificare il salvataggio' };
+    }
+    const confirmed = changes.every(change => {
+      const a = result.appointments.find(row => row.id === change.before.id);
+      const expectedIds = [...change.before.client_ids, ...(change.partner?.client_ids || [])];
+      const b = change.partner && result.appointments.find(row => row.id === change.partner.id);
+      return a.service_id === change.serviceId && a.status === change.before.status
+        && JSON.stringify(a.client_ids) === JSON.stringify(expectedIds)
+        && (!change.partner || b?.status === 'annullato');
+    });
+    if (!confirmed) return { error: 'Correzione non confermata dal server: ricarica il calendario' };
+    const saved = new Map(result.appointments.map(a => [a.id, appointmentFromDb(a)]));
+    State.saveAppointments(State.getAppointments().map(a => saved.get(a.id) || a));
+    return result;
+  }
+
+  function pairRenewalPatch(client) {
+    const row = clientToDb(client);
+    const keys = ['id','notes','package_frequency','giorni_settimana','package_start','data_conferma','sessions_total','sessions_remaining','importo','stato_pagamento','tipo_servizio'];
+    return Object.fromEntries(keys.map(key => [key, row[key]]));
+  }
+  async function renewPtPair(plan) {
+    const result = await CalendarAudit.call('renew_pt_pair', plan);
+    if (result?.error) throw new Error(result.error);
+    if (result?.requestId !== plan.requestId || result?.appointments?.length !== plan.appointments.length || result?.clients?.length !== 2 || plan.clients.some(c => !result.clients.some(r => r.id === c.id))) throw new Error('Conferma incompleta: ricarica per verificare il rinnovo');
+    const saved = new Map(result.appointments.map(a => [a.id, appointmentFromDb(a)]));
+    State.saveAppointments([...State.getAppointments().filter(a => !saved.has(a.id)), ...saved.values()]);
+    const clients = new Map(result.clients.map(c => [c.id, clientFromDb(c)]));
+    State.saveClients(State.getClients().map(c => clients.get(c.id) || c));
+    return result;
   }
 
   async function saveAppointmentAtomic(appt, before = null) {
@@ -570,5 +610,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

@@ -1,0 +1,159 @@
+[
+  {
+    "name": "OMEGOR Veg",
+    "brand": "OMEGOR",
+    "format": "60 softgels",
+    "variant": "Standard",
+    "ean": "8033120250613",
+    "sku": "980810206",
+    "quantity": 1,
+    "kind": "SAMPLE",
+    "unit_cost": 0,
+    "tax_basis": "gross",
+    "document_ref": "Campioni OMEGOR · conferma utente 30/09/2026",
+    "notes": "Una confezione campione confermata dall’utente; lotto e scadenza da leggere sulla confezione.",
+    "request_id": "b8bd8caa-0f8d-5db9-909f-47ebf8804c5b",
+    "enrichment": {
+      "description": "Integratore di EPA e DHA da microalghe Schizochytrium, con vitamina E. Confezione da 60 capsule vegetali.",
+      "content": {
+        "what": "Integratore di EPA e DHA da microalghe Schizochytrium, con vitamina E. Confezione da 60 capsule vegetali.",
+        "effects": "Una capsula apporta 375 mg di EPA+DHA: supera i 250 mg giornalieri associati al contributo alla normale funzione cardiaca. I 250 mg di DHA contribuiscono alla normale funzione cerebrale e visiva. La vitamina E protegge le cellule dallo stress ossidativo.",
+        "usefulness": "Un’opzione per integrare EPA e DHA senza ingredienti di origine animale.",
+        "usage": "Il produttore indica 1 capsula al giorno.",
+        "nutrition": "Per 1 capsula: olio algale 835 mg; omega-3 459 mg, di cui EPA 125 mg e DHA 250 mg; vitamina E 6 mg (50% VNR).",
+        "ingredients": "Olio algale con olio di girasole, rosmarino, tocoferoli e palmitato di ascorbile; capsula di amido di mais, glicerolo, carragenina e bicarbonato di sodio; vitamina E.",
+        "allergens": "Il produttore dichiara assenza di allergeni e glutine. Adatto all’alimentazione vegana.",
+        "warnings": "Non superare le dosi in etichetta. Non sostituisce una dieta equilibrata. In caso di terapie anticoagulanti o antiaggreganti, consultare il medico prima dell’uso. Tenere lontano dai bambini piccoli."
+      },
+      "image_url": "https://cdn.shopify.com/s/files/1/0549/9302/7107/files/Veg-fronte.png?v=1754312087",
+      "public_price": 24.9,
+      "verification_date": "2026-09-30T08:00:00Z",
+      "sources": [
+        {
+          "url": "https://www.omegor.com/products/omegor-veg-olio-algale-omega3-vegano",
+          "name": "OMEGOR · sito ufficiale"
+        }
+      ],
+      "tags": [
+        {
+          "family": "Tipologia",
+          "label": "Omega-3"
+        },
+        {
+          "family": "Momento",
+          "label": "Quotidiano"
+        },
+        {
+          "family": "Caratteristiche",
+          "label": "Vegan"
+        },
+        {
+          "family": "Caratteristiche",
+          "label": "Senza glutine"
+        }
+      ]
+    }
+  },
+  {
+    "name": "OMEGOR Krill",
+    "brand": "OMEGOR",
+    "format": "60 softgels",
+    "variant": "Standard",
+    "ean": "8033120250354",
+    "sku": "971484252",
+    "quantity": 1,
+    "kind": "SAMPLE",
+    "unit_cost": 0,
+    "tax_basis": "gross",
+    "document_ref": "Campioni OMEGOR · conferma utente 30/09/2026",
+    "notes": "Una confezione campione confermata dall’utente; lotto e scadenza da leggere sulla confezione.",
+    "request_id": "53aeff9d-51ae-5257-84b9-11162455f7f2",
+    "enrichment": {
+      "description": "Integratore di olio di krill antartico: EPA e DHA, fosfolipidi, colina e astaxantina. Confezione da 60 capsule.",
+      "content": {
+        "what": "Integratore di olio di krill antartico: EPA e DHA, fosfolipidi, colina e astaxantina. Confezione da 60 capsule.",
+        "effects": "Due capsule forniscono 260 mg di EPA+DHA, superando i 250 mg al giorno associati al contributo alla normale funzione cardiaca. Per raggiungere 250 mg di DHA, quantità associata alla normale funzione cerebrale e visiva, la scheda indica 6 capsule. La colina contribuisce al metabolismo dei lipidi e alla normale funzione epatica.",
+        "usefulness": "Fonte marina di omega-3 veicolati anche da fosfolipidi.",
+        "usage": "La scheda del produttore indica 2–6 capsule al giorno. La dose va scelta secondo etichetta e necessità individuali.",
+        "nutrition": "Per 2 capsule: olio di krill 1.180 mg; fosfolipidi 660 mg; omega-3 318 mg (EPA 177 mg, DHA 83 mg); colina 82,6 mg; astaxantina 100 µg.",
+        "ingredients": "Olio di krill Euphausia superba; capsula di gelatina; glicerolo, sorbitolo e acqua.",
+        "allergens": "Contiene crostacei. Non adatto a una dieta vegana.",
+        "warnings": "Non superare le dosi in etichetta. Non sostituisce una dieta equilibrata. In caso di terapie anticoagulanti o antiaggreganti, consultare il medico prima dell’uso. Tenere lontano dai bambini piccoli."
+      },
+      "image_url": "https://cdn.shopify.com/s/files/1/0549/9302/7107/files/krill-fronte-1_1280x1280_210ab237-4fcf-4c68-8269-3fca5308cf19.png?v=1772035416",
+      "public_price": 29.9,
+      "verification_date": "2026-09-30T08:00:00Z",
+      "sources": [
+        {
+          "url": "https://www.omegor.com/products/omegor-krill-60-capsule",
+          "name": "OMEGOR · sito ufficiale"
+        }
+      ],
+      "tags": [
+        {
+          "family": "Tipologia",
+          "label": "Omega-3"
+        },
+        {
+          "family": "Momento",
+          "label": "Quotidiano"
+        },
+        {
+          "family": "Obiettivo",
+          "label": "Benessere"
+        }
+      ]
+    }
+  },
+  {
+    "name": "OMEGOR Vitality 500",
+    "brand": "OMEGOR",
+    "format": "60 softgels",
+    "variant": "Standard",
+    "ean": "8033120250002",
+    "sku": "976041665",
+    "quantity": 1,
+    "kind": "SAMPLE",
+    "unit_cost": 0,
+    "tax_basis": "gross",
+    "document_ref": "Campioni OMEGOR · conferma utente 30/09/2026",
+    "notes": "Una confezione campione confermata dall’utente; lotto e scadenza da leggere sulla confezione.",
+    "request_id": "879d7a36-9c6d-52ce-a797-00829cb4a9fa",
+    "enrichment": {
+      "description": "Integratore di omega-3 da olio di pesce in forma di trigliceridi, con vitamina E. Confezione da 60 capsule.",
+      "content": {
+        "what": "Integratore di omega-3 da olio di pesce in forma di trigliceridi, con vitamina E. Confezione da 60 capsule.",
+        "effects": "Due capsule apportano 803 mg di EPA+DHA: superano i 250 mg giornalieri associati al contributo alla normale funzione cardiaca. Forniscono 268 mg di DHA, oltre i 250 mg necessari per il contributo alla normale funzione cerebrale e visiva. La vitamina E contribuisce alla protezione delle cellule dallo stress ossidativo.",
+        "usefulness": "Fonte concentrata di EPA e DHA quando l’apporto alimentare va integrato.",
+        "usage": "Il produttore indica 2–8 capsule al giorno, prima o durante i pasti. Concordare la dose con il professionista, soprattutto per dosaggi elevati.",
+        "nutrition": "Per 2 capsule: olio di pesce 1.000 mg; omega-3 900 mg, di cui EPA 535 mg e DHA 268 mg; vitamina E 10 mg (83% VNR).",
+        "ingredients": "Olio di pesce concentrato al 90% in omega-3; vitamina E; capsula di gelatina bovina e glicerolo.",
+        "allergens": "Contiene pesce. Il produttore dichiara assenza di glutine.",
+        "warnings": "Non superare le dosi in etichetta. Non sostituisce una dieta equilibrata. In caso di terapie anticoagulanti o antiaggreganti, consultare il medico prima dell’uso. Tenere lontano dai bambini piccoli."
+      },
+      "image_url": "https://cdn.shopify.com/s/files/1/0549/9302/7107/files/Vitality-500-laterale.png?v=1754315091",
+      "public_price": 14.9,
+      "verification_date": "2026-09-30T08:00:00Z",
+      "sources": [
+        {
+          "url": "https://www.omegor.com/products/omegor-vitality-500",
+          "name": "OMEGOR · sito ufficiale"
+        }
+      ],
+      "tags": [
+        {
+          "family": "Tipologia",
+          "label": "Omega-3"
+        },
+        {
+          "family": "Momento",
+          "label": "Quotidiano"
+        },
+        {
+          "family": "Caratteristiche",
+          "label": "Senza glutine"
+        }
+      ]
+    }
+  }
+]

@@ -13,7 +13,7 @@ window.StudioAudit = (() => {
   async function verify(){
     actor=null;
     if(!token){message('Per salvare, accedi con il codice del Portale PT della Direzione.');return;}
-    try{const r=await request('session');if(r.actor?.role!=='owner')throw Error('Accesso riservato alla Direzione');actor=r.actor;sessionStorage.setItem(key,token);message('Direzione verificata · salvataggi abilitati');}
+    try{const r=await request('session');if(r.actor?.role!=='owner')throw Error('Accesso riservato alla Direzione');actor=r.actor;sessionStorage.setItem(key,token);message('Direzione verificata · salvataggi abilitati');setTimeout(()=>window.dispatchEvent(new Event('studio-direction-ready')),0);}
     catch(e){token='';sessionStorage.removeItem(key);message(e.message);}
   }
   async function write(table,query,body,method='PATCH'){
@@ -35,5 +35,17 @@ window.StudioAudit = (() => {
     ready=verify();
   }
   document.addEventListener('DOMContentLoaded',init);
-  return {write};
+  async function portalAccess(payload){
+    await ready;
+    if(!actor||!token)throw Error('Verifica prima l’accesso Direzione in alto nella pagina.');
+    const r=await fetch('https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-portal-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,accessToken:token})});
+    const data=await r.json();if(!r.ok||data.success===false)throw Error(data.error||'Gestione accessi non disponibile');return data;
+  }
+  async function assignClient(clientId,trainerId){
+    await ready;
+    if(!actor||!token)throw Error('Verifica prima l’accesso Direzione in alto nella pagina.');
+    if(!clientId||!trainerId)throw Error('Seleziona cliente e personal trainer.');
+    return request('assignment',{clientId,trainerId});
+  }
+  return {write,portalAccess,assignClient};
 })();

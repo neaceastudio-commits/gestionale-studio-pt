@@ -22,13 +22,14 @@ function compare({rows,clients,operators,mappings,events,lastRun,now,cal}){
  const byHref=new Map(events.map(e=>[cal.url(e.href),e]));const knownUids=new Set(mappings.map(m=>m.uid));const uidCounts=new Map();
  for(const e of events){const uid=e.ics.replace(/\r?\n[ \t]/g,'').match(/^UID:(.*)\r?$/m)?.[1].trim();if(knownUids.has(uid))uidCounts.set(uid,(uidCounts.get(uid)||0)+1);}
  const local=romeTime(new Date(now));
- for(const r of rows){if(r.status!=='annullato'&&r.date+' '+r.start_time.slice(0,5)>=local.day+' '+local.time&&!mappings.some(m=>m.id===r.id&&m.stage!=='retired'))add('Appuntamento non collegato',r.id);}
+ for(const r of rows){if(expected.has(r.id)&&r.status!=='annullato'&&r.date+' '+r.start_time.slice(0,5)>=local.day+' '+local.time&&!mappings.some(m=>m.id===r.id&&m.stage!=='retired'))add('Appuntamento non collegato',r.id);}
  for(const m of mappings){const r=rows.find(r=>r.id===m.id),e=byHref.get(cal.url(m.href));
   if((uidCounts.get(m.uid)||0)>1)add('Evento duplicato',m.id);
   if(m.stage==='retired'){if(e)add('Evento ritirato ancora presente',m.id);continue;}
   if(!r){add('Appuntamento sorgente mancante',m.id);continue;}
   if(m.stage!=='linked')add('Collegamento incompleto',m.id);
   if(r.status==='annullato'){if(e)add('Evento annullato ancora presente',m.id);continue;}
+  if(!expected.has(r.id)){if(e)add('Evento non più visibile su NEACEA',m.id);continue;}
   if(!e){add('Evento mancante su Apple',m.id);continue;}
   let a;try{a=parse(e.ics);}catch{add('Evento Apple non verificabile',m.id);continue;}
   if(a.uid!==m.uid||a.marker!==m.marker)add('Identità evento diversa',m.id);
@@ -42,6 +43,8 @@ function service({env,store,syncStore,db,cal=new CalDAV(env),now=Date.now,fetchI
  async function inspect(){let phase='sources';const read=async(label,p)=>{try{return await p;}catch(error){const reason=label==='apple-inventory'&&/^(Apple HTTP \d+|Risposta Apple non valida|Inventario Apple incompleto|Evento Apple non leggibile|Outside dedicated collection|CalDAV verification failed|Wrong dedicated calendar|Invalid DAV XML)$/.test(error.message)?': '+error.message:'';throw Error(label+reason);}};try{const [rows,clients,operators,blobs,lastRun,events]=await Promise.all([read('appointments',all('appointments','?select=id,date,start_time,duration_min,client_ids,operator_id,service_id,status,notes&order=id')),read('clients',all('clients','?select=id,nome,cognome,active,sessions_total,sessions_remaining,package_start,data_inizio,data_conferma,notes&order=id')),read('operators',all('operators','?select=id,nome,cognome,active&order=id')),read('mapping-list',syncStore.list({prefix:'mapping/'})),read('last-run',syncStore.get('last-run',{type:'json'})),read('apple-inventory',inventory(cal))]);phase='mapping-read';const mappings=await Promise.all(blobs.blobs.map(b=>syncStore.get(b.key,{type:'json'})));if(mappings.some(m=>!m))throw Error('Mapping incompleto');phase='comparison';return compare({rows,clients,operators,mappings,events,lastRun,now:now(),cal});}catch(error){const source=phase==='sources'?error.message:phase;return {at:new Date(now()).toISOString(),checked:0,issues:[{key:hash('inspection_failed'),code:'Controllo incompleto: Apple o NEACEA non leggibile',id:'',detail:source,label:''}]};}}
  async function run(deploy){
   if(env.CALDAV_MONITOR_ENABLED!=='true'||env.SITE_ID!==SITE||env.CONTEXT!=='production')return {skipped:'disabled_or_wrong_site'};
+  const request=await store.get('inspection-request',{type:'json'});
+  if(request?.id&&(await store.get('inspection-result',{type:'json'}))?.requestId!==request.id){const report=await inspect();await store.setJSON('inspection-result',{requestId:request.id,...report});return {inspected:true,issues:report.issues.length};}
   const verification=await store.get('verification',{type:'json'});
   // A new release gets a read-only probe, even outside the nightly mail window.
   if(verification?.deploy!==deploy){const report=await inspect();await store.setJSON('verification',{deploy,...report});return {verified:true,issues:report.issues.length};}

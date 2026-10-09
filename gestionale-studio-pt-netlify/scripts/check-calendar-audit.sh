@@ -9,6 +9,7 @@ node tests/calendar-production-postgres.test.cjs
 node tests/calendar-audit-browser.cjs
 node tests/calendar-audit-view-browser.cjs
 node tests/calendar-production-browser.cjs
+node tests/centrale-restored-browser.cjs
 node tests/acquisition-calendar-integration.test.cjs
 node tests/acquisition-calendar-browser.cjs
 bash scripts/check-calendar-release.sh

@@ -1,0 +1,44 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('fs'),path=require('path');
+const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+test('transaction enforces assignment, actor ownership, concurrency, immutable audit and retry',async()=>{
+const db=new PGlite();try{
+ await db.exec(`create role anon;create role authenticated;create role service_role;
+ create table operators(id text primary key,nome text,cognome text,email text,active boolean,portal_access_enabled boolean);
+ create table clients(id text primary key);
+ create table appointments(id text primary key,operator_id text,client_ids jsonb,service_id text,date date,start_time time,status text);
+ create table schede_allenamento(id text primary key,cliente_id text,data jsonb);
+ create table calendar_audit_log(actor_operator_id text,actor_name text,actor_email text,actor_role text,action text,entity_type text,entity_id text,client_ids jsonb,before_data jsonb,after_data jsonb,source text,request_id uuid,metadata jsonb);
+ insert into operators values('a','Alfa','PT','a@test',true,true),('b','Beta','PT','b@test',true,true);
+ insert into clients values('c'),('other');
+ insert into appointments values('appt','b','["c"]'::jsonb,'pt11',current_date,'10:00','prenotato');
+ insert into schede_allenamento values('program','c','{"name":"unchanged"}'),('other-program','other','{}');`);
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260928050451_pt_session_records_audit.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261002063943_pt_assigned_session_compilation.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261003075337_pt_session_workout_reference.sql'),'utf8'));
+ const data={workout:{sheet:'A',week:2},rows:[{exercise:'Squat',load:'40',reps:'8',rir:'2',notes:''}],notes:'Seduta con Beta'};
+ let id='00000000-0000-4000-8000-000000000001';
+ const save=async(actor='b',version=0,program='program',request=id,value=data)=>(await db.query('select pt_save_session_record($1,$2,$3,$4,$5,$6,$7) as r',['appt','c',program,actor,JSON.stringify(value),version,request])).rows[0].r;
+ await db.exec('set role anon');await assert.rejects(save());await db.exec('reset role;set role service_role');
+ await assert.rejects(db.query("insert into pt_session_records(appointment_id) values('appt')"));
+ await assert.rejects(save('a'),/FORBIDDEN/);await assert.rejects(save('b',0,'other-program'),/PROGRAM_MISMATCH/);
+ await assert.rejects(save('b',0,'program',id,{...data,workout:{sheet:'A',week:-1}}),/INVALID/);
+ const first=await save();assert.deepEqual(first.record.data.workout,{sheet:'A',week:2});assert.equal(first.record.version,1);assert.equal(first.record.operator_id,'b');
+ assert.equal((await save()).record.id,first.record.id,'retry returns same record');
+ assert.equal((await save('b',0,'program','00000000-0000-4000-8000-000000000002')).conflict,true);
+ await assert.rejects(save('b',1,'program',id,{...data,notes:'tampered'}),/REQUEST_REUSED/);
+ const second=await save('b',1,'program','00000000-0000-4000-8000-000000000002',{...data,notes:'Correzione'});assert.equal(second.record.version,2);
+ await db.exec('reset role');
+ assert.equal((await db.query('select count(*)::int n from calendar_audit_log')).rows[0].n,2);
+ const audit=(await db.query('select * from calendar_audit_log order by after_data->>\'version\'')).rows[1];assert.equal(audit.before_data.data.notes,data.notes);assert.equal(audit.after_data.data.notes,'Correzione');
+ assert.equal((await db.query("select data->>'name' name from schede_allenamento where id='program'")).rows[0].name,'unchanged');
+ await db.exec("update appointments set operator_id='a'");await assert.rejects(save('b',2),/FORBIDDEN/);
+ const newAuthor=await save('a',0,'program','00000000-0000-4000-8000-000000000003');assert.notEqual(newAuthor.record.id,first.record.id);
+ await db.exec("create function reject_audit() returns trigger language plpgsql as $$begin raise exception 'SIMULATED_AUDIT_FAILURE';end$$;create trigger reject_audit before insert on calendar_audit_log for each row execute function reject_audit()");
+ await assert.rejects(save('a',1,'program','00000000-0000-4000-8000-000000000004'),/SIMULATED_AUDIT_FAILURE/);
+ assert.equal((await db.query("select version from pt_session_records where operator_id='a'")).rows[0].version,1,'audit failure rolls back record mutation');
+ await db.exec('drop trigger reject_audit on calendar_audit_log');
+ await db.exec("update appointments set status='annullato'");await assert.rejects(save('a',1),/FORBIDDEN/);
+ await db.exec("update appointments set status='prenotato',date=current_date+1");await assert.rejects(save('a',1),/FUTURE/);
+ await db.exec("update appointments set date=current_date;update operators set portal_access_enabled=false where id='a'");await assert.rejects(save('a',1),/FORBIDDEN/);
+}finally{await db.close()}
+});

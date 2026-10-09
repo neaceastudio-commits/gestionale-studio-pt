@@ -661,6 +661,21 @@
       .row { flex-direction: column; }
       .agenda-readonly { align-items: stretch; flex-direction: column; }
     }
+
+    #studio-audit-login{display:flex;gap:12px;align-items:end;flex-wrap:wrap}#studio-audit-login label{font-size:12px;font-weight:700}#studio-audit-login input{display:block;border:1px solid #ccd6df;border-radius:7px;padding:7px;max-width:100%}#studio-audit-login button{border:0;border-radius:7px;background:#17314a;color:white;padding:9px 12px}#studio-audit-status{font-size:12px;margin:8px 0 0}
+    [hidden] {display:none!important}
+    .view-tabs {display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;position:sticky;top:0;background:var(--bg,#f4f6f8);padding:10px 0;z-index:5}
+    .view-tabs button[aria-pressed="true"] {background:#17314a;color:white}
+    .hero {margin:12px 0!important;padding:0!important}.hero h1{font-size:28px}.metrics{margin-bottom:12px}
+    .metric{padding:12px}.metric-value{font-size:26px}.panel-body{padding:12px}
+    .client-card{padding:8px 10px;gap:5px}.client-card .name{font-size:14px}.client-card .progress{height:3px}.client-card .tag{min-height:20px;padding:2px 7px}.client-list{gap:6px}.client-card .muted{max-width:60ch}.tags{gap:5px}
+    .anamnesis-card{padding:12px}.anamnesis-card summary{cursor:pointer;font-size:14px}
+    .pt-fact{margin:8px 0;font-size:14px;line-height:1.45}.pt-fact strong{display:block}
+    .pt-original{margin-top:10px}.pt-original pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font:inherit}
+    .page-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;font-size:13px}
+    .access-row{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px;border-bottom:1px solid #ddd}.access-row button{min-width:110px}
+    @media(max-width:700px){.layout,.admin-grid,.meeting-grid{grid-template-columns:1fr}.access-row{flex-wrap:wrap}.view-tabs{position:static}}
+    .assignment-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:12px;align-items:end}.assignment-form label{display:grid;gap:6px;font-size:13px}.assignment-form input,.assignment-form select{width:100%;min-width:0;padding:10px;border:1px solid #ccd6df;border-radius:7px}.assignment-form button{min-height:42px}@media(max-width:760px){.assignment-form{grid-template-columns:1fr}.assignment-form input,.assignment-form select{font-size:16px}}
   </style>
 </head>
 <body>
@@ -713,7 +728,48 @@
       </div>
     </section>
 
-    <section class="layout">
+    <nav class="view-tabs" aria-label="Sezioni Cruscotto">
+      <button class="small-btn" id="studio-integratori">Integratori</button>
+      <button class="small-btn" id="studio-magazzino" hidden>Magazzino Integratori</button>
+      <button class="small-btn" data-section="clients" aria-pressed="true">Clienti</button>
+      <button class="small-btn" data-section="payments" aria-pressed="false">Pagamenti</button>
+      <button class="small-btn" data-section="anamnesis" aria-pressed="false">Anamnesi</button>
+      <button class="small-btn" data-section="stats" aria-pressed="false">Statistiche</button>
+      <button class="small-btn" data-section="assignments" aria-pressed="false">Assegnazioni</button>
+      <button class="small-btn" data-section="access" aria-pressed="false">Accessi Portale PT</button>
+    </nav>
+    <section class="panel" data-cruscotto-section="assignments" hidden>
+      <div class="panel-head"><div class="panel-title">Assegnazioni PT-cliente</div></div>
+      <div class="panel-body">
+        <p>Assegna un cliente al suo personal trainer. Per salvare, verifica l’accesso Direzione in alto.</p>
+        <form id="assignmentForm" class="assignment-form">
+          <label>Cerca cliente<input id="assignmentSearch" type="search" placeholder="Nome o cognome"></label>
+          <label>Cliente<select id="assignmentClient" required></select></label>
+          <label>Personal trainer<select id="assignmentTrainer" required></select></label>
+          <button class="small-btn" id="assignmentSave" type="submit">Assegna</button>
+        </form>
+        <p id="assignmentCurrent"></p><p id="assignmentStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+    <section class="panel" data-cruscotto-section="access" hidden>
+      <div class="panel-head"><div class="panel-title">Accessi Portale PT</div><button class="small-btn" id="refreshPortalAccess">Aggiorna accessi</button></div>
+      <div class="panel-body">
+        <p>Seleziona il trainer, imposta l’accesso al suo portale personale e salva.</p>
+        <style>#portalAccessForm label{display:grid;gap:8px;font-weight:600}#portalAccessForm select,#portalAccessForm input[type=email]{font:inherit;font-size:16px;padding:10px;border:1px solid #c4d1dd;border-radius:10px;min-height:44px}#portalAccessForm button{min-height:44px}#portalAccessBadge{padding:10px;border-radius:8px;background:#e8eef4}#portalAccessStatus{line-height:1.5}</style>
+        <form id="portalAccessForm" style="display:grid;gap:16px;max-width:620px">
+          <label>Personal trainer <select id="portalAccessTrainer" disabled style="width:100%"></select></label>
+          <strong id="portalAccessBadge">Accesso da verificare</strong>
+          <label>Email login PT <input id="portalAccessEmail" type="email" disabled style="width:100%;box-sizing:border-box"></label>
+          <label style="display:flex;align-items:center;gap:10px"><input id="portalAccessEnabled" type="checkbox" disabled style="width:22px;height:22px"> Abilita portale personale</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button id="portalAccessSave" class="small-btn" type="submit" disabled>Salva accesso</button>
+            <button id="portalAccessSend" class="small-btn" type="button" disabled>Invia accesso via mail</button>
+          </div>
+        </form>
+        <p id="portalAccessStatus" role="status">Verifica l’accesso Direzione in alto nella pagina.</p>
+      </div>
+    </section>
+    <section class="layout" data-cruscotto-section="clients">
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Clienti e pacchetti</div>
@@ -745,7 +801,7 @@
       </div>
     </section>
 
-    <section class="admin-grid">
+    <section class="admin-grid" data-cruscotto-section="payments" hidden>
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Riepilogo pagamenti</div>
@@ -766,7 +822,7 @@
       </div>
     </section>
 
-    <section class="panel" style="margin-top:18px">
+    <section class="panel" style="margin-top:18px" data-cruscotto-section="anamnesis" hidden>
       <div class="panel-head">
         <div class="panel-title">Anamnesi clienti</div>
         <div class="tag green">Archivio acquisizione</div>
@@ -776,7 +832,7 @@
       </div>
     </section>
 
-    <section class="meeting-grid">
+    <section class="meeting-grid" data-cruscotto-section="stats" hidden>
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Performance PT</div>
@@ -806,7 +862,7 @@
       </div>
     </section>
 
-    <section class="panel" style="margin-top:18px">
+    <section class="panel" style="margin-top:18px" data-cruscotto-section="stats" hidden>
       <div class="panel-head">
         <div class="panel-title">Punti per meeting e brainstorming</div>
         <div class="tag red">Azioni</div>
@@ -821,6 +877,7 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
+  <script src="pt-essentials.js"></script>
   <script src="studio-audit-access.js"></script>
   <script>
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
@@ -1003,7 +1060,7 @@
     function field(label, value, cls = '') {
       const display = Array.isArray(value) ? value.join(', ') : value;
       if (!display) return '';
-      return `<div class="anamnesis-field ${cls}"><div class="field-label">${label}</div><div class="field-value">${display}</div></div>`;
+      return `<div class="anamnesis-field ${cls}"><div class="field-label">${label}</div><div class="field-value">${PTEssentials.escape(display)}</div></div>`;
     }
     function normalizeClientAssignments() {
       const byClient = new Map();
@@ -1063,6 +1120,7 @@
       renderAlerts(clients, appts);
       renderAnamnesis(clients);
       renderMeetingStats(clients, filteredAllAppointments());
+      compactLists();
     }
     function renderClients(clients) {
       const list = document.getElementById('clientsList');
@@ -1081,7 +1139,7 @@
             <div class="row">
               <div>
                 <div class="name">${fullName(client)}</div>
-                <div class="muted">${operatorName(client.pt_assegnato)} · ${client.obiettivo || client.notes || 'Nessuna nota tecnica'}</div>
+                <div class="muted">${operatorName(client.pt_assegnato)} · ${PTEssentials.escape(PTEssentials.short(client.obiettivo || 'Apri per anamnesi e dettagli',100))}</div>
               </div>
               <span class="tag ${paymentClass(pay)}">${pay} · <span class="money">${money(client.importo)}</span></span>
             </div>
@@ -1283,31 +1341,10 @@
         return;
       }
       list.innerHTML = rows.map(({ client, acq }) => `
-        <article class="anamnesis-card">
-          <div class="row">
-            <div>
-              <div class="name">${fullName(client)}</div>
-              <div class="muted">${operatorName(client.pt_assegnato)} · ${acq ? (acq.stato === 'Convertito' ? 'Cliente convertito' : (acq.stato || 'Anamnesi')) : 'Dati base cliente'}</div>
-            </div>
-            <span class="tag ${acq ? 'green' : 'gold'}">${acq ? 'Anamnesi' : 'Base'}</span>
-          </div>
-          <div class="anamnesis-grid">
-            ${field('Obiettivo', acq ? (acq.obiettivo_libero || acq.obiettivo) : client.obiettivo, 'wide')}
-            ${field('Professione', acq ? acq.professione : client.professione)}
-            ${field('Motivazione', acq?.motivazione ? `${acq.motivazione}/10` : (client.motivazione ? `${client.motivazione}/10` : ''))}
-            ${field('Esperienza', acq?.esperienza)}
-            ${field('Inattivita', acq?.inattivo)}
-            ${field('Sport', acq?.sport)}
-            ${field('Disponibilita', acq?.orari, 'wide')}
-            ${field('Sessioni preferite', acq ? acq.sessioni_pref : client.package_frequency)}
-            ${field('Come ci ha trovato', acq ? acq.come : client.come)}
-            ${field('Cosa non ha funzionato', acq?.non_funzionato, 'full')}
-            ${field('Impressioni PT', acq ? acq.impressioni : client.notes, 'full')}
-            ${field('Proposta', acq?.proposta, 'wide')}
-            ${field('Follow-up', acq?.followup)}
-            ${!acq ? field('Nota archivio', 'Anamnesi completa non disponibile per i clienti gia confermati prima di questa modifica. Da ora in avanti verra conservata.', 'full') : ''}
-          </div>
-        </article>
+        <details class="anamnesis-card">
+          <summary><strong>${PTEssentials.escape(fullName(client))}</strong> · ${PTEssentials.escape(PTEssentials.short(client.obiettivo || acq?.obiettivo,90))}</summary>
+          ${PTEssentials.render(client,acq)}
+        </details>
       `).join('');
     }
     function renderMeetingStats(clients, appointments) {
@@ -1442,6 +1479,7 @@
         state.appointments = appointments || [];
         state.acquisitions = acquisitions || [];
         normalizeClientAssignments();
+        renderAssignments();
         status.textContent = 'Aggiornato ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
         render();
       } catch (err) {
@@ -1450,7 +1488,124 @@
         document.getElementById('appointmentsList').innerHTML = '<div class="empty">Agenda non disponibile.</div>';
       }
     }
+    const listPages = {};
+    let lastFilter = '';
+    function compactLists() {
+      const filter = [document.getElementById('operatorSelect').value,document.getElementById('clientSearch').value,document.getElementById('paymentFilter')?.value].join('|');
+      if(filter!==lastFilter){Object.keys(listPages).forEach(k=>delete listPages[k]);lastFilter=filter;}
+      for(const id of ['clientsList','appointmentsList','financeList','anamnesisList']) {
+        const list=document.getElementById(id), rows=[...list.children].filter(el=>!el.classList.contains('empty'));
+        const count=Math.max(1,Math.ceil(rows.length/8));
+        listPages[id]=Math.min(listPages[id]||0,count-1);
+        rows.forEach((row,i)=>row.hidden=Math.floor(i/8)!==listPages[id]);
+        let pager=document.getElementById(id+'Pager');
+        if(!pager){pager=document.createElement('div');pager.id=id+'Pager';pager.className='page-controls';list.after(pager);}
+        pager.hidden=rows.length<=8;
+        pager.innerHTML=`<button class="small-btn" ${listPages[id]===0?'disabled':''}>Precedenti</button><span>Pagina ${listPages[id]+1} di ${count} · ${rows.length} risultati</span><button class="small-btn" ${listPages[id]===count-1?'disabled':''}>Successivi</button>`;
+        const buttons=pager.querySelectorAll('button');buttons[0].onclick=()=>{listPages[id]--;compactLists()};buttons[1].onclick=()=>{listPages[id]++;compactLists()};
+      }
+    }
+    document.querySelectorAll('[data-section]').forEach(button=>button.onclick=()=>{
+      document.querySelectorAll('[data-section]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+      document.querySelectorAll('[data-cruscotto-section]').forEach(section=>section.hidden=section.dataset.cruscottoSection!==button.dataset.section);
+      if(button.dataset.section==='access')loadPortalAccess();
+      if(button.dataset.section==='assignments')renderAssignments();
+    });
+    let assignmentPending=false;
+    function renderAssignments(){
+      const clientSelect=document.getElementById('assignmentClient'),trainerSelect=document.getElementById('assignmentTrainer');
+      const previous=clientSelect.value,previousTrainer=trainerSelect.value;
+      const query=document.getElementById('assignmentSearch').value.trim().toLocaleLowerCase('it');
+      const clients=state.clients.filter(c=>c.active!==false&&fullName(c).toLocaleLowerCase('it').includes(query));
+      const trainers=state.operators.filter(o=>o.active!==false&&(o.roles||[]).some(r=>['pt','personal_trainer','personal trainer'].includes(String(r).toLowerCase())));
+      clientSelect.replaceChildren(new Option('Seleziona cliente',''),...clients.map(c=>new Option(fullName(c),c.id)));
+      trainerSelect.replaceChildren(new Option('Seleziona personal trainer',''),...trainers.map(o=>new Option(fullName(o),o.id)));
+      clientSelect.value=clients.some(c=>c.id===previous)?previous:'';
+      trainerSelect.value=trainers.some(o=>o.id===previousTrainer)?previousTrainer:'';
+      document.getElementById('assignmentSave').disabled=assignmentPending||!clients.length||!trainers.length;
+      showCurrentAssignment();
+    }
+    function showCurrentAssignment(){
+      const client=state.clients.find(c=>c.id===document.getElementById('assignmentClient').value);
+      document.getElementById('assignmentCurrent').textContent=client?'PT attuale: '+(client.pt_assegnato?operatorName(client.pt_assegnato):'Non assegnato'):'';
+    }
+    document.getElementById('assignmentSearch').addEventListener('input',renderAssignments);
+    document.getElementById('assignmentClient').addEventListener('change',showCurrentAssignment);
+    document.getElementById('assignmentForm').addEventListener('submit',async event=>{
+      event.preventDefault();if(assignmentPending)return;
+      const clientId=document.getElementById('assignmentClient').value,trainerId=document.getElementById('assignmentTrainer').value;
+      const client=state.clients.find(c=>c.id===clientId),trainer=state.operators.find(o=>o.id===trainerId);
+      const status=document.getElementById('assignmentStatus');
+      if(!client||!trainer)return;
+      if(client.pt_assegnato===trainerId){status.textContent='Il cliente è già assegnato a questo PT.';return;}
+      assignmentPending=true;document.getElementById('assignmentSave').disabled=true;status.textContent='Salvataggio…';
+      try{await StudioAudit.assignClient(clientId,trainerId);client.pt_assegnato=trainerId;render();showCurrentAssignment();status.textContent=fullName(client)+' assegnato a '+fullName(trainer)+'.';}
+      catch(error){status.textContent='Assegnazione non salvata: '+error.message;}
+      finally{assignmentPending=false;document.getElementById('assignmentSave').disabled=false;}
+    });
+    let accessOperators=[], accessPending=false;
+    const accessEl=id=>document.getElementById('portalAccess'+id);
+    const selectedAccess=()=>accessOperators.find(op=>op.id===accessEl('Trainer').value);
+    function renderPortalAccess(){
+      const op=selectedAccess();
+      accessEl('Email').value=op?.email||'';
+      accessEl('Enabled').checked=!!op?.enabled;
+      accessEl('Badge').textContent=op ? 'Portale '+(op.enabled?'attivo':'disattivato') : 'Nessun trainer disponibile';
+      ['Email','Enabled','Save'].forEach(id=>accessEl(id).disabled=!op||op.protected||accessPending);
+      accessEl('Trainer').disabled=!accessOperators.length||accessPending;
+      accessEl('Send').disabled=!op||op.protected||!op.enabled||!op.email||accessPending;
+      if(op?.protected)accessEl('Status').textContent='Questo è un accesso Direzione e non può essere modificato da qui.';
+    }
+    async function loadPortalAccess(){
+      if(accessPending)return;
+      accessPending=true;
+      const previous=accessEl('Trainer').value;
+      renderPortalAccess();accessEl('Status').textContent='Caricamento accessi…';
+      try{
+        const result=await StudioAudit.portalAccess({action:'list'});
+        accessOperators=result.operators;accessEl('Trainer').replaceChildren();
+        accessOperators.forEach(op=>accessEl('Trainer').add(new Option((op.nome||'')+' '+(op.cognome||'')+(op.active===false?' · Staff inattivo':''),op.id)));
+        if(accessOperators.some(op=>op.id===previous))accessEl('Trainer').value=previous;
+        accessEl('Status').textContent='Togli la spunta e salva per bloccare il portale, incluse le sessioni già aperte alla richiesta successiva.';
+      }catch(error){accessOperators=[];accessEl('Trainer').replaceChildren();accessEl('Status').textContent=error.message;}
+      finally{accessPending=false;renderPortalAccess();}
+    }
+    accessEl('Trainer').onchange=()=>{accessEl('Status').textContent='Modifica l’accesso e premi Salva accesso.';renderPortalAccess();};
+    ['Email','Enabled'].forEach(id=>accessEl(id).oninput=()=>{accessEl('Send').disabled=true;accessEl('Status').textContent='Modifiche non salvate. Premi Salva accesso.';});
+    accessEl('Form').onsubmit=async event=>{
+      event.preventDefault();const op=selectedAccess();if(!op||op.protected||accessPending)return;
+      const enabled=accessEl('Enabled').checked,email=accessEl('Email').value.trim().toLowerCase();
+      accessPending=true;['Save','Send','Trainer','Email','Enabled'].forEach(id=>accessEl(id).disabled=true);accessEl('Status').textContent='Salvataggio accesso…';
+      try{await StudioAudit.portalAccess({action:'set',operatorId:op.id,enabled,email});op.enabled=enabled;op.email=email;
+        accessEl('Status').textContent='Accesso di '+op.nome+' '+op.cognome+' '+(enabled?'attivato.':'disattivato. Il portale è bloccato.');
+      }catch(error){accessEl('Status').textContent='Accesso non salvato: '+error.message;}
+      finally{accessPending=false;renderPortalAccess();}
+    };
+    accessEl('Send').onclick=async()=>{
+      const op=selectedAccess();if(!op||!op.enabled||op.protected||accessPending)return;
+      accessPending=true;renderPortalAccess();accessEl('Status').textContent='Invio accesso…';
+      try{await StudioAudit.portalAccess({action:'send',operatorId:op.id});accessEl('Status').textContent='Email di accesso inviata a '+op.email+'.';}
+      catch(error){accessEl('Status').textContent='Invio non riuscito: '+error.message;}
+      finally{accessPending=false;renderPortalAccess();}
+    };
+    document.getElementById('refreshPortalAccess').onclick=loadPortalAccess;
+    window.addEventListener('studio-direction-ready',()=>{if(!document.querySelector('[data-cruscotto-section="access"]').hidden)loadPortalAccess();});
+    function openLinkedSection(){if(['#assignments','#access'].includes(location.hash))document.querySelector('[data-section="'+location.hash.slice(1)+'"]').click();}
+    window.addEventListener('hashchange',openLinkedSection);
+    openLinkedSection();
     loadData();
+  </script>
+  <script>
+    (() => {
+      const base = 'https://neacea-portale-personal-trainer.netlify.app/integratori/';
+      function openSupplements(inventory) {
+        const token = sessionStorage.getItem('neacea-studio-audit-session') || '';
+        window.open(base + (inventory ? '?view=inventory' : '') + (token ? '#access=' + encodeURIComponent(token) : ''), '_blank', 'noopener');
+      }
+      document.getElementById('studio-integratori').onclick = () => openSupplements(false);
+      document.getElementById('studio-magazzino').onclick = () => openSupplements(true);
+      window.addEventListener('studio-direction-ready', () => { document.getElementById('studio-magazzino').hidden = false; });
+    })();
   </script>
 </body>
 </html>

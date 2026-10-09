@@ -1,0 +1,208 @@
+{
+  "as_of": "2026-10-07",
+  "currency": "EUR",
+  "tax": "IVA inclusa",
+  "source": "Prezzi effettivi allineati: pubblico IVA inclusa meno 20%, arrotondato ai €0,50 più vicini",
+  "rows": [
+    {
+      "name": "Ashwagandha 1000",
+      "brand": "WHYnature",
+      "label": "Standard",
+      "format": "60 cpr",
+      "variant_id": "6d3be377-b087-42d6-a28a-e98101881d02",
+      "price_eur": "24.00"
+    },
+    {
+      "name": "Avena Farina Gluten Free",
+      "brand": "WHYnature",
+      "label": "Cocco Cioccolato Bianco",
+      "format": "1 kg",
+      "variant_id": "74e434af-0054-438d-ae6b-cc94844d6ce0",
+      "price_eur": "15.00"
+    },
+    {
+      "name": "Avena Farina Gluten Free",
+      "brand": "WHYnature",
+      "label": "Vaniglia",
+      "format": "1 kg",
+      "variant_id": "2bfd9b53-fab9-4a0a-99f4-48a059f6ecff",
+      "price_eur": "15.00"
+    },
+    {
+      "name": "Bromelina",
+      "brand": "WHYnature",
+      "label": "Standard",
+      "format": "60 cpr",
+      "variant_id": "256666a8-5c55-4665-ae05-993ac1517cd8",
+      "price_eur": "18.50"
+    },
+    {
+      "name": "Cluster Dextrin Pure",
+      "brand": "WHYsport",
+      "label": "Standard",
+      "format": "500 g",
+      "variant_id": "d15ccd25-a12f-4007-9c7e-dab173760360",
+      "price_eur": "27.50"
+    },
+    {
+      "name": "Collagene Rigenera",
+      "brand": "WHYnature",
+      "label": "Vaniglia",
+      "format": "333 g",
+      "variant_id": "6b640bd3-f965-4bf9-8276-79b9f2bb791d",
+      "price_eur": "31.50"
+    },
+    {
+      "name": "Creatine Monohydrate",
+      "brand": "Powerbar · Black Line",
+      "label": "Neutro",
+      "format": "300 g",
+      "variant_id": "21bcc2cd-3ffd-41a8-8e05-901a9a386a33",
+      "price_eur": "35.00"
+    },
+    {
+      "name": "Crema di Arachidi Peanut Butter",
+      "brand": "WHYnature",
+      "label": "Smooth",
+      "format": "350 g",
+      "variant_id": "411f6d7d-16fa-4f49-8d33-12bd27100826",
+      "price_eur": "7.50"
+    },
+    {
+      "name": "Crema di Arachidi Peanut Butter Iperproteico",
+      "brand": "WHYsport",
+      "label": "Crunch",
+      "format": "350 g",
+      "variant_id": "d1f8540f-b8e3-4240-853c-4e4b00f0ac6d",
+      "price_eur": "9.00"
+    },
+    {
+      "name": "Gel Give Me Five",
+      "brand": "WHYsport",
+      "label": "Lemon Cola",
+      "format": "50 ml",
+      "variant_id": "2e9f951b-ad04-427a-a63c-80bea68d8907",
+      "price_eur": "2.00"
+    },
+    {
+      "name": "Hydro 90 BV 104",
+      "brand": "WHYsport Professional",
+      "label": "Cioccolato",
+      "format": "900 g",
+      "variant_id": "1f7ffab3-96e9-4c27-948d-664b104c4004",
+      "price_eur": "77.50"
+    },
+    {
+      "name": "Hydro 90 BV 104",
+      "brand": "WHYsport Professional",
+      "label": "Cioccolato Fondente",
+      "format": "900 g",
+      "variant_id": "dcef1955-5c2e-4890-8b9e-9483d024386e",
+      "price_eur": "77.50"
+    },
+    {
+      "name": "Hydro 90 BV 104",
+      "brand": "WHYsport Professional",
+      "label": "Wafer Nocciola",
+      "format": "900 g",
+      "variant_id": "d998e3ca-2c28-4c76-85a4-72eb66e825dc",
+      "price_eur": "77.50"
+    },
+    {
+      "name": "Low Sugar Pancake Gluten Free",
+      "brand": "WHYnature",
+      "label": "Cookies",
+      "format": "800 g",
+      "variant_id": "ab36c554-a7a8-4519-bb3f-7115952eb5e5",
+      "price_eur": "29.00"
+    },
+    {
+      "name": "Magnesio Bisglicinato",
+      "brand": "WHYnature",
+      "label": "Standard",
+      "format": "90 cpr",
+      "variant_id": "be440994-85dd-4040-8ed6-789b19ff1d4a",
+      "price_eur": "17.50"
+    },
+    {
+      "name": "Maltodestrine",
+      "brand": "WHYsport",
+      "label": "Standard",
+      "format": "1 kg",
+      "variant_id": "eef90696-2cd3-4991-9aac-7e5ffeebb9c5",
+      "price_eur": "16.50"
+    },
+    {
+      "name": "NAC 600 Plus",
+      "brand": "WHYnature",
+      "label": "Standard",
+      "format": "60 cpr",
+      "variant_id": "c0e83fea-44a1-4061-a7bd-0de938bbacc4",
+      "price_eur": "18.50"
+    },
+    {
+      "name": "OMEGOR Krill",
+      "brand": "OMEGOR",
+      "label": "Standard",
+      "format": "60 softgels",
+      "variant_id": "a34427a4-3703-41f4-979e-b84103a51026",
+      "price_eur": "24.00"
+    },
+    {
+      "name": "OMEGOR Veg",
+      "brand": "OMEGOR",
+      "label": "Standard",
+      "format": "60 softgels",
+      "variant_id": "66830e49-437f-4425-b3e6-ddcae787bf10",
+      "price_eur": "20.00"
+    },
+    {
+      "name": "OMEGOR Vitality 500",
+      "brand": "OMEGOR",
+      "label": "Standard",
+      "format": "60 softgels",
+      "variant_id": "d356970a-27ec-4dae-9ab3-740b0b66809c",
+      "price_eur": "12.00"
+    },
+    {
+      "name": "Perfect Cream",
+      "brand": "WHYsport",
+      "label": "Pistacchio",
+      "format": "300 g",
+      "variant_id": "4d0ed106-4cfc-4cf6-ad84-02d439630b6f",
+      "price_eur": "13.00"
+    },
+    {
+      "name": "PW1 Pre Workout",
+      "brand": "WHYsport Professional",
+      "label": "Con caffeina · Agrumi",
+      "format": "300 g",
+      "variant_id": "d0515df9-fedc-49a4-a57b-4744c8316530",
+      "price_eur": "44.00"
+    },
+    {
+      "name": "PW1 Pre Workout",
+      "brand": "WHYsport Professional",
+      "label": "Senza caffeina · Tè alla Pesca",
+      "format": "300 g",
+      "variant_id": "ad065ef8-bb30-4a72-9d51-6274aec02742",
+      "price_eur": "44.00"
+    },
+    {
+      "name": "Wafer Zero",
+      "brand": "WHYnature",
+      "label": "Cocco Fondente",
+      "format": "35 g · 1 pezzo",
+      "variant_id": "daa02eee-dd56-461c-a9a9-93c9bfff4ef1",
+      "price_eur": "2.50"
+    },
+    {
+      "name": "Wafer Zero",
+      "brand": "WHYnature",
+      "label": "Pistacchio Cioccolato Bianco",
+      "format": "35 g · 1 pezzo",
+      "variant_id": "f6b25057-82f2-40fd-b44c-785c0517717e",
+      "price_eur": "2.50"
+    }
+  ]
+}

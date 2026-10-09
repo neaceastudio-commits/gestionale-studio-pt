@@ -1,0 +1,60 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {start}=require('./helpers/calendar-postgres.cjs');
+const migration=name=>fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8');
+(async()=>{const db=await start(),c=db.client;try{
+  await c.query(`create table schede_allenamento(id text primary key,cliente_id text,data jsonb,created_at timestamptz default now(),updated_at timestamptz default now());
+    create table carichi_allenamento(id text primary key,cliente_id text,data jsonb,created_at timestamptz default now(),updated_at timestamptz default now());
+    grant select,insert,update,delete on schede_allenamento,carichi_allenamento to service_role;
+    insert into clients(id) values('client-a'),('client-b');
+    insert into schede_allenamento(id,cliente_id,data,created_at,updated_at) values
+    ('old-a','client-a','{"period":"2026-08"}','2026-08-01','2026-08-01'),
+    ('current-a','client-a','{"period":"2026-09"}','2026-09-01','2026-09-01');`);
+  await c.query(migration('20260901094141_secure_pt_program_persistence.sql'));
+  await c.query(migration('20260916140424_pt_shared_program_templates.sql'));
+  await c.query(migration('20260918182400_pt_program_library_and_current.sql'));
+  assert.equal((await c.query("select program_id from pt_client_current_programs where cliente_id='client-a'")).rows[0].program_id,'current-a');
+  for(const role of ['anon','authenticated']){
+    await c.query('set role '+role);
+    for(const table of ['pt_program_folders','pt_client_current_programs'])await assert.rejects(c.query('select * from '+table),{code:'42501'});
+    await assert.rejects(c.query("select pt_set_current_program('client-a','old-a')"),{code:'42501'});
+    await assert.rejects(c.query("select pt_save_program_with_current('new','client-a','{}')"),{code:'42501'});
+    await c.query('reset role');
+  }
+  await c.query('set role service_role');
+  const current=async()=> (await c.query("select program_id from pt_client_current_programs where cliente_id='client-a'")).rows[0].program_id;
+  const save=async(id,data={},expected=null)=> (await c.query('select pt_save_program_with_current($1,$2,$3,$4,$5,false,$6) result',[id,'client-a',JSON.stringify(data),expected,'pt-a','[]'])).rows[0].result;
+  await save('old-a',{period:'2026-08',name:'Edited history'},'2026-08-01');
+  assert.equal(await current(),'current-a','editing history never promotes it');
+  const created=await save('new-a',{period:'2026-10'});
+  assert.equal(created.currentProgramId,'new-a');
+  assert.equal((await c.query('select count(*) from schede_allenamento')).rows[0].count,'3');
+  assert.equal((await c.query('select count(*) from pt_program_templates')).rows[0].count,'0','client writes never create templates');
+  const conflict=await save('new-a',{archived:true},'2020-01-01');
+  assert.equal(conflict.code,'PROGRAM_CONFLICT');assert.equal(await current(),'new-a');
+  const deleted=await save('new-a',{archived:true},created.row.updated_at);
+  assert.equal(deleted.currentProgramId,'current-a');
+  await save('new-a',{archived:false},deleted.row.updated_at);
+  assert.equal(await current(),'current-a','restore to history does not promote');
+  await assert.rejects(c.query("select pt_set_current_program('client-b','old-a')"),/PROGRAM_NOT_AVAILABLE/);
+  await c.query("select pt_set_current_program('client-a','old-a')");assert.equal(await current(),'old-a');
+  await assert.rejects(c.query("select pt_save_program_with_current('bad','client-a','{}',null,'pt-a',false,'[{\"id\":\"x\",\"data\":{}},{\"id\":\"x\",\"data\":{}}]')"));
+  assert.equal((await c.query("select count(*) from schede_allenamento where id='bad'")).rows[0].count,'0','failed load write rolls back program and current selection');
+  assert.equal(await current(),'old-a');
+  await c.query("insert into pt_program_folders(id,name,created_by) values('folder-root-001','Forza','pt-a')");
+  await c.query("insert into pt_program_folders(id,name,parent_id,created_by) values('folder-child-001','Intermedi','folder-root-001','pt-a')");
+  await assert.rejects(c.query("update pt_program_folders set parent_id='folder-child-001' where id='folder-root-001'"),/FOLDER_REPARENT_NOT_SUPPORTED/);
+  const snapshot=JSON.stringify({format:'neacea-program-editor-v1',program:{days:[]}});
+  await c.query("insert into pt_program_templates(id,title,snapshot,created_by,folder_id) values('template-test-001','Base',$1,'pt-a','folder-root-001')",[snapshot]);
+  const version=async()=> (await c.query("select updated_at::text v from pt_program_templates where id='template-test-001'")).rows[0].v;
+  const v1=await version();
+  assert.equal((await c.query("update pt_program_templates set title='Base 2' where id='template-test-001' and updated_at=$1 returning id",[v1])).rowCount,1);
+  assert.equal((await c.query("update pt_program_templates set title='Lost write' where id='template-test-001' and updated_at=$1 returning id",[v1])).rowCount,0);
+  const v2=await version();
+  await c.query("delete from pt_program_folders where id='folder-root-001'");
+  assert.equal((await c.query("select parent_id from pt_program_folders where id='folder-child-001'")).rows[0].parent_id,null);
+  assert.equal((await c.query("select folder_id from pt_program_templates where id='template-test-001'")).rows[0].folder_id,null);
+  assert.notEqual(await version(),v2,'folder deletion versions affected templates');
+  assert.equal((await c.query('select count(*) from schede_allenamento')).rows[0].count,'3');
+  await assert.rejects(c.query("delete from pt_program_templates where id='template-test-001'"),{code:'42501'});
+  console.log('PASS library SQL: additive migration, stable current/history, rollback, explicit activation, no automatic archive, nested folders, safe reparenting, optimistic versions, server-only access.');
+}finally{await db.close()}})().catch(e=>{console.error(e);process.exitCode=1});

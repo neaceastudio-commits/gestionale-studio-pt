@@ -22,6 +22,7 @@ const uiFixesSource = read('app/calendario-studio/css/ui-fixes.css');
 const portalSource = read('app/portale-personal-trainer/index.html');
 const acquisitionSource = read('app/acquisizione/index.html');
 const accessFunctionSource = read('netlify/functions/pt-access-email.js');
+const ptAuthSource = read('netlify/functions/lib/pt-auth.js');
 const appleFunctionSource = read('netlify/functions/apple-calendar.js');
 const recordPaymentSource = appSource.slice(
   appSource.indexOf('async _recordPackagePayment(clientId)'),
@@ -76,7 +77,7 @@ const recordPaymentSource = appSource.slice(
   ['Sedute condivise protette dal trasferimento', appSource.includes('appointments.filter(appt => appt.clientIds.length > 1)')],
   ['Comando trasferimento nascosto ai PT', clientsSource.includes("ptMode ? '' : `<button class=\"btn-icon-sm\" title=\"Trasferisci cliente a un altro PT\"")],
   ['Riepiloghi clienti contenuti nelle proprie colonne', clientsSource.includes('data-table client-data-table') && uiFixesSource.includes('.client-data-table .session-mini') && uiFixesSource.includes('white-space: normal;')],
-  ['Token PT firmato', accessFunctionSource.includes('function signAccessToken')],
+  ['Token PT firmato', ptAuthSource.includes('function signAccessToken') && accessFunctionSource.includes("require('./lib/pt-auth')")],
   ['Funzione Apple Calendar', appleFunctionSource.includes('exports.handler') && appleFunctionSource.includes('BEGIN:VCALENDAR')],
 ].forEach(([label, condition]) => assert(label, condition));
 
@@ -269,6 +270,7 @@ const visibleAppointments = serviceContext.TestServices.getAppointmentsForDate('
 assert('Vista calendario PT filtra gli appuntamenti estranei', visibleAppointments.length === 2 && !visibleAppointments.some(item => item.id === 'unrelated'));
 
 process.env.PT_ACCESS_SECRET = 'calendar-release-regression-secret';
+process.env.SUPABASE_SECRET_KEY = 'calendar-release-regression-server-key';
 const realFetch = global.fetch;
 global.fetch = async (url, options) => {
   const value = String(url);

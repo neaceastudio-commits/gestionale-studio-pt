@@ -1,4 +1,4 @@
-/* Shared source copied into each independently published Studio root. */
+/* Centrale PT: authenticated writes through the existing Studio gateway. */
 window.StudioAudit = (() => {
   const gateway='https://new-calendar-neacea.netlify.app/.netlify/functions/studio-calendar-activity';
   const access='https://neacea-portale-personal-trainer.netlify.app/.netlify/functions/pt-access-email';
@@ -20,9 +20,9 @@ window.StudioAudit = (() => {
     await ready;
     try{
       if(!actor||!token)throw Error('Accedi con una sessione Direzione verificata prima di salvare');
-      if(table!=='clients'||method!=='PATCH')throw Error('Scrittura Studio non consentita');
+      if(!['clients','operators'].includes(table)||method!=='PATCH')throw Error('Scrittura Studio non consentita');
       const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');if(!id)throw Error('Cliente mancante');
-      return await request('client',{method:'PATCH',rows:[{...body,id}]});
+      return await request(table==='operators'?'operator':'client',{method:'PATCH',rows:[{...body,id}]});
     }catch(e){message(e.message);throw e;}
   }
   function init(){
@@ -35,5 +35,9 @@ window.StudioAudit = (() => {
     ready=verify();
   }
   document.addEventListener('DOMContentLoaded',init);
-  return {write};
+  async function requireDirection(){
+    await ready;
+    if(!actor||!token)throw Error('Accedi con una sessione Direzione verificata prima di salvare');
+  }
+  return {write,requireDirection};
 })();

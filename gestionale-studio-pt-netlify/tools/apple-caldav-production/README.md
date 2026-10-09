@@ -4,6 +4,38 @@ Servizio isolato `neacea-caldav-gianluca.netlify.app`; unico calendario autorizz
 `NEACEA — Operativo`, account iCloud di Gianluca. Non distribuisce il Calendario
 Studio, Acquisizione, feed ICS o funzioni dei PT.
 
+## Fonte autorevole — 8 ottobre 2026
+
+Su richiesta della Direzione, gli entrypoint production usano `sourceOfTruth: 'neacea'`:
+il calendario web NEACEA è la fonte autorevole e Apple ne riflette i dati.
+Orari, durata, partecipanti, PT, stato e testo vengono ripristinati da NEACEA;
+spostamenti o eliminazioni Apple non scrivono più nel database. I collegamenti
+pending vengono completati usando la riga web corrente, senza creare un secondo
+UID. Un evento collegato mancante su Apple viene ricreato con la stessa identità.
+Le righe eliminate da NEACEA vengono confermate assenti su due cicli e il loro
+evento viene ritirato, anche se l'ultima baseline era Fatto/No-show. Le righe
+annullate e i partecipanti non più visibili vengono rimossi dalla proiezione.
+Restano obbligatori collection dedicata, UID/marker, ETag, lease e rilettura della
+sorgente prima di scrivere. Nessuna scrittura in Supabase. Eventi Apple estranei
+non vengono riconosciuti per nome né rimossi automaticamente.
+
+Test: `node --test tests/apple-caldav-authoritative.test.cjs`.
+Release production verificata: `6ac7d4b636cbba11e12f8c0e` (8 ottobre 2026).
+Confronto live del 08/10/2026 alle 19:42 Europe/Rome: 461 collegamenti,
+445 eventi Apple letti, zero anomalie. Ultimo batch: 212 elaborati, zero errori,
+zero nuove sedute o cancellazioni in attesa. Verifiche: 21 test Node, suite
+display e compatibilità PostgreSQL/PGlite, import dei quattro bundle reali,
+endpoint non autenticati rifiutati, hash di deploy e schedulazioni controllati.
+Il deploy va creato nel contesto **production**: la promozione di un draft
+conserva il contesto deploy-preview e non attiva le variabili production.
+
+Il monitor può eseguire una verifica immediata senza email: l'amministratore
+scrive `{id: "identificativo-univoco"}` in `caldav-monitor-v1/inspection-request`
+e legge il risultato omonimo `inspection-result`, correlato tramite `requestId`.
+
+Le sezioni successive descrivono anche il protocollo bidirezionale storico,
+conservato per i test di compatibilità ma non attivo negli entrypoint production.
+
 Il worker cloud replica i tre flussi del worker Python TEST e gira ogni minuto.
 Mapping, baseline e lease sono persistenti in Netlify Blobs con letture forti e
 scritture condizionali. Gli href sono derivati dagli ID; un marcatore casuale

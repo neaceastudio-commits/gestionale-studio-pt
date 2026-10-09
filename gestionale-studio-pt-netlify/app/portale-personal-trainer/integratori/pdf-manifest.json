@@ -1,0 +1,227 @@
+[
+  {
+    "product_id": "0a7fceca-8f4c-47ad-ace2-4b9fb8a60ab5",
+    "variant_id": "2bfd9b53-fab9-4a0a-99f4-48a059f6ecff",
+    "file": "avena-farina-gluten-free-vaniglia.pdf",
+    "title": "Avena Farina Gluten Free · Vaniglia",
+    "review_required": false,
+    "image_note": "",
+    "signature": "347dc862dd776c757fd9f873dbd42d17f07cb05e309207aa44b162d0e84e4f95"
+  },
+  {
+    "product_id": "0a7fceca-8f4c-47ad-ace2-4b9fb8a60ab5",
+    "variant_id": "74e434af-0054-438d-ae6b-cc94844d6ce0",
+    "file": "avena-farina-gluten-free-cocco-cioccolato-bianco.pdf",
+    "title": "Avena Farina Gluten Free · Cocco Cioccolato Bianco",
+    "review_required": false,
+    "image_note": "",
+    "signature": "6da3c26e9841866d1a49ba6420f628828932357cce10f7290a817bce2ef98a2c"
+  },
+  {
+    "product_id": "f7e5d3d7-04cd-4592-b819-155eea111101",
+    "variant_id": "256666a8-5c55-4665-ae05-993ac1517cd8",
+    "file": "bromelina-standard.pdf",
+    "title": "Bromelina · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "d99da4ade48a355dd3c09e853471ff4136f07a9d8e4beed3d609c51f7cda90cc"
+  },
+  {
+    "product_id": "38a59f5e-a673-40ca-917a-c2a0eb17ce52",
+    "variant_id": "d15ccd25-a12f-4007-9c7e-dab173760360",
+    "file": "cluster-dextrin-pure-standard.pdf",
+    "title": "Cluster Dextrin Pure · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "c85ae4fcb1470e13886a07f401ef487237d977901e7d0007e2c318845ee7fd5b"
+  },
+  {
+    "product_id": "9de2f438-4b02-439c-b5e9-eb6778688ba1",
+    "variant_id": "6b640bd3-f965-4bf9-8276-79b9f2bb791d",
+    "file": "collagene-rigenera-vaniglia.pdf",
+    "title": "Collagene Rigenera · Vaniglia",
+    "review_required": false,
+    "image_note": "",
+    "signature": "2e17b4c77a13528282f7995b655bfaabac1b90c0af2ba9d102ad233cff1d2e72"
+  },
+  {
+    "product_id": "702b632f-5b13-45ae-a49c-30e4056bc660",
+    "variant_id": "411f6d7d-16fa-4f49-8d33-12bd27100826",
+    "file": "crema-di-arachidi-peanut-butter-smooth.pdf",
+    "title": "Crema di Arachidi Peanut Butter · Smooth",
+    "review_required": false,
+    "image_note": "",
+    "signature": "9cb8b2371a2e247747b008a6384598c01f97997a1a2d96f9130cb12477bf031f"
+  },
+  {
+    "product_id": "94157b71-6ca2-47c1-babd-1189106bb5dc",
+    "variant_id": "d1f8540f-b8e3-4240-853c-4e4b00f0ac6d",
+    "file": "crema-di-arachidi-peanut-butter-iperproteico-crunch.pdf",
+    "title": "Crema di Arachidi Peanut Butter Iperproteico · Crunch",
+    "review_required": false,
+    "image_note": "",
+    "signature": "355d31620a097e6901c5c8536262e222d9a601c8661e71e07a7f5bfab8ffffbc"
+  },
+  {
+    "product_id": "b6d48767-5027-425a-bf34-a648ed69c00d",
+    "variant_id": "2e9f951b-ad04-427a-a63c-80bea68d8907",
+    "file": "gel-give-me-five-lemon-cola.pdf",
+    "title": "Gel Give Me Five · Lemon Cola",
+    "review_required": false,
+    "image_note": "",
+    "signature": "b15dd4aa588d44262dca798d17e99b21d8b559cdb9dafae7c51498878f2ca981"
+  },
+  {
+    "product_id": "3687a62a-68f9-4c99-986c-dc319b4d714f",
+    "variant_id": "ab36c554-a7a8-4519-bb3f-7115952eb5e5",
+    "file": "low-sugar-pancake-gluten-free-cookies.pdf",
+    "title": "Low Sugar Pancake Gluten Free · Cookies",
+    "review_required": false,
+    "image_note": "",
+    "signature": "0baa4062a13faa043ebb859c753a1472144da99a799cb6e047c1b66af5045ec1"
+  },
+  {
+    "product_id": "eb82140f-1576-4973-9532-20a27da21251",
+    "variant_id": "be440994-85dd-4040-8ed6-789b19ff1d4a",
+    "file": "magnesio-bisglicinato-standard.pdf",
+    "title": "Magnesio Bisglicinato · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "b262259b584481970fbd0e2d9563cda1eb96dbfb93d7e4e242972d102c3bd1af"
+  },
+  {
+    "product_id": "5e563dd9-3fef-4e2d-99af-137ae34f3ad2",
+    "variant_id": "eef90696-2cd3-4991-9aac-7e5ffeebb9c5",
+    "file": "maltodestrine-standard.pdf",
+    "title": "Maltodestrine · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "1cfc378df2b1568ba77149e88020ace36758d2e4db5afe3d3fc7165642b82651"
+  },
+  {
+    "product_id": "eac3b456-56f7-4fec-9a2b-9e50a8202be4",
+    "variant_id": "c0e83fea-44a1-4061-a7bd-0de938bbacc4",
+    "file": "nac-600-plus-standard.pdf",
+    "title": "NAC 600 Plus · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "34f66db7e7014f4c49c5cf123976daeda6a271878aa490e347673bd7193d4629"
+  },
+  {
+    "product_id": "92f45982-886a-449b-b292-8e43a982e77e",
+    "variant_id": "4d0ed106-4cfc-4cf6-ad84-02d439630b6f",
+    "file": "perfect-cream-pistacchio.pdf",
+    "title": "Perfect Cream · Pistacchio",
+    "review_required": false,
+    "image_note": "",
+    "signature": "b88f5d7ff8e384fdb1a05bbc56e86b1a6c0c8b1836351827459c26b907e3bd03"
+  },
+  {
+    "product_id": "ec23cd7c-5a0a-40bb-aec7-4b991922cb38",
+    "variant_id": "d0515df9-fedc-49a4-a57b-4744c8316530",
+    "file": "pw1-pre-workout-con-caffeina-agrumi.pdf",
+    "title": "PW1 Pre Workout · Con caffeina · Agrumi",
+    "review_required": false,
+    "image_note": "",
+    "signature": "bdaf028e368585a95ca93e842691595b0aa986b6b575ec3af35cdd2238c3da5c"
+  },
+  {
+    "product_id": "ec23cd7c-5a0a-40bb-aec7-4b991922cb38",
+    "variant_id": "ad065ef8-bb30-4a72-9d51-6274aec02742",
+    "file": "pw1-pre-workout-senza-caffeina-te-alla-pesca.pdf",
+    "title": "PW1 Pre Workout · Senza caffeina · Tè alla Pesca",
+    "review_required": true,
+    "image_note": "",
+    "signature": "3c38ca164c869cd15b6da662d503e79afe626837d44c94c396b8c3373ec0da41"
+  },
+  {
+    "product_id": "cc95b47c-8905-43af-adab-d91ae204cfb9",
+    "variant_id": "21bcc2cd-3ffd-41a8-8e05-901a9a386a33",
+    "file": "creatine-monohydrate-neutro.pdf",
+    "title": "Creatine Monohydrate · Neutro",
+    "review_required": false,
+    "image_note": "",
+    "signature": "f6cc75d5dfcd02ccaa6e4437e40555bfb83fa0b91bd7213b10cee1ec0396cc7c"
+  },
+  {
+    "product_id": "77fb319d-8a14-4b5d-b68a-a1127b11af86",
+    "variant_id": "d998e3ca-2c28-4c76-85a4-72eb66e825dc",
+    "file": "hydro-90-bv-104-wafer-nocciola.pdf",
+    "title": "Hydro 90 BV 104 · Wafer Nocciola",
+    "review_required": false,
+    "image_note": "Foto ufficiale rappresentativa della linea Hydro 90 da 900 g; la confezione fotografata è al gusto crema biscotto. I gusti disponibili sono indicati nelle varianti.",
+    "signature": "dca6637a5f569a8efcddfaef0eb2f634acc9b812005eb6b4c0740f8e44b914cd"
+  },
+  {
+    "product_id": "77fb319d-8a14-4b5d-b68a-a1127b11af86",
+    "variant_id": "dcef1955-5c2e-4890-8b9e-9483d024386e",
+    "file": "hydro-90-bv-104-cioccolato-fondente.pdf",
+    "title": "Hydro 90 BV 104 · Cioccolato Fondente",
+    "review_required": false,
+    "image_note": "Foto ufficiale rappresentativa della linea Hydro 90 da 900 g; la confezione fotografata è al gusto crema biscotto. I gusti disponibili sono indicati nelle varianti.",
+    "signature": "310a6bc1e4a801d68f59e5c2d4864af506dfd3e764ea0e81499a4f9b5145adc7"
+  },
+  {
+    "product_id": "77fb319d-8a14-4b5d-b68a-a1127b11af86",
+    "variant_id": "1f7ffab3-96e9-4c27-948d-664b104c4004",
+    "file": "hydro-90-bv-104-cioccolato.pdf",
+    "title": "Hydro 90 BV 104 · Cioccolato",
+    "review_required": false,
+    "image_note": "Foto ufficiale rappresentativa della linea Hydro 90 da 900 g; la confezione fotografata è al gusto crema biscotto. I gusti disponibili sono indicati nelle varianti.",
+    "signature": "d4dcad73ca36a629d41ad792ef4e8ff80c49fcd0390ac36c620f775d40711af5"
+  },
+  {
+    "product_id": "1214c142-9b11-4a56-8d2d-256aee0935b4",
+    "variant_id": "a34427a4-3703-41f4-979e-b84103a51026",
+    "file": "omegor-krill-standard.pdf",
+    "title": "OMEGOR Krill · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "ecb30e3eddb262ba27b28920a3d58750d1cd6a9fd8758c31a6ced9ff03cda1e5"
+  },
+  {
+    "product_id": "830d17e7-6b40-463d-8c34-23ed8bbcb73f",
+    "variant_id": "66830e49-437f-4425-b3e6-ddcae787bf10",
+    "file": "omegor-veg-standard.pdf",
+    "title": "OMEGOR Veg · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "afa58704b35161715017fa9cb243c2564e6bb10280b8df30b2602e091b31e6f3"
+  },
+  {
+    "product_id": "29dd45fb-07be-45f8-9940-e04f562678bc",
+    "variant_id": "d356970a-27ec-4dae-9ab3-740b0b66809c",
+    "file": "omegor-vitality-500-standard.pdf",
+    "title": "OMEGOR Vitality 500 · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "5a3235777348be35a07e3f8db2d5d3b33091748bfd90093b83f37b4cf27f909a"
+  },
+  {
+    "product_id": "679eb2c5-8ed6-45a2-b31d-57ad17ee8d7f",
+    "variant_id": "6d3be377-b087-42d6-a28a-e98101881d02",
+    "file": "ashwagandha-1000-standard.pdf",
+    "title": "Ashwagandha 1000 · Standard",
+    "review_required": false,
+    "image_note": "",
+    "signature": "bf7982580fe5dc5b6ccb1de57733661583c371b64883d54cf556ad5f8eaa7e6f"
+  },
+  {
+    "product_id": "3f968acf-d550-494e-912b-27b24e009bc3",
+    "variant_id": "daa02eee-dd56-461c-a9a9-93c9bfff4ef1",
+    "file": "wafer-zero-cocco-fondente.pdf",
+    "title": "Wafer Zero · Cocco Fondente",
+    "review_required": false,
+    "image_note": "",
+    "signature": "f767d142044a582dcad8e1bea4abda6b5273400a2d5abaf9c4f7f41e5d988c9c"
+  },
+  {
+    "product_id": "3f968acf-d550-494e-912b-27b24e009bc3",
+    "variant_id": "f6b25057-82f2-40fd-b44c-785c0517717e",
+    "file": "wafer-zero-pistacchio-cioccolato-bianco.pdf",
+    "title": "Wafer Zero · Pistacchio Cioccolato Bianco",
+    "review_required": false,
+    "image_note": "",
+    "signature": "6caaa25a4dd1cebb571adb2cc3ea106c191990d2cca5997def68b501b407bc5f"
+  }
+]

@@ -17,3 +17,12 @@ test('inventory reads all events with bounded concurrency and fails on missing c
  let active=0,peak=0;const cal={verify:async()=>{},inventory:async()=>Array.from({length:80},(_,i)=>String(i)),read:async href=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,1));active--;return {ics:href};}};
  assert.equal((await inventory(cal)).length,80);assert.ok(peak<=24);cal.read=async()=>null;await assert.rejects(inventory(cal),/non leggibile/);
 });
+
+test('inactive participants are absent from both calendars without a false missing alert',()=>{
+ const d=data();d.clients[0].active=false;d.events=[];assert.deepEqual(compare(d).issues,[]);
+ d.mappings=[];assert.deepEqual(compare(d).issues,[]);
+});
+test('explicit inspection request returns a fresh comparison without sending email',async()=>{
+ const f=fixture();await f.store.setJSON('inspection-request',{id:'request-1'});await f.s.run('d');
+ const report=await f.store.get('inspection-result');assert.equal(report.requestId,'request-1');assert.equal(report.checked,1);assert.deepEqual(report.issues,[]);assert.equal(f.emails.length,0);
+});

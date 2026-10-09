@@ -36,7 +36,7 @@ window.PTSessionLog = (() => {
     ref.rows.forEach((row,index)=>{
       const item=document.createElement('li');item.append(text('strong',`Serie ${index+1}`));
       const values=document.createElement('dl');
-      for(const [label,value] of [['Carico',row.load],['Ripetizioni',row.reps],['RIR / RPE',row.rir]]){
+      for(const [label,value] of [['Ripetizioni',row.reps],['Carico',row.load],['RIR / RPE',row.rir]]){
         const field=document.createElement('div');field.append(text('dt',label),text('dd',value||'—'));values.append(field);
       }
       item.append(values);
@@ -143,6 +143,7 @@ window.PTSessionLog = (() => {
           if(!result.record)throw Error('Conferma di salvataggio mancante.');
           app.sessionRecords=[...(app.sessionRecords||[]).filter(r=>r.id!==result.record.id),result.record];draft.version=result.record.version;
           status.textContent='Registrazione salvata e tracciata nel registro attività.';
+          api.onSessionSaved?.();
         }catch(e){status.textContent=e.message||'Salvataggio non riuscito. Riprova: la bozza è conservata.';}
         finally{draft.message=status.textContent;busy=false;render();}
       };editor.append(save,status);

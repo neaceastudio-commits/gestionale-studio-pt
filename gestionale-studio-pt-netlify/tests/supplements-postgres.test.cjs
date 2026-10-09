@@ -1,0 +1,63 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+test('supplement ledger: permissions, stock, actual margin, refunds, retries and atomic document import',async()=>{
+const db=new PGlite();try{
+ await db.exec("create role anon;create role authenticated;create role service_role bypassrls;create table operator_effective_roles(operator_id text,active boolean,system_roles jsonb,legacy_roles jsonb);insert into operator_effective_roles values('owner',true,'[\"owner\"]','[]'),('pt',true,'[\"pt\"]','[]');");
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260928202452_supplement_catalog_inventory.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260928213843_supplement_direction_role.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260930074806_supplement_intake_samples_workflow.sql'),'utf8'));
+ await db.exec("update operator_effective_roles set system_roles='[]',legacy_roles='[\"Direzione\"]' where operator_id='owner'");
+ const write=async(action,data,actor='owner')=>(await db.query('select supplement_write($1,$2,$3) r',[actor,action,JSON.stringify(data)])).rows[0].r;
+ for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(db.query('select * from supplement_prices'),/permission denied/);await assert.rejects(write('tag',{family:'x',label:'x'}),/permission denied/);await assert.rejects(db.query('select * from supplement_inventory'),/permission denied/);await db.exec('reset role');}
+ await db.exec('set role service_role');await assert.rejects(write('tag',{family:'x',label:'x'},'pt'),/FORBIDDEN/);
+ const p=await write('product',{name:'Test creatine',brand:'Test',content:{what:'Test'},variants:[{label:'Neutro',format:'300 g',public_price:40,tax_basis:'gross'}]});
+ const variant=(await db.query('select * from supplement_variants where product_id=$1',[p.id])).rows[0].id;
+ assert.equal(Number((await db.query('select * from supplement_prices where variant_id=$1',[variant])).rows[0].suggested_price),32);
+ const move=(kind,quantity,extra={})=>write('movement',{variant_id:variant,kind,quantity,request_id:crypto.randomUUID(),...extra});
+ await assert.rejects(move('SALE',1),/INSUFFICIENT_STOCK/);
+ await move('PURCHASE',10,{unit_cost:20});
+ const request=crypto.randomUUID(),sale=await move('SALE',2,{request_id:request});assert.equal(Number(sale.sale_price),32);assert.equal(Number(sale.unit_cost),20);
+ const retry=await move('SALE',2,{request_id:request});assert.equal(retry.id,sale.id);
+ await assert.rejects(move('SALE',3,{request_id:request}),/REQUEST_REUSED/);
+ let state=(await db.query('select * from supplement_inventory where variant_id=$1',[variant])).rows[0];assert.equal(state.stock,8);assert.equal(Number(state.revenue),64);assert.equal(Number(state.gross_profit),24);
+ await move('PURCHASE',2,{unit_cost:30});
+ state=(await db.query('select * from supplement_inventory where variant_id=$1',[variant])).rows[0];assert.equal(Number(state.average_cost),22);
+ await move('SALE',1,{sale_price:35});
+ await move('RETURN',1,{return_of:sale.id});
+ state=(await db.query('select * from supplement_inventory where variant_id=$1',[variant])).rows[0];assert.equal(state.stock,10);assert.equal(Number(state.revenue),67);assert.equal(Number(state.gross_profit),25);
+ await assert.rejects(move('RETURN',2,{return_of:sale.id}),/EXCESS_RETURN/);
+ await assert.rejects(move('DAMAGE',1),/NOTES_REQUIRED/);await move('DAMAGE',1,{notes:'Confezione danneggiata'});
+ await assert.rejects(db.query("update supplement_inventory_movements set quantity=20"),/permission denied/);
+ const doc=await write('document',{reference:'DDT test',rows:[{variant_id:variant,quantity:2,unit_cost:10,request_id:crypto.randomUUID()},{quantity:1,unit_cost:4,request_id:crypto.randomUUID()}]});
+ const before=(await db.query('select stock from supplement_inventory where variant_id=$1',[variant])).rows[0].stock;
+ await assert.rejects(write('import_document',{id:doc.id}),/MATCH_REVIEW_REQUIRED/);assert.equal((await db.query('select stock from supplement_inventory where variant_id=$1',[variant])).rows[0].stock,before);
+ await write('document',{id:doc.id,reference:doc.reference,rows:[{variant_id:variant,quantity:2,unit_cost:10,request_id:crypto.randomUUID()}]});await write('import_document',{id:doc.id});await write('import_document',{id:doc.id});assert.equal((await db.query('select stock from supplement_inventory where variant_id=$1',[variant])).rows[0].stock,before+2);
+ await assert.rejects(write('product',{...p,name:'Stale',updated_at:'2000-01-01',variants:[]}),/CONFLICT/);
+ await assert.rejects(write('product',{...p,status:'published',variants:[]}),/VERIFICATION_REQUIRED/);
+
+ const uploaded=(await db.query('select supplement_upload($1,$2) r',['owner',JSON.stringify({reference:'Foto campioni',sha256:'fixture-hash',mime_type:'image/jpeg',filename:'foto.jpg',base64:'fixture'})])).rows[0].r;
+ assert.equal(uploaded.rows.length,0);
+ const workflow=async(action,data,actor='owner')=>(await db.query('select supplement_workflow($1,$2,$3) r',[actor,action,JSON.stringify(data)])).rows[0].r;
+ const newDoc=await write('document',{reference:'DDT new product',rows:[{brand:'NEW BRAND',name:'New supplement',format:'60 softgels',quantity:1,kind:'SAMPLE',unit_cost:0,tax_basis:'gross',request_id:crypto.randomUUID()}]});await write('import_document',{id:newDoc.id});await write('import_document',{id:newDoc.id});assert.equal((await db.query("select count(*)::int n from supplement_inventory_movements where document_id=$1",[newDoc.id])).rows[0].n,1);
+ const incoming={request_id:crypto.randomUUID(),name:'Omega test',brand:'OMEGOR',format:'60 softgels',variant:'Standard',quantity:1,kind:'SAMPLE',unit_cost:0,tax_basis:'gross',ean:'test-ean'};
+ await assert.rejects(workflow('intake',incoming,'pt'),/FORBIDDEN/);
+ const sample=await workflow('intake',incoming);assert.equal(Number(sample.movement.unit_cost),0);
+ assert.deepEqual(await workflow('intake',incoming),sample);
+ await assert.rejects(workflow('intake',{...incoming,quantity:2}),/REQUEST_REUSED/);
+ await assert.rejects(workflow('intake',{...incoming,request_id:crypto.randomUUID(),unit_cost:9}),/SAMPLE_COST_ZERO/);
+ const purchase=await workflow('intake',{...incoming,request_id:crypto.randomUUID(),kind:'PURCHASE',unit_cost:10,quantity:2});assert.equal(purchase.variant_id,sample.variant_id);
+ const byName=await workflow('intake',{...incoming,ean:undefined,name:' omega TEST ',brand:'omegor',request_id:crypto.randomUUID()});assert.equal(byName.variant_id,sample.variant_id);
+ await assert.rejects(workflow('intake',{...incoming,ean:'different',request_id:crypto.randomUUID()}),/IDENTITY_CONFLICT/);
+ let omega=(await db.query('select * from supplement_inventory where variant_id=$1',[sample.variant_id])).rows[0];assert.equal(omega.stock,4);assert.equal(omega.sample_units,2);assert.equal(omega.purchased_units,2);assert.equal(Number(omega.purchase_average_cost),10);assert.equal(Number(omega.average_cost),5);
+ let product=(await db.query('select * from supplement_products where id=$1',[sample.product_id])).rows[0];assert.equal(product.status,'draft');
+ await assert.rejects(workflow('publish',{request_id:crypto.randomUUID(),variant_id:sample.variant_id,updated_at:product.updated_at,approved:true}),/VERIFICATION_REQUIRED/);
+ const enriched=await workflow('enrich',{request_id:crypto.randomUUID(),variant_id:sample.variant_id,updated_at:product.updated_at,public_price:24.9,image_url:'https://example.org/omega.png',content:{what:'Integratore',effects:'Effetti verificati',usage:'Uso etichetta'},sources:[{url:'https://example.org/omega',name:'Fonte test'}],verification_date:'2026-09-30',tags:[{family:'Tipologia',label:'Omega-3'}]});
+ assert.equal(enriched.product.status,'draft');
+ const published=await workflow('publish',{request_id:crypto.randomUUID(),variant_id:sample.variant_id,updated_at:enriched.product.updated_at,approved:true});assert.equal(published.product.status,'published');
+ const sold=await write('movement',{request_id:crypto.randomUUID(),variant_id:sample.variant_id,kind:'SALE',quantity:1});assert.equal(Number(sold.sale_price),20);assert.equal(Number(sold.unit_cost),5);
+ omega=(await db.query('select * from supplement_inventory where variant_id=$1',[sample.variant_id])).rows[0];assert.equal(omega.stock,3);assert.equal(Number(omega.gross_profit),15);
+ assert.equal(Number((await db.query('select suggested_neacea_price from supplement_prices where variant_id=$1',[sample.variant_id])).rows[0].suggested_neacea_price),20);
+ for(const role of ['anon','authenticated']){await db.exec('reset role;set role '+role);await assert.rejects(workflow('intake',incoming),/permission denied/);await assert.rejects(db.query('select * from supplement_workflow_requests'),/permission denied/);await assert.rejects(db.query('select * from supplement_document_files'),/permission denied/);}await db.exec('reset role;set role service_role');
+ await db.exec('reset role');assert.ok((await db.query('select count(*)::int n from supplement_audit')).rows[0].n>5);
+ }finally{await db.close();}
+});

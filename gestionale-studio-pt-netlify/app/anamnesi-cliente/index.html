@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <title>Anamnesi Cliente - NEACEA</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -48,7 +49,23 @@
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.error{background:var(--red)}
     .done{display:none;border:1px solid #b8dfcf;border-radius:14px;background:#e8f5ee;color:var(--green);padding:22px;font-weight:900}
     .done.show{display:block}
-    @media(max-width:760px){.grid,.grid.three{grid-template-columns:1fr}.topbar{padding:0 16px}.hero{padding:28px 24px}.actions{justify-content:stretch}.primary{width:100%}}
+    .hidden{display:none!important}
+    .owner-tools{margin:0 0 16px;border:1px solid #bedfd5;border-radius:14px;background:linear-gradient(135deg,#f2fbf8,#fff);box-shadow:var(--shadow);padding:22px}
+    .owner-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+    .owner-copy{display:grid;gap:6px}.owner-copy h2{font-size:21px}.owner-copy p{max-width:650px;margin:0;color:var(--muted);font-weight:700;line-height:1.5}
+    .owner-badge{display:inline-flex;width:max-content;border-radius:999px;background:#dff3ed;color:var(--green);padding:6px 10px;font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+    .owner-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;flex:0 0 auto;border:1px solid #b8d9cf;border-radius:10px;background:#fff;color:var(--green);padding:0 14px;text-decoration:none;font-size:12px;font-weight:900}
+    .nutrition-search{display:grid;grid-template-columns:1fr auto;align-items:end;gap:10px;margin-top:18px}
+    .nutrition-search label{margin:0}.secondary{min-height:46px;border:1px solid var(--blue);border-radius:10px;background:#fff;color:var(--blue);padding:0 18px;font-weight:900;cursor:pointer}.secondary:disabled{opacity:.55;cursor:wait}
+    .nutrition-help{margin:9px 0 0;color:var(--muted);font-size:11px;font-weight:700;line-height:1.45}
+    .nutrition-status{margin-top:12px;border-radius:10px;background:var(--soft);color:var(--blue);padding:12px 14px;font-size:13px;font-weight:800;line-height:1.45}
+    .nutrition-status.success{background:#e8f5ee;color:var(--green)}.nutrition-status.error{background:var(--red-soft);color:var(--red)}
+    .nutrition-results{display:grid;gap:8px;margin-top:10px}
+    .nutrition-result{display:grid;gap:4px;width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);padding:13px;text-align:left;cursor:pointer}
+    .nutrition-result:hover,.nutrition-result.selected{border-color:var(--blue-2);background:#f4f9fb}.nutrition-result strong{font-size:14px}.nutrition-result span{color:var(--muted);font-size:11px;font-weight:700;line-height:1.45}
+    .nutrition-confirm{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px;border:1px solid #bedfd5;border-radius:11px;background:#f4fbf8;padding:13px}
+    .nutrition-confirm p{margin:0;color:var(--green);font-size:12px;font-weight:800;line-height:1.45}.nutrition-confirm .primary{min-width:150px}
+    @media(max-width:760px){.grid,.grid.three{grid-template-columns:1fr}.topbar{padding:0 16px}.hero{padding:28px 24px}.actions{justify-content:stretch}.primary{width:100%}.owner-head{display:grid}.owner-link{width:100%}.nutrition-search{grid-template-columns:1fr}.nutrition-confirm{align-items:stretch;flex-direction:column}.nutrition-confirm .primary{width:100%}}
   </style>
 </head>
 <body>
@@ -64,6 +81,28 @@
     </section>
 
     <div id="doneBox" class="done">Anamnesi inviata correttamente. Grazie, abbiamo ricevuto i dati.</div>
+
+    <section id="nutritionTools" class="owner-tools hidden" aria-labelledby="nutritionToolsTitle">
+      <div class="owner-head">
+        <div class="owner-copy">
+          <span class="owner-badge">Strumento riservato</span>
+          <h2 id="nutritionToolsTitle">Recupera da Nutrizione</h2>
+          <p>Cerca una precedente anamnesi nutrizionale e importa qui soltanto i dati anagrafici comuni. Le informazioni cliniche restano nell’area Nutrizione.</p>
+        </div>
+        <a class="owner-link" href="https://portale-nutrizione.netlify.app/" target="_blank" rel="noopener">Apri le anamnesi Nutrizione ↗</a>
+      </div>
+      <div class="nutrition-search">
+        <label>Email, codice fiscale o ID Nutrizione<input id="nutritionQuery" type="search" autocomplete="off" placeholder="cliente@email.it"></label>
+        <button id="nutritionSearch" class="secondary" type="button">Cerca cliente</button>
+      </div>
+      <p class="nutrition-help">La ricerca usa prima l’ID Nutrizione, poi il codice fiscale e infine l’email. Nome e cognome non vengono usati come chiave.</p>
+      <div id="nutritionStatus" class="nutrition-status hidden" role="status"></div>
+      <div id="nutritionResults" class="nutrition-results hidden"></div>
+      <div id="nutritionConfirm" class="nutrition-confirm hidden">
+        <p>Controlla che sia la persona corretta, poi precompila i dati personali.</p>
+        <button id="nutritionImport" class="primary" type="button">Importa dati</button>
+      </div>
+    </section>
 
     <form id="anamnesiForm">
       <section class="section">
@@ -156,11 +195,91 @@
     const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
     const DESK_EMAIL = 'neacea.desk@gmail.com';
+    const NUTRITION_IMPORT_URL = '/.netlify/functions/nutrition-client-import';
     const $ = (id) => document.getElementById(id);
+    let nutritionAccessToken = '';
+    let selectedNutritionClient = null;
+    let importedPtContextNotes = '';
+    let currentAcquisitionId = new URLSearchParams(location.search).get('id') || '';
     function genId(prefix){return prefix+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
     function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value || ''}
     function checked(name){return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value).join(', ')}
     function toast(message,isError=false){const el=$('toast');el.textContent=message;el.className='toast show'+(isError?' error':'');setTimeout(()=>el.classList.remove('show'),3200)}
+    function setNutritionStatus(message,type=''){
+      const el=$('nutritionStatus');el.textContent=message;el.className='nutrition-status'+(type?' '+type:'');
+    }
+    async function nutritionRequest(payload){
+      if(!nutritionAccessToken) throw new Error('Sessione riservata non disponibile. Riapri il modulo dalla Dashboard.');
+      const res=await fetch(NUTRITION_IMPORT_URL,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+nutritionAccessToken},body:JSON.stringify(payload)});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||data.success!==true) throw new Error(data.error||'Accesso alle anamnesi Nutrizione non disponibile.');
+      return data;
+    }
+    async function restoreNutritionTools(){
+      const hashParams=new URLSearchParams(location.hash.replace(/^#/,''));
+      const incomingToken=hashParams.get('access')||'';
+      if(!incomingToken) return;
+      history.replaceState(null,'',location.pathname+location.search);
+      nutritionAccessToken=incomingToken;
+      try{
+        await nutritionRequest({action:'authorize'});
+        $('nutritionTools').classList.remove('hidden');
+      }catch(_){
+        nutritionAccessToken='';
+      }
+    }
+    function nutritionCandidateMeta(candidate){
+      return [candidate.email,candidate.telefono,candidate.codiceFiscale&&'CF '+candidate.codiceFiscale,candidate.nascita&&'Nato/a il '+candidate.nascita,candidate.sourceId&&'ID '+candidate.sourceId].filter(Boolean).join(' · ');
+    }
+    function selectNutritionCandidate(candidate,button){
+      selectedNutritionClient=candidate;
+      document.querySelectorAll('.nutrition-result').forEach(item=>item.classList.toggle('selected',item===button));
+      $('nutritionConfirm').classList.remove('hidden');
+    }
+    function renderNutritionCandidates(candidates){
+      const results=$('nutritionResults');results.replaceChildren();
+      if(!candidates.length){
+        results.classList.add('hidden');$('nutritionConfirm').classList.add('hidden');
+        setNutritionStatus('Nessuna anamnesi nutrizionale trovata. Continua con l’inserimento manuale.');
+        return;
+      }
+      candidates.forEach(candidate=>{
+        const button=document.createElement('button');button.type='button';button.className='nutrition-result';
+        const name=document.createElement('strong');name.textContent=[candidate.nome,candidate.cognome].filter(Boolean).join(' ')||'Cliente Nutrizione';
+        const meta=document.createElement('span');meta.textContent=nutritionCandidateMeta(candidate);
+        button.append(name,meta);button.addEventListener('click',()=>selectNutritionCandidate(candidate,button));results.append(button);
+      });
+      results.classList.remove('hidden');setNutritionStatus('Cliente trovato. Verifica il risultato e conferma l’importazione.','success');
+      if(candidates.length===1) selectNutritionCandidate(candidates[0],results.firstElementChild);
+    }
+    async function searchNutritionClient(){
+      const query=$('nutritionQuery').value.trim();
+      if(query.length<5){setNutritionStatus('Inserisci un’email, un codice fiscale o un ID cliente completo.','error');return}
+      const button=$('nutritionSearch');button.disabled=true;button.textContent='Ricerca...';selectedNutritionClient=null;$('nutritionConfirm').classList.add('hidden');setNutritionStatus('Ricerca nell’area Nutrizione...');
+      try{const data=await nutritionRequest({action:'search',query});renderNutritionCandidates(data.candidates||[])}
+      catch(error){$('nutritionResults').classList.add('hidden');setNutritionStatus(error.message||'Ricerca non riuscita.','error')}
+      finally{button.disabled=false;button.textContent='Cerca cliente'}
+    }
+    function setSelectValue(id,value){
+      if(!value)return;const selectEl=$(id);const option=Array.from(selectEl.options).find(item=>item.value.toLowerCase()===String(value).toLowerCase());if(option)selectEl.value=option.value;
+    }
+    function prefillCommonFields(source={}){
+      const fields={nome:source.nome,cognome:source.cognome,nascita:source.nascita,telefono:source.telefono,email:source.email,codiceFiscale:source.codiceFiscale,professione:source.professione};
+      Object.entries(fields).forEach(([id,value])=>{if(value)$(id).value=value});setSelectValue('sesso',source.sesso);
+    }
+    async function importNutritionClient(){
+      if(!selectedNutritionClient?.sourceId){setNutritionStatus('Seleziona prima il cliente corretto.','error');return}
+      const button=$('nutritionImport');button.disabled=true;button.textContent='Importazione...';
+      try{
+        const data=await nutritionRequest({action:'import',sourceId:selectedNutritionClient.sourceId});
+        prefillCommonFields(data.source||selectedNutritionClient);
+        if(data.acquisitionId) currentAcquisitionId=data.acquisitionId;
+        importedPtContextNotes=data.preservedImpressioni||'';
+        $('nutritionResults').classList.add('hidden');$('nutritionConfirm').classList.add('hidden');setNutritionStatus(data.message,'success');
+        toast('Dati anagrafici recuperati');document.querySelector('#anamnesiForm .section').scrollIntoView({behavior:'smooth',block:'start'});
+      }catch(error){setNutritionStatus(error.message||'Importazione non riuscita.','error')}
+      finally{button.disabled=false;button.textContent='Importa dati'}
+    }
     async function sb(table,{method='GET',query='',body=null,headers={}}={}){
       const res = await fetch(SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query,{method,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',...headers},body:body?JSON.stringify(body):undefined});
       if(!res.ok) throw new Error(await res.text());
@@ -212,7 +331,8 @@
       return await sb('acquisizioni',{method:'POST',query:'?on_conflict=id',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:fallback});
     }
     function body(){
-      const id = new URLSearchParams(location.search).get('id') || genId('acq');
+      if(!currentAcquisitionId) currentAcquisitionId=genId('acq');
+      const id = currentAcquisitionId;
       const codiceFiscale = $('codiceFiscale').value.trim().toUpperCase();
       const indirizzo = $('indirizzo').value.trim();
       const cap = $('cap').value.trim();
@@ -227,6 +347,7 @@
         provincia && 'Provincia: '+provincia,
       ].filter(Boolean);
       const noteParts = [
+        importedPtContextNotes,
         fatturazioneParts.length && 'Dati fatturazione:\n'+fatturazioneParts.join('\n'),
         contattoEmergenza && 'Contatto emergenza: '+contattoEmergenza,
         $('note').value && 'Note cliente: '+$('note').value,
@@ -282,6 +403,10 @@
         btn.disabled=false;btn.textContent='Invia anamnesi';
       }
     });
+    $('nutritionSearch').addEventListener('click',searchNutritionClient);
+    $('nutritionImport').addEventListener('click',importNutritionClient);
+    $('nutritionQuery').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();searchNutritionClient()}});
+    restoreNutritionTools();
   </script>
 </body>
 </html>

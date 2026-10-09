@@ -7,7 +7,7 @@ export default async request=>{
  try{
   const input=await request.json(),actor=await auth.authenticate(input.accessToken);
   if(!(actor?.id==='staff_1'&&actor.role==='owner')&&!await manual.authorize(input.accessToken))return new Response('',{status:403});
-  const s=core.service({store:getStore({name:'caldav-gianluca-v1',consistency:'strong'})});
+  const s=core.service({sourceOfTruth:'neacea',store:getStore({name:'caldav-gianluca-v1',consistency:'strong'})});
   if(!['run','provision','status','removeMapping','bootstrapPreview','bootstrapStart','bootstrapRun','bootstrapStatus','reconcile'].includes(input.operation))return new Response('',{status:400});
   const result=await s[input.operation](input.id);
   return Response.json(result||{ok:true},{headers:{'Cache-Control':'no-store'}});

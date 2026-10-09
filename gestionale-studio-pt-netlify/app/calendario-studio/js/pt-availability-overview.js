@@ -29,6 +29,7 @@
   let lastSearchFilters = null;
   let availabilityCache = null;
   let availabilitySyncStarted = false;
+  let availabilityVerified = false;
   let pendingAvailabilityChanges = {};
   let availabilitySaveInFlight = false;
 
@@ -156,6 +157,7 @@
       // only an offline UI fallback; opening the page must never upload it.
       if (!staffEditorDirty && !availabilitySaveInFlight && !Object.keys(pendingAvailabilityChanges).length) {
         saveAvailability(remote || {});
+        availabilityVerified = true;
         renderStaffIfActive();
         renderAvailabilityIfActive();
       }
@@ -220,7 +222,7 @@
     operators.forEach(op => rows.set(operatorKey(op), { op, totalMin: 0, services: new Map() }));
     State.getAppointments()
       .filter(a =>
-        a.status !== 'annullato' &&
+        a.status !== 'annullato' && !['pt11','pt12'].includes(a.serviceId) &&
         String(a.date || '').slice(0, 7) === month &&
         a.operatorId &&
         (typeof Services === 'undefined' || !Services.isAppointmentVisible || Services.isAppointmentVisible(a))
@@ -240,8 +242,22 @@
         item.count += 1;
         row.services.set(serviceId, item);
       });
+    const pt = PTSessionModel.summary(State.getAppointments(), month);
+    for (const total of pt.totals) {
+      const op = Services.getOperator(total.operator) || {id:total.operator};
+      const key = operatorKey(op);
+      const row = rows.get(key) || {op,totalMin:0,services:new Map()};
+      row.pt = total;
+      row.totalMin += total.earnedMin;
+      rows.set(key,row);
+    }
+    for (const issue of pt.issues) for (const a of issue.appointments) {
+      const op = Services.getOperator(a.operatorId) || {id:a.operatorId};
+      const key = operatorKey(op), row = rows.get(key) || {op,totalMin:0,services:new Map()};
+      (row.issues ||= []).push(`${a.date} ${a.startTime}: ${issue.reason}`); rows.set(key,row);
+    }
     return [...rows.values()]
-      .filter(row => row.totalMin > 0)
+      .filter(row => row.totalMin > 0 || row.pt?.plannedMin > 0 || row.issues?.length)
       .sort((a, b) => operatorLabel(a.op).localeCompare(operatorLabel(b.op), 'it'));
   }
 
@@ -373,9 +389,11 @@
       return `<div class="pt-hours-card">
         <div class="pt-hours-person">
           <strong>${esc(operatorLabel(row.op))}</strong>
-          <span>${esc(fmtHours(row.totalMin))}</span>
+          <span>${row.pt ? 'PT maturate: ' + esc(fmtHours(row.pt.earnedMin)) : 'Agenda: ' + esc(fmtHours(row.totalMin))}</span>
         </div>
+        ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore con almeno un presente: ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
         ${services}
+        ${row.issues?.length ? `<p role="alert"><strong>Conteggio incompleto: ${row.issues.length} sedute da correggere, escluse dai totali.</strong></p><ul>${row.issues.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       </div>`;
     }).join('') : '<div class="pt-search-empty">Nessuna ora trovata per questo mese.</div>';
     return `<div class="pt-hours-overlay" onclick="PTAvailabilityOverview.closeHoursSummary()">
@@ -388,7 +406,7 @@
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
-        <p class="pt-help">Conteggio degli appuntamenti del mese non annullati, divisi per professionista e tipologia di servizio.</p>
+        <p class="pt-help">PT: compensi maturati sulle sedute chiuse, una sola quota per appuntamento. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
         <div class="pt-hours-list">${body}</div>
       </aside>
     </div>`;
@@ -522,6 +540,126 @@
     return `<div class="pt-search-results">${results.map(item => `<div class="pt-search-result"><strong>${esc(operatorLabel(item.op))}</strong><span>${esc(fmtDate(item.date))} · ${esc(minToTime(item.start))}-${esc(minToTime(item.end))}</span></div>`).join('')}</div>`;
   }
 
+  let weeklySearch = null;
+
+  function evaluateRequest(row, clientId, serviceId) {
+    const day = parseDate(row.date);
+    const duration = Number(row.duration);
+    if (!day || dateStr(day) !== row.date || !/^([01]\d|2[0-3]):[0-5]\d$/.test(row.time) || !Number.isInteger(duration) || duration < 15 || duration > 240 || duration % 15) {
+      return { error: 'Scegli una data, un orario e una durata valida.', operators: [] };
+    }
+    const start = timeToMin(row.time), end = start + duration;
+    if (end > 1440) return { error: 'La seduta deve terminare nello stesso giorno.', operators: [] };
+    const service = Services.getService(serviceId);
+    if (!service || service.isBlock) return { error: 'Scegli un servizio.', operators: [] };
+    const appointments = State.getAppointments().filter(a => a.status !== 'annullato' && a.date === row.date);
+    const intersects = a => start < timeToMin(a.startTime) + appointmentMinutes(a) && end > timeToMin(a.startTime);
+    if (clientId && appointments.some(a => a.clientIds?.includes(clientId) && intersects(a))) {
+      return { error: 'Il cliente ha già una seduta in questo orario.', operators: [] };
+    }
+    const roomFull = service.room && Services.getRoomLoadAt && Services.getRoomLoadAt(row.date, row.time, duration, service.room) + (service.roomLoad || 1) > Services.getRoomMax(service.room);
+    const operators = activeOperators().filter(op => hasRoleForService(op, serviceId)).map(op => {
+      const ranges = declaredRangesFor(operatorKey(op), DAY_KEYS[day.getDay()]).sort((a, b) => a.start - b.start);
+      let covered = start;
+      for (const range of ranges) if (range.start <= covered && range.end > covered) covered = range.end;
+      const reason = covered < end ? 'Fuori disponibilità dichiarata'
+        : appointments.some(a => String(a.operatorId) === String(op.id) && intersects(a)) ? 'Occupato'
+        : roomFull ? 'Sala piena' : '';
+      return { op, available: !reason, reason };
+    });
+    return { operators };
+  }
+
+  function weeklyState() {
+    return weeklySearch ||= { clientId: '', serviceId: 'pt11', time: '10:00', from: dateStr(new Date()), duration: 60,
+      days: Object.fromEntries(WEEK_DAYS.map(([key]) => [key, { selected: false, time: '10:00' }])) };
+  }
+
+  function evaluateWeeklyRequest(dayKey, time, from, duration, clientId, serviceId) {
+    const first = parseDate(from);
+    if (!first || dateStr(first) !== from || !DAY_KEYS.includes(dayKey)) return { error: 'Controlla la data di inizio.', dates: [], operators: [] };
+    const offset = (DAY_KEYS.indexOf(dayKey) - first.getDay() + 7) % 7;
+    const dates = Array.from({ length: 4 }, (_, index) => dateStr(addDays(first, offset + index * 7)));
+    const checks = dates.map(date => evaluateRequest({ date, time, duration }, clientId, serviceId));
+    const invalid = checks.find(check => check.error && !check.error.includes('già una seduta'));
+    if (invalid) return { error: invalid.error, dates, operators: [] };
+    const operators = activeOperators().filter(op => hasRoleForService(op, serviceId)).map(op => {
+      const occurrences = checks.map((check, index) => {
+        const item = check.operators.find(item => item.op.id === op.id);
+        return { date: dates[index], available: !!item?.available, reason: check.error || item?.reason || 'Non disponibile' };
+      });
+      return { op, occurrences, free: occurrences.filter(item => item.available).length };
+    });
+    return { dates, operators };
+  }
+
+  function renderWeeklyResults() {
+    const state = weeklyState();
+    const selected = WEEK_DAYS.filter(([key]) => state.days[key].selected);
+    if (!selected.length) return '<p class="pt-search-empty">Seleziona i giorni richiesti dal cliente. I PT disponibili compariranno qui.</p>';
+    const results = selected.map(([key, label]) => ({ key, label, ...evaluateWeeklyRequest(key, state.days[key].time, state.from, state.duration, state.clientId, state.serviceId) }));
+    const common = activeOperators().filter(op => results.every(result => result.operators.some(item => item.op.id === op.id && item.free === 4)));
+    return `<p class="pt-weekly-summary">${common.length ? `Disponibili per tutti i giorni scelti, nelle 4 settimane: <strong>${common.map(op => esc(operatorLabel(op))).join(', ')}</strong>.` : 'Nessun PT è libero per tutti i giorni nelle 4 settimane. Qui sotto puoi confrontare PT diversi per ciascun giorno.'}</p>` + results.map(result => `<section class="pt-request-result"><h4>${esc(result.label)} alle ${esc(state.days[result.key].time)}</h4>
+      ${result.error ? `<p>${esc(result.error)}</p>` : result.operators.length ? [...result.operators].sort((a,b) => b.free-a.free).map(({op,free,occurrences}) => `<div class="pt-request-person ${free === 4 ? 'is-available' : ''}"><span><strong>${esc(operatorLabel(op))}</strong><small>${free === 4 ? 'Disponibile · 4 settimane su 4' : free ? `Disponibile ${free} settimane su 4` : 'Non disponibile in questo orario'}</small>
+        <details><summary>Vedi le 4 settimane</summary>${occurrences.map(item => `<div>${esc(fmtDate(item.date))}: ${item.available ? 'libero' : esc(item.reason)}</div>`).join('')}</details></span></div>`).join('') : '<p>Nessun PT con il ruolo richiesto.</p>'}</section>`).join('');
+  }
+
+  function updateWeeklySearch() {
+    const state = weeklyState();
+    const serviceId = document.getElementById('pt-weekly-service').value;
+    const duration = document.getElementById('pt-weekly-duration');
+    if (serviceId !== state.serviceId) {
+      duration.innerHTML = exactDurationOptions(serviceId).map(value => `<option value="${value}">${value} min</option>`).join('');
+      duration.value = Services.getService(serviceId)?.durationMin || 60;
+    }
+    state.serviceId = serviceId;
+    state.duration = Number(duration.value);
+    state.clientId = document.getElementById('pt-weekly-client').value;
+    state.from = document.getElementById('pt-weekly-from').value;
+    state.time = document.getElementById('pt-weekly-time').value;
+    document.querySelectorAll('[data-weekly-day]').forEach(el => {
+      const selected = el.querySelector('input[type=checkbox]').checked;
+      const time = el.querySelector('input[type=time]');
+      state.days[el.dataset.weeklyDay] = { selected, time: time.value };
+      time.disabled = !selected;
+      el.classList.toggle('is-selected', selected);
+    });
+    document.getElementById('pt-weekly-results').innerHTML = renderWeeklyResults();
+  }
+
+  function applyWeeklyTime() {
+    const value = document.getElementById('pt-weekly-time').value;
+    // Set all days, including unselected days, so the next selection uses this time too.
+    document.querySelectorAll('[data-weekly-day] input[type=time]').forEach(input => { input.value = value; });
+    updateWeeklySearch();
+  }
+
+  function exactDurationOptions(serviceId) {
+    const service = Services.getService(serviceId);
+    return window.CalendarFlex?.enabled ? window.CalendarFlex.durations : (service?.durationOptions || [service?.durationMin || 60]);
+  }
+
+  function renderWeeklySearch() {
+    const state = weeklyState();
+    return `<div class="pt-panel pt-search-panel">
+      <div class="pt-panel-title"><h3>Quali giorni e orari chiede il cliente?</h3></div>
+      <p class="pt-help">Seleziona i giorni della settimana e scegli l’orario di ciascuno. Puoi cercare anche prima di creare la scheda cliente.</p>
+      <div class="pt-exact-settings">
+        <label>Servizio<select id="pt-weekly-service" onchange="PTAvailabilityOverview.updateWeeklySearch()">${serviceOptions().replace(`value="${esc(state.serviceId)}"`, `value="${esc(state.serviceId)}" selected`)}</select></label>
+        <label>Durata<select id="pt-weekly-duration" onchange="PTAvailabilityOverview.updateWeeklySearch()">${exactDurationOptions(state.serviceId).map(value => `<option value="${value}" ${value === state.duration ? 'selected' : ''}>${value} min</option>`).join('')}</select></label>
+      </div>
+      <div class="pt-common-time"><label>Stesso orario per tutti<input id="pt-weekly-time" type="time" value="${esc(state.time)}" oninput="PTAvailabilityOverview.applyWeeklyTime()"></label><span>Puoi cambiare l’orario anche su un singolo giorno.</span></div>
+      <div class="pt-weekday-choices">${WEEK_DAYS.map(([key,label]) => `<div class="pt-weekday-choice ${state.days[key].selected ? 'is-selected' : ''}" data-weekly-day="${key}"><label class="pt-weekday-toggle"><input type="checkbox" ${state.days[key].selected ? 'checked' : ''} onchange="PTAvailabilityOverview.updateWeeklySearch()">${esc(label)}</label><label>Orario ${esc(label)}<input type="time" value="${esc(state.days[key].time)}" ${state.days[key].selected ? '' : 'disabled'} oninput="PTAvailabilityOverview.updateWeeklySearch()"></label></div>`).join('')}</div>
+      <details class="pt-weekly-options"><summary>Inizio del percorso e cliente già registrato (facoltativi)</summary><div class="pt-exact-settings">
+        <label>Controlla a partire dal<input type="date" id="pt-weekly-from" value="${esc(state.from)}" onchange="PTAvailabilityOverview.updateWeeklySearch()"></label>
+        <label>Cliente già registrato<select id="pt-weekly-client" onchange="PTAvailabilityOverview.updateWeeklySearch()"><option value="">Primo colloquio / nessun cliente selezionato</option>${State.getClients().filter(c=>c.active!==false).map(c=>`<option value="${esc(c.id)}" ${state.clientId===c.id?'selected':''}>${esc(`${c.nome||''} ${c.cognome||''}`.trim())}</option>`).join('')}</select></label>
+      </div></details>
+      <p class="pt-help">Verifica delle prossime 4 ricorrenze di ogni giorno, dalla data di inizio: disponibilità dichiarate, appuntamenti e sala. La ricerca non prenota le sedute.</p>
+      ${availabilityVerified ? '' : '<p class="pt-help" role="status">Disponibilità dichiarate dalla cache locale: aggiornamento dal server non ancora verificato.</p>'}
+      <div id="pt-weekly-results" class="pt-exact-results" aria-live="polite">${renderWeeklyResults()}</div>
+    </div>`;
+  }
+
   function renderSearchBox() {
     const filters = lastSearchFilters || {
       serviceId: 'pt11',
@@ -646,7 +784,7 @@
     panel.querySelectorAll(`.${NS}`).forEach(el => el.remove());
     const wrap = document.createElement('div');
     wrap.className = NS;
-    wrap.innerHTML = `${renderSearchBox()}
+    wrap.innerHTML = `${renderWeeklySearch()}<details class="pt-period-search"><summary>Ricerca libera per periodo e fascia oraria</summary>${renderSearchBox()}</details>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Pacchetti e rinnovi</h3><span>quadro clienti</span></div><div class="pt-table-wrap"><table class="pt-package-table"><thead><tr><th>Cliente</th><th>PT</th><th>Inizio</th><th>Fine stimata</th><th>Pacchetto</th><th>Sedute</th><th>Stato</th><th>Follow-up</th></tr></thead><tbody>${renderPackageRows()}</tbody></table></div></div>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Orari impegnati della settimana</h3><span>appuntamenti reali</span></div><div class="pt-week-grid">${renderBusyColumns()}</div></div>`;
     panel.appendChild(wrap);
@@ -676,7 +814,7 @@
     Calendar.__ptAvailabilityHookedV4 = true;
   }
 
-  window.PTAvailabilityOverview = { getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
+  window.PTAvailabilityOverview = { evaluateRequest, evaluateWeeklyRequest, updateWeeklySearch, applyWeeklyTime, getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();

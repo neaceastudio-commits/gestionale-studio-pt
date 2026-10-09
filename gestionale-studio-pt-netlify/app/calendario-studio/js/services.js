@@ -173,15 +173,20 @@ const Services = (() => {
   function appointmentInCurrentPackageCycle(appt, client) {
     if (!appt || !client) return false;
     const context = getPackageCycleContext(client);
+    const participant = globalThis.PTSessionModel?.cycle(appt, client.id);
+    if (participant) {
+      if (context.id) return participant.cycleId === context.id;
+      return !context.start || participant.start === context.start;
+    }
     const appointmentCycle = extractAppointmentPackageCycle(appt);
     const appointmentCycleId = extractAppointmentPackageCycleId(appt);
     if (context.id && appointmentCycleId) return appointmentCycleId === context.id;
     // I cicli creati dal nuovo registro usano sempre un ID: una vecchia
     // seduta senza ID non puo' entrare per errore nel nuovo rinnovo.
     if (context.id && !context.legacy) return false;
-    // Dopo che il ciclo è stato confermato sul cliente, la data di inizio è
-    // l'unica fonte di verità: una lezione svolta nello stesso giorno del
-    // rinnovo appartiene al nuovo ciclo anche se conserva una vecchia nota.
+    // Il collegamento esplicito al ciclo corrente sopravvive a un anticipo.
+    // Per le sedute storiche senza collegamento corrente resta la regola per data.
+    if (appointmentCycle && appointmentCycle === context.start) return true;
     if (context.persisted) return !context.start || String(appt.date || '') >= context.start;
     if (appointmentCycle) return !context.start || appointmentCycle === context.start;
     return !context.start || String(appt.date || '') >= context.start;
@@ -211,10 +216,13 @@ const Services = (() => {
     const packageAppts = getClientPackageAppointments(client, { excludeAppointmentId });
     const cycleContext = getPackageCycleContext(client);
     const currentAppts = packageAppts.filter(a => appointmentInCurrentPackageCycle(a, client));
-    const completed = currentAppts.filter(a => a.status === 'fatto').length;
+    const participantStatus = a => globalThis.PTSessionModel?.status(a, client.id) || a.status;
+    const completed = currentAppts.filter(a => participantStatus(a) === 'fatto').length;
+    const chargedAbsences = currentAppts.filter(a => a.serviceId === 'pt12' && globalThis.PTSessionModel?.read(a) && participantStatus(a) === 'noshow' && a.status !== 'annullato').length;
+    const consumed = completed + chargedAbsences;
     const scheduled = currentAppts.filter(a => a.status === 'prenotato' && a.date >= today).length;
-    const noShow = currentAppts.filter(a => a.status === 'noshow').length;
-    const lifetimeCompleted = packageAppts.filter(a => a.status === 'fatto').length;
+    const noShow = currentAppts.filter(a => participantStatus(a) === 'noshow').length;
+    const lifetimeCompleted = packageAppts.filter(a => participantStatus(a) === 'fatto').length;
     const previousCompleted = Math.max(0, lifetimeCompleted - completed);
     let total = rawTotal;
 
@@ -231,15 +239,17 @@ const Services = (() => {
       if (normalized > 0) total = Math.min(rawTotal, normalized);
     }
 
-    const plannedTotal = completed + scheduled;
-    const remaining = total > 0 ? Math.max(0, total - completed) : storedRemaining;
-    const toSchedule = total > 0 ? Math.max(0, total - completed - scheduled) : 0;
+    const plannedTotal = consumed + scheduled;
+    const remaining = total > 0 ? Math.max(0, total - consumed) : storedRemaining;
+    const toSchedule = total > 0 ? Math.max(0, total - consumed - scheduled) : 0;
     const overPlanned = total > 0 ? Math.max(0, plannedTotal - total) : 0;
 
     return {
       total,
       rawTotal,
       completed,
+      consumed,
+      chargedAbsences,
       lifetimeCompleted,
       previousCompleted,
       scheduled,
@@ -328,6 +338,7 @@ const Services = (() => {
     if (svc && !svc.isBlock && (!appt.clientIds || !appt.clientIds.length)) {
       errors.push('Seleziona almeno un cliente');
     }
+    if (appt.serviceId === 'pt12' && appt.status !== 'annullato' && (appt.clientIds?.length !== 2 || new Set(appt.clientIds).size !== 2)) errors.push('PT 1:2 richiede due clienti distinti nella stessa seduta');
     if (svc?.maxClients && appt.clientIds?.length > svc.maxClients) {
       errors.push(`Massimo ${svc.maxClients} clienti`);
     }

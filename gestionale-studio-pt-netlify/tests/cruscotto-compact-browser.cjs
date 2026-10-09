@@ -1,0 +1,51 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+(async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});try{
+ const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ let enabled=true,failAccess=false,assignmentWrites=0,failAssignment=false;
+ const clients=Array.from({length:42},(_,i)=>({id:'c'+i,nome:'Cliente',cognome:String(i).padStart(2,'0'),active:true,pt_assegnato:'pt',obiettivo:'Forza',notes:'Codice fiscale: ADMINISTRATIVE\nPatologie: Non riferisce patologie\nInfortuni: '+ 'dolore ginocchio '.repeat(300),sessions_total:10,sessions_remaining:5}));
+ await page.route('**/*',async route=>{const r=route.request(),u=new URL(r.url());
+ if(u.hostname.includes('fonts.'))return route.fulfill({body:''});
+ if(u.pathname.endsWith('studio-calendar-activity')){const b=r.postDataJSON();if(b.operation==='assignment'){assert.equal(b.accessToken,'SIM_OWNER');assert.deepEqual(b.payload,{clientId:'c0',trainerId:'pt2'});assignmentWrites++;return route.fulfill({status:failAssignment?409:200,json:failAssignment?{error:'Errore simulato'}:{success:true}})}return route.fulfill({json:{actor:{role:'owner'}}});}
+ if(u.pathname.endsWith('pt-access-email'))return route.fulfill({json:{success:true,token:'SIM_OWNER'}});
+ if(u.pathname.endsWith('pt-portal-admin')){const b=r.postDataJSON();assert.equal(b.accessToken,'SIM_OWNER');if(b.action==='set'){if(failAccess)return route.fulfill({status:409,json:{error:'Errore simulato'}});enabled=b.enabled;}return route.fulfill({json:b.action==='list'?{operators:[{id:'pt',nome:'Trainer',cognome:'Test',email:'pt@example.test',enabled,active:true}]}:{success:true}})}
+ if(u.pathname.includes('/rest/v1/')){assert.equal(r.method(),'GET');const table=u.pathname.split('/').at(-1);return route.fulfill({json:table==='clients'?clients:table==='operators'?[{id:'pt',nome:'Trainer',cognome:'Test',active:true,roles:['PT']},{id:'pt2',nome:'Secondo',cognome:'Trainer',active:true,roles:['PT']}]:[]})}
+ const file=path.join(__dirname,'../app/cruscotto-pt',u.pathname==='/'?'index.html':u.pathname);
+ assert.ok(fs.existsSync(file),file);return route.fulfill({contentType:file.endsWith('.js')?'application/javascript':'text/html',body:fs.readFileSync(file)});
+ });
+ await page.goto('https://cruscotto.test/?access=SIM_OWNER');
+ await page.waitForFunction(()=>document.querySelectorAll('#clientsList article').length===42);
+ assert.equal(await page.locator('#clientsList article:visible').count(),8);
+ assert.ok(await page.evaluate(()=>document.body.scrollHeight)<2100,'42 clients must not produce an unbounded page');
+ await page.locator('#clientsListPager').getByText('Successivi').click();
+ assert.match(await page.locator('#clientsList article:visible').first().innerText(),/Cliente 08/);
+ await page.locator('#clientSearch').fill('41');assert.equal(await page.locator('#clientsList article:visible').count(),1);
+ await page.locator('#clientSearch').fill('');
+ await page.getByRole('button',{name:'Anamnesi',exact:true}).click();
+ assert.equal(await page.locator('#anamnesisList > details:visible').count(),8);
+ assert.equal(await page.locator('#anamnesisList > details[open]').count(),0);
+ await page.locator('#anamnesisList > details > summary').first().click();
+ assert.match(await page.locator('#anamnesisList > details').first().innerText(),/Infortuni e limitazioni/);
+ assert.doesNotMatch(await page.locator('#anamnesisList > details').first().innerText(),/ADMINISTRATIVE/);
+ await page.getByRole('button',{name:'Accessi Portale PT',exact:true}).click();
+ await page.waitForFunction(()=>!document.getElementById('portalAccessSave').disabled);
+ failAccess=true;await page.locator('#portalAccessEnabled').uncheck();await page.locator('#portalAccessSave').click();await page.waitForFunction(()=>document.getElementById('portalAccessStatus').textContent.includes('non salvato'));assert.equal(enabled,true);assert.equal(await page.locator('#portalAccessEnabled').isChecked(),true);failAccess=false;
+ await page.locator('#portalAccessEnabled').uncheck();await page.locator('#portalAccessSave').click();
+ await page.waitForFunction(()=>document.getElementById('portalAccessBadge').textContent==='Portale disattivato');assert.equal(enabled,false);
+ assert.equal(await page.locator('#portalAccessSend').isDisabled(),true);
+ await page.locator('#portalAccessEnabled').check();await page.locator('#portalAccessSave').click();
+ await page.waitForFunction(()=>document.getElementById('portalAccessBadge').textContent==='Portale attivo');assert.equal(enabled,true);
+ await page.locator('#portalAccessSend').click();await page.waitForFunction(()=>document.getElementById('portalAccessStatus').textContent.includes('Email di accesso inviata'));
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth)<=390,'access card mobile overflow');
+ await page.screenshot({path:'/private/tmp/pt-access-mobile.png',fullPage:true});await page.setViewportSize({width:1280,height:900});
+ await page.getByRole('button',{name:'Clienti',exact:true}).click();
+ await page.getByRole('button',{name:'Assegnazioni',exact:true}).click();
+ await page.locator('#assignmentSearch').fill('00');await page.locator('#assignmentClient').selectOption('c0');await page.locator('#assignmentTrainer').selectOption('pt2');
+ failAssignment=true;await page.locator('#assignmentSave').click();await page.waitForFunction(()=>document.getElementById('assignmentStatus').textContent.includes('non salvata'));assert.match(await page.locator('#assignmentCurrent').innerText(),/Trainer Test/);
+ failAssignment=false;await page.locator('#assignmentSave').click();await page.waitForFunction(()=>document.getElementById('assignmentStatus').textContent.includes('assegnato a'));assert.match(await page.locator('#assignmentCurrent').innerText(),/Secondo Trainer/);assert.equal(assignmentWrites,2);
+ await page.screenshot({path:'/private/tmp/cruscotto-compact-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth)<=390,'no mobile horizontal overflow');
+ await page.evaluate(()=>sessionStorage.clear());await page.goto('https://cruscotto.test/#assignments');await page.waitForFunction(()=>document.querySelector('#assignmentClient').options.length>1);await page.locator('#assignmentClient').selectOption('c0');await page.locator('#assignmentTrainer').selectOption('pt2');await page.locator('#assignmentSave').click();await page.waitForFunction(()=>document.querySelector('#assignmentStatus').textContent.includes('Direzione'));assert.equal(assignmentWrites,2);
+ await page.goto('https://cruscotto.test/#access');await page.waitForFunction(()=>document.getElementById('portalAccessStatus').textContent.includes('Direzione'));assert.equal(await page.locator('#portalAccessSave').isDisabled(),true);await page.locator('[name=email]').fill('owner@example.test');await page.locator('[name=code]').fill('123456');await page.locator('#studio-audit-login button').click();await page.waitForFunction(()=>!document.getElementById('portalAccessSave').disabled);
+ assert.deepEqual(errors,[]);console.log('PASS 42 clients: pagination/search, compact anamnesis, access toggles, desktop/mobile; simulated requests only.');
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

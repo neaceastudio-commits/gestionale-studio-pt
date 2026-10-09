@@ -1,6 +1,8 @@
 /* Presentation only: consumes the existing read-only audit list. */
 window.CalendarAuditView = (() => {
   const actions = {
+    client_sharing_changed: ['👥', 'Condivisione cliente', 'trainer'],
+    training_session_saved: ['✎', 'Registrati carichi e ripetizioni', 'done'],
     marked_done: ['✅', 'Seduta completata', 'done'],
     appointment_cancelled: ['✕', 'Seduta annullata', 'cancelled'],
     marked_noshow: ['⚠️', 'No-show', 'warning'],
@@ -58,6 +60,9 @@ window.CalendarAuditView = (() => {
     const seen = new Set();
     for (const r of [...rows].reverse()) {
       const b = r.before_data || {}, a = r.after_data || {};
+      if (a.pt_participants) for (const [id, participant] of Object.entries(a.pt_participants)) { if (participant.status !== b.pt_participants?.[id]?.status) results.add(`${clientName(id)}: ${participant.status === 'fatto' ? 'presente' : participant.status === 'noshow' ? 'assente · seduta scalata' : 'prenotato'}`); }
+      if (r.action === 'client_sharing_changed') results.add(`${a.active ? 'Abilitata' : 'Revocata'} condivisione con ${operatorName(a.operator_id)}`);
+      if (r.action === 'training_session_saved') results.add(`${a.data?.rows?.length || 0} serie · revisione ${a.version || 1} · seduta ${r.metadata?.date || ''}`);
       const signature = JSON.stringify([r.entity_type,r.entity_id,b,a]);
       if (seen.has(signature)) continue;
       seen.add(signature);

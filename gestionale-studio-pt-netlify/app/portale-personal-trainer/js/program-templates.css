@@ -1,0 +1,78 @@
+.template-search { padding: 16px; margin: 16px 0; }
+.program-setup > summary { padding: 16px; cursor: pointer; color: #173f70; font-weight: 700; }
+.program-setup > summary span { font-size: 12px; font-weight: 400; margin-left: 12px; }
+.program-save-footer { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: center; padding: 20px 0; color: #64748b; }
+.program-save-footer .btn { min-height: 46px; }
+[hidden] { display: none !important; }
+.program-section-heading { grid-column: 1 / -1; margin: 20px 0 0; font-size: 21px; }
+#templateBreadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 16px 0; overflow-wrap: anywhere; }
+.library-folder-actions { justify-content: flex-start; margin: 16px 0; }
+#templateFolders { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 12px; }
+.library-folder { justify-content: flex-start; padding: 20px; text-align: left; overflow-wrap: anywhere; min-height: 64px; }
+#templateFolderDialog, #libraryEditorDialog { width: min(620px,calc(100vw - 24px)); max-height: 94vh; padding: 0; border: 1px solid #e5e7eb; border-radius: 16px; color: #1f2937; }
+#libraryEditorDialog { width: min(1200px,calc(100vw - 24px)); }
+#templateFolderDialog::backdrop, #libraryEditorDialog::backdrop { background: #10243bb3; }
+#libraryEditorDialog .modal-head, #libraryEditorDialog .modal-foot { position: sticky; z-index: 2; background: #fff; }
+#libraryEditorDialog .modal-head { top: 0; }
+#libraryEditorDialog .modal-foot { bottom: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+#libraryEditorDialog .actions { justify-content: flex-start; margin: 18px 0; }
+#libraryEditorDialog .field, #libraryEditorDialog input, #libraryEditorDialog select, #libraryEditorDialog textarea { min-width: 0; width: 100%; }
+#librarySaveError, #templateFolderError { color: #b42318; white-space: pre-wrap; }
+@media(max-width:600px) { #libraryEditorDialog .form-grid { grid-template-columns: minmax(0,1fr); } #libraryEditorDialog .btn, #templateFolderDialog .btn { min-height: 44px; } }
+.template-search input { max-width: 560px; }
+#templateCards { align-items: start; }
+.template-card { padding: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; min-width: 0; overflow-wrap: anywhere; }
+.template-card h2 { margin: 0 0 8px; font-size: 19px; color: #173f70; }
+.template-card p { color: #6b7280; line-height: 1.5; white-space: pre-wrap; }
+.template-card .actions { justify-content: flex-start; margin-top: 16px; }
+.template-card .btn.danger { color: #b42318; border-color: #f0b9b2; background: #fff; }
+#actionConfirmDialog { width: min(540px, calc(100vw - 24px)); max-height: 90vh; padding: 0; border: 1px solid #e5e7eb; border-radius: 16px; color: #1f2937; }
+#actionConfirmDialog::backdrop { background: #10243bb3; }
+#actionConfirmDialog p { margin: 0; white-space: pre-wrap; line-height: 1.6; }
+#templatePreviewDialog { width: min(1100px, calc(100vw - 24px)); max-height: 92vh; padding: 0; border: 1px solid #e5e7eb; border-radius: 16px; color: #1f2937; }
+#templatePreviewDialog::backdrop { background: #10243bb3; }
+#templatePreviewDialog .modal-head { position: sticky; top: 0; z-index: 1; background: #fff; }
+#templatePreviewDialog h2 { overflow-wrap: anywhere; }
+#templatePreviewMeta { white-space: pre-wrap; }
+#newProgramModal .field-wide { grid-column: 1 / -1; }
+#newProgramModal select { min-width: 0; max-width: 100%; }
+#newProgramError { color: #b42318; margin: 0; }
+#newProgramSourceHelp { font-size: 13px; margin-top: 6px; }
+#duplicateDayDialog { width: min(520px, calc(100vw - 24px)); max-height: 90vh; padding: 0; border: 1px solid #e5e7eb; border-radius: 16px; color: #1f2937; }
+#duplicateDayDialog::backdrop { background: #10243bb3; }
+#duplicateDayDialog .modal-body { display: grid; gap: 16px; }
+#duplicateDayDialog p { margin: 0; line-height: 1.5; }
+#duplicateDayDialog h2 { margin: 0; font-size: 20px; }
+#duplicateDayDialog input { width: 100%; }
+.template-card details { padding: 12px 0; border-top: 1px solid #e5e7eb; }
+.template-card summary { cursor: pointer; color: #173f70; }
+.template-card ul { padding-left: 20px; line-height: 1.6; }
+#templateDialog { width: min(620px, calc(100vw - 24px)); max-height: 90vh; padding: 0; border: 1px solid #e5e7eb; border-radius: 18px; color: #1f2937; }
+#templateDialog::backdrop { background: #10243bb3; }
+#templateDialog .modal-body { display: grid; gap: 16px; }
+#templateDialog p { margin: 0; line-height: 1.5; }
+#templateDialog .modal-head h2 { font-size: 20px; }
+.template-confirm { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; }
+.template-confirm input { width: 20px; height: 20px; flex: 0 0 20px; }
+#templateSaveError { color: #b42318; }
+@media (max-width: 1160px) {
+  .mobile-nav { display: flex; overflow-x: auto; }
+  .mobile-nav .nav-btn { flex: 1 0 65px; min-height: 48px; }
+}
+@media (max-width: 600px) {
+  #newProgramModal .modal-foot, #duplicateDayDialog .modal-foot { flex-wrap: wrap; }
+  #newProgramModal .modal-foot .btn, #duplicateDayDialog .modal-foot .btn { flex: 1; min-height: 44px; }
+  #templatesView .hero .actions, .template-card .actions { flex-direction: column; align-items: stretch; }
+  #templatesView .btn, #templateDialog .btn { min-height: 44px; }
+  #templateCards { grid-template-columns: minmax(0, 1fr); }
+}
+
+.template-select { display:flex;align-items:center;gap:8px;font-size:14px;line-height:1.5; }
+.template-select input { width:20px;height:20px;flex:0 0 20px; }
+.template-card > .template-select { margin-bottom:14px; }
+#moveTemplateDialog { width:min(640px,calc(100vw - 24px));max-height:90vh;padding:0;border:1px solid #e5e7eb;border-radius:16px; }
+#moveTemplateDialog::backdrop { background:#10243bb3; }
+#moveTemplateSummary,#moveTemplateError { white-space:pre-wrap;overflow-wrap:anywhere; }
+#moveTemplateError { color:#b42318; }
+#moveTemplateFolder { width:100%;min-width:0; }
+#moveTemplateDialog .modal-foot { display:flex;flex-wrap:wrap;gap:12px; }

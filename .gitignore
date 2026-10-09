@@ -2,3 +2,11 @@
 *.zip
 node_modules/
 .netlify/
+
+# Local environment and reproducible validation output
+.env
+.env.*
+!.env.example
+gestionale-studio-pt-netlify/supabase/.temp/
+gestionale-studio-pt-netlify/tmp/
+gestionale-studio-pt-netlify/output/

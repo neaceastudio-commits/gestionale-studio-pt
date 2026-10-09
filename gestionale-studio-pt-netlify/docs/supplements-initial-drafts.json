@@ -1,0 +1,141 @@
+[
+  {
+    "name": "Perfect Cream",
+    "format": "300 g",
+    "variants": [
+      "Pistacchio"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Hydro 90 BV 104",
+    "format": "900 g",
+    "variants": [
+      "Wafer Nocciola",
+      "Cioccolato Fondente",
+      "Cioccolato"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "PW1 Pre Workout",
+    "format": "300 g",
+    "variants": [
+      "Con caffeina · Agrumi",
+      "Senza caffeina · Tè alla Pesca"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Creatine Monohydrate",
+    "format": "300 g",
+    "variants": [
+      "Neutro"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Collagene Rigenera",
+    "format": "333 g",
+    "variants": [
+      "Vaniglia"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Gel Give Me Five",
+    "format": "50 ml",
+    "variants": [
+      "Lemon Cola"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Avena Farina Gluten Free",
+    "format": "1 kg",
+    "variants": [
+      "Vaniglia",
+      "Cocco Cioccolato Bianco"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Bromelina",
+    "format": "60 cpr",
+    "variants": [
+      "Standard"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Magnesio Bisglicinato",
+    "format": "90 cpr",
+    "variants": [
+      "Standard"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Low Sugar Pancake Gluten Free",
+    "format": "800 g",
+    "variants": [
+      "Cookies"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Crema di Arachidi Peanut Butter",
+    "format": "350 g",
+    "variants": [
+      "Smooth"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Crema di Arachidi Peanut Butter Iperproteico",
+    "format": "",
+    "variants": [
+      "Crunch"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "NAC 600 Plus",
+    "format": "60 cpr",
+    "variants": [
+      "Standard"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Cluster Dextrin Pure",
+    "format": "500 g",
+    "variants": [
+      "Standard"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  },
+  {
+    "name": "Maltodestrine",
+    "format": "1 kg",
+    "variants": [
+      "Standard"
+    ],
+    "status": "draft",
+    "source": "Elenco fornito dall’utente; DDT integratori non ancora disponibile"
+  }
+]

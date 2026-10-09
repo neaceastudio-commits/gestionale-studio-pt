@@ -8,8 +8,12 @@ node --check app/calendario-studio/js/app.js
 node --check app/calendario-studio/js/services.js
 node --check app/calendario-studio/js/clients.js
 node --check netlify/functions/pt-access-email.js
+node --check netlify/functions/lib/pt-auth.js
+node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
 node tests/calendar-release-regression.cjs
+node tests/pt-program-persistence.test.cjs
+node tests/pt-hand-grip.test.cjs
 node tests/package-cycle-confirmation.test.cjs
 node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
@@ -25,9 +29,14 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     app/calendario-studio
     app/acquisizione/index.html
     app/anamnesi-cliente/index.html
+    app/portale-personal-trainer
     netlify/functions/pt-access-email.js
+    netlify/functions/lib/pt-auth.js
+    netlify/functions/pt-data.js
     netlify/functions/apple-calendar.js
     tests/calendar-release-regression.cjs
+    tests/pt-program-persistence.test.cjs
+    tests/pt-hand-grip.test.cjs
     tests/package-cycle-confirmation.test.cjs
     tests/package-renewal-ledger.test.cjs
     tests/package-payment-prefill.test.cjs

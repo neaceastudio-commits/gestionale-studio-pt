@@ -4,9 +4,9 @@ process.env.PT_ACCESS_SECRET='SIM_SIGNING';process.env.SUPABASE_SERVICE_ROLE_KEY
 const {handler}=require('../netlify/functions/studio-calendar-activity');
 const token=role=>{const p=Buffer.from(JSON.stringify({operatorId:role,email:role+'@example.test',accessLevel:role==='owner'?'owner':'pt',exp:Date.now()+600000})).toString('base64url');return p+'.'+crypto.createHmac('sha256','SIM_SIGNING').update(p).digest('base64url')};
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})}),originalFetch=global.fetch;try{
- for(const dir of ['cruscotto-pt','portale-pt-fase1'])for(const role of ['owner','pt','none']){
+ for(const dir of ['cruscotto-pt'])for(const role of ['owner','pt','none']){
   const ctx=await browser.newContext(),page=await ctx.newPage(),writes=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
-  global.fetch=async(url,options)=>{if(url.includes('operator_effective_roles'))return{ok:true,text:async()=>JSON.stringify([{operator_id:role,email:role+'@example.test',active:true,legacy_roles:[role==='owner'?'Direzione':'PT'],system_roles:[]}])};const body=JSON.parse(options.body);assert.equal(body.p_actor_id,role);assert.equal(body.p_source,'calendar');writes.push(body);return{ok:true,text:async()=>JSON.stringify(body.p_payload.rows||[])};};
+  global.fetch=async(url,options)=>{if(url.includes('/operators?'))return{ok:true,text:async()=>JSON.stringify([{id:role,portal_access_enabled:true,portal_access_version:0}])};if(url.includes('operator_effective_roles'))return{ok:true,text:async()=>JSON.stringify([{operator_id:role,email:role+'@example.test',active:true,legacy_roles:[role==='owner'?'Direzione':'PT'],system_roles:[]}])};const body=JSON.parse(options.body);assert.equal(body.p_actor_id,role);assert.equal(body.p_source,'calendar');writes.push(body);return{ok:true,text:async()=>JSON.stringify(body.p_payload.rows||[])};};
   await page.route('**/*',async route=>{const r=route.request(),u=new URL(r.url()); if(['fonts.googleapis.com','fonts.gstatic.com'].includes(u.hostname)) return route.fulfill({contentType:'text/css',body:''});
    if(u.pathname.endsWith('/studio-calendar-activity')){const result=await handler({httpMethod:r.method(),body:r.postData()});return route.fulfill({status:result.statusCode,contentType:'application/json',body:result.body})}
    if(u.pathname.includes('/rest/v1/')){assert.equal(r.method(),'GET','no public REST mutations');return route.fulfill({json:[]})}
@@ -23,5 +23,5 @@ const token=role=>{const p=Buffer.from(JSON.stringify({operatorId:role,email:rol
   }
   assert.deepEqual(errors,[]);await ctx.close();
  }
- console.log('PASS Studio browser: both production roots; admin/payment/quickPay through actual authenticated handler; PT/unsigned writes denied; no public REST writes');
+ console.log('PASS Studio browser: Cruscotto root; admin/payment/quickPay through actual authenticated handler; PT/unsigned writes denied; no public REST writes');
 }finally{global.fetch=originalFetch;await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

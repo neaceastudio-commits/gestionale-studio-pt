@@ -1,9 +1,13 @@
 const crypto = require('crypto');
+const {
+  accessCode,
+  findPersonalTrainer,
+  signAccessToken,
+  verifyAccessToken,
+} = require('./lib/pt-auth');
 
 const PORTAL_URL = 'https://neacea-portale-personal-trainer.netlify.app/';
 const DASHBOARD_URL = 'https://dashboard-pt.netlify.app/';
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0rUGnUDD_Jb6shCE2LUfAXDYn8Vh85LLSXrtuxZvbyzkxXaAay9_lwn-s2NUlxC-Y/exec';
 const DEFAULT_TOKEN = 'neacea2026studio';
 
@@ -28,117 +32,6 @@ function accessLink(email, operatorId = '', destination = 'portal') {
   url.searchParams.set('email', email);
   if (operatorId) url.searchParams.set('op', operatorId);
   return url.toString();
-}
-
-function operatorRoles(operator) {
-  return Array.from(new Set([
-    ...(Array.isArray(operator?.system_roles) ? operator.system_roles : []),
-    ...(Array.isArray(operator?.legacy_roles) ? operator.legacy_roles : []),
-    ...(Array.isArray(operator?.roles) ? operator.roles : []),
-    ...(operator?.role ? [operator.role] : []),
-  ].filter(Boolean).map((role) => String(role).trim().toLowerCase())));
-}
-
-function isPersonalTrainer(operator) {
-  return operatorRoles(operator).some((role) => ['pt', 'personal_trainer', 'personal trainer'].includes(role));
-}
-
-function accessLevelFor(operator) {
-  const ownerRoles = new Set([
-    'admin',
-    'administrator',
-    'amministratore',
-    'owner',
-    'titolare',
-    'super_admin',
-    'direzione',
-  ]);
-  return operatorRoles(operator).some((role) => ownerRoles.has(role)) ? 'owner' : 'pt';
-}
-
-function publicOperator(operator) {
-  return {
-    id: String(operator?.operator_id || operator?.id || '').trim(),
-    email: String(operator?.email || '').trim().toLowerCase(),
-    nome: String(operator?.nome || '').trim(),
-    cognome: String(operator?.cognome || '').trim(),
-    accessLevel: accessLevelFor(operator),
-  };
-}
-
-async function findPersonalTrainer(email, operatorId = '') {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
-  const normalizedId = String(operatorId || '').trim();
-  if (!normalizedEmail || !normalizedEmail.includes('@')) return null;
-
-  const load = async (table) => {
-    const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
-    url.searchParams.set('select', '*');
-    url.searchParams.set('active', 'eq.true');
-    url.searchParams.set('email', `ilike.${normalizedEmail}`);
-    const response = await fetch(url, {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-      },
-    });
-    if (!response.ok) throw new Error(`PT_DIRECTORY_${response.status}`);
-    return response.json();
-  };
-
-  let operators = [];
-  try {
-    operators = await load('operator_effective_roles');
-  } catch (_) {
-    operators = await load('operators');
-  }
-  const matches = (operators || []).filter((operator) => {
-    if (!isPersonalTrainer(operator)) return false;
-    const value = publicOperator(operator);
-    return value.email === normalizedEmail && (!normalizedId || value.id === normalizedId);
-  });
-  return matches.length === 1 ? publicOperator(matches[0]) : null;
-}
-
-function accessSecret() {
-  return process.env.PT_ACCESS_SECRET || process.env.RESEND_API_KEY || DEFAULT_TOKEN;
-}
-
-function accessCode(email, operatorId = '') {
-  const digest = crypto
-    .createHmac('sha256', accessSecret())
-    .update(`${String(email || '').trim().toLowerCase()}|${String(operatorId || '').trim()}`)
-    .digest('hex');
-  const numeric = parseInt(digest.slice(0, 12), 16) % 1000000;
-  return String(numeric).padStart(6, '0');
-}
-
-function signAccessToken(email, operatorId = '', accessLevel = 'pt') {
-  const payload = Buffer.from(JSON.stringify({
-    email: String(email || '').trim().toLowerCase(),
-    operatorId: String(operatorId || '').trim(),
-    accessLevel: accessLevel === 'owner' ? 'owner' : 'pt',
-    exp: Date.now() + (12 * 60 * 60 * 1000),
-  })).toString('base64url');
-  const signature = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
-  return `${payload}.${signature}`;
-}
-
-function verifyAccessToken(token) {
-  const [payload, signature] = String(token || '').split('.');
-  if (!payload || !signature) return null;
-  const expected = crypto.createHmac('sha256', accessSecret()).update(payload).digest('base64url');
-  const actualBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
-  try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!data.email || !data.operatorId || Number(data.exp || 0) <= Date.now()) return null;
-    data.accessLevel = data.accessLevel === 'owner' ? 'owner' : 'pt';
-    return data;
-  } catch (_) {
-    return null;
-  }
 }
 
 function buildEmail(payload, operator = null) {
@@ -278,12 +171,12 @@ exports.handler = async (event) => {
     if (action === 'verify_token') {
       const data = verifyAccessToken(input.token);
       const operator = data ? await findPersonalTrainer(data.email, data.operatorId) : null;
-      const valid = data && operator;
+      const valid = data && operator && Number(data.accessVersion || 0) === operator.accessVersion;
       return {
         statusCode: valid ? 200 : 401,
         headers,
         body: JSON.stringify(valid
-          ? { success: true, email: operator.email, operatorId: operator.id, accessLevel: operator.accessLevel, expiresAt: data.exp }
+          ? { success: true, operator, email: operator.email, operatorId: operator.id, accessLevel: operator.accessLevel, expiresAt: data.exp }
           : { success: false, error: 'Sessione PT non valida o scaduta.' }),
       };
     }
@@ -311,7 +204,8 @@ exports.handler = async (event) => {
               email: operator.email,
               operatorId: operator.id,
               accessLevel: operator.accessLevel,
-              token: signAccessToken(operator.email, operator.id, operator.accessLevel),
+              operator,
+              token: signAccessToken(operator.email, operator.id, operator.accessLevel, operator.accessVersion),
               expiresAt: Date.now() + (12 * 60 * 60 * 1000),
             }
           : { success: false, error: 'Codice accesso non valido.' }),

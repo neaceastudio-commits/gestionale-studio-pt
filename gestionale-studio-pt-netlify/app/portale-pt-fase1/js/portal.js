@@ -97,6 +97,16 @@ function endpoint(table, query = '') {
 }
 
 async function sb(table, query = '', options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  if (method !== 'GET') {
+    await window.StudioAudit.requireDirection();
+    if (['clients', 'operators'].includes(table)) {
+      return window.StudioAudit.write(table, query, options.body, method);
+    }
+    if (['appointments', 'trainer_client_assignments', 'operator_availability'].includes(table)) {
+      throw new Error('Questa modifica richiede il servizio Studio autenticato.');
+    }
+  }
   const res = await fetch(endpoint(table, query), {
     method: options.method || 'GET',
     headers: {
@@ -582,7 +592,7 @@ async function loadPhase1() {
     email: op.email,
     roles: operatorRoles(op),
     active: op.active !== false,
-    portal_access_enabled: op.portal_access_enabled ?? op.pt_portal_enabled ?? false,
+    portal_access_enabled: op.portal_access_enabled ?? op.pt_portal_enabled,
   }));
   state.sessions = sessions.map((session) => ({
     ...session,
@@ -788,16 +798,16 @@ function renderOperators() {
     .join('');
 
   els.operatorSelect.innerHTML = `<option value="">Tutti gli operatori</option>${options}`;
-  els.assignTrainer.innerHTML = options || '<option value="">Nessun PT trovato</option>';
+  if (els.assignTrainer) els.assignTrainer.innerHTML = options || '<option value="">Nessun PT trovato</option>';
   els.operatorSelect.value = state.selectedOperatorId;
-  els.assignTrainer.value = state.selectedOperatorId || state.operators[0]?.id || '';
+  if (els.assignTrainer) els.assignTrainer.value = state.selectedOperatorId || state.operators[0]?.id || '';
 
   const clientOptions = state.clients
     .slice()
     .sort((a, b) => fullName(a).localeCompare(fullName(b)))
     .map((client) => `<option value="${esc(client.client_id)}">${esc(fullName(client))}</option>`)
     .join('');
-  els.assignClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
+  if (els.assignClient) els.assignClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
   els.programClient.innerHTML = clientOptions || '<option value="">Nessun cliente trovato</option>';
   els.programClientFilter.innerHTML = `<option value="">Tutti i clienti assegnati</option>${clientOptions}`;
   els.exerciseLibrary.innerHTML = flattenExercises()
@@ -2047,25 +2057,6 @@ async function assignClient() {
   const clientId = els.assignClient.value;
   if (!trainerId || !clientId) return;
 
-  if (state.mode === 'phase1') {
-    try {
-      await sb('trainer_client_assignments', '?on_conflict=trainer_id,client_id', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: {
-          id: `tca_manual_${trainerId}_${clientId}`.replace(/[^a-zA-Z0-9_]/g, '_'),
-          trainer_id: trainerId,
-          client_id: clientId,
-          assignment_source: 'manual',
-          active: true,
-          notes: 'Assegnazione manuale da Portale PT Fase 1',
-        },
-      });
-    } catch (error) {
-      console.warn('Assegnazione avanzata non salvata, aggiorno clients.pt_assegnato.', error);
-    }
-  }
-
   await sb('clients', `?id=eq.${encodeURIComponent(clientId)}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
@@ -2102,11 +2093,12 @@ async function archiveClient(clientId) {
 }
 
 function renderAssignments() {
-  els.assignButton.disabled = state.mode !== 'phase1';
+  if (els.assignButton) els.assignButton.disabled = state.mode !== 'phase1';
   renderPtAccess();
 }
 
 function renderPtAccess(message = '') {
+  if (!els.ptAccessForm) return;
   const operator = selectedOperator();
   if (!operator) {
     els.ptAccessEmail.value = '';
@@ -2120,7 +2112,9 @@ function renderPtAccess(message = '') {
 
   const hasPtRole = isPersonalTrainer(operator);
   const hasEmail = Boolean(operator.email);
-  const enabled = Boolean(operator.portal_access_enabled || (hasEmail && hasPtRole && operator.active !== false));
+  const enabled = operator.portal_access_enabled == null
+    ? Boolean(hasEmail && hasPtRole && operator.active !== false)
+    : Boolean(operator.portal_access_enabled);
   els.ptAccessEmail.value = operator.email || '';
   els.ptAccessEnabled.checked = enabled;
   els.ptAccessBadge.textContent = enabled ? 'attivo' : 'non attivo';
@@ -2158,6 +2152,8 @@ async function savePtAccess() {
       body: portalPayload,
     });
   } catch (error) {
+    if (!/portal_access_enabled/i.test(error.message) || !/column|schema|field/i.test(error.message)) throw error;
+    if (!enabled) throw new Error('Disabilitazione non disponibile: il database non supporta ancora il blocco del solo accesso al portale. Nessuna modifica salvata.');
     await sb('operators', `?id=eq.${encodeURIComponent(operator.id)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
@@ -2174,6 +2170,7 @@ async function savePtAccess() {
 }
 
 async function sendPtAccessEmail() {
+  await window.StudioAudit.requireDirection();
   const operator = selectedOperator();
   if (!operator) return;
 
@@ -2352,13 +2349,13 @@ function bindEvents() {
     renderCalendar();
   });
 
-  els.assignTrainer.addEventListener('change', () => {
+  els.assignTrainer?.addEventListener('change', () => {
     state.selectedOperatorId = els.assignTrainer.value;
     state.selectedProgramId = '';
     render();
   });
 
-  els.ptAccessForm.addEventListener('submit', async (event) => {
+  els.ptAccessForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
       clearError();
@@ -2371,7 +2368,7 @@ function bindEvents() {
     }
   });
 
-  els.sendPtAccessEmailButton.addEventListener('click', async () => {
+  els.sendPtAccessEmailButton?.addEventListener('click', async () => {
     try {
       clearError();
       els.sendPtAccessEmailButton.disabled = true;
@@ -2383,7 +2380,7 @@ function bindEvents() {
     }
   });
 
-  els.assignButton.addEventListener('click', async () => {
+  els.assignButton?.addEventListener('click', async () => {
     try {
       clearError();
       await assignClient();

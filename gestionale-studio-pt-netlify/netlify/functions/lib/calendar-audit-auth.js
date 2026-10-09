@@ -24,6 +24,11 @@ async function authenticate(token) {
   const op=rows.find(o=>String(o.email||'').toLowerCase()===String(signed.email).toLowerCase());if(!op)return null;
   const roles=[...(op.system_roles||[]),...(op.legacy_roles||[])].map(r=>String(r).toLowerCase());
   const role=roles.some(r=>OWNERS.has(r))&&signed.accessLevel==='owner'?'owner':roles.some(r=>['pt','personal_trainer','personal trainer'].includes(r))?'pt':roles.some(r=>['secretary','segreteria'].includes(r))?'secretary':null;
+  if (role === 'pt') {
+    const access = await db('operators', {query:'?select=id,portal_access_enabled,portal_access_version&id=eq.'+encodeURIComponent(op.operator_id)});
+    const settings = access.find(row => String(row.id) === String(op.operator_id));
+    if (!settings || settings.portal_access_enabled === false || Number(settings.portal_access_version || 0) !== Number(signed.accessVersion || 0)) return null;
+  }
   return role?{id:op.operator_id,role}:null;
 }
 module.exports={authenticate,verify,db};

@@ -1,5 +1,20 @@
 # Censimento dopo adattamento production — 13 settembre 2026
 
+> Aggiornamento locale del 16 settembre: su richiesta è stata ripristinata la
+> pagina originale di Centrale PT (`app/portale-pt-fase1/index.html`, da
+> `cf8962c`). Il censimento e il GO riportati sotto descrivono il candidato
+> precedente, non questa versione ripristinata. Centrale carica nuovamente
+> `js/portal.js`: prima di un deploy occorre adattarne e verificare accessi e
+> scritture al gateway autenticato. Nessun deploy o cambio delle policy è stato
+> eseguito con il ripristino. Dettagli nel README di `app/portale-pt-fase1`.
+
+> Preparazione del 17 settembre: Centrale mantiene la UI originale, ma accessi
+> operatore, aggiornamenti cliente e assegnazioni ora usano il gateway Studio
+> autenticato. Test dedicato in `tests/centrale-restored-browser.cjs`.
+> La disabilitazione del solo portale resta indisponibile senza supporto del
+> database. Pubblicata il 17 settembre con deploy `6aabea8fc12471f5805ad852`
+> sul solo sito `neacea-centrale-pt`; nessuna modifica al database.
+
 Ambito: contenuto committato del branch audit, cinque entità operative (`appointments`, `clients`, `operators`, `operator_availability`, `trainer_client_assignments`), RPC e componenti effettivamente pubblicati. Nessuna modifica ai servizi reali. Le modifiche locali estranee non committate non sono un candidato release.
 
 La scansione comprende tutti i file tracciati JS/HTML/SQL/script, wrapper REST generici e relativi chiamanti, RPC, Functions, pagine legacy e configurazioni. Le evidenze production sono quelle del censimento in sola lettura: non costituiscono un nuovo deploy.

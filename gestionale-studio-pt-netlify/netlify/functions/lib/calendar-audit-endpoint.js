@@ -10,6 +10,33 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
   if(!actor)return reply(401,{error:'Rientra dal Portale con una sessione verificata'});
   if(ownerOnly && actor.role!=='owner')return reply(403,{error:'Operazione riservata alla Direzione'});
   if(input.operation==='session')return reply(200,{success:true,actor});
+  if(['client_shares','set_client_share'].includes(input.operation)){
+   if(source!=='calendar'||actor.role!=='owner'||actor.id!=='staff_1')return reply(403,{error:'Condivisione riservata al proprietario dal Calendario'});
+   const payload=input.payload||{};const clientId=String(payload.clientId||'').trim();
+   if(!clientId)return reply(400,{error:'Seleziona un cliente'});
+   if(input.operation==='client_shares'){
+    const [shares,operators,clients]=await Promise.all([
+     db('pt_client_shares',{query:'?select=operator_id,active&cliente_id=eq.'+encodeURIComponent(clientId)}),
+     db('operator_effective_roles',{query:'?select=operator_id,nome,cognome,system_roles,legacy_roles&active=eq.true'}),
+     db('clients',{query:'?select=id,pt_assegnato&id=eq.'+encodeURIComponent(clientId)})]);
+    if(!clients.length)return reply(404,{error:'Cliente non trovato'});
+    return reply(200,{shares,referent:clients[0].pt_assegnato,operators:operators.filter(o=>[...(o.system_roles||[]),...(o.legacy_roles||[])].some(r=>['pt','personal_trainer','personal trainer'].includes(String(r).toLowerCase()))).map(o=>({id:o.operator_id,name:[o.nome,o.cognome].filter(Boolean).join(' ')}))});
+   }
+   if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
+   return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
+  }
+  if(input.operation==='renew_pt_pair'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Rinnovo coppia riservato alla Direzione dal Calendario'});
+   const {requestId,...payload}=input.payload||{};
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId||'')||!Array.isArray(payload.clients)||payload.clients.length!==2||!Array.isArray(payload.appointments)||payload.appointments.length<1||payload.appointments.length>100)return reply(400,{error:'Anteprima rinnovo non valida'});
+   return reply(200,await db('rpc/calendar_renew_pt_pair',{method:'POST',body:{p_actor_id:actor.id,p_request_id:requestId,p_payload:payload}}));
+  }
+  if(input.operation==='correct_pt_sessions'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Correzione sedute riservata alla Direzione dal Calendario'});
+   const changes=input.payload?.changes;
+   if(!Array.isArray(changes)||changes.length<1||changes.length>100)return reply(400,{error:'Seleziona da 1 a 100 sedute'});
+   return reply(200,await db('rpc/calendar_correct_pt_sessions',{method:'POST',body:{p_actor_id:actor.id,p_request_id:crypto.randomUUID(),p_changes:changes}}));
+  }
   if(input.operation==='list'){
    if(actor.role!=='owner')return reply(403,{error:'Registro riservato alla Direzione'});
    return reply(200,await db('rpc/calendar_audit_read',{method:'POST',body:{p_actor_id:actor.id,p_filters:input.filters||{}}}));

@@ -16,9 +16,9 @@ async function run({ conflict = false, failure = false } = {}) {
       assert.equal(draft.id, 'a');
       return { ok: !conflict, errors: conflict ? ['PT occupato'] : [] };
     }, updateAppointment: (id, value) => { const i = appointments.findIndex(a => a.id === id); appointments[i] = { ...appointments[i], ...value }; return appointments[i]; } },
-    SupabaseSync: { pushAppointment: async value => { writes++; assert.equal(appointments[0].startTime, '09:00'); assert.equal(value.id, 'a'); return failure ? { error: 'offline' } : null; } } });
-  vm.runInContext('const App = {' + source.slice(start, end) + '}; globalThis.App = App;', ctx);
-  Object.assign(ctx.App, { guardPortalEdit: () => true, isPortalPtMode: () => false, _withPtAudit: n => n, _openConflictOverview() {}, openPackageOverview() {} });
+    SupabaseSync: { saveAppointmentAtomic: async value => { writes++; assert.equal(appointments[0].startTime, '09:00'); assert.equal(value.id, 'a'); if (failure) return { error: 'offline' }; appointments[0] = {...value}; return {appointment: value}; } } });
+  vm.runInContext('const App = {' + source.slice(start, end) + source.slice(source.indexOf('  async _persistAppointment('), source.indexOf('  async _markDone(')) + '}; globalThis.App = App;', ctx);
+  Object.assign(ctx.App, { guardPortalEdit: () => true, isPortalPtMode: () => false, _withPtAudit: n => n, _preserveAppointmentPackage: a => a, _openConflictOverview() {}, openPackageOverview() {} });
   await ctx.App._updatePackageAppointmentRow('a');
   assert.deepEqual(appointments[1], second);
   assert.equal(writes, conflict ? 0 : 1);
