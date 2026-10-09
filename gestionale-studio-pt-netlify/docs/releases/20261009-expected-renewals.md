@@ -30,4 +30,19 @@ Prove Chrome mobile: modifica da due a tre giorni, errore concorrente con dati d
 
 ## Pubblicazione
 
-Autorizzata dall'utente: «perfetto pubblichiamo anche ultima modifica». Identificativi delle release e verifica della prima generazione da completare dopo la pubblicazione.
+Autorizzata dall'utente: «perfetto pubblichiamo anche ultima modifica». Pubblicato il commit `c24231ff3325bd3798427a8d5d0a92ce86bd5612`:
+
+- Calendario: `6ac8bec28dd56d0eea7c4332`.
+- Portale PT: `6ac8bee89c7f2e1151cfc95f`.
+- Apple CalDAV: `6ac8beaf146b200f47b354a6`.
+- Migrazione remota: `20261009101337_calendar_expected_renewals`.
+
+Le tre release sono bloccate; il Calendario è tornato al collegamento Git `main` con build automatiche sospese, come prima del rilascio. Le pianificazioni preesistenti sono conservate; il nuovo generatore gira ogni dieci minuti sul Calendario.
+
+Seconda esecuzione verificata: nessuna nuova proposta e nessun duplicato.
+
+Prima esecuzione: 6 proposte per 7 clienti, tutte pending, 60 prenotazioni, di cui 12 condivise per Cristiano e Silvia. Nessun saldo cliente modificato, nessun pagamento creato, nessuna vecchia presenza rettificata. Il browser live legge 803 appuntamenti, senza errori JavaScript o overflow mobile e senza anomalie nuove nei riepiloghi di giugno, luglio, settembre e ottobre.
+
+Il sincronizzatore Apple ha iniziato a creare le nuove lezioni con verifica di persistenza e zero errori. Mantiene il limite preesistente di quattro nuovi appuntamenti per esecuzione al minuto: l'allineamento iniziale delle 60 prenotazioni richiede circa un quarto d'ora. Le corrispondenze già osservate sono `linked`; la coda resta gestita dal processo automatico.
+
+Controllo permessi: RPC non eseguibile da anon, consentita al solo gateway service con verifica Direzione. Le tre segnalazioni advisor «RLS senza policy» sono intenzionali: nessuna delle tabelle delle proposte è accessibile direttamente ai ruoli browser.
