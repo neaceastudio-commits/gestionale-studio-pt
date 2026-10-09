@@ -1,0 +1,119 @@
+{
+  "verified_at": "2026-10-09",
+  "project_id": "cdywqyqqmjhgkzwrrixc",
+  "note": "Inventario in sola lettura. Il timestamp remoto può differire dal filename locale: confrontare il nome prima di proporre una nuova applicazione.",
+  "migrations": [
+    {
+      "version": "20260830223112",
+      "name": "coaching_persistence_v1"
+    },
+    {
+      "version": "20260831103659",
+      "name": "coaching_mesocycle_lifecycle"
+    },
+    {
+      "version": "20260831132721",
+      "name": "coaching_delivery_check_workflow"
+    },
+    {
+      "version": "20260831144542",
+      "name": "coaching_client_portal_v1"
+    },
+    {
+      "version": "20260901124801",
+      "name": "coaching_long_term_roadmap_v1"
+    },
+    {
+      "version": "20260912160303",
+      "name": "calendar_prerelease_atomic"
+    },
+    {
+      "version": "20260912224732",
+      "name": "calendar_activity_audit"
+    },
+    {
+      "version": "20260912225612",
+      "name": "calendar_audit_assignment_partial_unique"
+    },
+    {
+      "version": "20260913213127",
+      "name": "calendar_flex_mode"
+    },
+    {
+      "version": "20260914151503",
+      "name": "acquisition_calendar_flex_snapshot"
+    },
+    {
+      "version": "20260914160034",
+      "name": "whatsapp_agenda_pt_v1"
+    },
+    {
+      "version": "20260915133411",
+      "name": "secure_pt_program_persistence"
+    },
+    {
+      "version": "20260917140043",
+      "name": "pt_portal_access_control"
+    },
+    {
+      "version": "20260917181935",
+      "name": "email_agenda_pt"
+    },
+    {
+      "version": "20260917200200",
+      "name": "pt_shared_program_templates"
+    },
+    {
+      "version": "20260918193432",
+      "name": "pt_program_library_and_current"
+    },
+    {
+      "version": "20260921102602",
+      "name": "calendar_early_package_session"
+    },
+    {
+      "version": "20260928053405",
+      "name": "pt_session_records_audit"
+    },
+    {
+      "version": "20260928114433",
+      "name": "owner_controlled_pt_sharing"
+    },
+    {
+      "version": "20260928131112",
+      "name": "pt_current_state_without_revisions"
+    },
+    {
+      "version": "20260928205202",
+      "name": "supplement_catalog_inventory"
+    },
+    {
+      "version": "20260930075737",
+      "name": "supplement_direction_role"
+    },
+    {
+      "version": "20260930075747",
+      "name": "supplement_intake_samples_workflow"
+    },
+    {
+      "version": "20261002064813",
+      "name": "pt_assigned_session_compilation"
+    },
+    {
+      "version": "20261003081857",
+      "name": "pt_session_workout_reference"
+    },
+    {
+      "version": "20261004155110",
+      "name": "calendar_pt_session_correction"
+    },
+    {
+      "version": "20261004155556",
+      "name": "calendar_pt_correction_json_participants"
+    },
+    {
+      "version": "20261009083023",
+      "name": "calendar_pt_pair_rules"
+    }
+  ]
+}

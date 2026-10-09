@@ -58,3 +58,7 @@ Flusso consigliato:
 Il sito separato dell'Anamnesi Cliente richiede nell'ambiente Netlify le variabili elencate in `.env.example` per abilitare il recupero riservato da Nutrizione. Senza tali variabili il modulo pubblico continua a funzionare, ma il pannello riservato fallisce chiuso.
 
 Per il Portale PT applicare prima la migrazione Supabase, configurare le variabili server e soltanto dopo pubblicare il nuovo frontend e le funzioni Netlify. Non invertire l'ordine: il portale aggiornato usa la funzione SQL atomica `pt_save_program`.
+
+## Stato consolidato — 9 ottobre 2026
+
+Per branch operativo, commit riuniti, versioni online e differenze ancora aperte di Consenso/Anamnesi, leggere [allineamento-20261009.md](docs/allineamento-20261009.md). Questa ricognizione aggiorna le note di rilascio precedenti; i loro stati locali/non committati restano riferimenti storici.
