@@ -1,7 +1,9 @@
+const workoutHandoff = require('../../app/portale-personal-trainer/js/workout-handoff');
 const crypto = require('crypto');
 const sharing = require('./lib/pt-client-sharing');
 const sessionLog = require('./lib/pt-session-log');
-const { listTemplates, listArchivedTemplates, saveTemplate, archiveTemplate, purgeArchivedTemplates, listFolders, saveFolder, deleteFolder, updateTemplate } = require('./lib/pt-templates');
+const { visibleClient, clientScope } = require('./lib/pt-client-scope');
+const { listTemplates, listArchivedTemplates, saveTemplate, archiveTemplate, purgeArchivedTemplates, listFolders, saveFolder, deleteFolder, updateTemplate, moveTemplate } = require('./lib/pt-templates');
 const {
   authenticatedOperator,
   isPersonalTrainer,
@@ -99,7 +101,7 @@ async function loadHandGripMeasurement(measurementId) {
 }
 
 function canViewClient(operator, client) {
-  return operator?.accessLevel === 'owner' || clientTrainerId(client) === clean(operator?.id);
+  return !!client && (operator?.accessLevel === 'owner' || isPersonalTrainer(operator));
 }
 
 function canEditClient(operator, client) {
@@ -258,11 +260,11 @@ async function saveProgram({ operator, programId, clientId, data, expectedUpdate
     throw error;
   }
   // A successful write may lose its HTTP response. Repeating its request ID
-  // returns that write without a false conflict or a duplicate revision.
+  // returns that write without a false conflict or a duplicate program.
   const requestId = clean(data?.save_meta?.request_id);
   if (!action && requestId && requestId === clean(existing?.data?.save_meta?.request_id)) {
     const current=await byClientIds('pt_client_current_programs','program_id',[clientId]);
-    return { row: existing, revision: null, currentProgramId: current?.[0]?.program_id || null };
+    return { row: existing, currentProgramId: current?.[0]?.program_id || null };
   }
   const savedAt = new Date().toISOString();
   const nextData = serverProgramData(data, existing, operator, programId, clientId, savedAt, action);
@@ -284,7 +286,6 @@ async function saveProgram({ operator, programId, clientId, data, expectedUpdate
   }
   return {
     row: result?.row || result,
-    revision: result?.revision || null,
     loadCount: loadRows.length,
     currentProgramId: result?.currentProgramId,
   };
@@ -301,45 +302,54 @@ function acquisitionMatchesClients(acquisition, clients) {
 async function bootstrap(operator) {
   const directory = await loadOperatorDirectory();
   const operators = (directory || []).filter(isPersonalTrainer).map(publicOperator);
-  // A stopped/expired client path must not hide saved programs or prevent planning.
-  // Assignment is the access boundary; the active flag is only a client status.
-  const clientQuery = operator.accessLevel === 'owner'
-    ? '?select=*&order=cognome.asc,nome.asc'
-    : `?select=*&pt_assegnato=eq.${encodeURIComponent(operator.id)}&order=cognome.asc,nome.asc`;
-  const clients = await supabaseRequest('clients', clientQuery);
-  const sharedIds = operator.accessLevel === 'owner' ? [] : [...new Set((await sharing.grants(operator.id)).map(row => row.cliente_id))].filter(id => !clients.some(client => client.id === id));
-  for (let start=0; start<sharedIds.length; start+=50) {
-    const ids = sharedIds.slice(start,start+50);
-    // IDs come only from owner-authorized grants, never appointment history.
-    const filter = ids.map(id => encodeURIComponent(JSON.stringify(id))).join(',');
-    const shared = await supabaseRequest('clients', `?select=*&id=in.(${filter})`);
-    clients.push(...shared.map(client => ({...client, session_access: true})));
-  }
-  const clientIds = (clients || []).map((client) => clean(client.id)).filter(Boolean);
-  const assignedSessions = (await sessionLog.assignments(operator)).map(row => ({...row, client_ids: (row.client_ids || []).filter(id => clientIds.includes(id))})).filter(row => row.client_ids.length);
-  const [programs, acquisitions, revisions, archive, loadHistory, physicalMeasurements, currentPrograms] = await Promise.all([
+  // All authenticated PTs may consult other referents' clients. Reading never
+  // grants session-entry or program-edit permissions.
+  const appointments = await sessionLog.assignments(operator, true);
+  const visibleClients = (await supabaseRequest('clients', '?select=*&order=cognome.asc,nome.asc')).filter(visibleClient);
+  // Only completion identities are needed to build every PT's client list.
+  // Other PTs' raw session records keep their existing access restrictions.
+  const completions = sessionLog.enabled(operator)
+    ? await byClientIdsPaged('pt_session_records', 'appointment_id,cliente_id,operator_id', visibleClients.map(c => c.id)) : [];
+  const scope = clientScope(visibleClients, appointments, completions);
+  const assigned = scope.assignments.filter(row => row.operator_id === operator.id);
+  const assignedClientIds = new Set(assigned.flatMap(row => row.client_ids || []));
+  const sharedIds = new Set((await sharing.grants(operator.id)).map(row => row.cliente_id));
+  const clients = scope.clients.map(client => ({
+    ...client,
+    session_access: clientTrainerId(client) === clean(operator.id) || sharedIds.has(client.id) || assignedClientIds.has(client.id),
+  }));
+  const clientIds = clients.map(client => clean(client.id)).filter(Boolean);
+  const writableSessionIds = clients.filter(client => client.session_access).map(client => client.id);
+  const assignedSessions = assigned.map(({ notes, ...row }) => ({...row, client_ids: (row.client_ids || []).filter(id => writableSessionIds.includes(id))})).filter(row => row.client_ids.length);
+  const [programs, acquisitions, archive, loadHistory, physicalMeasurements, currentPrograms] = await Promise.all([
     byClientIdsPaged('schede_allenamento', 'id,cliente_id,data,created_at,updated_at', clientIds, '&order=updated_at.desc'),
     supabaseRequest('acquisizioni', '?select=*&order=data_acquisizione.desc').catch(() => []),
-    byClientIdsPaged('pt_program_revisions', 'id,program_id,cliente_id,source_updated_at,created_by,created_at', clientIds, '&order=created_at.desc').catch(() => []),
     supabaseRequest('pt_exercise_archive', '?select=*&active=eq.true&order=group_name.asc,name.asc').catch(() => []),
     byClientIdsPaged('carichi_allenamento', 'id,cliente_id,data,created_at,updated_at', clientIds, '&order=updated_at.desc').catch(() => []),
     byClientIdsPaged('pt_hand_grip_measurements', 'id,cliente_id,data,created_at,updated_at', clientIds, '&order=updated_at.desc').catch(() => []),
     byClientIdsPaged('pt_client_current_programs', '*', clientIds, '&order=cliente_id.asc'),
   ]);
-  const sessionRecords = sessionLog.enabled(operator)
-    ? await byClientIdsPaged('pt_session_records', '*', clientIds, '&order=updated_at.desc' + (sessionLog.historyAllowed(operator) ? '' : '&operator_id=eq.' + encodeURIComponent(operator.id))) : [];
+  const allSessionRecords = sessionLog.enabled(operator)
+    ? await byClientIdsPaged('pt_session_records', '*', sessionLog.historyAllowed(operator) ? clientIds : writableSessionIds, '&order=updated_at.desc') : [];
+  const sessionRecords = sessionLog.historyAllowed(operator) ? allSessionRecords : allSessionRecords.filter(row => row.operator_id === operator.id);
+  // Operational handoff is a compact read-only reference, not access to the general registry.
+  const sessionHandoffs = Object.fromEntries(programs.filter(p => writableSessionIds.includes(p.cliente_id)).map(p => {
+    const client=clients.find(c=>c.id===p.cliente_id),owner=operators.find(o=>o.id===clientTrainerId(client));
+    const studio=p.data?.pt_studio_state||p.data?.studio_state||{};
+    return [p.id,workoutHandoff.build(studio,allSessionRecords.filter(r=>r.cliente_id===p.cliente_id),p.id,[owner?.nome,owner?.cognome].filter(Boolean).join(' '))];
+  }));
   return {
     sessionLogEnabled: sessionLog.enabled(operator),
     sessionHistoryVisible: sessionLog.historyAllowed(operator),
     assignedSessions,
     sessionRecords,
+    sessionHandoffs,
     sessionOperators: sessionLog.historyAllowed(operator) ? operators.map(({id,nome,cognome}) => ({id,nome,cognome})) : [],
     operator,
-    operators: operator.accessLevel === 'owner' ? operators : operators.filter((item) => item.id === operator.id),
+    operators,
     clients: clients || [],
     acquisitions: (acquisitions || []).filter((item) => acquisitionMatchesClients(item, clients || [])),
     programs: programs || [],
-    revisions: revisions || [],
     exerciseArchive: archive || [],
     loadHistory: loadHistory || [],
     physicalMeasurements: physicalMeasurements || [],
@@ -518,35 +528,6 @@ async function setProgramArchived(operator, input) {
   });
 }
 
-async function restoreRevision(operator, input) {
-  const revisionId = clean(input.revisionId);
-  const rows = await supabaseRequest(
-    'pt_program_revisions',
-    `?select=*&id=eq.${encodeURIComponent(revisionId)}&limit=1`,
-  );
-  const revision = Array.isArray(rows) ? rows[0] || null : null;
-  if (!revision) {
-    const error = new Error('Versione storica non trovata.');
-    error.statusCode = 404;
-    throw error;
-  }
-  const restoredAt = new Date().toISOString();
-  return saveProgram({
-    operator,
-    programId: revision.program_id,
-    clientId: revision.cliente_id,
-    data: {
-      ...(revision.data || {}),
-      archived: false,
-      restored_at: restoredAt,
-      restored_by: operator.id,
-    },
-    expectedUpdatedAt: input.expectedUpdatedAt,
-    force: input.force,
-    action: 'ripristino_versione',
-  });
-}
-
 async function upsertExercise(operator, input) {
   const item = input.exercise && typeof input.exercise === 'object' ? input.exercise : {};
   const name = clean(item.name);
@@ -596,6 +577,7 @@ exports.handler = async (event) => {
     }
     if (action === 'empty_trash') return json(200, { success: true, ...(await emptyTrash(operator)) });
     if (action === 'create_template') return json(200, { success: true, template: await saveTemplate(operator,input) });
+    if (action === 'move_template') return json(200, { success: true, template: await moveTemplate(operator,input) });
     if (action === 'update_template') return json(200, { success: true, template: await updateTemplate(operator,input) });
     if (action === 'save_template_folder') return json(200, { success: true, folder: await saveFolder(operator,input) });
     if (action === 'delete_template_folder') return json(200, { success: true, folderId: await deleteFolder(operator,input) });
@@ -630,11 +612,6 @@ exports.handler = async (event) => {
     }
     if (action === 'set_program_archived') {
       const saved = await setProgramArchived(operator, input);
-      if (saved.conflict) return json(409, { success: false, code: 'PROGRAM_CONFLICT', current: saved.current });
-      return json(200, { success: true, ...saved });
-    }
-    if (action === 'restore_revision') {
-      const saved = await restoreRevision(operator, input);
       if (saved.conflict) return json(409, { success: false, code: 'PROGRAM_CONFLICT', current: saved.current });
       return json(200, { success: true, ...saved });
     }

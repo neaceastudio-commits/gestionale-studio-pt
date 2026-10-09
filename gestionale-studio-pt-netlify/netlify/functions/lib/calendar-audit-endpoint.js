@@ -25,6 +25,12 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
   }
+  if(input.operation==='renew_pt_pair'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Rinnovo coppia riservato alla Direzione dal Calendario'});
+   const {requestId,...payload}=input.payload||{};
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId||'')||!Array.isArray(payload.clients)||payload.clients.length!==2||!Array.isArray(payload.appointments)||payload.appointments.length<1||payload.appointments.length>100)return reply(400,{error:'Anteprima rinnovo non valida'});
+   return reply(200,await db('rpc/calendar_renew_pt_pair',{method:'POST',body:{p_actor_id:actor.id,p_request_id:requestId,p_payload:payload}}));
+  }
   if(input.operation==='correct_pt_sessions'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Correzione sedute riservata alla Direzione dal Calendario'});
    const changes=input.payload?.changes;

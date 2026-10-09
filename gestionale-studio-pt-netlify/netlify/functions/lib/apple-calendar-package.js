@@ -1,6 +1,7 @@
 'use strict';
 // Database-row adapter of Services.getPackageCycleContext / appointmentInCurrentPackageCycle.
 // Keep parity tests against the browser implementation when changing these rules.
+const session = require('./pt-session-metadata');
 const PT = new Set(['pt11', 'pt12', 'circuit']);
 const marker = notes => String(notes || '').match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/i)?.[1]
   || [...String(notes || '').matchAll(/Rinnovo pacchetto da\s+(\d{4}-\d{2}-\d{2})/gi)].at(-1)?.[1] || '';
@@ -12,9 +13,11 @@ function context(client, rows) {
   const cycle = [...cycles].reverse().find(c => !c.closedAt) || cycles.at(-1);
   const persisted = String(String(client.notes || '').match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/i)?.[1] || client.data_conferma || '').slice(0, 10);
   const inferred = rows.map(a => marker(a.notes)).filter(Boolean).sort().at(-1) || '';
-  return { start: cycle?.startDate || persisted || inferred || String(client.data_inizio || client.package_start || '').slice(0, 10), id: cycle?.id || '', legacy: cycle ? cycle.legacy === true : true, persisted: !!persisted, inferredFromAppointment: !persisted && !!inferred };
+  return { clientId: client.id, start: cycle?.startDate || persisted || inferred || String(client.data_inizio || client.package_start || '').slice(0, 10), id: cycle?.id || '', legacy: cycle ? cycle.legacy === true : true, persisted: !!persisted, inferredFromAppointment: !persisted && !!inferred };
 }
 function inCycle(a, ctx) {
+  const participant = session.cycle(a, ctx.clientId);
+  if (participant) return ctx.id ? participant.cycleId === ctx.id : !ctx.start || participant.start === ctx.start;
   const id = cycleId(a.notes);
   if (ctx.id && id) return id === ctx.id;
   if (ctx.id && !ctx.legacy) return false;
@@ -28,7 +31,7 @@ function packageInfo(client, appointments, today) {
   const rows = appointments.filter(a => PT.has(a.service_id) && a.client_ids?.includes(client.id));
   const ctx = context(client, rows);
   const current = rows.filter(a => inCycle(a, ctx)).sort(order);
-  const completed = current.filter(a => a.status === 'fatto').length;
+  const completed = current.filter(a => a.status !== 'annullato' && session.status(a, client.id) === 'fatto').length;
   const future = current.filter(a => a.status === 'prenotato' && a.date >= today);
   // The stored counters are authoritative: never infer progress from appointments.
   const remaining = Number(client.sessions_remaining) || 0;

@@ -1,3 +1,4 @@
+const session = require('./pt-session-metadata');
 const sharing = require('./pt-client-sharing');
 const {supabaseRequest: db, isPersonalTrainer} = require('./pt-auth');
 // Identity and active Portal access are verified by pt-data before this module.
@@ -5,12 +6,14 @@ const {supabaseRequest: db, isPersonalTrainer} = require('./pt-auth');
 const allowed = operator => !!operator?.id && isPersonalTrainer(operator);
 const enabled = operator => process.env.PT_SESSION_LOG_ENABLED === 'true' && allowed(operator);
 const historyAllowed = operator => enabled(operator) && operator.accessLevel === 'owner' && String(operator.email || '').trim().toLowerCase() === 'nutrizione.gianlucapirisi@gmail.com';
-const fields = 'id,operator_id,client_ids,service_id,date,start_time,status';
-async function assignments(operator) {
+const fields = 'id,operator_id,client_ids,service_id,date,start_time,status,notes';
+async function assignments(operator, studioScope = false) {
   if (!enabled(operator)) return [];
   const rows=[];
   for(let offset=0;;offset+=1000){
-    const page=await db('appointments',`?select=${fields}&operator_id=eq.${encodeURIComponent(operator.id)}&service_id=in.(pt11,pt12)&status=in.(prenotato,fatto)&order=id&limit=1000&offset=${offset}`);
+    const ownerFilter = studioScope ? '' : `&operator_id=eq.${encodeURIComponent(operator.id)}`;
+    const services = studioScope ? 'pt11,pt12,circuit' : 'pt11,pt12';
+    const page=await db('appointments',`?select=${fields}${ownerFilter}&service_id=in.(${services})&status=in.(prenotato,fatto)&order=id&limit=1000&offset=${offset}`);
     rows.push(...page);if(page.length<1000)break;
   }
   return rows;
@@ -27,12 +30,19 @@ function payload(value) {
     if(!out.exercise)fail();
     return out;
   });
-  return {rows,notes:value.notes.trim()};
+  const result={rows,notes:value.notes.trim()};
+  if(value.workout!==undefined){
+    const w=value.workout;
+    if(!w || typeof w.sheet!=='string' || !/^[A-Z][A-Z0-9_-]{0,15}$/.test(w.sheet) || !Number.isInteger(w.week) || w.week<0 || w.week>103)fail();
+    result.workout={sheet:w.sheet,week:w.week};
+  }
+  return result;
 }
 async function save(operator,input) {
   if(!allowed(operator)){const e=new Error('Accesso al Registro sedute non autorizzato.');e.statusCode=403;throw e;}
   if(!enabled(operator)){const e=new Error('Registrazione sedute condivise non ancora attiva.');e.statusCode=503;throw e;}
-  if(!await sharing.canAccess(operator.id,String(input.clientId||''))){const e=new Error('Il cliente non è assegnato a te e non è stato condiviso dalla Direzione.');e.statusCode=403;throw e;}
+  const assigned = (await assignments(operator)).some(row => row.id === String(input.appointmentId || '') && row.client_ids?.includes(String(input.clientId || '')) && session.status(row,String(input.clientId || '')) !== 'noshow');
+  if(!assigned){const e=new Error('La seduta non è assegnata a te. Chiedi alla Direzione di assegnartela dal Calendario.');e.statusCode=403;throw e;}
   const data=payload(input.data);
   if(!/^[0-9a-f-]{36}$/i.test(input.requestId||'')){const e=new Error('Identificativo salvataggio non valido.');e.statusCode=400;throw e;}
   try { return await db('rpc/pt_save_session_record','',{method:'POST',body:{p_appointment_id:String(input.appointmentId||''),p_cliente_id:String(input.clientId||''),p_program_id:String(input.programId||''),p_actor_id:operator.id,p_data:data,p_expected_version:Number.isInteger(input.version)?input.version:0,p_request_id:input.requestId}}); }

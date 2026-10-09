@@ -22,3 +22,13 @@ test('PT corrections require verified owner and pass only server actor to dedica
   const call=m.calls.find(c=>c.url.includes('calendar_correct_pt_sessions'));assert.equal(call.body.p_actor_id,'owner');assert.ok(!JSON.stringify(call.body).includes('FORGED'));
  }finally{m.restore()}
 });
+
+test('paired renewal is owner-only, preserves idempotency UUID and never trusts caller identity',async()=>{
+ const payload={requestId:crypto.randomUUID(),clients:[{id:'a'},{id:'b'}],appointments:[{id:'one'}]};
+ let m=mock();try{assert.equal((await handler(event({accessToken:token(),operation:'renew_pt_pair',payload}))).statusCode,403)}finally{m.restore()}
+ m=mock('owner');try{
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'renew_pt_pair',payload:{...payload,requestId:'bad'}}))).statusCode,400);
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'renew_pt_pair',actor_id:'FORGED',payload}))).statusCode,200);
+  const call=m.calls.find(c=>c.url.includes('calendar_renew_pt_pair'));assert.equal(call.body.p_actor_id,'owner');assert.equal(call.body.p_request_id,payload.requestId);assert.ok(!JSON.stringify(call.body).includes('FORGED'));
+ }finally{m.restore()}
+});

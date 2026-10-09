@@ -60,6 +60,7 @@ function templateSnapshot(input, title) {
   });
   if (!days.length || !exerciseCount) invalid('Aggiungi almeno un esercizio prima di salvare il modello.');
   const settings = Object.fromEntries(['goal','level','frequency','warmup'].map(key => [key, text(input.program.settings?.[key])]));
+  if (input.program.settings?.studioNotes !== undefined) settings.studioNotes = text(input.program.settings.studioNotes);
   return {format:'neacea-program-editor-v1',program:{sourceId:'shared-template',title, settings,weeks,days}};
 }
 
@@ -153,6 +154,22 @@ async function updateTemplate(operator,input) {
   if(!result?.[0])fail('Questo programma è cambiato in un’altra finestra. Le modifiche non sono state sovrascritte: chiudi e riapri il programma aggiornato, oppure salva la tua bozza come nuova copia.',409);
   return result[0];
 }
+async function moveTemplate(operator,input) {
+  const row=await getRow('pt_program_templates',input.templateId);assertOwn(operator,row);
+  if(row.archived_at)fail('Ripristina il programma dal Cestino prima di spostarlo.',409);
+  const requestId=text(input.requestId,120);
+  if(!requestId || !input.expectedUpdatedAt || !Object.hasOwn(input,'folderId'))invalid('Destinazione o versione mancante. Riapri l’archivio.');
+  const folder_id=await validFolder(input.folderId);
+  if(row.last_request_id===requestId) {
+    if((row.folder_id || null)!==folder_id)fail('La destinazione è cambiata. Riapri lo spostamento.',409);
+    return row;
+  }
+  const result=await supabaseRequest('pt_program_templates',`?id=eq.${encodeURIComponent(row.id)}&archived_at=is.null&updated_at=eq.${encodeURIComponent(input.expectedUpdatedAt)}`,{
+    method:'PATCH',headers:{Prefer:'return=representation'},body:{folder_id,last_request_id:requestId}
+  });
+  if(!result?.[0])fail('Il programma è cambiato in un’altra finestra. Aggiorna l’archivio e riprova.',409);
+  return result[0];
+}
 async function archiveTemplate(operator,input) {
   const templateId=text(input.templateId,120);
   const rows=await supabaseRequest('pt_program_templates',`?select=*&id=eq.${encodeURIComponent(templateId)}&limit=1`);
@@ -179,4 +196,4 @@ async function purgeArchivedTemplates(operator) {
   }
   return allowed.length;
 }
-module.exports={templateSnapshot,listTemplates,listArchivedTemplates,saveTemplate,archiveTemplate,purgeArchivedTemplates,listFolders,saveFolder,deleteFolder,updateTemplate};
+module.exports={templateSnapshot,listTemplates,listArchivedTemplates,saveTemplate,archiveTemplate,purgeArchivedTemplates,listFolders,saveFolder,deleteFolder,updateTemplate,moveTemplate};

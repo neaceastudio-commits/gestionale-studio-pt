@@ -332,7 +332,7 @@ const App = {
 
         <div class="form-group">
           <label>Note</label>
-          <textarea id="appt-notes" class="form-input" rows="2">${appt?.notes||''}</textarea>
+          <textarea id="appt-notes" class="form-input" rows="2">${App._escapeHtml(globalThis.PTSessionModel?.strip(appt?.notes) || appt?.notes || '')}</textarea>
         </div>
 
       </div>
@@ -986,7 +986,8 @@ const App = {
             </div>
           </div>
         </div>
-        ${appt.notes?`<div class="detail-section detail-section-full detail-notes"><div class="detail-label">Note</div><div class="detail-value">${appt.notes}</div></div>`:''}
+        ${PTPairSessions.detail(appt)}
+        ${PTSessionModel.strip(appt.notes)?`<div class="detail-section detail-section-full detail-notes"><div class="detail-label">Note</div><div class="detail-value">${PTPairSessions.escape(PTSessionModel.strip(appt.notes))}</div></div>`:''}
       </div>
       <div class="modal-footer">
         ${!canEdit ? '<span class="form-hint">Modalità PT: appuntamento in sola lettura.</span>' : ''}
@@ -1025,6 +1026,10 @@ const App = {
     if (appt) App._renderDetailModal(appt);
   },
   _preserveAppointmentPackage(appt, before) {
+    if (appt.serviceId === 'pt12' && appt.status !== 'annullato') {
+      if (before && ['fatto','noshow'].includes(before.status) && !PTSessionModel.read(before)) return appt;
+      return PTSessionModel.prepare(appt, State.getClients(), Services.getPackageCycleContext, before);
+    }
     if (!Services.serviceUsesPackageSessions(appt.serviceId) || appt.clientIds?.length !== 1) return appt;
     const client = Services.getClient(appt.clientIds[0]);
     if (!client || Number(client.sessionsTotal || 0) <= 0) return appt;
@@ -1035,19 +1040,20 @@ const App = {
     return { ...appt, notes: App._withPackageCycle(appt.notes, cycle.start, cycle.id) };
   },
   async _persistAppointment(appt, before) {
-    appt = App._preserveAppointmentPackage(appt, before);
     try {
+      appt = App._preserveAppointmentPackage(appt, before);
       const result = await SupabaseSync.saveAppointmentAtomic(appt, before);
       if (result?.error || !result?.appointment) throw new Error(result?.error || 'Conferma mancante');
       return result.appointment;
-    } catch (_) {
-      UI.showToast('Salvataggio non confermato. Ricarica il calendario e riprova.', 'error');
+    } catch (error) {
+      UI.showToast(error.message || 'Salvataggio non confermato. Ricarica il calendario e riprova.', 'error');
       return null;
     }
   },
   async _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!before || !App.guardPortalEdit('appointment', before)) return;
+    if (before.serviceId === 'pt12') return PTPairSessions.attendance(before);
     const doneAppt = await App._persistAppointment({ ...before, status: 'fatto', notes: App._withPtAudit(before.notes, 'segnato come fatto') }, before);
     if (!doneAppt) return;
     UI.closeModal(); UI.showToast('Segnato come fatto', 'success'); Calendar.render();
@@ -1076,6 +1082,7 @@ const App = {
   async _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!before || !App.guardPortalEdit('appointment', before)) return;
+    if (before.serviceId === 'pt12') return PTPairSessions.attendance(before);
     const nsAppt = await App._persistAppointment({ ...before, status: 'noshow', notes: App._withPtAudit(before?.notes, 'segnato come no-show') }, before);
     if (!nsAppt) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
@@ -1084,7 +1091,7 @@ const App = {
   async _markCancelled(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!before || !App.guardPortalEdit('appointment', before)) return;
-    if (!confirm('Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
+    if (!confirm(before.serviceId === 'pt12' ? 'Annullare la seduta condivisa per entrambi? Se già scalata, la seduta sarà restituita ai rispettivi pacchetti correnti. Rimarrà nello storico.' : 'Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
     const cancelled = await App._persistAppointment({ ...before, status: 'annullato', notes: App._withPtAudit(before?.notes, 'appuntamento annullato') }, before);
     if (!cancelled) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);
@@ -1098,6 +1105,7 @@ const App = {
       return;
     }
     const appt = State.getAppointments().find(a => a.id === apptId);
+    if (appt?.serviceId === 'pt12') return App._markCancelled(apptId);
     if (!appt) return;
     if (!App.guardPortalEdit('appointment', appt)) return;
     const affectsCurrentCycle = appt.status === 'fatto' && appt.clientIds?.some(id => {
@@ -2019,6 +2027,7 @@ const App = {
     });
     const canOfferRenewalUndo = currentPackageCycle?.source === 'renewal' && !currentPackageCycle?.voidedAt;
     const renewalUndoBlocks = [];
+    if (currentPackageCycle?.id && State.getAppointments().some(a => a.clientIds?.includes(client.id) && globalThis.PTSessionModel?.cycle(a,client.id)?.cycleId === currentPackageCycle.id)) renewalUndoBlocks.push('il ciclo ha sedute condivise: serve una correzione coordinata della coppia');
     if (metrics.completed > 0 || metrics.noShow > 0) renewalUndoBlocks.push('ci sono sedute già fatte o no-show');
     if (currentFinance.paid > 0.009) renewalUndoBlocks.push('prima occorre stornare gli incassi del rinnovo');
     const financialSummary = PackageLedger.summary([client]);
@@ -2403,6 +2412,7 @@ const App = {
             <div id="pkg-renew-payment-preview" class="package-payment-preview open">
               <strong>Da pagare</strong><span>Incassato ${App._fmtMoney(0)} · saldo ${App._fmtMoney(currentFinance.total)}</span>
             </div>
+            ${(client.packageTypes || []).includes('PT 1:2') ? `<button class="btn-primary" onclick="PTPairSessions.open('${client.id}')">Rinnovo e calendario coppia PT 1:2</button>` : ''}
             <button id="pkg-renew-submit" class="btn-primary" data-ledger-ready="${packageLedger.parseError ? 'false' : 'true'}" onclick="App._renewPackageAppointments('${client.id}')" disabled>Rinnova e genera sedute</button>
           </div>
           <p>Le impostazioni del ciclo attuale non cambiano prima della conferma. Se non vengono trovate abbastanza date valide, il rinnovo viene annullato interamente.</p>
@@ -2644,6 +2654,7 @@ const App = {
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
+    if ((currentClient.packageTypes || []).includes('PT 1:2')) return UI.showToast('PT 1:2: usa il calendario della coppia per aggiungere sedute; modifica una seduta condivisa dal Calendario per spostare entrambi.', 'info');
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '';
@@ -2694,6 +2705,7 @@ const App = {
     if (!App._limitPackagePlanDays(clientId)) return;
     const currentClient = State.getClients().find(c => c.id === clientId);
     if (!currentClient) return;
+    if ((currentClient.packageTypes || []).includes('PT 1:2')) return UI.showToast('PT 1:2: usa il calendario della coppia per aggiungere sedute; modifica una seduta condivisa dal Calendario per spostare entrambi.', 'info');
 
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
@@ -3064,7 +3076,7 @@ const App = {
       appointment.serviceId === serviceId &&
       Array.isArray(appointment.clientIds) &&
       appointment.clientIds.includes(client.id) &&
-      PackageLedger.appointmentCycleId(appointment.notes) === cycle.id
+      (globalThis.PTSessionModel?.cycle(appointment,client.id)?.cycleId || PackageLedger.appointmentCycleId(appointment.notes)) === cycle.id
     );
     const undo = cycle.undo || {};
     const createdIds = new Set(Array.isArray(undo.createdAppointmentIds) ? undo.createdAppointmentIds : []);
@@ -3221,6 +3233,8 @@ const App = {
     if (!App.guardStudioManagement() || App._packageRenewalBusy) return;
     const currentClient = State.getClients().find(client => client.id === clientId);
     if (!currentClient) return;
+
+    if ((currentClient.packageTypes || []).includes('PT 1:2')) return PTPairSessions.open(currentClient.id);
 
     const planValidation = App._updateRenewalPlanPreview();
     if (!planValidation.ok) {
@@ -3623,6 +3637,7 @@ const App = {
       return;
     }
     const appt = State.getAppointments().find(a => a.id === apptId);
+    if (appt?.serviceId === 'pt12') return App._markCancelled(apptId);
     if (!appt) return;
     if (!App.guardPortalEdit('appointment', appt)) return;
     const client = appt.clientIds?.map(Services.getClient).find(Boolean);
@@ -3650,6 +3665,7 @@ const App = {
     if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
+    if ((client.packageTypes || []).includes('PT 1:2')) return PTPairSessions.open(client.id, false);
 
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;

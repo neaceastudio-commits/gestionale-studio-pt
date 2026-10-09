@@ -222,7 +222,7 @@
     operators.forEach(op => rows.set(operatorKey(op), { op, totalMin: 0, services: new Map() }));
     State.getAppointments()
       .filter(a =>
-        a.status !== 'annullato' &&
+        a.status !== 'annullato' && !['pt11','pt12'].includes(a.serviceId) &&
         String(a.date || '').slice(0, 7) === month &&
         a.operatorId &&
         (typeof Services === 'undefined' || !Services.isAppointmentVisible || Services.isAppointmentVisible(a))
@@ -242,8 +242,22 @@
         item.count += 1;
         row.services.set(serviceId, item);
       });
+    const pt = PTSessionModel.summary(State.getAppointments(), month);
+    for (const total of pt.totals) {
+      const op = Services.getOperator(total.operator) || {id:total.operator};
+      const key = operatorKey(op);
+      const row = rows.get(key) || {op,totalMin:0,services:new Map()};
+      row.pt = total;
+      row.totalMin += total.earnedMin;
+      rows.set(key,row);
+    }
+    for (const issue of pt.issues) for (const a of issue.appointments) {
+      const op = Services.getOperator(a.operatorId) || {id:a.operatorId};
+      const key = operatorKey(op), row = rows.get(key) || {op,totalMin:0,services:new Map()};
+      (row.issues ||= []).push(`${a.date} ${a.startTime}: ${issue.reason}`); rows.set(key,row);
+    }
     return [...rows.values()]
-      .filter(row => row.totalMin > 0)
+      .filter(row => row.totalMin > 0 || row.pt?.plannedMin > 0 || row.issues?.length)
       .sort((a, b) => operatorLabel(a.op).localeCompare(operatorLabel(b.op), 'it'));
   }
 
@@ -375,9 +389,11 @@
       return `<div class="pt-hours-card">
         <div class="pt-hours-person">
           <strong>${esc(operatorLabel(row.op))}</strong>
-          <span>${esc(fmtHours(row.totalMin))}</span>
+          <span>${row.pt ? 'PT maturate: ' + esc(fmtHours(row.pt.earnedMin)) : 'Agenda: ' + esc(fmtHours(row.totalMin))}</span>
         </div>
+        ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore con almeno un presente: ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
         ${services}
+        ${row.issues?.length ? `<p role="alert"><strong>Conteggio incompleto: ${row.issues.length} sedute da correggere, escluse dai totali.</strong></p><ul>${row.issues.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       </div>`;
     }).join('') : '<div class="pt-search-empty">Nessuna ora trovata per questo mese.</div>';
     return `<div class="pt-hours-overlay" onclick="PTAvailabilityOverview.closeHoursSummary()">
@@ -390,7 +406,7 @@
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
-        <p class="pt-help">Conteggio degli appuntamenti del mese non annullati, divisi per professionista e tipologia di servizio.</p>
+        <p class="pt-help">PT: compensi maturati sulle sedute chiuse, una sola quota per appuntamento. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
         <div class="pt-hours-list">${body}</div>
       </aside>
     </div>`;

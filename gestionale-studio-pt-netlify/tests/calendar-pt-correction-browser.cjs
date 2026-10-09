@@ -48,7 +48,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.equal(await page.evaluate(()=>State.getAppointments().filter(a=>a.status!=='annullato').length),1);
   await page.evaluate(()=>UI.closeModal());await page.reload();await page.waitForFunction(()=>State.getAppointments().some(a=>a.serviceId==='pt12'));
   await page.evaluate(()=>{Calendar.switchView('operators');PTAvailabilityOverview.changeHoursSummaryMonth('2026-10');PTAvailabilityOverview.openHoursSummary()});
-  await page.waitForSelector('.pt-hours-card');assert.match(await page.locator('.pt-hours-card').innerText(),/1 h/);assert.match(await page.locator('.pt-hours-card').innerText(),/PT 1:2/);assert.doesNotMatch(await page.locator('.pt-hours-card').innerText(),/PT 1:1/);
+  await page.waitForSelector('.pt-hours-card');assert.match(await page.locator('.pt-hours-card').innerText(),/1 h/);assert.match(await page.locator('.pt-hours-card').innerText(),/PT 1:2/);assert.match(await page.locator('.pt-hours-card').innerText(),/PT 1:1 maturato: 0 h/);
   assert.deepEqual(errors,[]);console.log('PASS browser: client form → preview → error/retry → atomic response → reload → 1 hour PT 1:2; unchanged balances');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
