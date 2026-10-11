@@ -18,6 +18,7 @@ r=run([{...timely,frequency:'',days:[]}],'2026-01-28');assert.equal(r.regularity
 assert.equal(S.excludedDays('2026-01-01','2026-01-11',[{from:'2026-01-02',to:'2026-01-07'},{from:'2026-01-05',to:'2026-01-09'}]),7);
 const deleted=M.summarize(c,appts([timely]).filter(a=>a.id!=='on-0'),{today:'2026-01-28',ledger:{cycles:[timely]},session:P,audit:[move('1'),move('2'),move('3')],scoring:S});assert.equal(deleted.timing.packages[0].moves.length,3);assert.equal(deleted.timing.moveLoss,10);
 const noShowRows=appts([timely]);noShowRows[0].status='noshow';const absent=M.summarize(c,noShowRows,{today:'2026-01-28',ledger:{cycles:[timely]},session:P,audit:[],scoring:S});assert.equal(absent.regularity,87.5);
+assert.equal(S.frequency({frequency:'Su richiesta',days:['Lunedì']}),null);assert.equal(S.frequency({frequency:'Mensile',days:['Lunedì']}),0.25);assert.equal(S.frequency({frequency:'Bisettimanale'}),0.5);assert.equal(S.frequency({days:['']}),null);
 assert.equal(S.documentation('Pausa concordata | 2026-02-30 | 2026-03-01 | prova').pauses.length,0);
 // Number of renewals cannot compensate for the interruption between packages.
 const many=[cycle('a','2026-01-01'),cycle('b','2026-03-01'),cycle('c','2026-05-01')];many.forEach((x,i)=>x.source=i?'renewal':'legacy');

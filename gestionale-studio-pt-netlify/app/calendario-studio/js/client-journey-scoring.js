@@ -23,7 +23,12 @@
  function frequency(c){
   const n=String(c.frequency||'').match(/^\s*(\d+(?:[.,]\d+)?)\s*(?:x|volte|lezioni|sedute)?(?:\s|$)/i);
   if(n&&Number(n[1].replace(',','.'))>0)return Number(n[1].replace(',','.'));
-  return Array.isArray(c.days)&&new Set(c.days).size?new Set(c.days).size:null;
+  const raw=String(c.frequency||'').trim().toLowerCase();
+  if(raw==='bisettimanale')return 0.5;
+  if(raw==='mensile')return 0.25;
+  if(raw)return null;
+  const known=(c.days||[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6||/^(lun|mar|mer|gio|ven|sab|dom)/i.test(String(d)));
+  return new Set(known).size||null;
  }
  function build(client,rows,ledger,session,today,audit){
   const warnings=[],doc=documentation(client.notes);
@@ -32,7 +37,7 @@
   const inputs=[];if(!recorded.length)warnings.push('Nessun pacchetto con decorrenza registrata');
   for(let i=0;i<recorded.length;i++){
    const c=recorded[i],next=recorded[i+1],last=i===recorded.length-1;
-   const sessions=Number(c.sessionsTotal),freq=frequency(c)|| (last?frequency({frequency:client.packageFrequency,days:client.giorniSettimana}):null);
+   const sessions=Number(c.sessionsTotal),freq=frequency(c)|| (last&&!String(c.frequency||'').trim()?frequency({frequency:client.packageFrequency,days:client.giorniSettimana}):null);
    const belongs=a=>{
     if(!['pt11','pt12'].includes(a.serviceId))return false;
     let p;try{p=session?.cycle(a,client.id);}catch{warnings.push('Collegamento al pacchetto da verificare');return false;}const id=p?.cycleId||String(a.notes||'').match(/\[CICLO-PACCHETTO-ID\s+([^\]]+)\]/)?.[1],start=p?.start||String(a.notes||'').match(/\[CICLO-PACCHETTO\s+(\d{4}-\d{2}-\d{2})\]/)?.[1];
