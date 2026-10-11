@@ -38,7 +38,7 @@ vm.runInContext(`${stateFromProgramSource}\nglobalThis.emptyProgram = stateFromP
 assert('Cliente senza programmi apre una nuova bozza senza errore', emptyProgramContext.emptyProgram === null);
 
 const legacyStart = portalSource.indexOf('    function progressionPlan(value)');
-const legacyEnd = portalSource.indexOf('    async function loadPortalData()', legacyStart);
+const legacyEnd = portalSource.indexOf('    async function loadPortalData(', legacyStart);
 assert('Convertitore legacy individuato', legacyStart >= 0 && legacyEnd > legacyStart);
 const legacyContext = {
   defaultState: {

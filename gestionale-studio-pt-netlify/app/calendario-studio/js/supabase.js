@@ -277,6 +277,23 @@ const SupabaseSync = (() => {
     };
   }
 
+  // Complete read-only snapshot; independent from the agenda's local cache.
+  async function pullClientJourney() {
+    async function allRows(table) {
+      const rows=[];let cursor='';
+      while(true) {
+        const batch=await request(table,{query:'?select=*&order=id.asc&limit=500'+(cursor?'&id=gt.'+encodeURIComponent(cursor):'')});
+        if(batch?.error || !Array.isArray(batch)) throw Error('Storico clienti non disponibile');
+        if(!batch.length)return rows;
+        const last=String(batch.at(-1).id||'');
+        if(!last || last<=cursor) throw Error('Paginazione dello storico non confermata');
+        rows.push(...batch);cursor=last;
+      }
+    }
+    const [clients,appointments]=await Promise.all([allRows('clients'),allRows('appointments')]);
+    return {clients:clients.map(clientFromDb),appointments:appointments.map(appointmentFromDb)};
+  }
+
   async function pullAll() {
     const [clients, operators, appointments] = await Promise.all([
       request('clients', { query: '?select=*&order=active.desc,cognome.asc,nome.asc' }),
@@ -626,5 +643,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

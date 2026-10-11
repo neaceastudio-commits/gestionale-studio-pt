@@ -7,11 +7,15 @@ cd "$project_root"
 node --check app/calendario-studio/js/app.js
 node --check app/calendario-studio/js/services.js
 node --check app/calendario-studio/js/clients.js
+node --check app/calendario-studio/js/supabase.js
+node --check app/calendario-studio/js/client-journey-model.js
+node --check app/calendario-studio/js/client-journey.js
 node --check netlify/functions/pt-access-email.js
 node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
 node tests/calendar-release-regression.cjs
+node tests/client-journey.test.cjs
 node tests/pt-program-persistence.test.cjs
 node tests/pt-hand-grip.test.cjs
 node tests/package-cycle-confirmation.test.cjs
@@ -34,6 +38,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/lib/pt-auth.js
     netlify/functions/pt-data.js
     netlify/functions/apple-calendar.js
+    tests/client-journey.test.cjs
+    tests/client-journey-browser.cjs
     tests/calendar-release-regression.cjs
     tests/pt-program-persistence.test.cjs
     tests/pt-hand-grip.test.cjs

@@ -59,6 +59,7 @@ const Calendar = (() => {
       case 'availability': renderAvailability(); break;
       case 'operators': Operators.render(); break;
       case 'clients': Clients.render(); break;
+      case 'situation': ClientJourney.render(); break;
     }
   }
 

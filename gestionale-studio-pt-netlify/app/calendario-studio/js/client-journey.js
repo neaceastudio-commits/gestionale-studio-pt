@@ -1,0 +1,66 @@
+/* Client journey view: a separate complete snapshot, never a local fallback. */
+const ClientJourney = (() => {
+  'use strict';
+  let snapshot=null, busy=false, error='', loadedAt=0;
+  const settings={layout:'table',scope:'pt',status:'active',selection:'all',sort:'done',search:'',pauseDays:30,minMonths:6,minSessions:30,minAttendance:90,minRenewals:0};
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const fmt=d=>d?new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z')):'—';
+  const name=c=>[c.nome,c.cognome].filter(Boolean).join(' ')||'Cliente senza nome';
+  const percent=r=>r.attendance===null?'—':r.attendance.toLocaleString('it-IT',{maximumFractionDigits:1})+'%';
+  function rows(){
+    if(!snapshot)return [];
+    const allowed=App.visibleClients(snapshot.clients);
+    return allowed.map(c=>ClientJourneyModel.summarize(c,snapshot.appointments,{...settings,today:today(),ledger:PackageLedger.parse(c),session:PTSessionModel}));
+  }
+  async function load(){
+    if(busy)return;
+    busy=true;error='';render();
+    try {const fresh=await SupabaseSync.pullClientJourney();snapshot=fresh;loadedAt=Date.now();}
+    catch {error='Storico non aggiornato. Riprova: i conteggi parziali non vengono usati per selezionare i Top clients.';}
+    finally {busy=false;render();}
+  }
+  function filtered(){
+    return rows().filter(r=>(settings.status==='all'||(settings.status==='active'?r.client.active!==false:r.client.active===false))&&name(r.client).toLocaleLowerCase('it').includes(settings.search.toLocaleLowerCase('it'))&&(settings.selection==='all'||(settings.selection==='top'?r.top:settings.selection==='pause'?r.pauseList.length>0:!r.next&&r.client.active!==false)))
+      .sort((a,b)=>(settings.sort==='months'?b.months-a.months:settings.sort==='renewals'?(b.renewals??-1)-(a.renewals??-1):settings.sort==='attendance'?(b.attendance??-1)-(a.attendance??-1):b.done-a.done)||b.done-a.done||name(a.client).localeCompare(name(b.client),'it'));
+  }
+  function render(){
+    const panel=document.getElementById('view-situation');if(!panel?.classList.contains('active'))return;
+    if(!snapshot&&!busy&&!error){load();return;}
+    // Auto-refresh of the calendar must not replace the focused filters.
+    if(panel.querySelector('#journey-search')){drawResults();if(!busy&&!error&&Date.now()-loadedAt>=30000)load();return;}
+    panel.innerHTML=`<div class="view-header"><div><div class="eyebrow">Neacea · Relazione con i clienti</div><h1 class="page-title">Situazione <em>clienti</em></h1><p class="page-sub">Inizio del percorso, presenze, pause e rinnovi per scegliere chi premiare.</p></div><button class="btn-primary" id="journey-refresh">Aggiorna storico</button></div>
+      <div class="card journey-controls"><div class="journey-filters">
+      <label>Cerca cliente<input class="form-input" id="journey-search" type="search" placeholder="Nome o cognome"></label>
+      <label>Percorso<select class="form-input" data-setting="scope"><option value="pt">Sedute PT 1:1 e 1:2</option><option value="all">Tutti i servizi del Calendario</option></select></label>
+      <label>Clienti<select class="form-input" data-setting="status"><option value="active">Attivi</option><option value="all">Attivi e archiviati</option><option value="archived">Archiviati</option></select></label>
+      <label>Mostra<select class="form-input" data-setting="selection"><option value="all">Tutti</option><option value="top">Top clients</option><option value="pause">Con pause rilevate</option><option value="next">Senza prossima prenotazione</option></select></label>
+      <label>Ordina per<select class="form-input" data-setting="sort"><option value="done">Sedute svolte</option><option value="months">Anzianità registrata</option><option value="renewals">Rinnovi registrati</option><option value="attendance">Percentuale presenze</option></select></label></div>
+      <details><summary>Criteri Top clients e pause</summary><p>Top: cliente attivo, percorso non sospeso, nessuna pausa attuale e dati senza esiti da verificare. Tutte le soglie seguenti devono essere raggiunte.</p><div class="journey-filters">${[['minMonths','Mesi minimi',0,1200],['minSessions','Sedute svolte minime',1,10000],['minAttendance','Presenze minime %',0,100],['minRenewals','Rinnovi minimi',0,1000],['pauseDays','Pausa da giorni senza presenze',1,3650]].map(([key,label,min,max])=>`<label>${label}<input class="form-input" data-setting="${key}" type="number" min="${min}" max="${max}" step="1" value="${settings[key]}"></label>`).join('')}</div><p>Le pause sono intervalli tra presenze, non conferme di abbandono: ferie, malattia e sospensioni vanno verificati. Le soglie valgono per questa consultazione; non assegnano premi automaticamente.</p></details></div>
+      <div id="journey-status" role="status"></div><div id="journey-results"></div>
+      <p class="journey-note">Statistiche basate sullo storico registrato nel Calendario. L’inizio è la prima data disponibile tra acquisizione, pacchetti e presenze; se manca una data iniziale, viene indicata la prima presenza. Presenze % = svolte / (svolte + no-show), senza annullate o prenotazioni. Rinnovi = cicli di rinnovo registrati e iniziati, esclusi gli annullati e le sole proposte.</p>`;
+    panel.querySelector('#journey-search').value=settings.search;
+    panel.querySelector('#journey-search').oninput=e=>{settings.search=e.target.value;drawResults();};
+    panel.querySelectorAll('[data-setting]').forEach(el=>{el.value=settings[el.dataset.setting];el.onchange=()=>{if(el.type==='number'&&!el.checkValidity())return;settings[el.dataset.setting]=el.type==='number'?Number(el.value):el.value;drawResults();};});
+    panel.querySelector('#journey-refresh').onclick=load;drawResults();
+  }
+  function drawResults(){
+    const panel=document.getElementById('view-situation'),target=panel?.querySelector('#journey-results');if(!target)return;
+    panel.querySelector('#journey-refresh').disabled=busy;
+    const status=panel.querySelector('#journey-status');status.textContent=busy?'Caricamento dello storico completo…':error||`Storico aggiornato alle ${new Date(loadedAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'})}.`;
+    if(busy||error||!snapshot){target.replaceChildren();return;}
+    const result=filtered();
+    const table=()=>`<p class="journey-scroll-hint">Scorri la tabella verso destra per vedere tutte le statistiche.</p><div class="card journey-table-wrap" tabindex="0" role="region" aria-label="Statistiche clienti, tabella scorrevole"><table class="journey-table"><caption>Situazione clienti · ${settings.scope==='pt'?'Sedute PT 1:1 e 1:2':'Tutti i servizi del Calendario'}</caption><thead><tr><th scope="col">Cliente</th><th scope="col">Inizio percorso</th><th scope="col" class="journey-number">Sedute<br>svolte</th><th scope="col" class="journey-number">Presenze</th><th scope="col" class="journey-number">Rinnovi</th><th scope="col" class="journey-number">Frequenza<br>ultimi 90 giorni</th><th scope="col" class="journey-number">Mesi attivi<br>ultimi 12</th><th scope="col" class="journey-number">Pause<br>≥ ${settings.pauseDays} giorni</th><th scope="col">Ultima presenza</th><th scope="col">Prossima<br>prenotazione</th><th scope="col">Percorso</th></tr></thead><tbody>${result.map(r=>`<tr class="journey-row ${r.top?'journey-top':''}"><th scope="row" class="journey-client"><strong>${esc(name(r.client))}</strong><span class="journey-badge">${r.top?'★ Top client':r.client.active===false?'Archiviato':r.frozen?'Percorso sospeso':r.ongoing?'Pausa attuale':'Attivo'}</span>${r.issues.length?`<span class="journey-alert" title="${esc(r.issues.join(' · '))}">Dati da verificare</span>`:''}</th><td class="journey-date">${fmt(r.start)}<small>${r.months} mesi · ${r.recordedStart?'inizio registrato':'prima presenza'}</small></td><td class="journey-number journey-value">${r.done}</td><td class="journey-number journey-value">${percent(r)}</td><td class="journey-number journey-value">${r.renewals??'Da verificare'}</td><td class="journey-number">${r.frequency.toLocaleString('it-IT',{maximumFractionDigits:1})}/sett.<small>${r.done90} sedute</small></td><td class="journey-number journey-value">${r.activeMonths}</td><td class="journey-number">${r.pauseList.length}${r.ongoing?'<small class="journey-alert">In corso</small>':''}</td><td class="journey-date">${fmt(r.lastDone)}${r.sinceLast!==null?`<small>${r.sinceLast} giorni fa</small>`:''}</td><td class="journey-date">${fmt(r.next?.date)}${r.next?`<small>${esc(r.next.startTime||'')}</small>`:''}</td><td><button class="btn-ghost btn-sm" data-client="${esc(r.client.id)}" aria-label="Vedi percorso di ${esc(name(r.client))}">Vedi percorso</button></td></tr>`).join('')}</tbody></table></div>`;
+    const cards=()=>`<div class="journey-grid">${result.map(r=>`<article class="card journey-card ${r.top?'journey-top':''}"><div class="journey-card-head"><h2>${esc(name(r.client))}</h2><span class="journey-badge">${r.top?'★ Top client':r.client.active===false?'Archiviato':r.frozen?'Percorso sospeso':r.ongoing?'Pausa attuale':'Attivo'}</span></div><p class="journey-start">${r.recordedStart?'Inizio registrato':'Prima presenza registrata'}: <strong>${fmt(r.start)}</strong> · ${r.months} mesi</p><dl class="journey-metrics"><div><dt>Sedute svolte</dt><dd>${r.done}</dd></div><div><dt>Presenze</dt><dd>${percent(r)}</dd></div><div><dt>Rinnovi registrati</dt><dd>${r.renewals??'Da verificare'}</dd></div><div><dt>Mesi attivi / ultimi 12</dt><dd>${r.activeMonths}</dd></div></dl><p>${r.done90} sedute negli ultimi 90 giorni · ${r.frequency.toLocaleString('it-IT',{maximumFractionDigits:1})}/settimana osservate</p><p>Ultima presenza: ${fmt(r.lastDone)}${r.sinceLast!==null?' · '+r.sinceLast+' giorni fa':''}</p><p>${r.pauseList.length} pause rilevate (≥ ${settings.pauseDays} giorni)</p><p>Prossima prenotazione: ${fmt(r.next?.date)} ${esc(r.next?.startTime||'')}</p>${r.issues.length?`<p class="journey-alert">${r.issues.map(esc).join(' · ')}</p>`:''}<button class="btn-ghost" data-client="${esc(r.client.id)}" aria-label="Vedi percorso di ${esc(name(r.client))}">Vedi percorso</button></article>`).join('')}</div>`;
+    target.innerHTML=`<div class="journey-results-bar"><p class="journey-count">${result.length} clienti · ${result.filter(r=>r.top).length} Top clients nei risultati</p><div class="journey-layout" role="group" aria-label="Visualizzazione clienti"><button class="btn-ghost btn-sm" data-layout="table" aria-pressed="${settings.layout==='table'}">Tabella</button><button class="btn-ghost btn-sm" data-layout="cards" aria-pressed="${settings.layout==='cards'}">Schede</button></div></div>${result.length?(settings.layout==='table'?table():cards()):'<p class="empty-state">Nessun cliente corrisponde ai filtri e alle soglie selezionati.</p>'}`;
+    target.querySelectorAll('[data-layout]').forEach(btn=>btn.onclick=()=>{settings.layout=btn.dataset.layout;drawResults();});
+    target.querySelectorAll('[data-client]').forEach(btn=>btn.onclick=()=>detail(btn.dataset.client));
+  }
+  function detail(id){
+    if(busy||error)return;
+    const r=rows().find(r=>r.client.id===id);if(!r)return;
+    const monthLabel=m=>new Intl.DateTimeFormat('it-IT',{month:'short',year:'2-digit',timeZone:'UTC'}).format(new Date(m+'-01T12:00:00Z'));
+    UI.openModal(`<div class="modal-header"><h3>Percorso · ${esc(name(r.client))}</h3><button class="modal-close" aria-label="Chiudi" onclick="UI.closeModal()">×</button></div><div class="modal-body journey-detail"><p>${r.recordedStart?'Inizio registrato':'Prima presenza registrata'}: <strong>${fmt(r.start)}</strong> · ${r.months} mesi</p><p>${r.done} sedute svolte · ${r.missed} no-show · ${r.cancelled} annullate · ${percent(r)} presenze</p><p>Frequenza osservata: ${r.frequency.toLocaleString('it-IT',{maximumFractionDigits:1})} sedute/settimana negli ultimi 90 giorni (o dal primo allenamento, se più recente). ${settings.scope==='pt'?'Solo PT 1:1 e 1:2.':'Tutti i servizi del Calendario.'}</p><h4>Presenze negli ultimi 12 mesi</h4><div class="journey-months">${r.monthly.map(m=>`<div><span>${monthLabel(m.month)}</span><strong>${m.done}</strong></div>`).join('')}</div><h4>Pause rilevate · almeno ${settings.pauseDays} giorni</h4>${r.pauseList.length?`<ul>${r.pauseList.map(p=>`<li>${fmt(p.from)} → ${fmt(p.to)} · ${p.days} giorni${p.ongoing?' · ancora senza nuove presenze':' · percorso ripreso'}</li>`).join('')}</ul>`:'<p>Nessuna pausa rilevata tra le presenze registrate.</p>'}<p>Gli intervalli non indicano il motivo della pausa. Il periodo prima della prima presenza non viene contato come interruzione.</p><h4>Rinnovi</h4><p>${r.renewals??'Da verificare'} rinnovi registrati e iniziati. Lo storico precedente all’uso del registro potrebbe essere incompleto.</p>${r.issues.length?`<p class="journey-alert">${r.issues.map(esc).join(' · ')}</p>`:''}<p>${r.top?'★ Raggiunge tutti i criteri Top selezionati.':'Non raggiunge tutti i criteri Top selezionati.'} Nessun premio viene assegnato automaticamente.</p></div>`);
+  }
+  return {render,load};
+})();
