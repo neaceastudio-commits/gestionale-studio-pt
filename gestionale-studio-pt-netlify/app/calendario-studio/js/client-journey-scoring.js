@@ -50,7 +50,11 @@
     if(e.action!=='appointment_moved'||!(e.client_ids||[]).includes(client.id)||e.metadata?.automatic||e.metadata?.test||e.metadata?.is_test)continue;
     const before=e.before_data||{},after=e.after_data||{},current=attendance.find(a=>a.id===e.entity_id);
     if(before.service_id==='blocco'||after.service_id==='blocco')continue;
-    if(!current||e.created_at?.slice(0,10)>today||before.status!=='prenotato'||after.status==='annullato')continue;
+    const participant=before.pt_participants?.[client.id]||after.pt_participants?.[client.id];
+    const eventCycle=participant?.cycleId||before.cycle_id||after.cycle_id;
+    const eventStart=participant?.start||before.cycle_start||after.cycle_start;
+    const linked=eventCycle?eventCycle===c.id:eventStart?eventStart===c.startDate:!!current;
+    if(!linked||(Array.isArray(before.client_ids)&&!before.client_ids.includes(client.id))||e.created_at?.slice(0,10)>today||before.status!=='prenotato'||after.status==='annullato')continue;
     if(!valid(before.date)||!valid(after.date)|| (before.date===after.date&&String(before.start_time).slice(0,5)===String(after.start_time).slice(0,5)))continue;
     const key=e.request_id?e.entity_id+'|'+e.request_id:'audit|'+e.id;if(seen.has(key))continue;seen.add(key);
     const justification=doc.moves.find(m=>m.id===String(e.id));
