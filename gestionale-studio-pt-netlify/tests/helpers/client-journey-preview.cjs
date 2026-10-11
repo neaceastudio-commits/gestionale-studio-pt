@@ -10,13 +10,18 @@ const clients=[
  {id:'demo-luca',nome:'Luca',cognome:'Serra',data_inizio:ago(35),active:true},
  {id:'demo-sara',nome:'Sara',cognome:'Mura',data_inizio:ago(500),active:false}
 ];
-clients.forEach((c,i)=>{c.pt_assegnato='pt-demo';c.package_types=['PT 1:1'];c.sessions_total=12;c.sessions_remaining=8;c.notes='[NEACEA-PACKAGE-LEDGER-V1]'+JSON.stringify({cycles:[{id:c.id+'-initial',source:'legacy',startDate:c.data_inizio},...Array.from({length:[7,4,2,0,3][i]},(_,j)=>({id:c.id+'-r'+j,source:'renewal',startDate:ago((j+1)*30)}))]})+'[/NEACEA-PACKAGE-LEDGER-V1]';});
-const appointments=[];
-function add(c,n,step=7,offset=1,missEvery=0){for(let i=0;i<n;i++)appointments.push({id:c.id+'-'+String(i).padStart(3,'0'),client_ids:[c.id],service_id:'pt11',operator_id:'pt-demo',date:ago(offset+i*step),start_time:'09:00',duration_min:60,status:missEvery&&i%missEvery===0?'noshow':'fatto'});}
-add(clients[0],95,7,1,25);add(clients[1],60,5,2,20);add(clients[2],30,5,75,8);add(clients[3],8,4,1);add(clients[4],42,7,120);
-// A historical interruption followed by resumed attendance.
-appointments.filter(a=>a.client_ids[0]==='demo-marco'&&a.date>=ago(130)&&a.date<=ago(65)).forEach(a=>a.status='annullato');
-for(const c of [clients[0],clients[1],clients[3]])appointments.push({id:c.id+'-next',client_ids:[c.id],service_id:'pt11',operator_id:'pt-demo',date:ago(-3),start_time:'09:00',status:'prenotato'});
+const appointments=[],audit=[];
+clients.forEach((c,index)=>{
+ c.pt_assegnato='pt-demo';c.package_types=['PT 1:1'];c.sessions_total=8;c.sessions_remaining=0;c.package_frequency='2x settimana';
+ const count=[8,6,4,1,5][index],step=[28,40,42,28,28][index],offset=[223,239,230,21,260][index];
+ const cycles=Array.from({length:count},(_,i)=>({id:c.id+'-cycle'+i,source:i?'renewal':'legacy',legacy:false,startDate:ago(offset-i*step),sessionsTotal:8,frequency:'2x settimana'}));
+ c.notes='[NEACEA-PACKAGE-LEDGER-V1]'+JSON.stringify({cycles})+'[/NEACEA-PACKAGE-LEDGER-V1]';
+ cycles.forEach((cycle,i)=>{
+  const offsets=index===1?[0,5,10,15,20,25,30,39]:index===2?[0,5,10,15,20,25,30,41]:[0,4,7,11,14,18,21,27];
+  offsets.forEach((n,j)=>{const at=new Date(Date.parse(cycle.startDate+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);appointments.push({id:cycle.id+'-'+j,client_ids:[c.id],service_id:'pt11',operator_id:'pt-demo',date:at,start_time:'09:00',duration_min:60,status:at<=today?'fatto':'prenotato',notes:'[CICLO-PACCHETTO-ID '+cycle.id+']'});});
+ });
+ if(index===1)for(let j=0;j<4;j++)audit.push({id:String(40+j),action:'appointment_moved',client_ids:[c.id],entity_id:cycles.at(-1).id+'-0',request_id:'demo-move-'+j,created_at:ago(35)+'T12:00:00Z',before_data:{date:cycles.at(-1).startDate,start_time:'08:00',status:'prenotato'},after_data:{date:cycles.at(-1).startDate,start_time:'09:00',status:'prenotato'}});
+});
 const shim=`<script>
 const previewFetch=window.fetch.bind(window);
 window.fetch=(input,options={})=>{
@@ -38,6 +43,7 @@ const server=http.createServer((req,res)=>{
   return json(u.searchParams.has('limit')?rows.filter(r=>r.id>cursor).sort((a,b)=>a.id.localeCompare(b.id)).slice(0,500):rows);
  }
  if(u.pathname.startsWith('/preview-functions/')){
+  if(u.pathname.endsWith('calendar-activity')){let raw='';req.on('data',chunk=>raw+=chunk);req.on('end',()=>{const body=JSON.parse(raw||'{}');return json(body.operation==='session'?{actor:{id:'staff_1',role:'owner'}}:body.operation==='list'?(body.filters?.beforeId?[]:audit):{error:'Anteprima: salvataggi disabilitati'},body.operation==='session'||body.operation==='list'?200:403);});return;}
   if(u.pathname.endsWith('calendar-runtime'))return json({CALENDAR_FLEX_MODE:true});
   if(u.pathname.endsWith('apple-caldav-link'))return json({eligible:false});
   return json({error:'Anteprima: funzione esterna disabilitata'},403);

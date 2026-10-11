@@ -1412,6 +1412,7 @@ const App = {
       UI.closeModal();
       if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
       UI.showToast(clientId ? 'Cliente aggiornato' : 'Cliente salvato', 'success');
+      if (document.getElementById('view-situation')?.classList.contains('active')) ClientJourney.load();
       if (correctSessions) PTSessionCorrection.open(confirmed.id);
     } catch (error) {
       errorBox.textContent = 'Salvataggio non riuscito: ' + (error.message || error);

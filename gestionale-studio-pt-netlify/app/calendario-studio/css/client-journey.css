@@ -54,3 +54,7 @@
 .journey-card button { margin-top:10px; }
 @media(max-width:600px){.journey-card{padding:16px}}
 @media(max-width:360px){.journey-card-head{flex-direction:column}}
+
+.journey-package-table{width:100%;min-width:560px;border-collapse:collapse;font-size:12px}.journey-package-table th,.journey-package-table td{padding:10px;text-align:left;border-bottom:1px solid var(--border)}.journey-package-table th{background:var(--blue-pale)}.journey-package-table small{display:block}.journey-detail .journey-table-wrap{margin:16px 0}#journey-document-form label{display:block;margin:12px 0}
+
+.journey-score{font:inherit;font-weight:800;color:var(--blue);background:transparent;border:0;border-bottom:1px dashed var(--blue-light);padding:3px 0;cursor:pointer}.journey-score:hover{color:var(--blue-light)}.journey-score:focus-visible{outline:2px solid var(--blue-light);outline-offset:3px}

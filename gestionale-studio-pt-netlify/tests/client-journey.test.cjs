@@ -11,7 +11,7 @@ assert.equal(r.start,'2025-01-01');assert.equal(r.months,21);assert.equal(r.done
 r=model.summarize({...c,id:'b'},[pair],{today:'2026-10-11',session});assert.equal(r.done,1);assert.equal(r.missed,0);
 r=model.summarize(c,[a('first','2026-07-01'),a('last','2026-10-01')],{today:'2026-11-10',session});assert.equal(r.pauseList.length,2);assert.equal(r.ongoing,true);
 r=model.summarize({...c,active:false},[a('last','2026-10-01')],{today:'2026-11-10',session});assert.equal(r.ongoing,false);assert.equal(r.top,false);
-r=model.summarize(c,[a('recent','2026-10-10')],{today:'2026-10-11',session,minSessions:1,minMonths:1,minRenewals:1,ledger});assert.equal(r.top,true);
+r=model.summarize(c,[a('recent','2026-10-10')],{today:'2026-10-11',session,minSessions:1,minMonths:1,minRenewals:1,ledger});assert.equal(r.top,false); // Missing timing/audit evidence cannot qualify as Top.
 assert.equal(model.summarize({...c,statoAbbonamento:'Ibernato'},[a('recent','2026-10-10')],{today:'2026-10-11',session,minSessions:1}).top,false);
 assert.equal(model.summarize(c,[a('old','2026-10-09','prenotato'),a('recent','2026-10-10')],{today:'2026-10-11',session,minSessions:1}).top,false);
 r=model.summarize({id:'a'},[],{today:'2026-10-11',session});assert.equal(r.start,'');assert.equal(r.attendance,null);assert.equal(r.top,false);assert.equal(r.pauseList.length,0);

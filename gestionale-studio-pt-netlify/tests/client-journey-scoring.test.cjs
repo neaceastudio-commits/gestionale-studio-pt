@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict'),S=require('../app/calendario-studio/js/client-journey-scoring.js'),M=require('../app/calendario-studio/js/client-journey-model.js'),P=require('../app/calendario-studio/js/pt-session-model.js');
+const add=(d,n)=>new Date(Date.parse(d+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
+const c={id:'a',active:true,notes:''};
+const cycle=(id,start,offsets=[0,4,7,11,14,18,21,27])=>({id,startDate:start,sessionsTotal:8,frequency:'2x settimana',legacy:false,offsets});
+const appts=cycles=>cycles.flatMap(x=>x.offsets.map((n,i)=>({id:x.id+'-'+i,clientIds:['a'],serviceId:'pt11',date:add(x.startDate,n),startTime:'09:00',status:'fatto',notes:'[CICLO-PACCHETTO-ID '+x.id+']'})));
+const run=(cycles,today,extra={})=>M.summarize({...c,...extra},appts(cycles),{today,ledger:{cycles},session:P,audit:extra.audit||[],scoring:S,minMonths:0,minSessions:1});
+const timely=cycle('on','2026-01-01');let r=run([timely],'2026-01-28');assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].durationDays,28);
+const delayed=cycle('late','2026-01-01',[0,7,14,21,28,35,42,55]);r=run([delayed],'2026-02-25');assert.equal(r.regularity,50);assert.equal(r.attendance,100);assert.equal(r.timing.packages[0].delayDays,28);assert.equal(r.top,false);
+const second=cycle('second','2026-03-01');r=run([timely,second],'2026-03-28');assert.equal(r.timing.gapDays,31);assert.ok(r.regularity<70);assert.equal(r.continuousMonths,0);
+const continuous=run([timely,cycle('next','2026-01-29')],'2026-02-25');assert.equal(continuous.regularity,100);assert.equal(continuous.timing.gapDays,0);
+r=run([delayed],'2026-02-25',{notes:'Pausa Studio | 2026-01-29 | 2026-02-25 | Chiusura documentata'});assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].excludedDays,28);
+const move=(id,req='r'+id)=>({id,request_id:req,action:'appointment_moved',client_ids:['a'],entity_id:'on-0',created_at:'2026-01-02T12:00:00Z',before_data:{date:'2026-01-01',start_time:'08:00',status:'prenotato'},after_data:{date:'2026-01-01',start_time:'09:00',status:'prenotato'}});
+r=run([timely],'2026-01-28',{audit:[move('1'),move('2'),move('3')]});assert.equal(r.regularity,90);assert.equal(r.timing.moveLoss,10);assert.equal(r.timing.gapLoss,0);
+r=run([timely],'2026-01-28',{audit:[move('1'),move('2'),move('3')],notes:'Spostamento Studio | 2 | Cambio PT dello Studio\nSpostamento concordato | 3 | Recupero concordato'});assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].moves.filter(m=>m.excluded).length,2);
+r=run([timely],'2026-01-28',{audit:[move('1'),move('2','r1'),{...move('3'),metadata:{automatic:true}},{...move('4'),before_data:{date:'2026-01-01',start_time:'09:00',status:'fatto'}}]});assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].moves.length,1);
+r=M.summarize(c,appts([timely]),{today:'2026-01-28',ledger:{cycles:[timely]},session:P,scoring:S});assert.equal(r.regularity,null);assert.equal(r.top,false);assert.equal(r.timing.pace,100);
+r=run([{...timely,frequency:'',days:[]}],'2026-01-28');assert.equal(r.regularity,null);assert.ok(r.timing.warnings.length);
+assert.equal(S.excludedDays('2026-01-01','2026-01-11',[{from:'2026-01-02',to:'2026-01-07'},{from:'2026-01-05',to:'2026-01-09'}]),7);
+const noShowRows=appts([timely]);noShowRows[0].status='noshow';const absent=M.summarize(c,noShowRows,{today:'2026-01-28',ledger:{cycles:[timely]},session:P,audit:[],scoring:S});assert.equal(absent.regularity,87.5);
+assert.equal(S.documentation('Pausa concordata | 2026-02-30 | 2026-03-01 | prova').pauses.length,0);
+// Number of renewals cannot compensate for the interruption between packages.
+const many=[cycle('a','2026-01-01'),cycle('b','2026-03-01'),cycle('c','2026-05-01')];many.forEach((x,i)=>x.source=i?'renewal':'legacy');
+const fewer=[cycle('x','2026-03-06'),cycle('y','2026-04-03')];fewer.forEach((x,i)=>x.source=i?'renewal':'legacy');
+assert.ok(run(fewer,'2026-04-30').regularity>run(many,'2026-05-28').regularity);
+console.log('PASS regolarità: 100→50% per doppia durata, stacchi, rinnovi senza bonus, spostamenti −5 dopo il primo, esclusioni documentate, dati mancanti e audit indisponibile');
