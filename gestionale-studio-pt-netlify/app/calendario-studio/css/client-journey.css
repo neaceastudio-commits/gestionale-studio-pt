@@ -7,7 +7,7 @@
 #journey-status { color:var(--text2); margin:12px 0; }
 .journey-count { margin:16px 0; font-weight:800; }
 .journey-table-wrap { overflow-x:auto; max-width:100%; }
-.journey-table { width:100%; min-width:1180px; border-collapse:separate; border-spacing:0; font-size:12px; }
+.journey-table { width:100%; min-width:960px; border-collapse:separate; border-spacing:0; font-size:12px; }
 .journey-table caption { text-align:left; padding:14px 16px; color:var(--text2); font-weight:800; border-bottom:1px solid var(--border); }
 .journey-table thead th { background:var(--blue-pale); color:var(--text2); text-align:left; padding:12px 10px; font-size:11px; font-weight:800; white-space:nowrap; }
 .journey-table tbody td,.journey-table tbody th { padding:14px 10px; border-bottom:1px solid var(--border); vertical-align:middle; background:var(--bg2); }
@@ -29,11 +29,7 @@
 .journey-detail p { line-height:1.6; margin:10px 0; }
 .journey-detail h4 { margin:22px 0 12px; }
 .journey-detail ul { padding-left:20px; line-height:1.8; }
-.journey-months { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
-.journey-months div { display:flex; flex-direction:column; text-align:center; padding:10px 4px; background:var(--blue-pale); border-radius:8px; }
-.journey-months span { font-size:11px; }
-.journey-months strong { font-size:20px; }
-@media(max-width:600px){.journey-filters{grid-template-columns:1fr 1fr}.journey-months{grid-template-columns:repeat(4,minmax(0,1fr))}#view-situation .view-header{flex-direction:column}.journey-scroll-hint{display:block}.journey-client{min-width:125px;max-width:160px}}
+@media(max-width:600px){.journey-filters{grid-template-columns:1fr 1fr}#view-situation .view-header{flex-direction:column}.journey-scroll-hint{display:block}.journey-client{min-width:125px;max-width:160px}}
 @media(max-width:360px){.journey-filters{grid-template-columns:1fr}.journey-client{min-width:110px;max-width:140px}}
 
 .journey-results-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
@@ -55,6 +51,5 @@
 @media(max-width:600px){.journey-card{padding:16px}}
 @media(max-width:360px){.journey-card-head{flex-direction:column}}
 
-.journey-package-table{width:100%;min-width:560px;border-collapse:collapse;font-size:12px}.journey-package-table th,.journey-package-table td{padding:10px;text-align:left;border-bottom:1px solid var(--border)}.journey-package-table th{background:var(--blue-pale)}.journey-package-table small{display:block}.journey-detail .journey-table-wrap{margin:16px 0}#journey-document-form label{display:block;margin:12px 0}
 
 .journey-score{font:inherit;font-weight:800;color:var(--blue);background:transparent;border:0;border-bottom:1px dashed var(--blue-light);padding:3px 0;cursor:pointer}.journey-score:hover{color:var(--blue-light)}.journey-score:focus-visible{outline:2px solid var(--blue-light);outline-offset:3px}

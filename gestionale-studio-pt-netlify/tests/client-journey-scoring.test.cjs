@@ -6,22 +6,23 @@ const appts=cycles=>cycles.flatMap(x=>x.offsets.map((n,i)=>({id:x.id+'-'+i,clien
 const run=(cycles,today,extra={})=>M.summarize({...c,...extra},appts(cycles),{today,ledger:{cycles},session:P,audit:extra.audit||[],scoring:S,minMonths:0,minSessions:1});
 const timely=cycle('on','2026-01-01');let r=run([timely],'2026-01-28');assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].durationDays,28);
 const delayed=cycle('late','2026-01-01',[0,7,14,21,28,35,42,55]);r=run([delayed],'2026-02-25');assert.equal(r.regularity,50);assert.equal(r.attendance,100);assert.equal(r.timing.packages[0].delayDays,28);assert.equal(r.top,false);
-const second=cycle('second','2026-03-01');r=run([timely,second],'2026-03-28');assert.equal(r.timing.gapDays,31);assert.ok(r.regularity<70);assert.equal(r.continuousMonths,0);
-const continuous=run([timely,cycle('next','2026-01-29')],'2026-02-25');assert.equal(continuous.regularity,100);assert.equal(continuous.timing.gapDays,0);
+// Finished packages stop ageing, and breaks between them have no penalty.
+assert.equal(run([timely],'2026-10-11').regularity,100);
+assert.equal(run([timely,cycle('second','2026-03-01')],'2026-03-28').regularity,100);
+const averaged=run([timely,cycle('late2','2026-03-01',[0,7,14,21,28,35,42,55])],'2026-04-25');assert.equal(averaged.regularity,75);
+// Current packages are penalized only once they exceed the agreed duration.
+const open=cycle('open','2026-01-01',[0,7]);assert.equal(run([open],'2026-01-28').regularity,100);assert.ok(Math.abs(run([open],'2026-02-11').regularity-100*28/42)<1e-9);
 r=run([delayed],'2026-02-25',{notes:'Pausa Studio | 2026-01-29 | 2026-02-25 | Chiusura documentata'});assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].excludedDays,28);
-const move=(id,req='r'+id)=>({id,request_id:req,action:'appointment_moved',client_ids:['a'],entity_id:'on-0',created_at:'2026-01-02T12:00:00Z',before_data:{date:'2026-01-01',start_time:'08:00',status:'prenotato',cycle_id:'on'},after_data:{date:'2026-01-01',start_time:'09:00',status:'prenotato'}});
-r=run([timely],'2026-01-28',{audit:[move('1'),move('2'),move('3')]});assert.equal(r.regularity,90);assert.equal(r.timing.moveLoss,10);assert.equal(r.timing.gapLoss,0);
-r=run([timely],'2026-01-28',{audit:[move('1'),move('2'),move('3')],notes:'Spostamento Studio | 2 | Cambio PT dello Studio\nSpostamento concordato | 3 | Recupero concordato'});assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].moves.filter(m=>m.excluded).length,2);
-r=run([timely],'2026-01-28',{audit:[move('1'),move('2','r1'),{...move('3'),metadata:{automatic:true}},{...move('4'),before_data:{date:'2026-01-01',start_time:'09:00',status:'fatto'}}]});assert.equal(r.regularity,100);assert.equal(r.timing.packages[0].moves.length,1);
-r=M.summarize(c,appts([timely]),{today:'2026-01-28',ledger:{cycles:[timely]},session:P,scoring:S});assert.equal(r.regularity,null);assert.equal(r.top,false);assert.equal(r.timing.pace,100);
+// No access to the audit log is required, and moves do not independently lower the score.
+r=run([timely],'2026-01-28',{audit:Array.from({length:10},(_,i)=>({id:i,action:'appointment_moved'}))});assert.equal(r.regularity,100);
+r=M.summarize(c,appts([timely]),{today:'2026-01-28',ledger:{cycles:[timely]},session:P,scoring:S,minMonths:0,minSessions:1});assert.equal(r.regularity,100);assert.equal(r.top,true);
 r=run([{...timely,frequency:'',days:[]}],'2026-01-28');assert.equal(r.regularity,null);assert.ok(r.timing.warnings.length);
+// Incomplete history is skipped without fabricating durations or hiding usable packages.
+r=run([{...timely,frequency:'',days:[]},cycle('second','2026-03-01')],'2026-03-28');assert.equal(r.regularity,100);assert.equal(r.timing.packages.length,1);
+r=run([open,cycle('second','2026-03-01')],'2026-03-28');assert.equal(r.regularity,100);assert.equal(r.timing.packages.length,1);
 assert.equal(S.excludedDays('2026-01-01','2026-01-11',[{from:'2026-01-02',to:'2026-01-07'},{from:'2026-01-05',to:'2026-01-09'}]),7);
-const deleted=M.summarize(c,appts([timely]).filter(a=>a.id!=='on-0'),{today:'2026-01-28',ledger:{cycles:[timely]},session:P,audit:[move('1'),move('2'),move('3')],scoring:S});assert.equal(deleted.timing.packages[0].moves.length,3);assert.equal(deleted.timing.moveLoss,10);
-const noShowRows=appts([timely]);noShowRows[0].status='noshow';const absent=M.summarize(c,noShowRows,{today:'2026-01-28',ledger:{cycles:[timely]},session:P,audit:[],scoring:S});assert.equal(absent.regularity,87.5);
+const noShowRows=appts([timely]);noShowRows[0].status='noshow';const absent=M.summarize(c,noShowRows,{today:'2026-01-28',ledger:{cycles:[timely]},session:P,scoring:S});assert.equal(absent.regularity,100);assert.equal(absent.attendance,87.5);
+const paired=noShowRows.map(a=>P.write({...a,serviceId:'pt12',clientIds:['a','b']},{version:1,participants:{a:{status:a.status,cycleId:'on',start:'2026-01-01'},b:{status:'prenotato',cycleId:'other',start:'2026-01-01'}}}));assert.equal(M.summarize(c,paired,{today:'2026-01-28',ledger:{cycles:[timely]},session:P,scoring:S}).regularity,100);
 assert.equal(S.frequency({frequency:'Su richiesta',days:['Lunedì']}),null);assert.equal(S.frequency({frequency:'Mensile',days:['Lunedì']}),0.25);assert.equal(S.frequency({frequency:'Bisettimanale'}),0.5);assert.equal(S.frequency({days:['']}),null);
 assert.equal(S.documentation('Pausa concordata | 2026-02-30 | 2026-03-01 | prova').pauses.length,0);
-// Number of renewals cannot compensate for the interruption between packages.
-const many=[cycle('a','2026-01-01'),cycle('b','2026-03-01'),cycle('c','2026-05-01')];many.forEach((x,i)=>x.source=i?'renewal':'legacy');
-const fewer=[cycle('x','2026-03-06'),cycle('y','2026-04-03')];fewer.forEach((x,i)=>x.source=i?'renewal':'legacy');
-assert.ok(run(fewer,'2026-04-30').regularity>run(many,'2026-05-28').regularity);
-console.log('PASS regolarità: 100→50% per doppia durata, stacchi, rinnovi senza bonus, spostamenti −5 dopo il primo, esclusioni documentate, dati mancanti e audit indisponibile');
+console.log('PASS tempi pacchetti: durata doppia 50%, media semplice, pacchetti in corso, pause documentate, nessuna penalità per stacchi/spostamenti, presenze separate, coppie e dati mancanti');

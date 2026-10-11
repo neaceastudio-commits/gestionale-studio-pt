@@ -62,11 +62,10 @@
     const unresolved=past.filter(a=>a.status==='prenotato'&&a.date<today).length;
     if(unresolved) issues.push(`${unresolved} appuntamenti passati senza esito`);
     const scoring=options.scoring||root.ClientJourneyScoring;
-    const timing=scoring?scoring.calculate(scoring.build(client,rows,ledger,session,today,options.audit),today,client.active!==false,options):null;
-    const continuousMonths=timing?.continuousStart?monthsBetween(timing.continuousStart,today):0;
+    const timing=scoring?scoring.calculate(scoring.build(client,rows,ledger,session,today),today):null;
     const regularity=timing?.regularity??null;
-    const top=regularity!==null&&!timing.warnings.length&&continuousMonths>=(options.minMonths??6)&&regularity>=(options.minRegularity??90)&&client.active!==false&&!frozen&&!timing.gaps.some(g=>g.ongoing)&&!!lastDone&&!issues.length&&done.length>=(options.minSessions??30)&&attendance!==null&&attendance>=(options.minAttendance??90);
-    return {client,timing,regularity,continuousMonths,start,recordedStart,months,firstDone,lastDone,sinceLast,done:done.length,missed:missed.length,cancelled:past.filter(a=>a.status==='annullato').length,attendance,frequency,done90:done90.length,renewals,pauseList,ongoing,frozen,top,monthly,activeMonths:monthly.filter(m=>m.done>0).length,next:rows.find(a=>a.date>=today&&a.status==='prenotato'&&!session?.renewal(a))||null,issues:[...new Set(issues)]};
+    const top=regularity!==null&&months>=(options.minMonths??6)&&regularity>=(options.minRegularity??90)&&client.active!==false&&!frozen&&!!lastDone&&!issues.length&&done.length>=(options.minSessions??30)&&attendance!==null&&attendance>=(options.minAttendance??0);
+    return {client,timing,regularity,start,recordedStart,months,firstDone,lastDone,sinceLast,done:done.length,missed:missed.length,cancelled:past.filter(a=>a.status==='annullato').length,attendance,frequency,done90:done90.length,renewals,pauseList,ongoing,frozen,top,monthly,activeMonths:monthly.filter(m=>m.done>0).length,next:rows.find(a=>a.date>=today&&a.status==='prenotato'&&!session?.renewal(a))||null,issues:[...new Set(issues)]};
   }
   const api={date,daysBetween,monthsBetween,summarize};
   root.ClientJourneyModel=api;
