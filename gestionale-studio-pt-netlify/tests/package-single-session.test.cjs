@@ -17,6 +17,7 @@ async function run({ conflict = false, failure = false } = {}) {
       return { ok: !conflict, errors: conflict ? ['PT occupato'] : [] };
     }, updateAppointment: (id, value) => { const i = appointments.findIndex(a => a.id === id); appointments[i] = { ...appointments[i], ...value }; return appointments[i]; } },
     SupabaseSync: { saveAppointmentAtomic: async value => { writes++; assert.equal(appointments[0].startTime, '09:00'); assert.equal(value.id, 'a'); if (failure) return { error: 'offline' }; appointments[0] = {...value}; return {appointment: value}; } } });
+  ctx.PTSessionModel=require('../app/calendario-studio/js/pt-session-model');
   vm.runInContext('const App = {' + source.slice(start, end) + source.slice(source.indexOf('  async _persistAppointment('), source.indexOf('  async _markDone(')) + '}; globalThis.App = App;', ctx);
   Object.assign(ctx.App, { guardPortalEdit: () => true, isPortalPtMode: () => false, _withPtAudit: n => n, _preserveAppointmentPackage: a => a, _openConflictOverview() {}, openPackageOverview() {} });
   await ctx.App._updatePackageAppointmentRow('a');

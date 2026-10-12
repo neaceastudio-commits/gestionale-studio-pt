@@ -223,7 +223,7 @@ const Services = (() => {
     const currentAppts = packageAppts.filter(a => appointmentInCurrentPackageCycle(a, client));
     const participantStatus = a => globalThis.PTSessionModel?.status(a, client.id) || a.status;
     const completed = currentAppts.filter(a => participantStatus(a) === 'fatto').length;
-    const chargedAbsences = currentAppts.filter(a => a.serviceId === 'pt12' && globalThis.PTSessionModel?.read(a) && participantStatus(a) === 'noshow' && a.status !== 'annullato').length;
+    const chargedAbsences = currentAppts.filter(a => globalThis.PTSessionModel?.chargedAbsence(a, client.id)).length;
     const sessionAdjustment = cycleContext.sessionAdjustment || 0;
     const consumed = completed + chargedAbsences + sessionAdjustment;
     const scheduled = currentAppts.filter(a => a.status === 'prenotato' && a.date >= today).length;
@@ -237,7 +237,7 @@ const Services = (() => {
     // totale corrente da residuo + fatte del ciclo e lo arrotondiamo solo per
     // i vecchi pacchetti chiaramente multipli di quattro.
     if (cycleContext.inferredFromAppointment && previousCompleted > 0 && rawTotal > 0) {
-      const inferred = Math.max(completed + scheduled, storedRemaining + completed);
+      const inferred = Math.max(consumed + scheduled, storedRemaining + consumed);
       let normalized = inferred;
       if (rawTotal % 4 === 0 && inferred > 0 && inferred < rawTotal && inferred % 4 !== 0) {
         normalized = Math.ceil(inferred / 4) * 4;

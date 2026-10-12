@@ -60,6 +60,7 @@ window.CalendarAuditView = (() => {
     const seen = new Set();
     for (const r of [...rows].reverse()) {
       const b = r.before_data || {}, a = r.after_data || {};
+      if (a.charged_absence!==b.charged_absence&&a.status==='noshow') results.add(a.charged_absence?'Non svolta · seduta scalata':'Assenza precedente · non scalata');
       if (a.pt_participants) for (const [id, participant] of Object.entries(a.pt_participants)) { if (participant.status !== b.pt_participants?.[id]?.status) results.add(`${clientName(id)}: ${participant.status === 'fatto' ? 'presente' : participant.status === 'noshow' ? 'assente · seduta scalata' : 'prenotato'}`); }
       if (r.action === 'client_sharing_changed') results.add(`${a.active ? 'Abilitata' : 'Revocata'} condivisione con ${operatorName(a.operator_id)}`);
       if (r.action === 'training_session_saved') results.add(`${a.data?.rows?.length || 0} serie · revisione ${a.version || 1} · seduta ${r.metadata?.date || ''}`);

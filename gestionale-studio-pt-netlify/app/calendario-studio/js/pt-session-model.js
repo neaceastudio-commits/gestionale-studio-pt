@@ -5,11 +5,25 @@
  function read(a){const matches=[...String(a?.notes||'').matchAll(new RegExp(re.source,'g'))];if(!matches.length)return null;try{const d=JSON.parse(matches.at(-1)[1]);if(d.version!==1||!d.participants||typeof d.participants!=='object')throw Error();return d;}catch{throw Error('Dati della seduta PT non validi: verifica con la Direzione');}}
  const renewal=a=>String(a?.notes||'').includes('[RINNOVO-PREVISTO ') ? (String(a.notes).includes('[RINNOVO-CONFERMATO ')?'Rinnovo confermato':'Rinnovo da confermare') : '';
  const provisional=a=>String(a?.notes||'').includes('[ORARIO-PROVVISORIO]');
- const strip=notes=>String(notes||'').replace(re,'\n').trim();
+ const strip=notes=>String(notes||'').replace(re,'\n').replaceAll('[ASSENZA-SCALATA]','').trim();
  const write=(a,data)=>({...a,notes:strip(a.notes)+'\n['+tag+']'+JSON.stringify(data)+'[/'+tag+']'});
  const ids=a=>a.clientIds||a.client_ids||[];
  const service=a=>a.serviceId||a.service_id;
  const status=(a,id)=>service(a)==='pt12' ? read(a)?.participants?.[id]?.status||a.status : a.status;
+ const absenceTag='[ASSENZA-SCALATA]';
+ const chargedAbsence=(a,id)=>['pt11','pt12','circuit'].includes(service(a))&&a.status!=='annullato'&&status(a,id)==='noshow'&&(service(a)==='pt12'?!!read(a):String(a.notes||'').includes(absenceTag));
+ const statusValue=a=>service(a)!=='pt12'&&chargedAbsence(a,ids(a)[0])?'noshow_charged':a?.status||'prenotato';
+ function withStatus(a,value){
+  if(value==='noshow_charged'&&!['pt11','circuit'].includes(service(a)))throw Error('Assenza scalata disponibile per le sedute del pacchetto');
+  return {...a,status:value==='noshow_charged'?'noshow':value,notes:String(a.notes||'').replaceAll(absenceTag,'').trim()+(value==='noshow_charged'?'\n'+absenceTag:'')};
+ }
+ function statusOptions(a,statuses){
+  const packageService=['pt11','pt12','circuit'].includes(service(a));
+  const options=Object.entries(statuses).filter(([value])=>value!=='noshow'||!packageService||service(a)==='pt12'||a?.status==='noshow'&&!chargedAbsence(a,ids(a)[0])).map(([value,item])=>({value,label:value==='noshow'&&packageService?(service(a)==='pt12'?'Non svolta · seduta scalata':'Assenza precedente · non scalata'):value==='annullato'&&packageService?'Annullata · da recuperare':item.label}));
+  if(packageService&&service(a)!=='pt12')options.push({value:'noshow_charged',label:'Non svolta · seduta scalata'});
+  return options;
+ }
+ const statusLabel=(a,statuses)=>statusOptions(a,statuses).find(o=>o.value===statusValue(a))?.label||a?.status||'';
  const cycle=(a,id)=>read(a)?.participants?.[id]||null;
  function prepare(a,clients,context,before){
    if(service(a)!=='pt12')return a;
@@ -40,5 +54,5 @@
    for(const [key,slots] of occupied){slots.sort((a,b)=>a[0]-b[0]);let end=-Infinity,n=0;for(const [start,stop] of slots){n+=Math.max(0,stop-Math.max(start,end));end=Math.max(end,stop);}totals.get(key.split('|')[0]).workedMin+=n;}
    return {totals:[...totals.values()],issues};
  }
- const api={read,write,strip,provisional,renewal,ids,service,status,cycle,prepare,attendance,summary};root.PTSessionModel=api;if(typeof module!=='undefined')module.exports=api;
+ const api={chargedAbsence,statusValue,withStatus,statusOptions,statusLabel,read,write,strip,provisional,renewal,ids,service,status,cycle,prepare,attendance,summary};root.PTSessionModel=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

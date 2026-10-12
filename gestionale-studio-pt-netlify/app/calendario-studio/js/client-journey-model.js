@@ -31,7 +31,7 @@
       let status;
       try {status=session ? session.status(a,client.id) : a.status;}
       catch {issues.push('Presenza PT 1:2 da verificare');continue;}
-      if(at>today && ['fatto','noshow'].includes(status)){issues.push('Presenza registrata nel futuro');continue;}
+      if(at>today && (status==='fatto'||status==='noshow'&&!session?.chargedAbsence(a,client.id))){issues.push('Presenza registrata nel futuro');continue;}
       rows.push({...a,date:at,status});
     }
     rows.sort((a,b)=>(a.date+' '+a.startTime).localeCompare(b.date+' '+b.startTime));

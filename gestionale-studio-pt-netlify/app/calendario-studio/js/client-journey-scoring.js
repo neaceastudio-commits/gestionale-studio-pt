@@ -57,7 +57,7 @@
  function calculate(data,today){
   const {inputs,doc}=data, warnings=[...data.warnings],packages=[];
   for(const c of inputs){
-   const consumed=c.attendance.filter(a=>a.date<=today&&['fatto','noshow'].includes(a.status)).sort((a,b)=>a.date.localeCompare(b.date));
+   const consumed=c.attendance.filter(a=>a.date<=today&&(a.status==='fatto'||a.status==='noshow'&&(a.serviceId==='pt12'||String(a.notes||'').includes('[ASSENZA-SCALATA]')))).sort((a,b)=>a.date.localeCompare(b.date));
    const completed=consumed.length>=c.sessions;
    // A finished package stops ageing. An old cycle with no reliable end is skipped.
    const closedEnd=c.closedEnd&&c.closedEnd<=today?c.closedEnd:'';

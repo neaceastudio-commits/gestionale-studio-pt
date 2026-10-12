@@ -148,7 +148,7 @@ const Calendar = (() => {
                   <div class="appt-op">${Services.operatorFullName(a.operatorId)}</div>
                   <div class="appt-status">
                     ${PTSessionModel.renewal(a)?`<span class="status-pill">${PTSessionModel.renewal(a)}</span>`:''}${PTSessionModel.provisional(a)?'<span class="status-pill">Orario da confermare</span>':forcedOverlapBadge(a)}
-                    <span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>
+                    <span class="status-pill status-${a.status}">${PTSessionModel.statusLabel(a,CONFIG.STATUS)}</span>
                     ${svc?.isGroup ? `<span class="circuit-badge">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>
                 </div>`;

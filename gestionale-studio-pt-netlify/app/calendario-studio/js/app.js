@@ -254,8 +254,8 @@ const App = {
     ).join('');
 
     // Status dropdown
-    const statusHtml = Object.entries(CONFIG.STATUS).map(([k,v]) =>
-      `<option value="${k}" ${(appt?.status||'prenotato')===k?'selected':''}>${v.label}</option>`
+    const statusHtml = PTSessionModel.statusOptions(appt||{serviceId:curSvcId},CONFIG.STATUS).map(({value,label}) =>
+      `<option value="${value}" ${PTSessionModel.statusValue(appt)===value?'selected':''}>${label}</option>`
     ).join('');
 
     // Durata: select per circuit, readonly per altri
@@ -489,6 +489,14 @@ const App = {
     const svcId = document.getElementById('appt-service')?.value;
     const svc   = Services.getService(svcId);
     if (!svc) return;
+
+    const statusControl=document.getElementById('appt-status');
+    if(statusControl){
+      const previous=statusControl.value;
+      const selected=previous==='noshow_charged'&&svcId==='pt12'?'noshow':previous;
+      const options=PTSessionModel.statusOptions({serviceId:svcId,status:selected==='noshow'?'prenotato':selected},CONFIG.STATUS);
+      statusControl.innerHTML=options.map(o=>`<option value="${o.value}" ${o.value===selected?'selected':''}>${o.label}</option>`).join('');
+    }
 
     // Aggiorna durata
     const group = document.getElementById('duration-group');
@@ -831,13 +839,13 @@ const App = {
     const apptData = {
       serviceId: svcId, clientIds, operatorId: opId,
       date, startTime: time, durationMin: dur,
-      bufferMin: svc?.bufferMin ?? 10, status, notes,
+      bufferMin: svc?.bufferMin ?? 10, status: status==='noshow_charged'?'noshow':status, notes,
     };
     if (!App.guardPortalEdit('appointment', { ...apptData, id: apptId || null })) return;
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     notes = App._withPtAudit(notes, before ? 'appuntamento modificato' : 'appuntamento creato');
-    apptData.notes = notes;
+    apptData.notes = PTSessionModel.withStatus({...apptData,notes},status).notes;
     const sameClients = before
       ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
       : false;
@@ -896,7 +904,7 @@ const App = {
         if (missingHistory.length) notes = [notes.trim(), ...missingHistory].filter(Boolean).join('\n');
       }
     }
-    apptData.notes = notes;
+    apptData.notes = PTSessionModel.withStatus({...apptData,notes},status).notes;
 
     const form = document.getElementById('appt-service');
     if (!apptId) {
@@ -984,7 +992,7 @@ const App = {
           <div class="detail-section">
             <div class="detail-label">Stato</div>
             <div class="detail-value">
-              <span class="status-pill status-${appt.status}">${CONFIG.STATUS[appt.status]?.label||appt.status}</span>
+              <span class="status-pill status-${appt.status}">${PTSessionModel.statusLabel(appt,CONFIG.STATUS)}</span>
             </div>
           </div>
         </div>
@@ -996,8 +1004,8 @@ const App = {
         ${canEdit && !App.isPortalPtMode() ? `<button class="act-btn del" onclick="App._deleteAppt('${appt.id}')">🗑 Elimina</button>` : ''}
         ${canEdit && !isBlock?`
           <button class="act-btn primary" onclick="App._markDone('${appt.id}')">✓ Fatto</button>
-          <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">No-show</button>
-          ${App.isPortalPtMode() && appt.status !== 'annullato' ? `<button class="act-btn del" onclick="App._markCancelled('${appt.id}')">Annulla</button>` : ''}
+          <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">${Services.serviceUsesPackageSessions(appt.serviceId)?'Non svolta · seduta scalata':'No-show'}</button>
+          ${appt.status !== 'annullato' && (App.isPortalPtMode()||Services.serviceUsesPackageSessions(appt.serviceId)) ? `<button class="act-btn del" onclick="App._markCancelled('${appt.id}')">${Services.serviceUsesPackageSessions(appt.serviceId)?'Annullata · da recuperare':'Annulla'}</button>` : ''}
         `:''}
         ${canEdit ? `<button class="btn-primary" onclick="App._renderAppointmentModal('${appt.id}','${appt.date}')">Modifica</button>` : '<button class="btn-primary" onclick="UI.closeModal()">Chiudi</button>'}
       </div>
@@ -1084,16 +1092,26 @@ const App = {
   async _markNoShow(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!before || !App.guardPortalEdit('appointment', before)) return;
-    if (before.serviceId === 'pt12') return PTPairSessions.attendance(before);
-    const nsAppt = await App._persistAppointment({ ...before, status: 'noshow', notes: App._withPtAudit(before?.notes, 'segnato come no-show') }, before);
+    if (Services.serviceUsesPackageSessions(before.serviceId)) return App._markChargedAbsence(apptId);
+    const nsAppt = await App._persistAppointment({ ...PTSessionModel.withStatus(before,'noshow'), notes: App._withPtAudit(PTSessionModel.withStatus(before,'noshow').notes, 'assenza recuperabile') }, before);
     if (!nsAppt) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(nsAppt);
     UI.closeModal(); UI.showToast('Segnato come no-show', 'success'); Calendar.render();
   },
+  async _markChargedAbsence(apptId) {
+    const before=State.getAppointments().find(a=>a.id===apptId);
+    if(!before||!Services.serviceUsesPackageSessions(before.serviceId)||!App.guardPortalEdit('appointment',before))return;
+    if(before.serviceId==='pt12')return PTPairSessions.attendance(before);
+    const next=PTSessionModel.withStatus(before,'noshow_charged');
+    next.notes=App._withPtAudit(next.notes,'assenza scalata per annullamento fuori tempo');
+    const saved=await App._persistAppointment(next,before);if(!saved)return;
+    if(CONFIG.SHEETS.enabled)Sheets.pushAppointment(saved);
+    UI.closeModal();UI.showToast('Assenza registrata: seduta scalata, nessun recupero da programmare','success');Calendar.render();
+  },
   async _markCancelled(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!before || !App.guardPortalEdit('appointment', before)) return;
-    if (!confirm(before.serviceId === 'pt12' ? 'Annullare la seduta condivisa per entrambi? Se già scalata, la seduta sarà restituita ai rispettivi pacchetti correnti. Rimarrà nello storico.' : 'Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
+    if (!confirm(before.serviceId === 'pt12' ? 'Annullare la seduta condivisa per entrambi? Se già scalata, la seduta sarà restituita ai rispettivi pacchetti correnti. Rimarrà nello storico.' : Services.serviceUsesPackageSessions(before.serviceId)?'Annullare e lasciare la lezione da recuperare? La seduta non sarà scalata e rimarrà nello storico.':'Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
     const cancelled = await App._persistAppointment({ ...before, status: 'annullato', notes: App._withPtAudit(before?.notes, 'appuntamento annullato') }, before);
     if (!cancelled) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);
@@ -2096,8 +2114,8 @@ const App = {
       const operatorOptions = operators
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
-      const statusOptions = Object.entries(CONFIG.STATUS).map(([key, value]) =>
-        `<option value="${key}" ${a.status === key ? 'selected' : ''}>${value.label}</option>`
+      const statusOptions = PTSessionModel.statusOptions(a,CONFIG.STATUS).map(({value,label}) =>
+        `<option value="${value}" ${PTSessionModel.statusValue(a)===value?'selected':''}>${label}</option>`
       ).join('');
       return `
         <tr>
@@ -2120,7 +2138,7 @@ const App = {
           <td>
             ${canEditRow ? `<select id="pkg-status-${a.id}" class="form-input package-status-input">
               ${statusOptions}
-            </select>` : `<span class="status-pill status-${a.status}">${CONFIG.STATUS[a.status]?.label || a.status}</span>`}
+            </select>` : `<span class="status-pill status-${a.status}">${PTSessionModel.statusLabel(a,CONFIG.STATUS)}</span>`}
           </td>
           <td><span class="role-tag">${cycleLabel}</span>${canInclude ? `<button class="btn" onclick="App._includeAppointmentInPackage('${a.id}','${client.id}')">Includi nel ciclo</button>` : ''}</td>
           <td>
@@ -2177,6 +2195,7 @@ const App = {
         <div class="package-overview-kpis package-lessons-only">
           <div class="${hasTotal ? '' : 'warn'}"><span>Acquistate nel ciclo</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
           <div><span>Fatte nel ciclo</span><strong>${metrics.completed}</strong></div>
+          <div><span>Assenze scalate</span><strong>${metrics.chargedAbsences}</strong></div>
           <div><span>Future del ciclo</span><strong>${metrics.scheduled}</strong></div>
           <div><span>Residue</span><strong>${hasTotal ? metrics.remaining : '—'}</strong></div>
           <div class="${metrics.toSchedule ? 'warn' : ''}"><span>Da programmare</span><strong>${metrics.toSchedule}</strong></div>
@@ -2649,8 +2668,7 @@ const App = {
   _plannedPackageFutureChanges(clientId, fromDate, time, operatorId, serviceId) {
     return State.getAppointments()
       .filter(a =>
-        a.status !== 'annullato' &&
-        a.status !== 'fatto' &&
+        a.status === 'prenotato' &&
         a.date >= fromDate &&
         a.serviceId === serviceId &&
         Array.isArray(a.clientIds) &&
@@ -2744,8 +2762,7 @@ const App = {
 
     const allAppointments = State.getAppointments();
     const futureToReplace = allAppointments.filter(a =>
-      a.status !== 'annullato' &&
-      a.status !== 'fatto' &&
+      a.status === 'prenotato' &&
       a.date >= fromDate &&
       a.serviceId === serviceId &&
       Array.isArray(a.clientIds) &&
@@ -3619,12 +3636,12 @@ const App = {
       : (document.getElementById(`pkg-operator-${apptId}`)?.value || null);
     const nextStatus = document.getElementById(`pkg-status-${apptId}`)?.value;
     if (!appt || !nextDate || !nextTime || !nextStatus) return;
-    if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && appt.status === nextStatus) {
+    if (appt.date === nextDate && appt.startTime === nextTime && (appt.operatorId || null) === nextOperatorId && PTSessionModel.statusValue(appt) === nextStatus) {
       UI.showToast('Riga gia aggiornata', 'success');
       return;
     }
 
-    const patch = { ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId, status: nextStatus };
+    const patch = PTSessionModel.withStatus({ ...appt, date: nextDate, startTime: nextTime, operatorId: nextOperatorId },nextStatus);
     const validation = Services.canBookAppointment(patch, { strictPackageDays: false });
     if (!validation.ok) {
       UI.showToast(validation.errors[0], 'error');
@@ -3637,8 +3654,8 @@ const App = {
       date: nextDate,
       startTime: nextTime,
       operatorId: nextOperatorId,
-      status: nextStatus,
-      notes: App._withPtAudit(appt.notes, 'seduta aggiornata dal quadro pacchetto'),
+      status: patch.status,
+      notes: App._withPtAudit(patch.notes, 'seduta aggiornata dal quadro pacchetto'),
     };
     const saved = await App._persistAppointment(updated, appt);
     if (!saved) return;
