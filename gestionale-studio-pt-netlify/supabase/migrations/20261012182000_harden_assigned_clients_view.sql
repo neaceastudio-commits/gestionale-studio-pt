@@ -1,0 +1,11 @@
+-- Issue #10 - minimal hardening for a legacy client-assignment view.
+-- This view includes client contact details and is exposed via PostgREST.
+-- Keep application tables, login, calendar RPCs and Apple/CalDAV unchanged.
+--
+-- Safety gate before deploying:
+-- Confirm no approved browser/client reads this view and validate on staging.
+-- The production deployment is intentionally NOT part of this branch change.
+--
+-- Rollback (only if required, after reviewing callers):
+-- GRANT ALL PRIVILEGES ON TABLE public.pt_assigned_clients TO anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.pt_assigned_clients FROM anon, authenticated;
