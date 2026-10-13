@@ -17,6 +17,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    if(u.pathname.endsWith('calendar-activity')){
     const body=req.postDataJSON();if(body.operation==='session')return route.fulfill({json:{actor:{id:'staff_1',role:'owner'}}});
     writes.push(body);
+    if(body.operation==='save_pair_client'){const patch=body.payload.client;Object.assign(clients.find(c=>c.id===patch.id),patch);Object.assign(clients.find(c=>c.id===patch.pt_partner_id),{pt_partner_id:patch.id,package_types:['PT 1:2']});return route.fulfill({json:clients});}
     if(body.operation==='client'){const patch=body.payload.rows[0];Object.assign(clients.find(c=>c.id===patch.id),patch);return route.fulfill({json:[clients.find(c=>c.id===patch.id)]});}
     assert.equal(body.operation,'correct_pt_sessions');
     if(fail)return route.fulfill({status:409,json:{error:'Una seduta è cambiata: aggiorna l’anteprima'}});
@@ -34,6 +35,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.goto('https://calendar.test/?access=SIM');await page.waitForFunction(()=>State.getClients().length===2&&State.getAppointments().length===2);
   await page.evaluate(()=>App.openEditClient('one'));
   await page.locator('input[name="pkg"][value="PT 1:1"]').uncheck();
+  await page.locator('#cl-pt-partner').selectOption('two');
   await page.locator('#cl-correct-sessions').check();await page.locator('#client-save-button').click();
   await page.waitForSelector('#pt-correction-from');
   await page.locator('#pt-correction-from').fill('2026-10-01');await page.locator('#pt-correction-to').fill('2026-10-31');

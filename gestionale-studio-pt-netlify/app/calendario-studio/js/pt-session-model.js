@@ -7,9 +7,9 @@
  const provisional=a=>String(a?.notes||'').includes('[ORARIO-PROVVISORIO]');
  const strip=notes=>String(notes||'').replace(re,'\n').replaceAll('[ASSENZA-SCALATA]','').trim();
  const write=(a,data)=>({...a,notes:strip(a.notes)+'\n['+tag+']'+JSON.stringify(data)+'[/'+tag+']'});
- const ids=a=>a.clientIds||a.client_ids||[];
- const service=a=>a.serviceId||a.service_id;
- const status=(a,id)=>service(a)==='pt12' ? read(a)?.participants?.[id]?.status||a.status : a.status;
+ const ids=a=>a?.clientIds||a?.client_ids||[];
+ const service=a=>a?.serviceId||a?.service_id;
+ const status=(a,id)=>service(a)==='pt12' ? read(a)?.participants?.[id]?.status||a?.status : a?.status;
  const absenceTag='[ASSENZA-SCALATA]';
  const chargedAbsence=(a,id)=>['pt11','pt12','circuit'].includes(service(a))&&a.status!=='annullato'&&status(a,id)==='noshow'&&(service(a)==='pt12'?!!read(a):String(a.notes||'').includes(absenceTag));
  const statusValue=a=>service(a)!=='pt12'&&chargedAbsence(a,ids(a)[0])?'noshow_charged':a?.status||'prenotato';
@@ -19,7 +19,7 @@
  }
  function statusOptions(a,statuses){
   const packageService=['pt11','pt12','circuit'].includes(service(a));
-  const options=Object.entries(statuses).filter(([value])=>value!=='noshow'||!packageService||service(a)==='pt12'||a?.status==='noshow'&&!chargedAbsence(a,ids(a)[0])).map(([value,item])=>({value,label:value==='noshow'&&packageService?(service(a)==='pt12'?'Non svolta · seduta scalata':'Assenza precedente · non scalata'):value==='annullato'&&packageService?'Annullata · da recuperare':item.label}));
+  const options=Object.entries(statuses).filter(([value])=>value!=='noshow'||!packageService||service(a)==='pt12'||a?.status==='noshow'&&!chargedAbsence(a,ids(a)[0])).map(([value,item])=>({value,label:value==='noshow'&&packageService?(service(a)==='pt12'&&(a?.status!=='noshow'||chargedAbsence(a,ids(a)[0]))?'Non svolta · seduta scalata':'Assenza precedente · non scalata'):value==='annullato'&&packageService?'Annullata · da recuperare':item.label}));
   if(packageService&&service(a)!=='pt12')options.push({value:'noshow_charged',label:'Non svolta · seduta scalata'});
   return options;
  }
@@ -46,10 +46,10 @@
      if(overlaps.some(b=>!(service(a0)==='pt11'&&service(b)==='pt11'&&!ids(a0).some(id=>ids(b).includes(id))))){const reason='Appuntamenti sovrapposti: correggere prima del pagamento';issues.push({appointments:[a0],reason});entries.push({appointment:a0,earnedMin:0,plannedMin:0,cents:0,issue:reason});continue;}
      const a=group[0],sid=service(a),minutes=Number(a.durationMin||a.duration_min),operator=a.operatorId||a.operator_id;
      if(!operator||!Number.isFinite(minutes)||minutes<=0||(sid==='pt12'&&(ids(a).length!==2||new Set(ids(a)).size!==2))){const reason='Seduta incompleta: manca la coppia o la durata';issues.push({appointments:group,reason});entries.push({appointment:a,earnedMin:0,plannedMin:0,cents:0,issue:reason});continue;}
-     const t=totals.get(operator)||{operator,plannedMin:0,earnedMin:0,workedMin:0,cents:0,pt11:0,pt12:0};
+     const t=totals.get(operator)||{operator,plannedMin:0,earnedMin:0,workedMin:0,cents:0,pt11:0,pt12:0,absenceEarnedMin:0};
      const before={earnedMin:t.earnedMin,plannedMin:t.plannedMin,cents:t.cents};
      if(a.status==='prenotato')t.plannedMin+=minutes;
-     else if(a.status==='fatto'||(sid==='pt12'&&a.status==='noshow')){t.earnedMin+=minutes;t[sid]+=minutes;t.cents+=Math.round(minutes*(sid==='pt12'?1500:1000)/60);if(a.status==='fatto'){const key=operator+'|'+a.date;const slots=occupied.get(key)||[];slots.push([minutesAt(a),minutesAt(a)+minutes]);occupied.set(key,slots);}}
+     else if(a.status==='fatto'||ids(a).some(id=>chargedAbsence(a,id))){if(a.status==='noshow')t.absenceEarnedMin+=minutes;t.earnedMin+=minutes;t[sid]+=minutes;t.cents+=Math.round(minutes*(sid==='pt12'?1500:1000)/60);if(a.status==='fatto'){const key=operator+'|'+a.date;const slots=occupied.get(key)||[];slots.push([minutesAt(a),minutesAt(a)+minutes]);occupied.set(key,slots);}}
      entries.push({appointment:a,earnedMin:t.earnedMin-before.earnedMin,plannedMin:t.plannedMin-before.plannedMin,cents:t.cents-before.cents,issue:''});
      totals.set(operator,t);
    }

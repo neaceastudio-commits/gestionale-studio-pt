@@ -22,7 +22,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),M=require(
  });
  const open=async()=>{await page.evaluate(()=>Calendar.switchView('operators'));await page.getByRole('button',{name:'Riepilogo ore',exact:true}).click();await page.locator('.pt-hours-card').waitFor({state:'visible'});};
  const stats=()=>page.evaluate(()=>PTSessionModel.summary(State.getAppointments(),'2026-10').totals.find(t=>t.operator==='pt'));
- await page.goto('https://calendar.test/?view=operators&access=SIM');await page.waitForFunction(()=>State.getAppointments().length===6);await open();const before=await stats();assert.equal(before.earnedMin,240);assert.equal(before.cents,4500);
+ await page.goto('https://calendar.test/?view=operators&access=SIM');await page.waitForFunction(()=>State.getAppointments().length===6);await open();const before=await stats();assert.equal(before.earnedMin,300);assert.equal(before.cents,5500);
  await page.evaluate(()=>Clients.confirmDelete('a'));assert.equal(clients[0].active,false);for(const original of closed)assert.deepEqual(appointments.find(a=>a.id===original.id),original);assert.equal(appointments.find(a=>a.id==='future').status,'annullato');
  await page.reload();await page.waitForFunction(()=>State.getClients()[0].active===false);await open();const after=await stats();assert.equal(after.earnedMin,before.earnedMin);assert.equal(after.workedMin,before.workedMin);assert.equal(after.cents,before.cents);assert.equal(after.plannedMin,0);assert.match(await page.locator('.pt-hours-card').innerText(),/incluse 4 h.*clienti archiviati o sospesi/);
  await page.screenshot({path:'/tmp/neacea-archived-hours-proof.png',fullPage:false});

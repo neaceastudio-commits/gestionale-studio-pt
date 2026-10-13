@@ -30,6 +30,7 @@ node tests/package-cycle-confirmation.test.cjs
 node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
 node tests/package-payment-persistence.test.cjs
+node --test tests/studio-calendar-protocol.test.cjs tests/calendar-complete-read.test.cjs
 node tests/acquisition-existing-client.test.cjs
 node tests/acquisition-nutrition-section.test.cjs
 node tests/acquisition-links.test.cjs
@@ -65,6 +66,10 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     tests/package-cycle-confirmation.test.cjs
     tests/package-renewal-ledger.test.cjs
     tests/package-payment-prefill.test.cjs
+    tests/calendar-ui-census-browser.cjs
+    tests/calendar-invoice-browser.cjs
+    tests/calendar-complete-read.test.cjs
+    tests/studio-calendar-protocol.test.cjs
     tests/package-payment-persistence.test.cjs
     tests/acquisition-existing-client.test.cjs
     tests/acquisition-nutrition-section.test.cjs

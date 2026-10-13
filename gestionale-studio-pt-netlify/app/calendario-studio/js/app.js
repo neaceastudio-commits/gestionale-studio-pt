@@ -2331,6 +2331,7 @@ const App = {
             </div>
             <button id="pkg-payment-submit" class="btn-primary" onclick="App._recordPackagePayment('${client.id}')" ${currentFinance.balance <= 0 || packageLedger.parseError ? 'disabled' : ''}>Registra incasso</button>
           </div>
+          ${currentFinance.total <= 0 ? '<p role="status">Prima di registrare un incasso, imposta l’importo concordato e premi “Aggiorna importo”.</p>' : currentFinance.balance <= 0 ? '<p role="status">Questo ciclo è già saldato. Gli incassi del nuovo pacchetto si registrano dopo l’attivazione del rinnovo.</p>' : ''}
           <div class="package-movement-area">
             <h5>Movimenti del ciclo</h5>
             <div class="package-history-scroll">
@@ -2918,7 +2919,7 @@ const App = {
         notes: App._withPtAudit(result.client.notes, `incasso pacchetto ${App._fmtMoney(result.finance.paid)} registrato`),
       };
       const sync = await SupabaseSync.updateClientPackageFinance(updated);
-      if (sync?.error) throw new Error('Il pagamento non è stato sincronizzato');
+      if (sync?.error) throw new Error(sync.error || 'Il pagamento non è stato sincronizzato');
       clients[index] = updated;
       State.saveClients(clients);
       App._syncPackageClientAfterPrimarySave(updated, 'incasso pacchetto');

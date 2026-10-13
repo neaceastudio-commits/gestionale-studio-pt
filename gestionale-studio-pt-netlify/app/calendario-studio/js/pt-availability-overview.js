@@ -28,6 +28,8 @@
   let hoursReportOpen = false;
   let hoursReportOperator = '';
   let hoursReportStatus = 'earned';
+  let weeklyOptionsOpen = false;
+  let periodSearchOpen = false;
   let lastSearchHtml = '';
   let lastSearchFilters = null;
   let availabilityCache = null;
@@ -461,6 +463,7 @@
           <span>${row.pt ? 'Ore di seduta remunerate: ' + esc(fmtHours(row.pt.earnedMin)) : 'Agenda: ' + esc(fmtHours(row.totalMin))}</span>
         </div>
         ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore occupate in agenda (senza duplicare sovrapposizioni): ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
+        ${row.pt?.absenceEarnedMin ? `<p class="pt-hours-history">Di cui <strong>${esc(fmtHours(row.pt.absenceEarnedMin))}</strong> per assenze scalate, riconosciute al PT senza registrarle come svolte.</p>` : ''}
         ${row.archivedWorkedMin?`<p class="pt-hours-history">Sono incluse <strong>${esc(fmtHours(row.archivedWorkedMin))}</strong> di sedute svolte con clienti archiviati o sospesi.</p>`:''}
         ${services}
         ${row.pt ? `<button class="pt-action pt-action-secondary" onclick="PTAvailabilityOverview.openHoursReport('${esc(operatorKey(row.op))}')">Vedi lezioni giorno per giorno</button>` : ''}
@@ -477,7 +480,7 @@
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
-        <p class="pt-help">PT: ogni seduta individuale chiusa matura 10 €/h, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Le sedute svolte restano conteggiate anche se il cliente viene archiviato, eliminato dal calendario o ibernato. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
+        <p class="pt-help">PT: ogni seduta individuale svolta o non svolta ma scalata matura 10 €/h per il PT assegnato, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze scalate PT 1:2 maturano 15 €/h per coppia. Le assenze non scalate non maturano compenso. Le sedute svolte restano conteggiate anche se il cliente viene archiviato, eliminato dal calendario o ibernato. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
         <button class="btn-primary" onclick="PTAvailabilityOverview.closeHoursSummary();PTTrainerPayments.open('${esc(month)}')">Pagamenti PT: registra e consulta</button>${hoursReportOpen ? renderHoursReport(month) : `<div class="pt-hours-list">${body}</div>`}
       </aside>
     </div>`;
@@ -722,7 +725,7 @@
       </div>
       <div class="pt-common-time"><label>Stesso orario per tutti<input id="pt-weekly-time" type="time" value="${esc(state.time)}" oninput="PTAvailabilityOverview.applyWeeklyTime()"></label><span>Puoi cambiare l’orario anche su un singolo giorno.</span></div>
       <div class="pt-weekday-choices">${WEEK_DAYS.map(([key,label]) => `<div class="pt-weekday-choice ${state.days[key].selected ? 'is-selected' : ''}" data-weekly-day="${key}"><label class="pt-weekday-toggle"><input type="checkbox" ${state.days[key].selected ? 'checked' : ''} onchange="PTAvailabilityOverview.updateWeeklySearch()">${esc(label)}</label><label>Orario ${esc(label)}<input type="time" value="${esc(state.days[key].time)}" ${state.days[key].selected ? '' : 'disabled'} oninput="PTAvailabilityOverview.updateWeeklySearch()"></label></div>`).join('')}</div>
-      <details class="pt-weekly-options"><summary>Inizio del percorso e cliente già registrato (facoltativi)</summary><div class="pt-exact-settings">
+      <details class="pt-weekly-options" ${weeklyOptionsOpen ? 'open' : ''}><summary>Inizio del percorso e cliente già registrato (facoltativi)</summary><div class="pt-exact-settings">
         <label>Controlla a partire dal<input type="date" id="pt-weekly-from" value="${esc(state.from)}" onchange="PTAvailabilityOverview.updateWeeklySearch()"></label>
         <label>Cliente già registrato<select id="pt-weekly-client" onchange="PTAvailabilityOverview.updateWeeklySearch()"><option value="">Primo colloquio / nessun cliente selezionato</option>${State.getClients().filter(c=>c.active!==false).map(c=>`<option value="${esc(c.id)}" ${state.clientId===c.id?'selected':''}>${esc(`${c.nome||''} ${c.cognome||''}`.trim())}</option>`).join('')}</select></label>
       </div></details>
@@ -853,13 +856,21 @@
   function renderAvailabilityIfActive() {
     const panel = document.getElementById('view-availability');
     if (!panel || !panel.classList.contains('active')) return;
+    const previous = panel.querySelector(`.${NS}`);
+    if (previous?.contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    if (previous) {
+      weeklyOptionsOpen = previous.querySelector('.pt-weekly-options')?.open || false;
+      periodSearchOpen = previous.querySelector('.pt-period-search')?.open || false;
+    }
     panel.querySelectorAll(`.${NS}`).forEach(el => el.remove());
     const wrap = document.createElement('div');
     wrap.className = NS;
-    wrap.innerHTML = `${renderWeeklySearch()}<details class="pt-period-search"><summary>Ricerca libera per periodo e fascia oraria</summary>${renderSearchBox()}</details>
+    wrap.innerHTML = `${renderWeeklySearch()}<details class="pt-period-search" ${periodSearchOpen ? 'open' : ''}><summary>Ricerca libera per periodo e fascia oraria</summary>${renderSearchBox()}</details>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Pacchetti e rinnovi</h3><span>quadro clienti</span></div><div class="pt-table-wrap"><table class="pt-package-table"><thead><tr><th>Cliente</th><th>PT</th><th>Inizio</th><th>Fine stimata</th><th>Pacchetto</th><th>Sedute</th><th>Stato</th><th>Follow-up</th></tr></thead><tbody>${renderPackageRows()}</tbody></table></div></div>
       <div class="pt-panel"><div class="pt-panel-title"><h3>Orari impegnati della settimana</h3><span>appuntamenti reali</span></div><div class="pt-week-grid">${renderBusyColumns()}</div></div>`;
     panel.appendChild(wrap);
+    wrap.querySelector('.pt-weekly-options')?.addEventListener('toggle', event => { weeklyOptionsOpen = event.target.open; });
+    wrap.querySelector('.pt-period-search')?.addEventListener('toggle', event => { periodSearchOpen = event.target.open; });
   }
 
   function scheduleEnhance() {

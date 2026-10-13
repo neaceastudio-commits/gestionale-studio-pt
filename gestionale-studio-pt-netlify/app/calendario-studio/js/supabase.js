@@ -294,11 +294,22 @@ const SupabaseSync = (() => {
     return {clients:clients.map(clientFromDb),appointments:appointments.map(appointmentFromDb)};
   }
 
+  async function readAll(table, query) {
+    const rows = [], limit = 500;
+    for (let offset = 0; ; offset += limit) {
+      const page = await request(table, { query: query + `&limit=${limit}&offset=${offset}` });
+      if (page?.error) return page;
+      if (!Array.isArray(page)) return { error: 'Lettura completa non confermata: ' + table };
+      rows.push(...page);
+      if (page.length < limit) return rows;
+    }
+  }
+
   async function pullAll() {
     const [clients, operators, appointments] = await Promise.all([
-      request('clients', { query: '?select=*&order=active.desc,cognome.asc,nome.asc' }),
-      request('operators', { query: '?select=*&active=eq.true&order=cognome.asc,nome.asc' }),
-      request('appointments', { query: '?select=*&order=date.asc,start_time.asc' }),
+      readAll('clients', '?select=*&order=active.desc,cognome.asc,nome.asc,id.asc'),
+      readAll('operators', '?select=*&active=eq.true&order=cognome.asc,nome.asc,id.asc'),
+      readAll('appointments', '?select=*&order=date.asc,start_time.asc,id.asc'),
     ]);
     if (!clients?.error && Array.isArray(clients)) State.saveClients(clients.map(clientFromDb));
     if (!operators?.error && Array.isArray(operators)) State.saveOperators(operators.map(operatorFromDb));

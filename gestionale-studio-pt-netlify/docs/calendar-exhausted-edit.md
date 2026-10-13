@@ -24,3 +24,11 @@ Test unitario: movimenti/cancellazioni con residuo zero, conflitti mantenuti,
 nessuna nuova prenotazione o consumo senza residuo. Browser con dati simulati:
 salvataggio dalla riga del Quadro pacchetto, cancellazione, residuo invariato,
 blocco passato visibile, avviso lezioni assenti e riprova attivazione.
+
+## Rilascio verificato
+
+Lavoro `0ce4c14`; commit isolato `f4148e4c9b728b8124e6cc5516766f2fbeee4277`,
+branch `release/calendar-exhausted-edit`; deploy `6ace710a75cf072457a6d772`.
+Suite completa e prova browser locale/candidato superate; tre asset modificati,
+41 asset pubblici verificati per hash, nomi delle funzioni e pianificazioni
+preservati. Produzione bloccata e impostazioni Git ripristinate.

@@ -22,9 +22,9 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),M=require(
  });
  await page.goto('https://calendar.test/?view=operators&access=SIM');await page.waitForFunction(()=>State.getAppointments().length===6);
  await page.getByRole('button',{name:'Resoconto giornaliero',exact:true}).click();await page.locator('.pt-report-table').waitFor({state:'visible'});
- assert.equal(await page.locator('[data-report-appointment]').count(),4);assert.match(await page.locator('.pt-report-totals').innerText(),/4 h.*45,00/);
+ assert.equal(await page.locator('[data-report-appointment]').count(),5);assert.match(await page.locator('.pt-report-totals').innerText(),/5 h.*55,00/);
  assert.match(await page.locator('[data-report-appointment="pair"]').innerText(),/Cliente Storico/);assert.match(await page.locator('[data-report-appointment="pair"]').innerText(),/Partner/);assert.match(await page.locator('[data-report-appointment="pair"]').innerText(),/assente, scalata/);assert.match(await page.locator('[data-report-appointment="one"]').innerText(),/3\/8/);
- await page.getByLabel('Sedute del resoconto',{exact:true}).selectOption('all');assert.equal(await page.locator('[data-report-appointment]').count(),6);assert.match(await page.locator('[data-report-appointment="charged"]').innerText(),/Non svolta.*scalata[\s\S]*0 h/);
+ await page.getByLabel('Sedute del resoconto',{exact:true}).selectOption('all');assert.equal(await page.locator('[data-report-appointment]').count(),6);assert.match(await page.locator('[data-report-appointment="charged"]').innerText(),/Non svolta.*scalata[\s\S]*1 h/);
  await page.getByLabel('PT del resoconto',{exact:true}).selectOption('other');assert.equal(await page.locator('[data-report-appointment]').count(),0);assert.match(await page.locator('.pt-report-totals').innerText(),/0 h/);
  await page.getByLabel('PT del resoconto',{exact:true}).selectOption('pt');await page.getByLabel('Sedute del resoconto',{exact:true}).selectOption('earned');
  await page.screenshot({path:'/tmp/neacea-pt-daily-report-proof.png'});

@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
-exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
+exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
  if(event.httpMethod!=='POST')return reply(405,{error:'Metodo non consentito'});
  try{
@@ -12,7 +12,7 @@ exports.createHandler=(source,{ownerOnly=false}={})=>async event=>{
   if(input.operation==='session')return reply(200,{success:true,actor});
   // Older open tabs exclude legacy pair sessions and can overwrite real balances.
   // This is protocol compatibility, not authorization: identity is checked above.
-  if(source==='calendar' && ['save','delete','client','renew_pt_pair','save_pair_client','correct_pt_sessions'].includes(input.operation) && input.calendarRevision!=='20261009s') {
+  if(enforceCalendarRevision && source==='calendar' && ['save','delete','client','renew_pt_pair','save_pair_client','correct_pt_sessions'].includes(input.operation) && input.calendarRevision!=='20261009s') {
    return reply(409,{error:'Il Calendario è stato aggiornato. Ricarica la pagina prima di salvare: nessuna modifica è stata applicata.',code:'CALENDAR_RELOAD_REQUIRED'});
   }
   if(['client_shares','set_client_share'].includes(input.operation)){

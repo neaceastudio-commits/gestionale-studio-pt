@@ -26,3 +26,12 @@ test('independent cycle identity and absence control temporary PT client visibil
  assert.throws(()=>m.prepare({...a,clientIds:['a']},clients,()=>({})),/due clienti/);
  assert.throws(()=>m.attendance(prepared,{a:'prenotato',b:'fatto'}),/entrambe/);
 });
+
+require('node:test').test('new appointment has no existing row and defaults to booked without crashing',()=>{const M=require('../app/calendario-studio/js/pt-session-model');const assert=require('node:assert/strict');assert.equal(M.statusValue(null),'prenotato');assert.equal(M.statusValue(undefined),'prenotato');assert.deepEqual(M.ids(null),[]);assert.equal(M.service(null),undefined);});
+
+require('node:test').test('charged absence earns the assigned PT, uncharged absence and cancellation earn zero; duration is prorated',()=>{
+ const M=require('../app/calendario-studio/js/pt-session-model'),assert=require('node:assert/strict');
+ const base={id:'absence',serviceId:'pt11',clientIds:['a'],operatorId:'assigned-pt',date:'2026-10-13',startTime:'09:00',durationMin:30,status:'prenotato',notes:''};
+ const charged=M.withStatus(base,'noshow_charged');let total=M.summary([charged],'2026-10').totals[0];assert.equal(charged.status,'noshow');assert.equal(total.operator,'assigned-pt');assert.equal(total.earnedMin,30);assert.equal(total.absenceEarnedMin,30);assert.equal(total.workedMin,0);assert.equal(total.cents,500);assert.equal(M.summary([{...base,status:'noshow'}],'2026-10').totals[0].cents,0);assert.equal(M.summary([M.withStatus(charged,'annullato')],'2026-10').totals.length,0);
+ const pair={...base,serviceId:'pt12',clientIds:['a','b'],status:'noshow'};assert.equal(M.summary([pair],'2026-10').totals[0].cents,0);
+});
