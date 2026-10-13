@@ -46,10 +46,11 @@
      if(overlaps.some(b=>!(service(a0)==='pt11'&&service(b)==='pt11'&&!ids(a0).some(id=>ids(b).includes(id))))){const reason='Appuntamenti sovrapposti: correggere prima del pagamento';issues.push({appointments:[a0],reason});entries.push({appointment:a0,earnedMin:0,plannedMin:0,cents:0,issue:reason});continue;}
      const a=group[0],sid=service(a),minutes=Number(a.durationMin||a.duration_min),operator=a.operatorId||a.operator_id;
      if(!operator||!Number.isFinite(minutes)||minutes<=0||(sid==='pt12'&&(ids(a).length!==2||new Set(ids(a)).size!==2))){const reason='Seduta incompleta: manca la coppia o la durata';issues.push({appointments:group,reason});entries.push({appointment:a,earnedMin:0,plannedMin:0,cents:0,issue:reason});continue;}
-     const t=totals.get(operator)||{operator,plannedMin:0,earnedMin:0,workedMin:0,cents:0,pt11:0,pt12:0,absenceEarnedMin:0};
+     const t=totals.get(operator)||{operator,plannedMin:0,plannedCents:0,projectedCents:0,earnedMin:0,workedMin:0,cents:0,pt11:0,pt12:0,absenceEarnedMin:0};
      const before={earnedMin:t.earnedMin,plannedMin:t.plannedMin,cents:t.cents};
-     if(a.status==='prenotato')t.plannedMin+=minutes;
+     if(a.status==='prenotato'){t.plannedMin+=minutes;t.plannedCents+=Math.round(minutes*(sid==='pt12'?1500:1000)/60);}
      else if(a.status==='fatto'||ids(a).some(id=>chargedAbsence(a,id))){if(a.status==='noshow')t.absenceEarnedMin+=minutes;t.earnedMin+=minutes;t[sid]+=minutes;t.cents+=Math.round(minutes*(sid==='pt12'?1500:1000)/60);if(a.status==='fatto'){const key=operator+'|'+a.date;const slots=occupied.get(key)||[];slots.push([minutesAt(a),minutesAt(a)+minutes]);occupied.set(key,slots);}}
+     t.projectedCents=t.cents+t.plannedCents;
      entries.push({appointment:a,earnedMin:t.earnedMin-before.earnedMin,plannedMin:t.plannedMin-before.plannedMin,cents:t.cents-before.cents,issue:''});
      totals.set(operator,t);
    }

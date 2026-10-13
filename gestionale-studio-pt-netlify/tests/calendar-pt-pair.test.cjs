@@ -35,3 +35,16 @@ require('node:test').test('charged absence earns the assigned PT, uncharged abse
  const charged=M.withStatus(base,'noshow_charged');let total=M.summary([charged],'2026-10').totals[0];assert.equal(charged.status,'noshow');assert.equal(total.operator,'assigned-pt');assert.equal(total.earnedMin,30);assert.equal(total.absenceEarnedMin,30);assert.equal(total.workedMin,0);assert.equal(total.cents,500);assert.equal(M.summary([{...base,status:'noshow'}],'2026-10').totals[0].cents,0);assert.equal(M.summary([M.withStatus(charged,'annullato')],'2026-10').totals.length,0);
  const pair={...base,serviceId:'pt12',clientIds:['a','b'],status:'noshow'};assert.equal(M.summary([pair],'2026-10').totals[0].cents,0);
 });
+
+
+test('month-end forecast adds pending fees to earned, prorates each service and counts a pair once',()=>{
+ const row=(id,date,status,extra={})=>({id,date,status,serviceId:'pt11',clientIds:[id],operatorId:'pt',startTime:'09:00',durationMin:60,notes:'',...extra});
+ const pending=row('pending','2026-10-20','prenotato',{durationMin:30});
+ const rows=[row('done','2026-10-01','fatto'),m.withStatus(row('charged','2026-10-02','prenotato'),'noshow_charged'),pending,row('pair-pending','2026-10-21','prenotato',{serviceId:'pt12',clientIds:['a','b'],durationMin:90}),row('cancelled','2026-10-22','annullato'),row('uncharged','2026-10-23','noshow'),row('provisional','2026-10-24','prenotato',{notes:'[ORARIO-PROVVISORIO]'}),row('next-month','2026-11-01','prenotato'),row('other','2026-10-25','prenotato',{operatorId:'other'})];
+ const before=JSON.stringify(rows);let total=m.summary(rows,'2026-10').totals.find(t=>t.operator==='pt');
+ assert.equal(total.cents,2000);assert.equal(total.plannedMin,120);assert.equal(total.plannedCents,2750);assert.equal(total.projectedCents,4750);assert.equal(JSON.stringify(rows),before);
+ pending.status='fatto';total=m.summary(rows,'2026-10').totals.find(t=>t.operator==='pt');assert.equal(total.cents,2500);assert.equal(total.plannedCents,2250);assert.equal(total.projectedCents,4750);
+ pending.status='annullato';total=m.summary(rows,'2026-10').totals.find(t=>t.operator==='pt');assert.equal(total.projectedCents,4250);
+ const conflicts=[row('conflict','2026-10-26','prenotato',{clientIds:['a']}),row('duplicate','2026-10-26','prenotato',{clientIds:['a']})];
+ assert.equal(m.summary(conflicts,'2026-10').issues.length,2);assert.equal(m.summary(conflicts,'2026-10').totals.length,0);
+});
