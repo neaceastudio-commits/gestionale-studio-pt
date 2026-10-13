@@ -22,6 +22,7 @@ node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-charged-absence.test.cjs
 node --test tests/calendar-archived-hours.test.cjs
+node --test tests/calendar-exhausted-edit.test.cjs
 node --test tests/pt-hours-report.test.cjs
 node tests/pt-program-persistence.test.cjs
 node tests/pt-hand-grip.test.cjs
@@ -47,6 +48,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/apple-calendar.js
     tests/pt-hours-report.test.cjs
     tests/pt-hours-report-browser.cjs
+    tests/calendar-exhausted-edit.test.cjs
+    tests/calendar-exhausted-edit-browser.cjs
     tests/calendar-archived-hours.test.cjs
     tests/calendar-archived-hours-browser.cjs
     tests/calendar-charged-absence.test.cjs

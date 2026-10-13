@@ -352,6 +352,24 @@ const Services = (() => {
       errors.push(`Massimo ${svc.maxClients} clienti`);
     }
 
+    // A cancellation releases a slot; it does not require available sessions
+    // or room/trainer capacity. Keep basic shape checks and server authorization.
+    if (appt.status === 'annullato') return { ok: errors.length === 0, errors, warnings, operatorConflicts, operatorOverrideEligible };
+
+    const before = appt.id ? State.getAppointments().find(a => a.id === appt.id) : null;
+    const sameReservation = before?.status === 'prenotato' && appt.status === 'prenotato' &&
+      before.serviceId === appt.serviceId &&
+      JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...(appt.clientIds || [])].sort()) &&
+      extractAppointmentPackageCycleId(before) === extractAppointmentPackageCycleId(appt) &&
+      extractAppointmentPackageCycle(before) === extractAppointmentPackageCycle(appt) &&
+      !!globalThis.PTSessionModel?.provisional(before) === !!globalThis.PTSessionModel?.provisional(appt) &&
+      (appt.clientIds || []).every(id => {
+        const c = getClient(id);
+        const oldLink = globalThis.PTSessionModel?.cycle(before, id), newLink = globalThis.PTSessionModel?.cycle(appt, id);
+        return JSON.stringify(oldLink || null) === JSON.stringify(newLink || null) &&
+          appointmentInCurrentPackageCycle(before, c) === appointmentInCurrentPackageCycle(appt, c);
+      });
+
     const appts = State.getAppointments().filter(a =>
       a.id !== appt.id &&
       a.date === appt.date &&
@@ -399,7 +417,7 @@ const Services = (() => {
 
       const noSessionsClient = (appt.clientIds || []).map(getClient).find(c => {
         const metrics = getClientSessionMetrics(c, appt.id || null);
-        return metrics.total > 0 && metrics.remaining <= 0;
+        return !sameReservation && metrics.total > 0 && metrics.remaining <= 0;
       });
       if (noSessionsClient) errors.push(`${clientFullName(noSessionsClient.id)} non ha sessioni rimanenti`);
 
