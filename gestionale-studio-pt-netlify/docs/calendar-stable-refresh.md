@@ -11,6 +11,9 @@ Eventi simultanei condividono la stessa lettura in corso. Il refresh iniziale
 forzato e gli aggiornamenti reali continuano a ridisegnare la vista; la vista
 Clienti non viene più disegnata due volte. Le date server mancanti restano
 sconosciute (null), senza generare un nuovo timestamp ad ogni lettura.
+Gli indicatori temporali della Dashboard (persone ora in sala, sedute in corso
+o passate) continuano ad aggiornarsi senza ricostruire gli appuntamenti; il
+cambio di giorno aggiorna la Dashboard.
 
 Gli hook Staff/Disponibilità completano ora il pannello nella stessa operazione
 di render/switch, senza il secondo passaggio ritardato; l'avvio iniziale viene

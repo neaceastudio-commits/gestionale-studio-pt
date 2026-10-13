@@ -8,6 +8,7 @@ const Calendar = (() => {
   let currentDate = new Date();
   let currentView = 'dashboard';
   let availabilityServiceId = 'pt11';
+  let dashboardDate = '';
 
   function fmt(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -69,6 +70,7 @@ const Calendar = (() => {
 
   function renderDashboard() {
     const today = todayStr();
+    dashboardDate = today;
     const kpi = Services.getKPIForDate(today);
     const appts = Services.getAppointmentsForDate(today)
       .filter(a => a.status !== 'annullato')
@@ -97,7 +99,7 @@ const Calendar = (() => {
         </div>
         <div class="kpi-card" style="--kpi-color:var(--blue-light)">
           <div class="kpi-label">In Sala PT ora</div>
-          <div class="kpi-value">${kpi.inSalaNow}</div>
+          <div class="kpi-value" id="dashboard-in-room">${kpi.inSalaNow}</div>
           <div class="kpi-sub-text">persone presenti</div>
         </div>
         <div class="kpi-card" style="--kpi-color:var(--green)">
@@ -134,7 +136,7 @@ const Calendar = (() => {
               const isPast = startMin + a.durationMin < nowMin;
               const isNow = startMin <= nowMin && nowMin < startMin + a.durationMin;
               return `
-                <div class="appt-row ${isPast ? 'appt-past' : ''} ${isNow ? 'appt-now' : ''}"
+                <div data-start-min="${startMin}" data-duration-min="${Number(a.durationMin)}" class="appt-row ${isPast ? 'appt-past' : ''} ${isNow ? 'appt-now' : ''}"
                      onclick="App.openDetail('${a.id}')">
                   <div class="appt-color-bar" style="background:${svc?.color}"></div>
                   <div class="appt-time">
@@ -467,7 +469,22 @@ const Calendar = (() => {
   function nextWeek() { currentDate.setDate(currentDate.getDate() + 7); render(); }
   function goToday() { currentDate = new Date(); render(); }
 
+  // Update time-dependent indicators without rebuilding an unchanged agenda.
+  function refreshClock() {
+    if (currentView !== 'dashboard') return;
+    if (dashboardDate !== todayStr()) { renderDashboard(); return; }
+    const count = document.getElementById('dashboard-in-room');
+    const value = String(Services.getKPIForDate(dashboardDate).inSalaNow);
+    if (count && count.textContent !== value) count.textContent = value;
+    const now = new Date(), minutes = now.getHours() * 60 + now.getMinutes();
+    document.querySelectorAll('#view-dashboard .appt-row[data-start-min]').forEach(row => {
+      const start = Number(row.dataset.startMin), end = start + Number(row.dataset.durationMin);
+      row.classList.toggle('appt-past', end < minutes);
+      row.classList.toggle('appt-now', start <= minutes && minutes < end);
+    });
+  }
+
   function getCurrentDateStr() { return fmt(currentDate); }
 
-  return { switchView, render, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
+  return { switchView, render, refreshClock, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
 })();

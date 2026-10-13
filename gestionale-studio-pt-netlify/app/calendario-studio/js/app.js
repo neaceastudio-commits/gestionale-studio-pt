@@ -3876,6 +3876,7 @@ const App = {
         const result = await SupabaseSync.pullAll();
         // Keep existing DOM, filters and scroll when the remote data are identical.
         if (force || result?.changed !== false) Calendar.render();
+        else Calendar.refreshClock?.();
         if (!silent) UI.showToast('Calendario aggiornato da Supabase', 'success');
       } catch (err) {
         console.warn('[Supabase] refresh non riuscito:', err);
