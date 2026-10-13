@@ -55,13 +55,15 @@ const Services = (() => {
     if (!appt) return false;
     const svc = getService(appt.serviceId);
     if (svc?.isBlock) return true;
+    // Closed work and charged absences belong to the history, even after archiving.
+    if (['fatto','noshow'].includes(appt.status)) return true;
     return getActiveClientIds(appt).length > 0;
   }
 
   function getVisibleAppointment(appt) {
     if (!isAppointmentVisible(appt)) return null;
     const svc = getService(appt.serviceId);
-    if (svc?.isBlock) return appt;
+    if (svc?.isBlock || ['fatto','noshow'].includes(appt.status)) return appt;
     const activeClientIds = getActiveClientIds(appt);
     return activeClientIds.length === (appt.clientIds || []).length
       ? appt

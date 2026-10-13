@@ -251,6 +251,18 @@
       row.totalMin += total.earnedMin;
       rows.set(key,row);
     }
+    // Explain the history contribution without using client status to filter hours.
+    const clients=new Map(State.getClients().map(c=>[c.id,c]));
+    const excluded=new Set(pt.issues.flatMap(i=>i.appointments.map(a=>a.id)));
+    for(const a of State.getAppointments()){
+      if(a.status!=='fatto'||PTSessionModel.provisional(a)||excluded.has(a.id)||!['pt11','pt12'].includes(a.serviceId)||String(a.date).slice(0,7)!==month)continue;
+      const archived=(a.clientIds||[]).some(id=>{
+        const c=clients.get(id);
+        return (!c||c.active===false||/ibern|sospes/i.test(c.statoAbbonamento||''))&&PTSessionModel.status(a,id)==='fatto';
+      });
+      if(!archived)continue;
+      const row=rows.get(appointmentOperatorKey(a));if(row)row.archivedWorkedMin=(row.archivedWorkedMin||0)+appointmentMinutes(a);
+    }
     for (const issue of pt.issues) for (const a of issue.appointments) {
       const op = Services.getOperator(a.operatorId) || {id:a.operatorId};
       const key = operatorKey(op), row = rows.get(key) || {op,totalMin:0,services:new Map()};
@@ -392,6 +404,7 @@
           <span>${row.pt ? 'Ore di seduta remunerate: ' + esc(fmtHours(row.pt.earnedMin)) : 'Agenda: ' + esc(fmtHours(row.totalMin))}</span>
         </div>
         ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore occupate in agenda (senza duplicare sovrapposizioni): ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
+        ${row.archivedWorkedMin?`<p class="pt-hours-history">Sono incluse <strong>${esc(fmtHours(row.archivedWorkedMin))}</strong> di sedute svolte con clienti archiviati o sospesi.</p>`:''}
         ${services}
         ${row.issues?.length ? `<p role="alert"><strong>Conteggio incompleto: ${row.issues.length} sedute da correggere, escluse dai totali.</strong></p><ul>${row.issues.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       </div>`;
@@ -406,7 +419,7 @@
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
-        <p class="pt-help">PT: ogni seduta individuale chiusa matura 10 €/h, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
+        <p class="pt-help">PT: ogni seduta individuale chiusa matura 10 €/h, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Le sedute svolte restano conteggiate anche se il cliente viene archiviato, eliminato dal calendario o ibernato. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
         <button class="btn-primary" onclick="PTAvailabilityOverview.closeHoursSummary();PTTrainerPayments.open('${esc(month)}')">Pagamenti PT: registra e consulta</button><div class="pt-hours-list">${body}</div>
       </aside>
     </div>`;

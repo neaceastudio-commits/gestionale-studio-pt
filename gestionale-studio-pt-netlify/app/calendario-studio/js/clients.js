@@ -468,26 +468,21 @@ const Clients = (() => {
     const appointments = State.getAppointments();
     const futureAppointments = appointments.filter(appt =>
       appt.date >= today &&
-      appt.status !== 'annullato' &&
-      appt.status !== 'fatto' &&
+      appt.status === 'prenotato' &&
       Array.isArray(appt.clientIds) &&
       appt.clientIds.includes(clientId)
     );
     const affectedLabel = futureAppointments.length === 1
       ? '1 prenotazione futura sarà annullata o aggiornata'
       : `${futureAppointments.length} prenotazioni future saranno annullate o aggiornate`;
-    const ok = confirm(`${options.question} ${name}?\n\n${affectedLabel}. Negli appuntamenti condivisi verrà rimosso solo questo cliente. Tutte le lezioni già svolte resteranno consultabili nello Storico clienti.`);
+    const ok = confirm(`${options.question} ${name}?\n\n${affectedLabel}. Le sedute future PT 1:2 saranno annullate per la coppia, senza consumare lezioni. Negli altri gruppi verrà rimosso solo questo cliente. Le sedute già chiuse e le ore maturate dai PT resteranno nello storico e nel riepilogo ore.`);
     if (!ok) return;
 
     const marker = `[${options.marker} ${today}]`;
-    const clientNotes = String(client.notes || '').includes(marker)
-      ? String(client.notes || '')
-      : [String(client.notes || '').trim(), marker].filter(Boolean).join('\n');
     const archivedClient = {
       ...client,
       active: false,
       statoAbbonamento: options.status,
-      notes: clientNotes,
     };
     const audit = `${marker} ${new Date().toLocaleString('it-IT')} · ${name}`;
     const updatedAppointments = futureAppointments.map(appt => {
@@ -497,26 +492,25 @@ const Clients = (() => {
       const notes = String(appt.notes || '').includes(marker)
         ? String(appt.notes || '')
         : [String(appt.notes || '').trim(), audit].filter(Boolean).join('\n');
-      return remainingClientIds.length
+      return remainingClientIds.length && appt.serviceId !== 'pt12'
         ? { ...appt, clientIds: remainingClientIds, notes, updatedAt: Date.now() }
         : { ...appt, status: 'annullato', notes, updatedAt: Date.now() };
     });
 
-    const appointmentSync = await Promise.all(updatedAppointments.map(appt => SupabaseSync.pushAppointment(appt)));
+    const appointmentSync = await Promise.all(updatedAppointments.map(appt => SupabaseSync.saveAppointmentAtomic(appt, appointments.find(before => before.id === appt.id))));
     if (appointmentSync.some(result => result?.error)) {
       UI.showToast('Operazione non eseguita: alcune prenotazioni future non sono state aggiornate', 'error');
       return;
     }
-    const clientSync = await SupabaseSync.pushClient(archivedClient);
+    const clientSync = await SupabaseSync.archiveClient(client, archivedClient);
     if (clientSync?.error) {
       UI.showToast('Prenotazioni aggiornate, ma il cliente non è stato spostato nello storico: riprova', 'error');
       return;
     }
 
-    const updatesById = new Map(updatedAppointments.map(appt => [appt.id, appt]));
-    State.saveAppointments(appointments.map(appt => updatesById.get(appt.id) || appt));
-    clients[idx] = archivedClient;
-    State.saveClients(clients);
+    const updatesById = new Map(appointmentSync.map(result => [result.appointment.id, result.appointment]));
+    State.saveAppointments(State.getAppointments().map(appt => updatesById.get(appt.id) || appt));
+    State.saveClients(State.getClients().map(item => item.id === clientId ? clientSync : item));
     viewMode = 'history';
     UI.closeModal();
     render();

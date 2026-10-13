@@ -534,6 +534,15 @@ const SupabaseSync = (() => {
     return clientFromDb(row);
   }
 
+  async function archiveClient(client, archived) {
+    // Archiving is an administrative status change, never a balance or ledger edit.
+    const result=await patchClient({id:client.id,active:false,stato_abbonamento:archived.statoAbbonamento});
+    if(result?.error)return result;
+    const row=Array.isArray(result)&&result.length===1?result[0]:null;
+    if(!row||row.id!==client.id||row.active!==false)return {error:'Archiviazione non confermata dal server'};
+    return clientFromDb(row);
+  }
+
   async function pushClient(client) {
     if (!client) return;
     let body = clientToDb(client);
@@ -643,5 +652,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, archiveClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

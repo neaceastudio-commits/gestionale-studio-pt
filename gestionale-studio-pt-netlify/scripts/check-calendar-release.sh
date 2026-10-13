@@ -19,6 +19,7 @@ node tests/calendar-release-regression.cjs
 node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-charged-absence.test.cjs
+node --test tests/calendar-archived-hours.test.cjs
 node tests/pt-program-persistence.test.cjs
 node tests/pt-hand-grip.test.cjs
 node tests/package-cycle-confirmation.test.cjs
@@ -41,6 +42,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/lib/pt-auth.js
     netlify/functions/pt-data.js
     netlify/functions/apple-calendar.js
+    tests/calendar-archived-hours.test.cjs
+    tests/calendar-archived-hours-browser.cjs
     tests/calendar-charged-absence.test.cjs
     tests/calendar-charged-absence-postgres.test.cjs
     tests/calendar-charged-absence-browser.cjs
