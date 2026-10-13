@@ -40,19 +40,21 @@
  function summary(appointments,month){
    const rows=appointments.filter(a=>a.status!=='annullato'&&!provisional(a)&&String(a.date).slice(0,7)===month&&['pt11','pt12'].includes(service(a)));
    const minutesAt=a=>{const t=String(a.startTime||a.start_time||'').split(':').map(Number);return t[0]*60+t[1];};
-   const totals=new Map(),issues=[],occupied=new Map();
+   const totals=new Map(),issues=[],occupied=new Map(),entries=[];
    for(const a0 of rows){
      const group=[a0], overlaps=rows.filter(b=>b!==a0&&(b.operatorId||b.operator_id)===(a0.operatorId||a0.operator_id)&&b.date===a0.date&&minutesAt(b)<minutesAt(a0)+Number(a0.durationMin||a0.duration_min)&&minutesAt(a0)<minutesAt(b)+Number(b.durationMin||b.duration_min));
-     if(overlaps.some(b=>!(service(a0)==='pt11'&&service(b)==='pt11'&&!ids(a0).some(id=>ids(b).includes(id))))){issues.push({appointments:[a0],reason:'Appuntamenti sovrapposti: correggere prima del pagamento'});continue;}
+     if(overlaps.some(b=>!(service(a0)==='pt11'&&service(b)==='pt11'&&!ids(a0).some(id=>ids(b).includes(id))))){const reason='Appuntamenti sovrapposti: correggere prima del pagamento';issues.push({appointments:[a0],reason});entries.push({appointment:a0,earnedMin:0,plannedMin:0,cents:0,issue:reason});continue;}
      const a=group[0],sid=service(a),minutes=Number(a.durationMin||a.duration_min),operator=a.operatorId||a.operator_id;
-     if(!operator||!Number.isFinite(minutes)||minutes<=0||(sid==='pt12'&&(ids(a).length!==2||new Set(ids(a)).size!==2))){issues.push({appointments:group,reason:'Seduta incompleta: manca la coppia o la durata'});continue;}
+     if(!operator||!Number.isFinite(minutes)||minutes<=0||(sid==='pt12'&&(ids(a).length!==2||new Set(ids(a)).size!==2))){const reason='Seduta incompleta: manca la coppia o la durata';issues.push({appointments:group,reason});entries.push({appointment:a,earnedMin:0,plannedMin:0,cents:0,issue:reason});continue;}
      const t=totals.get(operator)||{operator,plannedMin:0,earnedMin:0,workedMin:0,cents:0,pt11:0,pt12:0};
+     const before={earnedMin:t.earnedMin,plannedMin:t.plannedMin,cents:t.cents};
      if(a.status==='prenotato')t.plannedMin+=minutes;
      else if(a.status==='fatto'||(sid==='pt12'&&a.status==='noshow')){t.earnedMin+=minutes;t[sid]+=minutes;t.cents+=Math.round(minutes*(sid==='pt12'?1500:1000)/60);if(a.status==='fatto'){const key=operator+'|'+a.date;const slots=occupied.get(key)||[];slots.push([minutesAt(a),minutesAt(a)+minutes]);occupied.set(key,slots);}}
+     entries.push({appointment:a,earnedMin:t.earnedMin-before.earnedMin,plannedMin:t.plannedMin-before.plannedMin,cents:t.cents-before.cents,issue:''});
      totals.set(operator,t);
    }
    for(const [key,slots] of occupied){slots.sort((a,b)=>a[0]-b[0]);let end=-Infinity,n=0;for(const [start,stop] of slots){n+=Math.max(0,stop-Math.max(start,end));end=Math.max(end,stop);}totals.get(key.split('|')[0]).workedMin+=n;}
-   return {totals:[...totals.values()],issues};
+   return {totals:[...totals.values()],issues,entries};
  }
  const api={chargedAbsence,statusValue,withStatus,statusOptions,statusLabel,read,write,strip,provisional,renewal,ids,service,status,cycle,prepare,attendance,summary};root.PTSessionModel=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

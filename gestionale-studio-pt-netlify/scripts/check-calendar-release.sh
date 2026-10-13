@@ -4,6 +4,8 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
 
+node --check app/calendario-studio/js/pt-hours-report.js
+node --check app/calendario-studio/js/pt-availability-overview.js
 node --check app/calendario-studio/js/app.js
 node --check app/calendario-studio/js/services.js
 node --check app/calendario-studio/js/clients.js
@@ -20,6 +22,7 @@ node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-charged-absence.test.cjs
 node --test tests/calendar-archived-hours.test.cjs
+node --test tests/pt-hours-report.test.cjs
 node tests/pt-program-persistence.test.cjs
 node tests/pt-hand-grip.test.cjs
 node tests/package-cycle-confirmation.test.cjs
@@ -42,6 +45,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/lib/pt-auth.js
     netlify/functions/pt-data.js
     netlify/functions/apple-calendar.js
+    tests/pt-hours-report.test.cjs
+    tests/pt-hours-report-browser.cjs
     tests/calendar-archived-hours.test.cjs
     tests/calendar-archived-hours-browser.cjs
     tests/calendar-charged-absence.test.cjs

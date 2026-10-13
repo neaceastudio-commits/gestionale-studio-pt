@@ -25,6 +25,9 @@
   let staffEditorDirty = false;
   let hoursSummaryOpen = false;
   let hoursSummaryMonth = '';
+  let hoursReportOpen = false;
+  let hoursReportOperator = '';
+  let hoursReportStatus = 'earned';
   let lastSearchHtml = '';
   let lastSearchFilters = null;
   let availabilityCache = null;
@@ -281,17 +284,71 @@
   function openHoursSummary() {
     hoursSummaryMonth = hoursSummaryMonth || currentMonthValue();
     hoursSummaryOpen = true;
+    hoursReportOpen = false;
     renderStaffIfActive();
   }
 
   function closeHoursSummary() {
     hoursSummaryOpen = false;
+    hoursReportOpen = false;
     renderStaffIfActive();
   }
 
   function changeHoursSummaryMonth(value) {
     hoursSummaryMonth = value || currentMonthValue();
     renderStaffIfActive();
+  }
+
+  function openHoursReport(operator = '') {
+    hoursSummaryMonth = hoursSummaryMonth || currentMonthValue();
+    hoursSummaryOpen = true;
+    hoursReportOpen = true;
+    hoursReportOperator = operator;
+    hoursReportStatus = 'earned';
+    renderStaffIfActive();
+  }
+
+  function changeHoursReportFilter(field, value) {
+    if (field === 'operator') hoursReportOperator = value;
+    if (field === 'status') hoursReportStatus = value;
+    renderStaffIfActive();
+  }
+
+  function renderHoursReport(month) {
+    const report = PTHoursReport.build(State.getAppointments(), State.getClients(), month);
+    const operators = new Map(activeOperators().map(op => [operatorKey(op), op]));
+    for (const row of report.rows) if (!operators.has(row.operator)) operators.set(row.operator, Services.getOperator(row.operator) || { id: row.operator });
+    const selected = hoursReportOperator || [...operators.keys()].find(id => report.rows.some(row => row.operator === id)) || '';
+    const total = report.totals.find(t => t.operator === selected);
+    const rows = report.rows.filter(row => row.operator === selected && (hoursReportStatus === 'all' ||
+      hoursReportStatus === 'earned' && row.earnedMin > 0 ||
+      hoursReportStatus === 'prenotato' && row.appointment.status === 'prenotato' ||
+      hoursReportStatus === 'noshow' && row.participants.some(p => p.status === 'noshow') ||
+      hoursReportStatus === 'annullato' && row.appointment.status === 'annullato'));
+    const days = new Map();
+    for (const row of rows) { const list = days.get(row.appointment.date) || []; list.push(row); days.set(row.appointment.date, list); }
+    const money = cents => new Intl.NumberFormat('it-IT', {style:'currency',currency:'EUR'}).format(cents / 100);
+    const body = [...days].map(([date, list]) => {
+      const earned = list.reduce((n,r) => n+r.earnedMin,0), cents = list.reduce((n,r) => n+r.cents,0);
+      return `<tr class="pt-report-day"><th colspan="5" scope="rowgroup">${esc(fmtDate(date))} · ${list.length} sedute mostrate</th><td>${esc(fmtHours(earned))}</td><td>${esc(money(cents))}</td></tr>` + list.map(row => {
+        const a = row.appointment;
+        return `<tr data-report-appointment="${esc(a.id)}">
+          <td>${esc(String(a.startTime || '').slice(0,5))}–${esc(minToTime(timeToMin(a.startTime)+appointmentMinutes(a)))}</td>
+          <td>${row.participants.map(p => `<div class="pt-report-person">${esc(p.name)}${p.archived ? '<small>Archiviato / sospeso</small>' : ''}</div>`).join('')}</td>
+          <td>${row.participants.map(p => `<div class="pt-report-person" title="${esc(p.lesson.hint)}">${esc(p.lesson.label)}</div>`).join('')}</td>
+          <td>${esc(serviceLabel(a.serviceId))}<small>${esc(appointmentMinutes(a))} min</small></td>
+          <td>${esc(PTSessionModel.statusLabel(a,CONFIG.STATUS))}${row.provisional ? '<small>Orario provvisorio · esclusa</small>' : ''}${row.issue ? `<small class="pt-report-warning">${esc(row.issue)} · esclusa</small>` : ''}${a.serviceId === 'pt12' ? row.participants.map(p => `<small>${esc(p.name)}: ${p.status === 'fatto' ? 'presente' : p.status === 'noshow' ? 'assente, scalata' : esc(p.status)}</small>`).join('') : ''}</td>
+          <td>${esc(fmtHours(row.earnedMin))}</td><td>${esc(money(row.cents))}</td>
+        </tr>`;
+      }).join('');
+    }).join('');
+    return `<div class="pt-report-filters">
+      <label>PT<select aria-label="PT del resoconto" onchange="PTAvailabilityOverview.changeHoursReportFilter('operator',this.value)">${[...operators].map(([id,op]) => `<option value="${esc(id)}" ${id === selected ? 'selected' : ''}>${esc(operatorLabel(op))}</option>`).join('')}</select></label>
+      <label>Sedute<select aria-label="Sedute del resoconto" onchange="PTAvailabilityOverview.changeHoursReportFilter('status',this.value)">${selectOptions([['earned','Remunerate'],['all','Tutte le sedute'],['prenotato','Prenotate'],['noshow','Con assenze'],['annullato','Annullate']],hoursReportStatus)}</select></label>
+    </div>
+    <div class="pt-report-totals"><strong>${esc(operatorLabel(operators.get(selected)))}</strong><span>Totale mese: <b>${esc(fmtHours(total?.earnedMin))}</b> remunerate · ${esc(money(total?.cents || 0))}</span><small>PT 1:1 ${esc(fmtHours(total?.pt11))} · PT 1:2 ${esc(fmtHours(total?.pt12))} · Prenotate ${esc(fmtHours(total?.plannedMin))} · Occupate ${esc(fmtHours(total?.workedMin))}</small></div>
+    <p class="pt-help">Una riga per seduta: le coppie contano una sola volta. N. lezione: numero salvato nel pacchetto; # indica l’ordine delle lezioni registrate nel ciclo; — se non disponibile. I totali giornalieri riguardano le righe mostrate, il totale mese comprende tutte le sedute remunerate.</p>
+    <div class="pt-table-wrap"><table class="pt-report-table"><caption>Resoconto giornaliero · ${esc(monthLabel(month))}</caption><thead><tr><th>Orario</th><th>Cliente</th><th>N. lezione</th><th>Servizio</th><th>Stato / presenza</th><th>Ore remunerate</th><th>Maturato</th></tr></thead><tbody>${body || '<tr><td colspan="7">Nessuna seduta per il filtro selezionato.</td></tr>'}</tbody></table></div>`;
   }
 
   function toggleStaffAvailability() {
@@ -406,21 +463,22 @@
         ${row.pt ? `<p>PT 1:1 maturato: <strong>${esc(fmtHours(row.pt.pt11))}</strong> · 10 €/h</p><p>PT 1:2 maturato: <strong>${esc(fmtHours(row.pt.pt12))}</strong> · 15 €/h per coppia</p><p>Compenso PT maturato${row.issues?.length ? ' parziale' : ''}: <strong>${esc(new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(row.pt.cents/100))}</strong></p><p>Ore PT prenotate: ${esc(fmtHours(row.pt.plannedMin))} · Ore occupate in agenda (senza duplicare sovrapposizioni): ${esc(fmtHours(row.pt.workedMin))}</p>` : ''}
         ${row.archivedWorkedMin?`<p class="pt-hours-history">Sono incluse <strong>${esc(fmtHours(row.archivedWorkedMin))}</strong> di sedute svolte con clienti archiviati o sospesi.</p>`:''}
         ${services}
+        ${row.pt ? `<button class="pt-action pt-action-secondary" onclick="PTAvailabilityOverview.openHoursReport('${esc(operatorKey(row.op))}')">Vedi lezioni giorno per giorno</button>` : ''}
         ${row.issues?.length ? `<p role="alert"><strong>Conteggio incompleto: ${row.issues.length} sedute da correggere, escluse dai totali.</strong></p><ul>${row.issues.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       </div>`;
     }).join('') : '<div class="pt-search-empty">Nessuna ora trovata per questo mese.</div>';
     return `<div class="pt-hours-overlay" onclick="PTAvailabilityOverview.closeHoursSummary()">
-      <aside class="pt-hours-drawer" onclick="event.stopPropagation()">
+      <aside class="pt-hours-drawer ${hoursReportOpen ? 'pt-hours-report-drawer' : ''}" onclick="event.stopPropagation()">
         <div class="pt-hours-header">
           <div>
-            <h3>Riepilogo ore</h3>
+            <h3>${hoursReportOpen ? 'Resoconto giornaliero PT' : 'Riepilogo ore'}</h3>
             <span>${esc(monthLabel(month))}</span>
           </div>
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
         <p class="pt-help">PT: ogni seduta individuale chiusa matura 10 €/h, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze PT 1:2 scalano a entrambi e maturano 15 €/h. Le sedute svolte restano conteggiate anche se il cliente viene archiviato, eliminato dal calendario o ibernato. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
-        <button class="btn-primary" onclick="PTAvailabilityOverview.closeHoursSummary();PTTrainerPayments.open('${esc(month)}')">Pagamenti PT: registra e consulta</button><div class="pt-hours-list">${body}</div>
+        <button class="btn-primary" onclick="PTAvailabilityOverview.closeHoursSummary();PTTrainerPayments.open('${esc(month)}')">Pagamenti PT: registra e consulta</button>${hoursReportOpen ? renderHoursReport(month) : `<div class="pt-hours-list">${body}</div>`}
       </aside>
     </div>`;
   }
@@ -437,6 +495,7 @@
             <h3>Disponibilita PT</h3>
           <div class="pt-title-actions">
             <button class="pt-action pt-action-secondary" onclick="PTAvailabilityOverview.openHoursSummary()">Riepilogo ore</button>
+            <button class="pt-action pt-action-secondary" onclick="PTAvailabilityOverview.openHoursReport()">Resoconto giornaliero</button>
             <button class="pt-action" onclick="PTAvailabilityOverview.toggleStaffAvailability()">${staffEditorOpen ? 'Chiudi disponibilita' : 'Apri disponibilita'}</button>
           </div>
         </div>
@@ -827,7 +886,7 @@
     Calendar.__ptAvailabilityHookedV4 = true;
   }
 
-  window.PTAvailabilityOverview = { evaluateRequest, evaluateWeeklyRequest, updateWeeklySearch, applyWeeklyTime, getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth };
+  window.PTAvailabilityOverview = { evaluateRequest, evaluateWeeklyRequest, updateWeeklySearch, applyWeeklyTime, getDeclaredSlots: (operatorId, dayKey) => savedSlotsForDay(loadAvailability()[operatorId]?.[dayKey] || {}), toggleStaffAvailability, markStaffAvailabilityDirty, shouldPauseAutoRefresh, saveStaffAvailability, runAvailabilitySearch, openHoursSummary, closeHoursSummary, changeHoursSummaryMonth, openHoursReport, changeHoursReportFilter };
 
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
