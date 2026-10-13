@@ -480,7 +480,21 @@
           <button class="pt-hours-close" onclick="PTAvailabilityOverview.closeHoursSummary()" aria-label="Chiudi">×</button>
         </div>
         <label class="pt-hours-month">Mese<input type="month" value="${esc(month)}" onchange="PTAvailabilityOverview.changeHoursSummaryMonth(this.value)"></label>
-        <p class="pt-help">PT: ogni seduta individuale svolta o non svolta ma scalata matura 10 €/h per il PT assegnato, anche se contemporanea a un’altra. Una seduta condivisa PT 1:2 matura 15 €/h complessivi. Le assenze scalate PT 1:2 maturano 15 €/h per coppia. Le assenze non scalate non maturano compenso. Le sedute svolte restano conteggiate anche se il cliente viene archiviato, eliminato dal calendario o ibernato. Prenotazioni escluse dai compensi. Gli altri servizi mantengono il riepilogo agenda. Gli importi indicano il maturato, non certificano pagamenti effettuati.</p>
+        <div class="pt-compensation-rules">
+          <table aria-label="Tariffe compensi PT"><thead><tr><th>Tipo di seduta</th><th>Compenso</th></tr></thead><tbody>
+            <tr><td>PT 1:1 · individuale</td><td>10 €/h</td></tr>
+            <tr><td>PT 1:2 · coppia</td><td>15 €/h per coppia</td></tr>
+          </tbody></table>
+          <dl><div><dt>Maturato</dt><dd>Sedute svolte e assenze scalate.</dd></div><div><dt>Teorico a fine mese</dt><dd>Maturato + lezioni ancora prenotate.</dd></div></dl>
+          <p>Il teorico va confermato a fine mese. Gli importi non indicano pagamenti già effettuati.</p>
+          <details><summary>Altre regole di conteggio</summary><ul>
+            <li>Il compenso spetta al PT assegnato alla seduta. La coppia viene conteggiata una sola volta.</li>
+            <li>Annullate e assenze non scalate non maturano compenso.</li>
+            <li>Le sedute individuali remunerate contano anche se contemporanee; le ore effettivamente svolte non duplicano le sovrapposizioni.</li>
+            <li>Le sedute chiuse restano nel conteggio anche per clienti archiviati o ibernati.</li>
+            <li>Gli altri servizi mantengono il riepilogo delle ore in agenda.</li>
+          </ul></details>
+        </div>
         <button class="btn-primary" onclick="PTAvailabilityOverview.closeHoursSummary();PTTrainerPayments.open('${esc(month)}')">Pagamenti PT: registra e consulta</button>${hoursReportOpen ? renderHoursReport(month) : `<div class="pt-hours-list">${body}</div>`}
       </aside>
     </div>`;
@@ -873,11 +887,15 @@
     wrap.querySelector('.pt-period-search')?.addEventListener('toggle', event => { periodSearchOpen = event.target.open; });
   }
 
+  function enhanceActiveView() {
+    renderAvailabilityIfActive();
+    renderStaffIfActive();
+  }
+
+  let enhanceTimer;
   function scheduleEnhance() {
-    setTimeout(renderAvailabilityIfActive, 0);
-    setTimeout(renderAvailabilityIfActive, 250);
-    setTimeout(renderStaffIfActive, 0);
-    setTimeout(renderStaffIfActive, 250);
+    clearTimeout(enhanceTimer);
+    enhanceTimer = setTimeout(enhanceActiveView, 0);
   }
 
   function hookCalendar() {
@@ -886,12 +904,12 @@
     const originalSwitch = Calendar.switchView;
     Calendar.render = function () {
       const out = originalRender.apply(Calendar, arguments);
-      scheduleEnhance();
+      enhanceActiveView();
       return out;
     };
     Calendar.switchView = function () {
       const out = originalSwitch.apply(Calendar, arguments);
-      scheduleEnhance();
+      enhanceActiveView();
       return out;
     };
     Calendar.__ptAvailabilityHookedV4 = true;
@@ -902,7 +920,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     hookCalendar();
     startAvailabilitySync();
-    document.querySelectorAll('[data-view="availability"],[data-view="operators"]').forEach(btn => btn.addEventListener('click', scheduleEnhance));
     scheduleEnhance();
   });
 })();

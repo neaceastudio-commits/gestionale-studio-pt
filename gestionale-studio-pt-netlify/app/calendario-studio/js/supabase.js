@@ -147,8 +147,8 @@ const SupabaseSync = (() => {
       bufferMin: r.buffer_min || 0,
       status: r.status || 'prenotato',
       notes: r.notes || '',
-      createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
-      updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : Date.now(),
+      createdAt: r.created_at ? new Date(r.created_at).getTime() : null,
+      updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : null,
     };
   }
 
@@ -311,10 +311,19 @@ const SupabaseSync = (() => {
       readAll('operators', '?select=*&active=eq.true&order=cognome.asc,nome.asc,id.asc'),
       readAll('appointments', '?select=*&order=date.asc,start_time.asc,id.asc'),
     ]);
-    if (!clients?.error && Array.isArray(clients)) State.saveClients(clients.map(clientFromDb));
-    if (!operators?.error && Array.isArray(operators)) State.saveOperators(operators.map(operatorFromDb));
-    if (!appointments?.error && Array.isArray(appointments)) State.saveAppointments(appointments.map(appointmentFromDb));
+    let changed = false;
+    function apply(rows, convert, get, save) {
+      if (rows?.error || !Array.isArray(rows)) return;
+      const next = rows.map(convert);
+      if (get && JSON.stringify(get()) === JSON.stringify(next)) return;
+      save(next);
+      changed = true;
+    }
+    apply(clients, clientFromDb, State.getClients, State.saveClients);
+    apply(operators, operatorFromDb, State.getOperators, State.saveOperators);
+    apply(appointments, appointmentFromDb, State.getAppointments, State.saveAppointments);
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
+    return { changed };
   }
 
   async function correctPtSessions(changes) {

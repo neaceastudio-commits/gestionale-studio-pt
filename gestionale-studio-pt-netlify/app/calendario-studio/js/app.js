@@ -3869,15 +3869,21 @@ const App = {
 
   async refreshFromSupabase({ silent = true, force = false } = {}) {
     if (!force && window.PTAvailabilityOverview?.shouldPauseAutoRefresh?.()) return;
-    try {
-      await SupabaseSync.pullAll();
-      Calendar.render();
-      if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
-      if (!silent) UI.showToast('Calendario aggiornato da Supabase', 'success');
-    } catch (err) {
-      console.warn('[Supabase] refresh non riuscito:', err);
-      if (!silent) UI.showToast('Aggiornamento Supabase non riuscito', 'error');
-    }
+    // Focus, visibility and the timer may arrive together: share a single read.
+    if (App._supabaseRefreshInFlight) return App._supabaseRefreshInFlight;
+    App._supabaseRefreshInFlight = (async () => {
+      try {
+        const result = await SupabaseSync.pullAll();
+        // Keep existing DOM, filters and scroll when the remote data are identical.
+        if (force || result?.changed !== false) Calendar.render();
+        if (!silent) UI.showToast('Calendario aggiornato da Supabase', 'success');
+      } catch (err) {
+        console.warn('[Supabase] refresh non riuscito:', err);
+        if (!silent) UI.showToast('Aggiornamento Supabase non riuscito', 'error');
+      }
+    })();
+    try { return await App._supabaseRefreshInFlight; }
+    finally { App._supabaseRefreshInFlight = null; }
   },
 
   async syncLocalToSupabase() { return {success:false,error:'Sincronizzazione locale disabilitata'}; },
