@@ -177,9 +177,9 @@ const App = {
   canViewAppointment(appt) {
     if (!App.isPortalPtMode()) return true;
     if (!App.portalPt.authorized || !appt) return false;
-    const isOwnAppointment = App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
-    const clientIds = Array.isArray(appt.clientIds) ? appt.clientIds : [];
-    return isOwnAppointment || clientIds.some(clientId => App.canEditClient(clientId));
+    // The personal agenda follows the session's assigned PT. A client's referent
+    // must not see a colleague's session as work they are expected to perform.
+    return App._operatorKeys(App.portalPt.operator).includes(App._normKey(appt.operatorId));
   },
 
   visibleClients(clients = State.getClients()) {

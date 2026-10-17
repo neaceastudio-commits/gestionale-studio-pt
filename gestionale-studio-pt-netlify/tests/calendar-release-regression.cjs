@@ -243,7 +243,7 @@ App.portalPt = {
 assert('PT modifica il proprio cliente', App.canEditClient('client-own'));
 assert('PT non modifica clienti altrui', !App.canEditClient('client-other'));
 assert('PT vede appuntamento assegnato come operatore', App.canViewAppointment(appointments[0]));
-assert('PT vede appuntamento del proprio cliente', App.canViewAppointment(appointments[1]));
+assert('PT non vede seduta del proprio cliente assegnata a un collega', !App.canViewAppointment(appointments[1]));
 assert('PT non vede appuntamenti estranei', !App.canViewAppointment(appointments[2]));
 assert('Elenco PT contiene solo clienti assegnati', App.visibleClients().length === 1 && App.visibleClients()[0].id === 'client-own');
 App._updateClientPackagePlan('client-own', {
@@ -267,7 +267,7 @@ const serviceContext = {
 vm.createContext(serviceContext);
 vm.runInContext(`${servicesSource}\nglobalThis.TestServices = Services;`, serviceContext);
 const visibleAppointments = serviceContext.TestServices.getAppointmentsForDate('2099-07-23');
-assert('Vista calendario PT filtra gli appuntamenti estranei', visibleAppointments.length === 2 && !visibleAppointments.some(item => item.id === 'unrelated'));
+assert('Vista calendario PT filtra gli appuntamenti estranei', visibleAppointments.length === 1 && visibleAppointments[0].id === 'own-op');
 
 process.env.PT_ACCESS_SECRET = 'calendar-release-regression-secret';
 process.env.SUPABASE_SECRET_KEY = 'calendar-release-regression-server-key';
