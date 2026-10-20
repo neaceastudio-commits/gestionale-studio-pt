@@ -2190,7 +2190,7 @@ const App = {
           </button>
         </div>`}
 
-        ${expectedAppointments.length ? `<div class="package-panel" id="pkg-expected-renewal"><strong>${expectedAppointments.length} lezioni del prossimo rinnovo</strong><p>Queste prenotazioni riservano il posto e restano separate dal pacchetto corrente fino all’attivazione.</p>${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="ExpectedRenewals.forClient('${client.id}')">Apri rinnovo previsto</button>`}</div>` : ''}
+        ${!isArchived && !App.isPortalPtMode() || expectedAppointments.length ? `<div class="package-panel" id="pkg-expected-renewal" data-client-id="${App._escapeHtml(client.id)}">${expectedAppointments.length ? `<strong>${expectedAppointments.length} lezioni del prossimo rinnovo</strong><p>Queste prenotazioni riservano il posto e restano separate dal pacchetto corrente fino all’attivazione.</p>${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="ExpectedRenewals.forClient('${client.id}')">Apri rinnovo previsto</button>`}` : 'Verifica del rinnovo in corso…'}</div>` : ''}
         ${metrics.sessionAdjustment ? `<p class="package-lessons-only">Rettifica della Direzione: ${metrics.sessionAdjustment} lezione chiusa nel residuo. La rettifica non registra presenze né compensi PT.</p>` : ''}
         <div class="package-overview-kpis package-lessons-only">
           <div class="${hasTotal ? '' : 'warn'}"><span>Acquistate nel ciclo</span><strong>${hasTotal ? metrics.total : 'Da impostare'}</strong></div>
@@ -2366,7 +2366,7 @@ const App = {
           </div></details>
         </section>
 
-        <section class="package-panel package-renewal-panel package-finance-only" hidden>${expectedAppointments.length ? `<h4>Rinnovo già previsto</h4><p>Conferma o modifica le ${expectedAppointments.length} lezioni già prenotate.</p><button class="btn-primary" onclick="ExpectedRenewals.forClient('${client.id}')">Apri rinnovo previsto</button>` : `<details><summary>Apri un nuovo rinnovo</summary>
+        <section class="package-panel package-renewal-panel package-finance-only" hidden>${expectedAppointments.length ? `<h4>Rinnovo già previsto</h4><p>Conferma o modifica le ${expectedAppointments.length} lezioni già prenotate.</p><button class="btn-primary" onclick="ExpectedRenewals.forClient('${client.id}')">Apri rinnovo previsto</button>` : `<details id="pkg-manual-renewal"><summary>Apri un nuovo rinnovo</summary>
           <div class="package-section-heading">
             <div>
               <h4>Apri un nuovo rinnovo</h4>
@@ -2528,6 +2528,7 @@ const App = {
     `;
     UI.openModal(html);
     if (!isArchived && !App.isPortalPtMode()) App._updateRenewalPlanPreview();
+    if (!isArchived && !App.isPortalPtMode() && typeof ExpectedRenewals !== 'undefined') ExpectedRenewals.attachPackage(client.id);
     if (document.getElementById('pkg-batch-from')) App._selectPackageTimeBatch(client.id);
   },
 

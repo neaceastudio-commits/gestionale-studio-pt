@@ -5,11 +5,11 @@
  const days=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
  let proposals=[],busy=false,clientFilter=null;
  const api=async payload=>{const r=await CalendarAudit.call('expected_renewals',payload);if(r.error)throw Error(r.error);return r;};
- async function open(refresh=false,clientId=null){
+ async function open(refresh=false,clientId=null,complete=false){
   clientFilter=clientId;
   if(!App.guardStudioManagement())return;
   UI.openModal('<div class="modal-header"><h3>Rinnovi previsti</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body" id="expected-renewals-body">Caricamento…</div>');
-  try{const r=await api({action:refresh?'refresh':'list'});proposals=r.proposals.filter(p=>!clientFilter||p.client_ids.includes(clientFilter));render();if(refresh){await SupabaseSync.pullAll();Calendar.render();}}
+  try{const r=await api({action:refresh?'refresh':'list'});proposals=r.proposals.filter(p=>!clientFilter||p.client_ids.includes(clientFilter));render();if(complete&&proposals.length===1&&proposals[0].state==='pending'&&proposals[0].plan.issue)edit(proposals[0].id);if(refresh){await SupabaseSync.pullAll();Calendar.render();}}
   catch(e){const b=document.getElementById('expected-renewals-body');if(b)b.textContent=e.message;}
  }
  function activationDetails(p){
@@ -35,10 +35,36 @@
  }
  function edit(id){
   const p=proposals.find(p=>p.id===id),b=document.getElementById('expected-renewals-body');
-  b.innerHTML=`<h4>Modifica proposta · ${p.names.map(esc).join(' + ')}</h4><form id="expected-edit"><label>Decorrenza <input name="startDate" type="date" value="${p.plan.startDate}" required ${p.performed?'readonly':''}></label>${p.plan.clients.map((c,i)=>`<fieldset><legend>${esc(p.names[i])}</legend><label>Numero lezioni <input name="sessions${i}" type="number" min="${Math.max(1,p.performed)}" max="100" value="${c.sessions}" required></label><label>Importo pacchetto € <input name="amount${i}" type="number" min="0" step="0.01" value="${c.amount}" required></label></fieldset>`).join('')}<p>Seleziona i giorni abituali. Per passare da due a tre lezioni settimanali, aggiungi il terzo giorno.</p>${[1,2,3,4,5,6,0].map(d=>{const s=p.plan.slots.find(s=>s.day===d);return `<fieldset data-day="${d}"><label><input name="enabled" type="checkbox" ${s?'checked':''}> ${days[d]}</label><label>Ora <input name="time" type="time" value="${s?.time||'09:00'}"></label><label>PT <select name="operatorId">${State.getOperators().filter(o=>o.active!==false&&(o.roles||[]).some(r=>/^(pt|personal_trainer|personal trainer)$/i.test(r))).map(o=>`<option value="${esc(o.id)}" ${o.id===s?.operatorId?'selected':''}>${esc(Services.operatorFullName(o.id))}</option>`).join('')}</select></label><label>Minuti <input name="duration" type="number" min="15" max="240" step="15" value="${s?.duration||60}"></label></fieldset>`;}).join('')}<p>Le lezioni già svolte conservano data, PT e presenza. Gli appuntamenti futuri vengono aggiornati anche in Apple.</p><button class="btn-primary" type="submit">Salva proposta</button> <button class="btn" type="button" id="expected-back">Indietro</button><p id="expected-status" role="status"></p></form>`;
+  b.innerHTML=`<h4>Modifica proposta · ${p.names.map(esc).join(' + ')}</h4><form id="expected-edit"><label>Decorrenza <input name="startDate" type="date" value="${p.plan.startDate}" required ${p.performed?'readonly':''}></label>${p.plan.clients.map((c,i)=>`<fieldset><legend>${esc(p.names[i])}</legend><label>Numero lezioni <input name="sessions${i}" type="number" min="${Math.max(1,p.performed)}" max="100" value="${c.sessions}" required></label><label>Importo pacchetto € <input name="amount${i}" type="number" min="0" step="0.01" value="${c.amount}" required></label></fieldset>`).join('')}<p>Seleziona i giorni abituali. Per passare da due a tre lezioni settimanali, aggiungi il terzo giorno.</p>${[1,2,3,4,5,6,0].map(d=>{const s=p.plan.slots.find(s=>s.day===d);return `<fieldset data-day="${d}"><label><input name="enabled" type="checkbox" ${s?'checked':''}> ${days[d]}</label><label>Ora <input name="time" type="time" value="${s?esc(s.time||''):'09:00'}"></label><label>PT <select name="operatorId"><option value="" ${!s?.operatorId?'selected':''}>Scegli PT</option>${State.getOperators().filter(o=>o.active!==false&&(o.roles||[]).some(r=>/^(pt|personal_trainer|personal trainer)$/i.test(r))).map(o=>`<option value="${esc(o.id)}" ${o.id===s?.operatorId?'selected':''}>${esc(Services.operatorFullName(o.id))}</option>`).join('')}</select></label><label>Minuti <input name="duration" type="number" min="15" max="240" step="15" value="${s?.duration||60}"></label></fieldset>`;}).join('')}<p>Le lezioni già svolte conservano data, PT e presenza. Gli appuntamenti futuri vengono aggiornati anche in Apple.</p><button class="btn-primary" type="submit">Salva proposta</button> <button class="btn" type="button" id="expected-back">Indietro</button><p id="expected-status" role="status"></p></form>`;
+  b.querySelectorAll('[data-day]').forEach(fieldset=>{
+   const enabled=fieldset.querySelector('[name=enabled]');
+   const update=()=>fieldset.querySelectorAll('[name=time],[name=operatorId],[name=duration]').forEach(input=>{input.required=enabled.checked;input.disabled=!enabled.checked;});
+   enabled.onchange=update;update();
+  });
   b.querySelector('#expected-back').onclick=render;
   b.querySelector('form').onsubmit=e=>{e.preventDefault();const f=e.target;act('edit',id,{startDate:f.elements.startDate.value,clients:p.plan.clients.map((c,i)=>({id:c.id,sessions:Number(f.elements['sessions'+i].value),amount:Number(f.elements['amount'+i].value)})),slots:[...f.querySelectorAll('[data-day]')].filter(x=>x.querySelector('[name=enabled]').checked).map(x=>({day:Number(x.dataset.day),time:x.querySelector('[name=time]').value,operatorId:x.querySelector('[name=operatorId]').value,duration:Number(x.querySelector('[name=duration]').value)}))});};
  }
  async function forClient(id){try{const r=await api({action:'list'});if(r.proposals.some(p=>p.client_ids.includes(id))){await open(false,id);return true;}return false;}catch(e){UI.showToast('Rinnovo non avviato: '+e.message,'error');return true;}}
- window.ExpectedRenewals={open,forClient};
+ // Proposals needing review can have zero appointments. Read the proposal itself
+ // before offering a second renewal, and do not update a replaced client dialog.
+ async function attachPackage(clientId){
+  const host=document.getElementById('pkg-expected-renewal');
+  if(!host||host.dataset.clientId!==clientId)return;
+  const manual=document.getElementById('pkg-manual-renewal');
+  if(manual)manual.hidden=true;
+  const current=()=>host.isConnected&&document.getElementById('pkg-expected-renewal')===host;
+  try{
+   const r=await api({action:'list'});if(!current())return;
+   const p=r.proposals.find(p=>p.client_ids.includes(clientId));
+   if(!p){host.hidden=true;if(manual)manual.hidden=false;return;}
+   host.hidden=false;
+   host.innerHTML=`<strong>${p.plan.issue?'Rinnovo da completare':p.state==='confirmed'?'Rinnovo confermato':'Rinnovo previsto — da confermare'}</strong><p>${p.plan.issue?esc(p.plan.issue):`${Number(p.booked)||0} lezioni prenotate per il prossimo pacchetto.`}</p><button class="btn-primary" type="button">${p.plan.issue?'Completa rinnovo':'Apri rinnovo previsto'}</button>`;
+   host.querySelector('button').onclick=()=>open(false,clientId,true);
+  }catch(e){
+   if(!current())return;
+   host.hidden=false;host.innerHTML=`<p role="alert">Verifica rinnovo non riuscita: ${esc(e.message)}</p><button class="btn" type="button">Riprova verifica rinnovo</button>`;
+   host.querySelector('button').onclick=()=>attachPackage(clientId);
+  }
+ }
+ window.ExpectedRenewals={open,forClient,attachPackage};
 })();
