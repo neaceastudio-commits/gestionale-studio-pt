@@ -34,5 +34,35 @@ gate Git finale segnala le modifiche non committate preesistenti.
 Rilascio isolato dalla base online `ae9c61b84d633a518aa7134ca5a1812101fae86b`
 (deploy `6ad7844dc181ff44392d6634`), senza includere le lavorazioni locali del
 Portale. Nessuna migrazione o variazione a funzioni server, permessi, email,
-appuntamenti o pacchetti reali. Pubblicazione e confronto degli asset da
-completare dopo il collaudo del candidato committato.
+appuntamenti o pacchetti reali. Il candidato committato ha superato tutta la suite di rilascio, compreso
+il gate Git, e le due prove Chrome mobile (salvataggi e rinnovi).
+
+## Pubblicazione autorizzata
+
+- Branch di rilascio: `release/calendar-session-save`.
+- Commit: `c191a363a07a920390209c5f0f80654cf60da8a5`.
+- Deploy production: `6ad91785fd911ad109a6344c`, stato `ready`, pubblicato il
+  21 ottobre 2026 alle 21:50 Europe/Rome.
+- Sito: https://new-calendar-neacea.netlify.app/.
+- Produzione bloccata sul nuovo deploy.
+
+Verificati il manifesto di 42 file e i tre asset modificati (`index.html`,
+`js/app.js`, `js/calendar-flex.js`) tramite SHA-256 direttamente dal sito
+pubblico. Solo questi tre asset cambiano rispetto alla base. Tutte le 15
+funzioni conservano runtime, regione e pianificazioni; 13 bundle hanno digest
+identico, i due bundle pianificati ricompilati sono ciascuno più piccoli di sei
+byte. I sorgenti delle funzioni e la configurazione di build sono identici alla
+base; la differenza di dimensione coincide con quella del nome del branch
+incluso nei metadati generati (questa attribuzione è un’inferenza).
+
+Configurazione finale verificata: nuovo deploy `locked: true`, repository su
+`main`, `stop_builds: true`. Nessun altro sito è stato pubblicato.
+
+File principali: `app/calendario-studio/js/app.js`, `js/calendar-flex.js`,
+`app/calendario-studio/index.html`, `scripts/check-calendar-release.sh`, test
+`calendar-appointment-session-*`, `calendar-runtime-timeout.test.cjs` e
+`calendar-expected-renewals.test.cjs`.
+Le modifiche preesistenti nel checkout di lavoro sono conservate; il commit di
+rilascio è disponibile anche nel repository locale sul branch dedicato.
+L’utente deve ricaricare il Calendario per usare il nuovo frontend e ripetere il
+cambio PT desiderato; non sono state salvate modifiche sulle sedute reali.
