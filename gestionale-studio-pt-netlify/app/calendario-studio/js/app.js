@@ -334,13 +334,14 @@ const App = {
           <label>Note</label>
           <label><input id="appt-provisional" type="checkbox" ${PTSessionModel.provisional(appt)?'checked':''}> Orario provvisorio — da concordare con il cliente</label>
           <div class="form-hint">Non entra nelle ore prenotate o maturate. Conferma l’orario effettivo prima di registrare la seduta.</div>
-          <textarea id="appt-notes" class="form-input" rows="2">${App._escapeHtml(globalThis.PTSessionModel?.strip(appt?.notes) || appt?.notes || '')}</textarea>
+          <textarea id="appt-notes" class="form-input" rows="2">${App._escapeHtml(PTSessionModel.strip(appt?.notes))}</textarea>
         </div>
 
+        <p id="appointment-save-error" role="alert" class="val-error" hidden></p>
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
-        <button class="btn-primary" onclick="App._saveAppointment('${apptId||''}')">
+        <button id="appointment-save-button" class="btn-primary" onclick="App._saveAppointment('${apptId||''}')">
           ${isEdit?'Salva modifiche':'Crea appuntamento'}
         </button>
       </div>
@@ -541,6 +542,7 @@ const App = {
     const tmpAppt = {
       id: apptId, serviceId: svcId, clientIds, operatorId: opId,
       date, startTime: time, durationMin: dur, bufferMin: svc?.bufferMin||0, status: 'prenotato',
+      notes: App._appointmentNotes(),
     };
 
     const baseValidation = Services.canBookAppointment(tmpAppt);
@@ -820,7 +822,38 @@ const App = {
 
   // ── SALVA APPUNTAMENTO ───────────────────────────────
   async _saveAppointment(apptId) {
-    await window.CalendarFlex?.refresh();
+    if (App._appointmentSaveBusy) return;
+    const form = document.getElementById('appt-service');
+    const overlay = document.getElementById('modal-overlay');
+    const button = document.getElementById('appointment-save-button');
+    const label = button?.textContent;
+    const errorBox = document.getElementById('appointment-save-error');
+    if (errorBox) { errorBox.hidden = true; errorBox.textContent = ''; }
+    App._appointmentSaveBusy = true;
+    if (button) { button.disabled = true; button.textContent = 'Salvataggio…'; }
+    try {
+      await window.CalendarFlex?.refresh();
+      // Cancelling or opening another dialog while the check runs must not
+      // save values from the replacement form into the original appointment.
+      if (!form || form.isConnected === false || document.getElementById('appt-service') !== form ||
+        (overlay && !overlay.classList.contains('open'))) return;
+      await App._saveAppointmentDraft(apptId);
+    } catch (error) {
+      App._showAppointmentSaveError(error.message || 'Salvataggio non confermato. Riprova.', form);
+    } finally {
+      App._appointmentSaveBusy = false;
+      if (button?.isConnected) { button.disabled = false; button.textContent = label; }
+    }
+  },
+
+  _showAppointmentSaveError(message, form = document.getElementById('appt-service')) {
+    UI.showToast(message, 'error');
+    if (!form || document.getElementById('appt-service') !== form) return;
+    const errorBox = document.getElementById('appointment-save-error');
+    if (errorBox) { errorBox.textContent = message; errorBox.hidden = false; }
+  },
+
+  async _saveAppointmentDraft(apptId) {
     const svcId   = document.getElementById('appt-service')?.value;
     const date    = document.getElementById('appt-date')?.value;
     const time    = document.getElementById('appt-time')?.value;
@@ -844,11 +877,12 @@ const App = {
     if (!App.guardPortalEdit('appointment', { ...apptData, id: apptId || null })) return;
 
     const before = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
-    notes = App._withPtAudit(notes, before ? 'appuntamento modificato' : 'appuntamento creato');
-    apptData.notes = PTSessionModel.withStatus({...apptData,notes},status).notes;
     const sameClients = before
       ? JSON.stringify([...(before.clientIds || [])].sort()) === JSON.stringify([...clientIds].sort())
       : false;
+    notes = App._preserveSessionNotes(notes, before, svcId, clientIds);
+    notes = App._withPtAudit(notes, before ? 'appuntamento modificato' : 'appuntamento creato');
+    apptData.notes = PTSessionModel.withStatus({...apptData,notes},status).notes;
     const sameSlot = before &&
       before.serviceId === svcId &&
       before.date === date &&
@@ -914,7 +948,7 @@ const App = {
     const saved = await App._persistAppointment(draftToSave, before);
     if (!saved) return;
     UI.showToast(apptId ? 'Appuntamento aggiornato' : 'Appuntamento creato', 'success');
-    UI.closeModal();
+    if (document.getElementById('appt-service') === form) UI.closeModal();
     Calendar.render();
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(saved);
   },
@@ -1050,13 +1084,14 @@ const App = {
     return { ...appt, notes: App._withPackageCycle(appt.notes, cycle.start, cycle.id) };
   },
   async _persistAppointment(appt, before) {
+    const form = document.getElementById('appt-service');
     try {
       appt = App._preserveAppointmentPackage(appt, before);
       const result = await SupabaseSync.saveAppointmentAtomic(appt, before);
       if (result?.error || !result?.appointment) throw new Error(result?.error || 'Conferma mancante');
       return result.appointment;
     } catch (error) {
-      UI.showToast(error.message || 'Salvataggio non confermato. Ricarica il calendario e riprova.', 'error');
+      App._showAppointmentSaveError(error.message || 'Salvataggio non confermato. Ricarica il calendario e riprova.', form);
       return null;
     }
   },
@@ -1353,7 +1388,19 @@ const App = {
 
   _appointmentNotes() {
     const text=(document.getElementById('appt-notes')?.value||'').replaceAll('[ORARIO-PROVVISORIO]','').trim();
-    return text+(document.getElementById('appt-provisional')?.checked?'\n[ORARIO-PROVVISORIO]':'');
+    const notes = text+(document.getElementById('appt-provisional')?.checked?'\n[ORARIO-PROVVISORIO]':'');
+    const before = State.getAppointments().find(a => a.id === document.getElementById('appt-id')?.value);
+    const clientIds = [...(document.getElementById('appt-clients')?.selectedOptions || [])].map(el => el.value);
+    return App._preserveSessionNotes(notes, before, document.getElementById('appt-service')?.value, clientIds);
+  },
+
+  _preserveSessionNotes(notes, before, serviceId, clientIds) {
+    // The editor hides session metadata; retain its participant cycle in both
+    // availability checks and writes when only the PT/date/notes are changed.
+    if (!before || before.serviceId !== serviceId ||
+      JSON.stringify([...(before.clientIds || [])].sort()) !== JSON.stringify([...clientIds].sort())) return notes;
+    const session = PTSessionModel.read(before);
+    return session ? PTSessionModel.write({ notes }, session).notes : notes;
   },
   async _saveClient(clientId, packageOnly = false) {
     if (App._clientSaveBusy) return;

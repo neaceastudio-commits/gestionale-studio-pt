@@ -9,7 +9,7 @@ test('expected renewal: isolated balances, actual work, confirmation, activation
  await db.exec(`alter table clients add column package_frequency text,add column giorni_settimana jsonb,add column importo numeric,add column stato_pagamento text,add column tipo_servizio text,add column stato_abbonamento text;
  alter table appointments alter column client_ids type jsonb using to_jsonb(client_ids);alter table clients alter column package_types type jsonb using to_jsonb(package_types);
  insert into clients(id,nome,package_types,sessions_total,sessions_remaining,pt_assegnato,package_start,notes) values('a','A','["PT 1:1"]',8,7,'pt','2026-10-01','[CICLO-PACCHETTO 2026-10-01]'),('b','B','["PT 1:1"]',8,8,'pt','2026-10-01','[CICLO-PACCHETTO 2026-10-01]');
- insert into operators(id,nome,email,roles) values('owner','Owner','owner@example.test',array['owner']),('pt','Trainer','pt@example.test',array['PT']);
+ insert into operators(id,nome,email,roles) values('owner','Owner','owner@example.test',array['owner']),('pt','Trainer','pt@example.test',array['PT']),('pt-new','New Trainer','new@example.test',array['PT']);
  create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators;grant select on operator_effective_roles to service_role;
  insert into operator_availability values('pt','mon','["08:00-20:00"]',now());
  insert into appointments(id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes) values('old-a','pt11','["a"]','pt','2026-10-05','09:00',60,'fatto','[CICLO-PACCHETTO 2026-10-01]'),('old-b','pt11','["b"]','pt','2026-10-05','09:00',60,'noshow','[CICLO-PACCHETTO 2026-10-01]');`);
@@ -31,6 +31,15 @@ test('expected renewal: isolated balances, actual work, confirmation, activation
  await assert.rejects(call('confirm',{id:p.id,version:999}),/cambiata/);
  // Actual attendance before commercial confirmation earns compensation without using old sessions.
  let appt=await get('appointments',apps[0].id);
+ // A trainer edit from the regular appointment editor must retain the renewal
+ // participant link. The server rejects the old editor's stripped payload.
+ await assert.rejects(q('select calendar_audit_write($1,$2,$3,$4,$5,$6)',
+  ['owner','owner','calendar',crypto.randomUUID(),'save',JSON.stringify({appointment:{...appt,operator_id:'pt-new',notes:model.strip(appt.notes)},expected:appt})]),/Collegamento proposta non valido/);
+ const changed=await q('select calendar_audit_write($1,$2,$3,$4,$5,$6) r',
+  ['owner','owner','calendar',crypto.randomUUID(),'save',JSON.stringify({appointment:{...appt,operator_id:'pt-new'},expected:appt})]);
+ appt=changed.rows[0].r.appointment;
+ assert.equal(appt.operator_id,'pt-new');assert.equal((await get('clients','a')).sessions_remaining,7);
+ assert.equal(model.read(appt).participants.a.cycleId,'expected_a');
  const done=model.write({...appt,status:'fatto'},{version:1,participants:{a:{cycleId:'expected_a',start:date,status:'fatto'}}});
  await q('select calendar_audit_write($1,$2,$3,$4,$5,$6)',['owner','owner','calendar',crypto.randomUUID(),'save',JSON.stringify({appointment:done,expected:appt})]);
  assert.equal((await get('clients','a')).sessions_remaining,7);assert.equal(model.summary([done],date.slice(0,7)).totals[0].cents,1000);

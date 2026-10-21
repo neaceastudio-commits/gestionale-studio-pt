@@ -23,6 +23,8 @@ node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-charged-absence.test.cjs
 node --test tests/calendar-archived-hours.test.cjs
 node --test tests/calendar-exhausted-edit.test.cjs
+node --test tests/calendar-appointment-session-edit.test.cjs
+node --test tests/calendar-runtime-timeout.test.cjs
 node --test tests/pt-hours-report.test.cjs
 node tests/pt-program-persistence.test.cjs
 node tests/pt-hand-grip.test.cjs
