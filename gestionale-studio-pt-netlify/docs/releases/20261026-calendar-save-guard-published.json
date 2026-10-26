@@ -1,0 +1,30 @@
+{
+  "commit": "93f2b47d82f8503d4aa8831431b09ea996ee9673",
+  "deploy": "6adf78c1f4bf11fc29104b82",
+  "live": true,
+  "files": 43,
+  "verifiedStaticAssets": 3,
+  "htmlRevalidation": true,
+  "functions": 15,
+  "schedules": 2,
+  "unchangedFunctionDigests": 10,
+  "anonymousStatus": 401,
+  "calendarBundle": "482ba69dead001721fb7749b47d8f2674316f2d8daf9e70b396aba7645b3acba",
+  "publishedAt": "2026-10-26T15:59:21.079Z",
+  "managedValidation": "6adf786564f5e0db267e7875",
+  "managedChecks": {
+    "oldCalendarRejected": true,
+    "serverRevisionAdvertised": true,
+    "rejectedWriteLeftDatabaseUntouched": true,
+    "groupWriteReadReopen": true,
+    "idempotentRetry": true,
+    "concurrentChoiceRejected": true,
+    "ptCannotClassify": true,
+    "trainerAssignmentReadback": true,
+    "packageBalanceNotesPreserved": true,
+    "explicitUnclassification": true
+  },
+  "locked": true,
+  "branch": "main",
+  "stopBuilds": true
+}

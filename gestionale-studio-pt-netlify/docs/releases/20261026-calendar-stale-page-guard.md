@@ -61,3 +61,57 @@ Stato al momento della preparazione: ramo locale
 `feature/whatsapp-agenda-pt-v1`, HEAD `65cfcc6`; modifiche preesistenti
 conservate. Il gate Git sul checkout con lavorazioni pendenti non equivale al
 controllo del candidato isolato. Esiti del rilascio da annotare sotto.
+
+
+## Esito pubblicato — 26 ottobre 2026
+
+Candidato applicativo `a07c675`; candidato finale con fixture gestita
+`93f2b47d82f8503d4aa8831431b09ea996ee9673`, branch
+`release/calendar-save-guard-20261026`. Suite `check-calendar-release.sh`
+interamente superata sul candidato finale pulito, incluso il gate Git.
+Dipendenze installate con `npm ci --ignore-scripts` dal suo lockfile.
+
+Anteprima `6adf78218813adf31c7dff9e`: manifesto completo confrontato,
+quattro file modificati (_headers, HTML, audit, supabase), tre asset pubblici
+uguali al commit, rivalidazione HTML verificata su / e /index.html,
+API anonima 401, flusso browser mobile con backend sintetico superato.
+
+Collaudo autenticato `6adf786564f5e0db267e7875`, commit temporaneo
+`d01905d`: stesso digest della funzione Calendar dell'anteprima e della
+produzione. Verificati sul vero Supabase: revisione vecchia respinta,
+record identico prima/dopo il rifiuto, versione annunciata dal server,
+cambio referente persistito/riletto, gruppo, conflitto, idempotenza,
+autorizzazioni e pacchetto invariato. Il wrapper temporaneo richiede capacità
+casuale tenuta solo in memoria e scade dopo dieci minuti; solo ID sintetici
+fissi. I record sintetici sono stati rimossi: clienti, operatori e relazioni
+conteggiati a zero; audit immutabile conservato. Ramo temporaneo remoto rimosso.
+
+Produzione effettiva `6adf78c1f4bf11fc29104b82`, commit `93f2b47`,
+pubblicata alle `2026-10-26T15:59:21.079Z`.
+La build esplicita `6adf78c3fb6aea4ed5d20d1e` non è il deploy pubblicato:
+il cambio ramo ha avviato una build automatica dello stesso commit.
+
+Verifica online: 43 file, tre asset confrontati byte per byte, 15 funzioni,
+due pianificazioni invariate, runtime/configurazioni conservati, dieci digest
+funzioni invariati. Tre gateway ricompilati per la libreria comune; i sorgenti
+delle due funzioni pianificate restano identici, con riconfezionamento dei
+bundle. Digest Calendar collaudato e pubblicato:
+`482ba69dead001721fb7749b47d8f2674316f2d8daf9e70b396aba7645b3acba`.
+Prova browser su asset di produzione e API sintetiche superata. Rilettura
+indipendente conferma entrambe le clienti reali ancora con Alessandro e
+pacchetti/residui invariati. Nessun dato reale scritto da questi collaudi.
+
+Netlify finale: deploy locked, ramo main, build sospese, soli rami main ammessi.
+Il cambio della configurazione repository ha reimpostato `stop_builds` a false:
+il controllo finale l'ha rilevato; ripristino esplicito a true e nuova verifica
+riuscita. Lo script di rilascio conserva ora questo passaggio dopo il cambio ramo.
+Nessuna migrazione, nessun altro sito pubblicato. Prove esportate nel JSON
+`20261026-calendar-save-guard-published.json` e verificatore ripetibile
+`tools/calendar-update-release-verify.cjs`.
+
+Stato Git conclusivo: checkout ancora `feature/whatsapp-agenda-pt-v1` /
+`65cfcc6`; lavorazioni precedenti conservate, candidato e prove salvati sul
+ramo di rilascio. `git diff --check` superato. Prossimo passo operativo:
+ricaricare una volta le pagine già aperte per caricare anche il nuovo avviso;
+il server respinge già i loro salvataggi precedenti. Per i prossimi rilasci
+mantenere la prova di rifiuto della revisione sostituita.
