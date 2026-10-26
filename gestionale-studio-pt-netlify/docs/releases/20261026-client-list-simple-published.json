@@ -1,0 +1,11 @@
+{
+  "commit": "500b359b9fec77ea7541f346bce86c6f5726ac05",
+  "deploy": "6adf8a670077cb546c3caa82",
+  "publishedAt": "2026-10-26T17:14:30.871Z",
+  "live": true,
+  "files": 43,
+  "verifiedAssets": 2,
+  "unchangedFunctions": 15,
+  "schedules": 2,
+  "anonymousStatus": 401
+}
