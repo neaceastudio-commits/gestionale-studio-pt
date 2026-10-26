@@ -2,8 +2,10 @@
 
 26 ottobre 2026. Repository Gestionale Studio PT, branch
 `feature/whatsapp-agenda-pt-v1`, HEAD di partenza `65cfcc6`.
-**Correzione e gruppi preparati localmente; nessuna pubblicazione o migrazione
-eseguita in questa chat.** Le lavorazioni preesistenti restano conservate.
+**Pubblicato e verificato il 26 ottobre 2026**, commit applicativo `5c3c2b5`,
+deploy `6adf69f5f0d7ca2465d67586`. Migrazione applicata; dati sintetici rimossi.
+Le sezioni iniziali documentano le prove prima dell’autorizzazione. Le lavorazioni
+preesistenti restano conservate.
 
 ## Verifica della produzione esistente
 
@@ -139,3 +141,96 @@ anon/authenticated e consentito al servizio. La prova SQL con rollback sul
 Supabase gestito conferma gruppo occasionale, note, pacchetto e residuo intatti.
 Il file locale della migrazione riproduce il SQL effettivamente applicato; la
 prova PGlite carica ora questo file definitivo.
+
+
+## Pubblicazione completata — 26 ottobre 2026
+
+- Migrazione: `20261026141717_calendar_manual_client_groups`.
+- Candidato applicativo: `5c3c2b55e0da1cdb9153225cfc709ffd6005bab0`, derivato
+  dall'effettivo commit Calendario online `c191a36` tramite indice Git separato.
+  Branch: `release/calendar-client-groups-20261026`, pubblicato su GitHub.
+  Nessun cambio branch o reset nel checkout di lavoro; nessun worktree creato.
+- In una copia temporanea di collaudo fuori dal progetto sono state installate
+  con `npm ci --ignore-scripts` le dipendenze del lockfile candidato, con Node
+  24.14.1. Nessuna dipendenza globale o cartella occasionale usata come gate.
+  La suite `check-calendar-release.sh` sul candidato pulito è interamente
+  **superata, incluso il gate Git finale**. Prima dell'isolamento, il gate sul
+  checkout di lavoro restava correttamente bloccato dai cambi preesistenti.
+- Anteprima Git: `6adf6339889af55a283c3c9f`, stesso commit, manifesto 42 file,
+  quattro asset confrontati byte per byte, configurazione delle 15 funzioni e
+  due pianificazioni verificate; API anonima 401. Prova mobile gruppi,
+  trasferimento, riapertura, errori e storico con asset remoti superata
+  usando un backend sintetico intercettato.
+- Collaudo autenticato gestito: deploy Git non pubblicato
+  `6adf641ab6fbcdf1eacbb639`. La funzione `calendar-activity` ha lo stesso
+  digest dell'anteprima e della produzione finale:
+  `16bf9ba87346f087cffeeb8b39caed60c89fa5fb77aeffffc1c18d66b675d0bd`.
+  Verificati gruppo/scrittura/rilettura, retry idempotente, conflitto rifiutato,
+  PT non autorizzato a classificare, cambio referente e rilettura, pacchetto,
+  residuo e note conservati, ritorno esplicito a non classificato.
+  La prova usa i veri handler, autenticazione e Supabase con commit reali e
+  letture separate; non è un browser che scrive sul database gestito.
+  Il controllo è limitato a ID sintetici fissi, capacità casuale conservata
+  solo in memoria e scadenza dieci minuti; nessun token restituito o salvato.
+- Una lettura SQL indipendente dopo il runtime conferma nuovo PT, note e
+  residuo persistiti. Eliminati solo il cliente, tre operatori e le relazioni
+  `ptqa-20261026-release-*`: conte finali zero in tutte queste entità.
+  Gli eventi sintetici dell'audit immutabile restano conservati. Una richiesta
+  di pulizia ha ricevuto `Invalid or expired requestState`; il successivo
+  invio è riuscito e la verifica finale conferma la pulizia.
+
+Produzione effettiva: **`6adf69f5f0d7ca2465d67586`**, ready, pubblicata alle
+**16:56:11 Europe/Rome**. Il cambio temporaneo del ramo Netlify ha avviato una
+build automatica; la build esplicita `6adf69f65d24fbafac367515` usa lo stesso
+commit ma non è quella effettivamente pubblicata. Verificato il commit del
+sito effettivo, senza presumere che l'ID dell'ultima richiesta fosse online.
+
+Post-pubblicazione: manifesto completo 42 file, quattro asset identici al
+candidato, 15 funzioni senza controlli temporanei, cron invariati, runtime e
+configurazioni invariati, API anonima respinta con 401. Passata la prova
+browser mobile con gli asset realmente online e API sintetiche. Nessuna
+nuova pubblicazione del Portale PT o di altri siti.
+
+Rispetto alla produzione precedente, dieci funzioni conservano il digest.
+I tre gateway che condividono `calendar-audit-endpoint.js` sono ricompilati;
+la nuova classificazione è ammessa solo dal Calendario e solo alla Direzione.
+Per i due bundle pianificati i sorgenti sono identici, configurazioni e cron
+immutati e dimensione maggiore di nove byte: l'attribuzione ai nove caratteri
+aggiuntivi del nome del ramo nei metadati di build è un'inferenza, non una
+comparazione del contenuto ZIP. Il solo file di libreria server modificato
+nel candidato è quello del gateway audit, come verificabile nel diff Git.
+
+Configurazione finale riletta: deploy corrente **locked true**, repository
+su **main**, `stop_builds: true`, rami consentiti `main`. Il ramo Git temporaneo
+di collaudo è stato rimosso dal remoto. Il draft manuale incompleto è stato
+eliminato. Il controllo temporaneo non è compreso nel sito pubblico corrente.
+Non è stata attivata né dichiarata una nuova protezione CI automatica.
+
+### Dettagli operativi del canale di rilascio
+
+Netlify rifiuta i deploy di produzione via API per questo sito con 403:
+“Production deploys from API are disabled for this site. Please use a git-based deployment.”
+Il tentativo non ha pubblicato nulla; il rilascio è passato dal canale Git.
+Per cambiare `repo_branch` l'API richiede l'oggetto `repo` con la connessione
+Git esistente; `build_settings.repo_branch` è ignorato. Per `stop_builds`
+il campo efficace è invece `build_settings.stop_builds`. Tutti i valori finali
+sono stati riletti e verificati, senza rimuovere il vincolo Git-only.
+Documentazione: [Netlify API](https://open-api.netlify.com/),
+[funzioni Supabase e privilegi](https://supabase.com/docs/guides/database/functions).
+Gli advisory di sicurezza conservano gli stessi segnali precedenti: viste
+security definer, tabelle server RLS senza policy e protezione password.
+Nessuna impostazione di sicurezza è stata allargata per superare il collaudo.
+
+### Stato finale e uso
+
+Codice applicativo e migrazione salvati nel candidato Git e pubblicati.
+Il checkout principale resta su `feature/whatsapp-agenda-pt-v1` con le
+lavorazioni preesistenti e le copie locali delle modifiche conservate;
+`git diff --check` superato. I successivi aggiornamenti del rapporto e degli
+strumenti di verifica non cambiano il commit applicativo online.
+
+**Nessun altro passaggio esterno necessario. Ricaricare il Calendario** per
+usare la correzione e i gruppi. I clienti esistenti restano Da classificare;
+nessun cliente reale è stato automaticamente assegnato a un gruppo.
+Per il prossimo rilascio ripartire dal commit effettivamente online, non dal
+main remoto né dall'intero checkout di lavoro.

@@ -1,0 +1,14 @@
+{
+  "commit": "5c3c2b55e0da1cdb9153225cfc709ffd6005bab0",
+  "deploy": "6adf69f5f0d7ca2465d67586",
+  "publishedAt": "2026-10-26T14:56:11.708Z",
+  "files": 42,
+  "verifiedAssets": 4,
+  "functions": 15,
+  "schedules": 2,
+  "anonymousStatus": 401,
+  "locked": true,
+  "branch": "main",
+  "stopBuilds": true,
+  "exactRuntimeCheckedCalendarBundle": "16bf9ba87346f087cffeeb8b39caed60c89fa5fb77aeffffc1c18d66b675d0bd"
+}

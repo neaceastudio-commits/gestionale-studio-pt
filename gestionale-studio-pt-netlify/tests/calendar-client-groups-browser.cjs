@@ -1,6 +1,8 @@
 // Real Calendar assets; all API calls intercepted with synthetic records.
 const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
+ const releaseOrigin=process.env.CALENDAR_RELEASE_ORIGIN||'';
+ if(releaseOrigin&&!/^https:\/\/(?:[a-f0-9]+--)?new-calendar-neacea\.netlify\.app$/.test(releaseOrigin))throw Error('Unexpected release origin');
  const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],writes=[];
  const clients=[['one',null,true],['two','regular',true],['three','occasional',true],['old','regular',false]].map(([id,client_group,active])=>({id,nome:'TEST',cognome:id,client_group,active,pt_assegnato:'pt-old',notes:'Originale',package_types:[],sessions_total:0,sessions_remaining:0}));
@@ -30,7 +32,9 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
   if(u.hostname!=='calendar.test')return route.abort();
   const file=path.join(__dirname,'../app/calendario-studio',u.pathname==='/'?'index.html':u.pathname.slice(1));
   if(!fs.existsSync(file))return route.fulfill({status:404,body:''});
-  return route.fulfill({contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(file)});
+  let body=fs.readFileSync(file);
+  if(releaseOrigin){const remote=await fetch(releaseOrigin+(u.pathname==='/'?'/index.html':u.pathname),{signal:AbortSignal.timeout(30000)});assert.equal(remote.status,200);body=Buffer.from(await remote.arrayBuffer());}
+  return route.fulfill({contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html',body});
  });
  const open=async()=>{await page.goto('https://calendar.test/?access=SIM');await page.waitForFunction(()=>State.getClients().length===4);await page.evaluate(()=>{Calendar.switchView('clients');Clients.render()});};
  await open();
