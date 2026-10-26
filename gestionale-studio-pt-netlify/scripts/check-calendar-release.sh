@@ -18,6 +18,7 @@ node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
 node tests/calendar-release-regression.cjs
+node tools/coaching-editor/check-calendar-clients.cjs
 node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-charged-absence.test.cjs

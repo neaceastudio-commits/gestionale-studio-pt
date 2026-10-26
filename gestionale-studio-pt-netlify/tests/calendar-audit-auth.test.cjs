@@ -43,3 +43,12 @@ test('outdated calendar pages cannot overwrite balances or start a second renewa
   assert.equal((await handler(event({calendarRevision:undefined,accessToken:token('owner','owner'),operation:'session'}))).statusCode,200);
  }finally{m.restore()}
 });
+
+test('manual groups require current owner and valid values; actor always comes from the session',async()=>{
+ let m=mock();try{assert.equal((await handler(event({accessToken:token(),operation:'client_group',payload:{clientId:'c',group:'regular',expectedGroup:null}}))).statusCode,403);assert.equal((await handler(event({accessToken:token(),operation:'client',payload:{rows:[{id:'c',client_group:'regular'}]}}))).statusCode,403);assert.ok(!m.calls.some(c=>c.url.includes('/rpc/')))}finally{m.restore()}
+ m=mock('owner');try{
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'client_group',payload:{clientId:'c',group:'bad',expectedGroup:null}}))).statusCode,400);
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'client_group',payload:{clientId:'c',group:'regular',expectedGroup:null,actorId:'FORGED'}}))).statusCode,200);
+  const call=m.calls.find(c=>c.url.includes('calendar_set_client_group'));assert.equal(call.body.p_actor_id,'owner');assert.equal(call.body.p_expected_group,null);assert.ok(!JSON.stringify(call.body).includes('FORGED'));
+ }finally{m.restore()}
+});

@@ -73,7 +73,7 @@ const recordPaymentSource = appSource.slice(
   ['Portale usa solo assegnazione esplicita', !portalSource.includes('inferredTrainerId(client.id)')],
   ['Acquisizione assegna solo clienti ancora senza PT', acquisitionSource.includes('if(!currentPt&&p.ptId)patch.pt_assegnato=p.ptId;')],
   ['Trasferimento cliente riservato alla Direzione', appSource.includes('openTransferClient(clientId)') && appSource.includes('if (!App.guardStudioManagement()) return;')],
-  ['Trasferimento aggiorna proprietà e sedute future', appSource.includes('ptAssegnato: newOperator.id') && appSource.includes('SupabaseSync.pushAppointment(change.after)')],
+  ['Trasferimento aggiorna proprietà e sedute future', appSource.includes('ptAssegnato: newOperator.id') && appSource.includes('SupabaseSync.saveAppointmentAtomic(change.after, change.before)') && appSource.includes('SupabaseSync.saveClientAssignment(currentClient, updatedClient)')],
   ['Sedute condivise protette dal trasferimento', appSource.includes('appointments.filter(appt => appt.clientIds.length > 1)')],
   ['Comando trasferimento nascosto ai PT', clientsSource.includes("ptMode ? '' : `<button class=\"btn-icon-sm\" title=\"Trasferisci cliente a un altro PT\"")],
   ['Riepiloghi clienti contenuti nelle proprie colonne', clientsSource.includes('data-table client-data-table') && uiFixesSource.includes('.client-data-table .session-mini') && uiFixesSource.includes('white-space: normal;')],

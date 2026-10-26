@@ -5,6 +5,30 @@
 
 const Clients = (() => {
   let viewMode = 'active';
+  let groupFilter = 'all';
+  const groupLabels = { regular: 'Abituali', occasional: 'Occasionali', unclassified: 'Da classificare' };
+  const groupOf = client => ['regular','occasional'].includes(client.clientGroup) ? client.clientGroup : 'unclassified';
+  const groupSaves = new Set();
+
+  function setGroupFilter(value) {
+    groupFilter = value === 'all' || Object.hasOwn(groupLabels, value) ? value : 'all';
+    render();
+  }
+
+  async function setGroup(clientId, value) {
+    if (!App.guardStudioManagement() || groupSaves.has(clientId)) return;
+    const client = State.getClients().find(c => c.id === clientId);
+    const group = value === 'unclassified' ? null : value;
+    if (!client || client.active === false || ![null,'regular','occasional'].includes(group)) return;
+    groupSaves.add(clientId); render();
+    try {
+      const saved = await SupabaseSync.saveClientGroup(client, group);
+      if (!saved || saved.error) throw Error(saved?.error || 'Conferma del server mancante');
+      State.saveClients(State.getClients().map(c => c.id === clientId ? saved : c));
+      UI.showToast('Gruppo cliente salvato', 'success');
+    } catch (error) { UI.showToast(error.message || 'Gruppo non salvato: riprova', 'error'); }
+    finally { groupSaves.delete(clientId); render(); }
+  }
 
   function parseDate(dateStr) {
     const parts = String(dateStr || '').split('-').map(Number);
@@ -327,7 +351,7 @@ const Clients = (() => {
     const activeClients = allClients.filter(c => c.active !== false);
     const historyClients = allClients.filter(c => c.active === false);
     const showingHistory = viewMode === 'history';
-    const clients = showingHistory ? historyClients : activeClients;
+    const clients = showingHistory ? historyClients : activeClients.filter(c => groupFilter === 'all' || groupOf(c) === groupFilter);
 
     panel.innerHTML = `
       <div class="view-header">
@@ -343,6 +367,9 @@ const Clients = (() => {
           </div>
         </div>
       </div>
+      ${showingHistory ? '' : `<div class="client-view-tabs" role="group" aria-label="Gruppo clienti" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+        ${[['all','Tutti'],...Object.entries(groupLabels)].map(([key,label]) => `<button class="client-view-tab ${groupFilter === key ? 'active' : ''}" aria-pressed="${groupFilter === key}" onclick="Clients.setGroupFilter('${key}')">${label} <span>${key === 'all' ? activeClients.length : activeClients.filter(c => groupOf(c) === key).length}</span></button>`).join('')}
+      </div>`}
       ${showingHistory ? renderHistorySummary(clients) : renderManagementSummary(clients)}
       <div class="card client-table-card">
         <table class="data-table client-data-table">
@@ -373,6 +400,9 @@ const Clients = (() => {
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
                     <div>
                       <div style="font-weight:600">${c.nome} ${c.cognome}</div>
+                      ${!showingHistory && !ptMode ? `<select class="form-input" style="width:150px;min-width:150px;margin-top:6px" aria-label="Gruppo di ${App._escapeHtml(`${c.nome} ${c.cognome}`)}" ${groupSaves.has(c.id) ? 'disabled' : ''} onclick="event.stopPropagation()" onchange="event.stopPropagation();Clients.setGroup('${App._escapeHtml(c.id)}',this.value)">
+                        ${Object.entries(groupLabels).map(([key,label]) => `<option value="${key}" ${groupOf(c) === key ? 'selected' : ''}>${label}</option>`).join('')}
+                      </select>` : `<small class="text-muted">${groupLabels[groupOf(c)]}</small>`}
                     </div>
                   </div>
                 </td>
@@ -589,6 +619,8 @@ const Clients = (() => {
 
   return {
     render,
+    setGroup,
+    setGroupFilter,
     setView,
     toggleActive,
     markNotRenewing,

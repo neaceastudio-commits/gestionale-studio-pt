@@ -60,6 +60,7 @@ const SupabaseSync = (() => {
       indirizzo: r.indirizzo || '',
       contattoEmergenza: r.contatto_emergenza || '',
       serverUpdatedAt: r.updated_at || null,
+      clientGroup: ['regular','occasional'].includes(r.client_group) ? r.client_group : null,
       ptPartnerId: r.pt_partner_id || null,
       packageTypes: Array.isArray(r.package_types) ? r.package_types : [],
       packageFrequency: r.package_frequency || r.sessioni_pref || '',
@@ -394,29 +395,6 @@ const SupabaseSync = (() => {
     });
   }
 
-  const CLIENT_SCHEMA_FALLBACK_COLUMNS = [
-    'nascita',
-    'sesso',
-    'codice_fiscale',
-    'documento',
-    'indirizzo',
-    'contatto_emergenza',
-    'package_types',
-    'package_frequency',
-    'giorni_settimana',
-    'data_conferma',
-    'pt_assegnato',
-    'tipo_servizio',
-    'tipo_abbonamento',
-    'stato_abbonamento',
-    'stato_pagamento',
-    'obiettivo',
-    'professione',
-    'come',
-    'motivazione',
-    'updated_at',
-  ];
-
   function getMissingColumns(error) {
     const text = String(error || '');
     const found = new Set();
@@ -446,10 +424,6 @@ const SupabaseSync = (() => {
     const next = { ...body };
     columns.forEach(column => delete next[column]);
     return next;
-  }
-
-  function compactClientBody(body) {
-    return stripClientColumns(body, CLIENT_SCHEMA_FALLBACK_COLUMNS);
   }
 
   function postClient(body) {
@@ -569,17 +543,12 @@ const SupabaseSync = (() => {
     let res = await postClient(body);
     if (!res?.error) return res;
 
-    if (isClientSchemaError(res.error)) {
-      const missingColumns = getMissingColumns(res.error);
-      body = missingColumns.length
-        ? stripClientColumns(body, missingColumns)
-        : compactClientBody(body);
-      res = await postClient(body);
-      if (!res?.error) return res;
-    }
-
-    if (isClientSchemaError(res?.error)) {
-      body = compactClientBody(body);
+    // Each retry removes only columns explicitly rejected by this database.
+    // A broad legacy fallback also removed valid trainer/package fields.
+    while (isClientSchemaError(res?.error)) {
+      const missingColumns = getMissingColumns(res.error).filter(column => Object.hasOwn(body, column));
+      if (!missingColumns.length) return res;
+      body = stripClientColumns(body, missingColumns);
       res = await postClient(body);
       if (!res?.error) return res;
     }
@@ -590,6 +559,29 @@ const SupabaseSync = (() => {
     }
 
     return res;
+  }
+
+  async function saveClientAssignment(previous, candidate) {
+    if (!previous?.id || candidate?.id !== previous.id) return { error: 'Cliente non valido' };
+    const patch = { id: previous.id, pt_assegnato: candidate.ptAssegnato, notes: candidate.notes || '' };
+    const result = await patchClient(patch);
+    if (result?.error && result.status >= 400 && result.status < 500) return result;
+    const rows = await request('clients', { query: '?select=*&id=eq.' + encodeURIComponent(previous.id) });
+    const row = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+    if (!row || row.id !== previous.id || row.pt_assegnato !== patch.pt_assegnato || row.notes !== patch.notes) {
+      return { error: rows?.error || 'Il server non ha confermato il nuovo PT: ricarica e verifica prima di riprovare', mayHaveSaved: true };
+    }
+    return clientFromDb(row);
+  }
+
+  async function saveClientGroup(client, group) {
+    if (!client?.id || ![null,'regular','occasional'].includes(group)) return { error: 'Gruppo cliente non valido' };
+    const result = await window.CalendarAudit?.call?.('client_group', { clientId: client.id, group, expectedGroup: client.clientGroup || null });
+    if (!result || result.error) return result || { error: 'Rientra dal Portale con una sessione verificata' };
+    const rows = await request('clients', { query: '?select=*&id=eq.' + encodeURIComponent(client.id) });
+    const row = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+    if (!row || row.id !== client.id || (row.client_group || null) !== group) return { error: rows?.error || 'Gruppo non confermato: ricarica per verificare il salvataggio' };
+    return clientFromDb(row);
   }
 
   async function pushOperator(operator) {
@@ -672,5 +664,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, archiveClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

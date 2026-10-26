@@ -30,6 +30,12 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
   }
+  if(input.operation==='client_group'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Gruppi riservati alla Direzione'});
+   const p=input.payload||{};
+   if(!p.clientId||![null,'regular','occasional'].includes(p.group)||![null,'regular','occasional'].includes(p.expectedGroup))return reply(400,{error:'Gruppo cliente non valido'});
+   return reply(200,await db('rpc/calendar_set_client_group',{method:'POST',body:{p_actor_id:actor.id,p_client_id:p.clientId,p_group:p.group,p_expected_group:p.expectedGroup,p_request_id:crypto.randomUUID()}}));
+  }
   if(input.operation==='expected_renewals'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Rinnovi riservati alla Direzione'});
    return reply(200,await require('./expected-renewals').createService({db}).handle(actor.id,input.payload||{}));
@@ -62,6 +68,7 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
   }
   if(!['save','delete','availability','client','operator','assignment'].includes(input.operation))return reply(400,{error:'Operazione non valida'});
   const payload={...(input.payload||{})};
+  if(input.operation==='client' && Array.isArray(payload.rows) && payload.rows.some(row=>Object.hasOwn(row||{},'client_group')))return reply(403,{error:'Usa la gestione gruppi riservata alla Direzione'});
   // JSON null is not SQL NULL: omit the absent optimistic-lock snapshot on create.
   if(input.operation==='save' && payload.expected===null)delete payload.expected;
   const result=await db('rpc/calendar_audit_write',{method:'POST',body:{p_actor_id:actor.id,p_actor_role:actor.role,p_source:source,p_request_id:crypto.randomUUID(),p_operation:input.operation,p_payload:payload}});

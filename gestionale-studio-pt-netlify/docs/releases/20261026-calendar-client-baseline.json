@@ -1,0 +1,390 @@
+{
+  "siteId": "28855faa-de52-4e4c-b1c2-e2db4965670f",
+  "baselineDeploy": "6ad91785fd911ad109a6344c",
+  "commit": "c191a363a07a920390209c5f0f80654cf60da8a5",
+  "functions": [
+    {
+      "n": "acquisition-calendar-activity",
+      "d": "03b88a990198818612534c3da312fd28f9dbb3b4fb29f43898c175c6bdad0ed3",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "0687cfa82ca460378d09f0c67d99e306743ccd30a125b3da1a690ddefc813255",
+      "a": "719837505512",
+      "c": "2026-10-21T19:50:40.624Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "749f184fe91e449b3592b6012a7a95ed44032e314189c0f37310e45ca34a7288",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 289242
+    },
+    {
+      "n": "apple-caldav-link",
+      "d": "71133f7051123e76f702c4fbcf2f6d6ac897513d60b24ab2489e2b52a9ea724d",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "8724c53833f6e89d972ed376607d52fa8b733c3bc9470f60819ea1619d58661b",
+      "a": "517001624662",
+      "c": "2026-10-21T19:50:40.511Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "980d14d92f0645c1c6a2aa98a5f9241e9fd1fcbdef817144ce41bd6c1f6247c1",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 279696
+    },
+    {
+      "n": "apple-calendar",
+      "d": "4d70fcda81c6f19bce5e65e4f006986aa5067c7879831f441dea9b3e542a22c9",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "0415647c415b449e38c92704ee9bfe30ef60b9ea167c12a86ed8e818e27fa36c",
+      "a": "105186839156",
+      "c": "2026-10-21T19:50:40.424Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "f5496620e7ce1827225b9f33cf4ecbd9e2379dce3a2c8f3fa51f8eac646a3666",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 284782
+    },
+    {
+      "n": "apple-calendar-dry-run",
+      "d": "9ebcd27db72e9f8399b321a45aff784848c790ab5539a00de7d02ce1ffec80da",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "78b07bec2ef626266d5b653b7878412d2d2a4a74c38269cd5a475aa82fa93043",
+      "a": "762350920524",
+      "c": "2026-10-21T19:50:40.514Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "4a06ddbbaab5ae5ffe3ffce8a42f1130a84661df342d3b345ed37646902093f6",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 281083
+    },
+    {
+      "n": "calendar-activity",
+      "d": "86cc48a2e01f2f64917e4aea8580ee461b815eccbbb27501e0ce759190147b31",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "9feae9c2904e9d4401f6a17d8b172ff50f334579f0c6a4b2fdd87bb4c3a1f98f",
+      "a": "012533533302",
+      "c": "2026-10-21T19:50:40.434Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "1f98663ebec943760136c2aab84f12d478f86c16b17e9f797422eddaa2ac4e55",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 289214
+    },
+    {
+      "n": "calendar-runtime",
+      "d": "057ef42d141492647e3d9996b11450ce39f0764b84885cb1cdd75990ab270be1",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "b2239b5891ed1eac9e8b5a829f5be58cc98035a01f25071008ba777762f0e25b",
+      "a": "375708248955",
+      "c": "2026-10-21T19:50:40.517Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "144f362746264a1de21597e8605430365bd7922571d515ae8b6c30316a1cb1cf",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 279412
+    },
+    {
+      "n": "calendar-system-activity",
+      "d": "85d923b4e1da142c3f1a798ace10fe154f4bbc69829ab939cdf01c7cc1a88b51",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "ed5e86ef1f0a13dbfbfae9dabd60c7d935dc992c4660e6083c6d369a7b13c9db",
+      "a": "250705260819",
+      "c": "2026-10-21T19:50:40.455Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "c9fb59bba3871bb1a11635c2ce97d60471a40bd05e41b54a029d6acf107558b3",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 279692
+    },
+    {
+      "n": "expected-renewals-scheduled",
+      "d": "6524273952c5326ce7249f78a5c5bb3538978bccb25887117c6b28a602e05b6f",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "bootstrapVersion": "2.24.0",
+        "runtimeAPIVersion": 2
+      },
+      "p": 10,
+      "id": "1b746af7b5510df36601324cb5220f04721d6bfb7367625130d1df4e7d1cb55f",
+      "a": "767900165655",
+      "c": "2026-10-21T19:50:40.614Z",
+      "im": "stream",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "2d3d32714e7c2890fffee8c3473c7335a5e310cac874d4cbc26b48ca1260b34d",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 346767
+    },
+    {
+      "n": "form-notify",
+      "d": "f7f7e58062f4e35bc8297f8d2c452e0e65301f34010fb24e5d72776cfd2bbe95",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "6d7fc3aa051f0a4b878ae88cf95c4e33ad2624ab00e89b26c9abaa8a8f0fb56e",
+      "a": "653012714635",
+      "c": "2026-10-21T19:50:40.441Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "c810e0c2c996fb87ee47b0150ea149e5d8ee8d5f39b444770f09e3e00a253633",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 279422
+    },
+    {
+      "n": "foto-pt",
+      "d": "98df88f9d2452319e813f75b3b9689282226e67593042fc10310181fba45b017",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "6e13f644d076bceb310e373935a76837bb47f80bc100eb3e8e58bbfc55a94c98",
+      "a": "681352277317",
+      "c": "2026-10-21T19:50:40.477Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "1db8b3721e90f4ee740195b702700476511733278eb12a2a3fb75f8ee6e63da5",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 277860
+    },
+    {
+      "n": "pt-access-email",
+      "d": "41151571c3fedae23bb3099c9bbad65a0ba7cd96ae82dc0a016adf0e902de8db",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "1c42dc00c0f482fae99c6440cfbd717df26d06851fd873079599dd6c15eb935f",
+      "a": "022731369924",
+      "c": "2026-10-21T19:50:40.549Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "78c9b23987e4b9bf0ef2ac1e666507955620378ad569aa7490a26dd18b5cbac5",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 283406
+    },
+    {
+      "n": "schedule-client-package",
+      "d": "0061d9788a1e2de0cb7e282c593037020a530fce51698d4a5bddf19a2752d355",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "5b2a284d3b15c8fe40ddcbe3c7ba6ef81911c5dae3844363a15508beda3085c4",
+      "a": "280924795880",
+      "c": "2026-10-21T19:50:40.407Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "1a9d156888e0eac084a2b1c9378d6db4e2f22792695f4b83c76c2520a1588fc2",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 286822
+    },
+    {
+      "n": "studio-calendar-activity",
+      "d": "e9b26fab772696645c44ac878e825b7e6848c073c22c0422e03215ed2497cabc",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "2de1c5362c87fe65b86a71cb0794d07f9641033b4e1637bbebf0567a138233cd",
+      "a": "029622199099",
+      "c": "2026-10-21T19:50:40.573Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "d7ad4c20b8886e29946ab3c1df6d1a822fa02a8f3f42ddbad376b54e700f8ec1",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 289338
+    },
+    {
+      "n": "whatsapp-agenda",
+      "d": "2411c559cac5ae358ee31fa2bcf33f4ba0b0ae8f9058655c08dbdcde472e8987",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "runtimeAPIVersion": 1
+      },
+      "p": 10,
+      "id": "8c78be25a9f24a1b59f2e44d1c04155df229f32ff0e2e9d471755ad8d17e4d33",
+      "a": "250705260819",
+      "c": "2026-10-21T19:50:40.518Z",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "4b5b3892ae4d864b1efd542cff25059112b78e89e7b675581fbb1735f52280d7",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 284323
+    },
+    {
+      "n": "whatsapp-agenda-scheduled",
+      "d": "9f507ee475eeca8873a251d95cfdcc78012933934ecc700a17a8643f0ae0c77f",
+      "dn": null,
+      "g": null,
+      "bd": {
+        "bootstrapVersion": "2.24.0",
+        "runtimeAPIVersion": 2
+      },
+      "p": 10,
+      "id": "447a185aa8cbdc72433d0447218df1fff70e839a6ff9caf173e7c9aa8c843383",
+      "a": "998805804580",
+      "c": "2026-10-21T19:50:40.603Z",
+      "im": "stream",
+      "m": 1024,
+      "obl": "netlify-observability-extension",
+      "oblv": 34,
+      "oid": "5d886d8856006cb6f5816d2d80ec101dfe4e498f036de2f02dfa983f929d2a5e",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "s": 344191
+    }
+  ],
+  "functionSchedules": [
+    {
+      "cron": "*/10 * * * *",
+      "name": "expected-renewals-scheduled"
+    },
+    {
+      "cron": "30 4,5 * * *",
+      "name": "whatsapp-agenda-scheduled"
+    }
+  ],
+  "files": {
+    "/consenso/index.html": "50bac36c358388c2d2238ddbde9397ab30cd7639",
+    "/css/apple-calendar.css": "2b30b970d2e6feebf8e66602f297c0a6025915b1",
+    "/css/base.css": "f653b4b02d762e30e0c1ad5a36218c649bd31012",
+    "/css/calendar-audit-view.css": "d8de30a7b455d8f07dba254677ea5d5f4c269129",
+    "/css/calendar.css": "0b3e0041ad9ec9906c9c79c2658e039706d808a0",
+    "/css/client-journey.css": "4e556d2e713fab6a176a451a27fee1bc79e3ba6a",
+    "/css/clients-fix.css": "c0828ebc9544fdae25b9d9c621a4056b6a290f1d",
+    "/css/expected-renewals.css": "c794ad4d26add69a62465c93188438fb2b1cc8fd",
+    "/css/layout.css": "5632135efaa9c64c2a337a2eaf3af084e5fba8b1",
+    "/css/pt-availability-overview.css": "af496f6a093f445cfed57274fc623e3cf0d5ba50",
+    "/css/pt-trainer-payments.css": "87f9565b8225f29ea281b98febd55d49759ec314",
+    "/css/ui-fixes.css": "eef96b07cd64604b265828b44c4f7d4f87887764",
+    "/index.html": "2a10582004d2ba3728527aa10d36e5a29135359f",
+    "/js/app.js": "11566d9891d49b9cbe09a53f45a6924390d27a86",
+    "/js/apple-calendar.js": "e32ca9aaedeb1cdad000eff9306f16bf4f53cd9f",
+    "/js/apple-operativo.js": "21698bd48c23b524d5a600967c4cb0ffac044f2c",
+    "/js/calendar-audit-view.js": "e1b600cf7d33d8204fb28ff56b5a744a92f9b1e4",
+    "/js/calendar-audit.js": "61d9a2c022c14bb938d0fb22805ba7fb563920da",
+    "/js/calendar-flex.js": "b0652079cc445f98c444c8307ee184a726c5451d",
+    "/js/calendar.js": "595792d64ed05484b8ebbe08fbf5a66e628a75e9",
+    "/js/client-journey-model.js": "3154c81c46919f638d1d83d786847a5be1b7380a",
+    "/js/client-journey-scoring.js": "b232f7c75a3c4df86a64eaaaf84e0a333c072ecb",
+    "/js/client-journey.js": "857e113e42529848ce83faf11e444ac9fd836556",
+    "/js/clients.js": "01b100c4379607b371a75f420bb7ac55714e3ef5",
+    "/js/config.js": "f8eacb3944472344ae616ed2c6ab0e8000ac60dd",
+    "/js/expected-renewals.js": "d2fb47a3d0a659b8218225b58280d35698d3b185",
+    "/js/nutrition-fixes.js": "3ed34789f6807425562c295d4adc4720fa881190",
+    "/js/operators.js": "4f1b6e7f5be28060a7d276e3813fad7bb1258af5",
+    "/js/package-ledger.js": "4d04329080a300343cc3265fe36c2058af8d18bc",
+    "/js/pt-availability-overview.js": "af6af8d33c865b85de51d92c8379f1bc744e5c32",
+    "/js/pt-hours-report.js": "8ce773602b0e4e57bf65f32c456d66251ed9a8f4",
+    "/js/pt-pair-sessions.js": "f9c765b778d779f85d08232c6347a30c6b54ece9",
+    "/js/pt-session-correction.js": "2d5819f3ea50528087f85fca0ecdc941e284c140",
+    "/js/pt-session-model.js": "35822aa5c200eb6a9cb2049947ba987bc86c1a4c",
+    "/js/pt-trainer-payments.js": "6901774bb2df21faee5deaa06db1def281beb4c2",
+    "/js/services.js": "ec31078c6a5f7e09b0af8d90229795220422b25e",
+    "/js/session-fixes.js": "be05c5de5b3719fc3cd0c22e9261248cd251d9ee",
+    "/js/sheets.js": "9b3d47197376451a39e7047c1ec5d3ace9f21762",
+    "/js/state.js": "4f909020cc319aa85578864205cf6574836b7076",
+    "/js/supabase.js": "027934a429412bbda8672b9b918a26317d826122",
+    "/js/whatsapp-agenda.js": "a569d594db1bf44e8f174908e12223cb1ef6d34e",
+    "/netlify.toml": "3609775dcd1371ea831a1df24ace9ebc8ee569b3"
+  },
+  "changes": [
+    {
+      "asset": "index.html",
+      "source": "app/calendario-studio/index.html"
+    },
+    {
+      "asset": "js/app.js",
+      "source": "app/calendario-studio/js/app.js"
+    },
+    {
+      "asset": "js/clients.js",
+      "source": "app/calendario-studio/js/clients.js"
+    },
+    {
+      "asset": "js/supabase.js",
+      "source": "app/calendario-studio/js/supabase.js"
+    }
+  ],
+  "build": {
+    "repo": "https://github.com/neaceastudio-commits/gestionale-studio-pt",
+    "branch": "main",
+    "publish": null,
+    "base": null,
+    "stopBuilds": true
+  }
+}

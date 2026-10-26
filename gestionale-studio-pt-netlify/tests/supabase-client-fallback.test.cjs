@@ -44,6 +44,20 @@ function createSync(fetchImpl) {
   {
     const calls = [];
     const sync = createSync(async (url, options) => {
+      const body = JSON.parse(options.body); calls.push(body);
+      for (const column of ['codice_fiscale', 'contatto_emergenza']) {
+        if (column in body) return response(400, `column "${column}" of relation "clients" does not exist`);
+      }
+      return response(200, JSON.stringify([body]));
+    });
+    await sync.pushClient({ id: 'synthetic-transfer', ptAssegnato: 'pt-new', packageTypes: ['PT 1:2'], notes: 'Originale' });
+    assert.equal(calls.length, 3);
+    assert.equal(calls.at(-1).pt_assegnato, 'pt-new', 'two missing columns must never discard the trainer assignment');
+    assert.deepEqual(calls.at(-1).package_types, ['PT 1:2'], 'valid package fields must survive fallback');
+  }
+  {
+    const calls = [];
+    const sync = createSync(async (url, options) => {
       calls.push({ url, options, body: options.body ? JSON.parse(options.body) : null });
       if (calls.length === 1) {
         return response(400, "Could not find the 'data_conferma' column of 'clients' in the schema cache");

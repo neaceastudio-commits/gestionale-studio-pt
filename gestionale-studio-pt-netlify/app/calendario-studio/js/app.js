@@ -1588,7 +1588,7 @@ const App = {
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="UI.closeModal()">Annulla</button>
-        <button class="btn-primary" onclick="App._transferClient('${client.id}')">Conferma trasferimento</button>
+        <button id="transfer-client-confirm" class="btn-primary" onclick="App._transferClient('${client.id}')">Conferma trasferimento</button>
       </div>
     `;
     UI.openModal(html);
@@ -1596,7 +1596,7 @@ const App = {
   },
 
   async _transferClient(clientId) {
-    if (!App.guardStudioManagement()) return;
+    if (!App.guardStudioManagement() || App._clientTransferBusy) return;
     const clients = State.getClients();
     const clientIndex = clients.findIndex(item => item.id === clientId);
     const currentClient = clients[clientIndex];
@@ -1658,39 +1658,48 @@ const App = {
     if (!confirmed) return;
 
     const auditLine = `[TRASFERIMENTO PT ${App._dateStr(new Date())}] ${oldTrainerName} → ${newTrainerName} · decorrenza ${fromDate}`;
-    const updatedClient = {
+    let updatedClient = {
       ...currentClient,
       ptAssegnato: newOperator.id,
       pt_assegnato: newOperator.id,
       notes: [String(currentClient.notes || '').trim(), auditLine].filter(Boolean).join('\n'),
     };
 
+    const button = document.getElementById('transfer-client-confirm');
+    App._clientTransferBusy = true;
+    if (button) button.disabled = true;
+    const applied = [];
     try {
-      const appointmentResults = await Promise.all(changes.map(change =>
-        SupabaseSync.pushAppointment(change.after)
-      ));
-      if (appointmentResults.some(result => result?.error)) {
-        throw new Error('salvataggio sedute non riuscito');
+      for (const change of changes) {
+        const result = await SupabaseSync.saveAppointmentAtomic(change.after, change.before);
+        if (result?.error || !result?.appointment) throw new Error(result?.error || 'Salvataggio sedute non confermato');
+        applied.push({ before: change.before, after: result.appointment });
       }
-
-      const clientResult = await SupabaseSync.pushClient(updatedClient);
-      if (clientResult?.error) throw new Error('salvataggio cliente non riuscito');
+      const clientResult = await SupabaseSync.saveClientAssignment(currentClient, updatedClient);
+      if (clientResult?.error || !clientResult) {
+        const error = new Error(clientResult?.error || 'Salvataggio cliente non confermato');
+        error.mayHaveSaved = clientResult?.mayHaveSaved;
+        throw error;
+      }
+      updatedClient = clientResult;
     } catch (error) {
-      await Promise.all([
-        ...changes.map(change =>
-          Promise.resolve(SupabaseSync.pushAppointment(change.before)).catch(() => null)
-        ),
-        Promise.resolve(SupabaseSync.pushClient(currentClient)).catch(() => null),
-      ]);
+      // Only restore confirmed writes, with their server version. Never overwrite
+      // a later edit, or rewrite an entire client after an uncertain response.
+      const rollback = await Promise.all((error.mayHaveSaved ? [] : applied).map(change =>
+        Promise.resolve(SupabaseSync.saveAppointmentAtomic(change.before, change.after)).catch(() => ({ error: 'Connessione assente' }))
+      ));
+      try { await SupabaseSync.pullAll(); } catch (_) { /* Keep the failure visible. */ }
       console.warn('[Trasferimento PT]', error);
-      UI.showToast('Trasferimento non completato: i dati precedenti sono stati ripristinati', 'error');
+      UI.showToast('Trasferimento non confermato: ' + error.message + (rollback.some(result => result?.error) ? '. Alcune sedute richiedono verifica: ricarica il Calendario.' : '. Verifica il PT attuale prima di riprovare.'), 'error');
       return;
+    } finally {
+      App._clientTransferBusy = false;
+      if (button?.isConnected) button.disabled = false;
     }
 
-    const changesById = new Map(changes.map(change => [change.after.id, change.after]));
+    const changesById = new Map(applied.map(change => [change.after.id, change.after]));
     State.saveAppointments(State.getAppointments().map(appt => changesById.get(appt.id) || appt));
-    clients[clientIndex] = updatedClient;
-    State.saveClients(clients);
+    State.saveClients(State.getClients().map(client => client.id === clientId ? updatedClient : client));
     if (CONFIG.SHEETS.enabled) {
       Sheets.pushClient(updatedClient);
       changes.forEach(change => Sheets.pushAppointment(change.after));

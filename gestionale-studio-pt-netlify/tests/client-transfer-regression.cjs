@@ -80,13 +80,14 @@ const context = {
   URLSearchParams,
   CONFIG: { SHEETS: { enabled: false } },
   SupabaseSync: {
-    async pushAppointment(appt) {
+    async saveAppointmentAtomic(appt, before) {
+      if (!before) throw Error('Transfer requires an optimistic-lock snapshot');
       pushed.push(`appointment:${appt.id}:${appt.operatorId}`);
-      return null;
+      return { appointment: { ...appt, serverUpdatedAt: 'confirmed' } };
     },
-    async pushClient(client) {
+    async saveClientAssignment(previous, client) {
       pushed.push(`client:${client.id}:${client.ptAssegnato}`);
-      return null;
+      return client;
     },
   },
   Sheets: { pushClient() {}, pushAppointment() {} },
@@ -126,6 +127,30 @@ const App = context.TestApp;
   assert('Il trasferimento viene registrato nelle note', clients[0].notes.includes('[TRASFERIMENTO PT'));
   assert('Il cloud riceve prima la seduta e poi il cliente', pushed[0] === 'appointment:future-single:pt-new' && pushed[1] === 'client:client-1:pt-new');
   assert('Il calendario viene aggiornato', calendarRenders === 1);
+
+  clients[0] = { ...clients[0], ptAssegnato: 'pt-old' };
+  appointments.find(a => a.id === 'future-single').operatorId = 'pt-old';
+  pushed.length = 0;
+  context.SupabaseSync.saveClientAssignment = async () => ({ error: 'Rifiuto sintetico', status: 409 });
+  await App._transferClient('client-1');
+  assert('Un rifiuto non aggiorna il cliente locale', clients[0].ptAssegnato === 'pt-old');
+  assert('Il rollback riguarda solo la seduta confermata', pushed.join('|') === 'appointment:future-single:pt-new|appointment:future-single:pt-old');
+  assert('Un rifiuto non viene presentato come trasferimento completato', calendarRenders === 1);
+
+  let release;
+  pushed.length = 0;
+  context.SupabaseSync.saveAppointmentAtomic = async (appt, before) => {
+    if (!before) throw Error('Expected snapshot missing');
+    pushed.push(`appointment:${appt.id}:${appt.operatorId}`);
+    await new Promise(resolve => { release = resolve; });
+    return { appointment: appt };
+  };
+  context.SupabaseSync.saveClientAssignment = async (previous, candidate) => candidate;
+  const first = App._transferClient('client-1');
+  await App._transferClient('client-1');
+  assert('Il doppio clic non duplica il trasferimento', pushed.length === 1);
+  release(); await first;
+  assert('Il trasferimento si sblocca dopo la conferma', !App._clientTransferBusy && clients[0].ptAssegnato === 'pt-new');
 })().catch(error => {
   process.stderr.write(`${error.stack || error}\n`);
   process.exitCode = 1;
