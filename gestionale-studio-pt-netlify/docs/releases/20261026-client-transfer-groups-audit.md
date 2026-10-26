@@ -1,5 +1,35 @@
 # Calendario e Portale PT — verifica salvataggi, trasferimento e gruppi clienti
 
+## Verifica del caso reale dopo la pubblicazione — 26 ottobre, 15:45 UTC
+
+Due tentativi delle 15:33–15:34 UTC mostrano ancora la vecchia sequenza
+`codice_fiscale` / `contatto_emergenza` e audit cliente con referente invariato.
+La pagina Safari aperta non mostrava i nuovi filtri gruppi; dopo ricarica li
+mostra. Produzione Netlify confermata sul deploy `6adf69f5f0d7ca2465d67586`.
+Evidenze coerenti con la precedente versione JavaScript rimasta nella pagina
+aperta; non è stato necessario un ulteriore rilascio.
+
+Dopo conferma esplicita dell'utente sono state trasferite le due clienti
+indicate da Martina ad Alessandro usando l'operazione esistente `assignment`
+di `calendar_audit_write`, in una sola transazione con lock e controllo del
+referente precedente. Una prima richiesta di modifica era stata respinta
+dalla revisione automatica; nessuna scrittura prima dell'autorizzazione.
+
+Commit riuscito alle 15:45:25 UTC. Rilettura in una richiesta separata:
+entrambe assegnate ad Alessandro, una sola relazione PT attiva per cliente,
+nessuna relazione attiva con altri PT. Assert transazionale: tutti i campi
+cliente, esclusi referente e timestamp, identici al precedente stato.
+Due eventi audit prima/dopo presenti. Zero appuntamenti delle due clienti
+aggiornati dal trasferimento. Nessun cambio di schema, permessi o codice.
+Calendario Safari ricaricato dopo il commit: il Registro attività mostra
+entrambi i nuovi eventi «Assegnazione PT» con i nomi delle due clienti.
+
+Ramo locale `feature/whatsapp-agenda-pt-v1`, HEAD `65cfcc6`; conservate tutte
+le modifiche preesistenti, aggiunto solo questo aggiornamento al rapporto.
+`git diff --check` superato. Prossimo intervento distinto: eventuale gestione
+del trasferimento congiunto delle sedute PT 1:2; la conferma ricevuta in questo
+passo esclude esplicitamente la modifica degli appuntamenti programmati.
+
 26 ottobre 2026. Repository Gestionale Studio PT, branch
 `feature/whatsapp-agenda-pt-v1`, HEAD di partenza `65cfcc6`.
 **Pubblicato e verificato il 26 ottobre 2026**, commit applicativo `5c3c2b5`,

@@ -8,7 +8,7 @@ test('Studio administrative/payment writes work without appointment revision; id
  const call=(handler,role,extra={})=>handler({httpMethod:'POST',body:JSON.stringify({accessToken:role?token(role):'',operation:'client',payload,...extra})});
  assert.equal((await call(studio,'owner')).statusCode,200);assert.equal(writes,1);
  assert.equal((await call(calendar,'owner')).statusCode,409);assert.equal(writes,1);
- assert.equal((await call(calendar,'owner',{calendarRevision:'20261009s'})).statusCode,200);assert.equal(writes,2);
+ assert.equal((await call(calendar,'owner',{calendarRevision:'20261026-client-save-v2'})).statusCode,200);assert.equal(writes,2);
  assert.equal((await call(studio,'pt')).statusCode,403);assert.equal((await call(studio,null)).statusCode,401);assert.equal(writes,2);
  }finally{global.fetch=previousFetch;if(previousSecret===undefined)delete process.env.PT_ACCESS_SECRET;else process.env.PT_ACCESS_SECRET=previousSecret;}
 });

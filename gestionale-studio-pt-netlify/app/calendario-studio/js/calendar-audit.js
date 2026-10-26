@@ -4,9 +4,37 @@ window.CalendarAudit = (() => {
   const key='neacea-calendar-audit-session';let actor=null;
   let accessToken=new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
   const token=()=>accessToken;
-  async function call(operation,payload={},filters={}) {
-    try { const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),calendarRevision:'20261009s',operation,payload,filters})});const data=await r.json();return r.ok?data:{error:data.error||'Operazione rifiutata',status:r.status}; } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
+  const revision='20261026-client-save-v2';
+  const readOperations=new Set(['session','list','client_shares']);
+  let reloadRequired=false,updateCheck=null;
+  const reloadError=()=>({error:'Il Calendario è stato aggiornato. Ricarica la pagina prima di salvare: nessuna modifica è stata applicata.',status:409,code:'CALENDAR_RELOAD_REQUIRED'});
+  function requireReload(){
+    reloadRequired=true;
+    if(document.getElementById('calendar-update-notice'))return;
+    const notice=document.createElement('div');notice.id='calendar-update-notice';notice.setAttribute('role','alert');
+    notice.style.cssText='position:fixed;bottom:16px;left:16px;right:16px;z-index:10050;padding:16px;background:#fff8dc;color:#182b40;border:2px solid #af7d00;border-radius:12px;box-shadow:0 4px 20px #0003';
+    const text=document.createElement('p');text.textContent='È disponibile un aggiornamento del Calendario. I salvataggi sono sospesi per evitare errori. Ciò che stai compilando resta qui: copia le modifiche prima di ricaricare.';
+    const button=document.createElement('button');button.type='button';button.className='btn-primary';button.textContent='Ricarica il Calendario';button.onclick=()=>location.reload();
+    notice.append(text,button);document.body.append(notice);
   }
+  async function call(operation,payload={},filters={}) {
+    if(!readOperations.has(operation) && (reloadRequired || typeof SupabaseSync==='undefined' || SupabaseSync.clientWriteRevision!==revision)){
+      requireReload();return reloadError();
+    }
+    try {
+      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token(),calendarRevision:revision,operation,payload,filters})});
+      const data=await r.json();
+      if(data.code==='CALENDAR_RELOAD_REQUIRED' || (operation==='session' && data.calendarRevision && data.calendarRevision!==revision))requireReload();
+      return r.ok?data:{error:data.error||'Operazione rifiutata',status:r.status,code:data.code};
+    } catch {return {error:'Connessione non disponibile: salvataggio non confermato'}}
+  }
+  async function checkUpdate(){
+    if(!token() || reloadRequired || document.hidden)return;
+    if(!updateCheck)updateCheck=call('session').finally(()=>{updateCheck=null});
+    return updateCheck;
+  }
+  window.addEventListener('focus',checkUpdate);
+  document.addEventListener('visibilitychange',checkUpdate);
   async function dispatchWrite(table,{method,query,body}) {
     const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');
     if(table==='rpc/calendar_save_appointment')return call('save',{appointment:body.p_appointment,expected:body.p_expected});
@@ -25,7 +53,7 @@ window.CalendarAudit = (() => {
     const result=await dispatchWrite(table,options);
     if(result?.status===401){actor=null;accessToken='';sessionStorage.removeItem(key);login();}
     if(result?.error){
-      try { await SupabaseSync.pullAll(); Calendar.render(); } catch (_) { /* Never claim a failed write succeeded. */ }
+      try { if(result.code!=='CALENDAR_RELOAD_REQUIRED'){await SupabaseSync.pullAll(); Calendar.render();} } catch (_) { /* Never claim a failed write succeeded. */ }
       UI.showToast(result.error, 'error');
     }
     return result;
@@ -58,6 +86,7 @@ window.CalendarAudit = (() => {
     const result=await call('session');if(result.error){
       const button=element('button','Accedi al Calendario');button.className='topbar-btn';button.id='calendar-audit-login-button';button.onclick=login;(document.querySelector('.topbar-right')||document.body).append(button);return;
     }actor=result.actor;sessionStorage.setItem(key,token());
+    setInterval(checkUpdate,60000);
     if(actor.role==='owner'){document.getElementById('expected-renewals-button')?.removeAttribute('hidden');const b=element('button','Registro attività');b.className='btn';b.id='calendar-audit-button';b.onclick=open;(document.querySelector('.topbar-right')||document.body).append(b)}
   }
   document.addEventListener('DOMContentLoaded',init);

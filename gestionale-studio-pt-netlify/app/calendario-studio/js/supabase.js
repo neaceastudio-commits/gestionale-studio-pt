@@ -664,5 +664,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { clientWriteRevision: '20261026-client-save-v2', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

@@ -1,6 +1,8 @@
 'use strict';
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
+const calendarRevision='20261026-client-save-v2';
+const calendarWrites=new Set(['save','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -9,11 +11,11 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
   const input=JSON.parse(event.body||'{}');const actor=await authenticate(input.accessToken);
   if(!actor)return reply(401,{error:'Rientra dal Portale con una sessione verificata'});
   if(ownerOnly && actor.role!=='owner')return reply(403,{error:'Operazione riservata alla Direzione'});
-  if(input.operation==='session')return reply(200,{success:true,actor});
-  // Older open tabs exclude legacy pair sessions and can overwrite real balances.
+  if(input.operation==='session')return reply(200,{success:true,actor,...(source==='calendar'?{calendarRevision}:{})});
+  // Reject older open tabs before any write, including their lossy client fallback.
   // This is protocol compatibility, not authorization: identity is checked above.
-  if(enforceCalendarRevision && source==='calendar' && ['save','delete','client','renew_pt_pair','save_pair_client','correct_pt_sessions'].includes(input.operation) && input.calendarRevision!=='20261009s') {
-   return reply(409,{error:'Il Calendario è stato aggiornato. Ricarica la pagina prima di salvare: nessuna modifica è stata applicata.',code:'CALENDAR_RELOAD_REQUIRED'});
+  if(enforceCalendarRevision && source==='calendar' && calendarWrites.has(input.operation) && input.calendarRevision!==calendarRevision) {
+   return reply(409,{error:'Il Calendario è stato aggiornato. Ricarica la pagina prima di salvare: nessuna modifica è stata applicata.',code:'CALENDAR_RELOAD_REQUIRED',calendarRevision});
   }
   if(['client_shares','set_client_share'].includes(input.operation)){
    if(source!=='calendar'||actor.role!=='owner'||actor.id!=='staff_1')return reply(403,{error:'Condivisione riservata al proprietario dal Calendario'});
