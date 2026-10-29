@@ -91,3 +91,29 @@ effettivamente online, preparare un candidato Git circoscritto, collaudarlo e
 verificare gli asset pubblicati. Solo dopo il rilascio il nuovo percorso sarà
 disponibile nel Calendario online: Quadro pacchetto → Genera mancanti →
 Continua → scegliere il recupero → anteprima → conferma.
+
+
+## Preparazione pubblicazione — 29 ottobre 2026
+
+Pubblicazione richiesta esplicitamente dall’utente. Produzione verificata:
+commit `500b359b9fec77ea7541f346bce86c6f5726ac05`, deploy
+`6adf8a670077cb546c3caa82`. Manifesto di 43 file confrontato con Git,
+comprese la configurazione root `netlify.toml` e le intestazioni. Quindici
+funzioni Node 24 e due pianificazioni da preservare.
+
+Candidato sul ramo `release/calendar-pair-recovery-20261029`, preparato con
+indice Git separato e checkout temporaneo in `/tmp`, senza worktree né
+modifiche al checkout di lavoro. Cambi pubblici limitati a `index.html`
+e `js/pt-pair-sessions.js`. Dipendenze installate dai due lockfile
+`tools/coaching-editor` e `tools/apple-caldav-production`, Node 24.14.1.
+
+La suite completa supera anche il controllo Git nel candidato pulito.
+La verifica estesa ha evidenziato un riferimento testuale obsoleto nel
+test browser della coppia, già identico nella base pubblicata: cercava
+«Ore PT prenotate», mentre il riepilogo online usa «Ore PT ancora prenotate».
+Aggiornata soltanto la dicitura cercata; le attese restano un’ora prenotata,
+un’ora PT 1:2 maturata e 15 euro. Nessuna modifica al riepilogo ore.
+
+Il nuovo test browser può leggere gli asset dall’anteprima o dalla produzione
+tramite `CALENDAR_RELEASE_ORIGIN`, mantenendo tutte le API applicative
+intercettate e collegate ai soli dati sintetici del database locale.
