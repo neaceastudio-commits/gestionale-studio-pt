@@ -1,0 +1,127 @@
+{
+  "commit": "eab841107014bdc3627421bb78dfad865588f77f",
+  "branch": "release/calendar-save-guard-20261026",
+  "deploy": "6ae38464506569b29d227988",
+  "publishedAt": "2026-10-29T17:37:56.917Z",
+  "origin": "https://new-calendar-neacea.netlify.app",
+  "live": true,
+  "files": 43,
+  "changedAssets": [
+    "index.html",
+    "js/pt-pair-sessions.js",
+    "js/app.js",
+    "js/expected-renewals.js"
+  ],
+  "unchangedFunctions": 15,
+  "schedules": 2,
+  "anonymousStatus": 401,
+  "baseline": {
+    "deploy": "6adf8a670077cb546c3caa82",
+    "commit": "500b359b9fec77ea7541f346bce86c6f5726ac05"
+  },
+  "audit": {
+    "activePtClients": 26,
+    "invalidOrInactiveReferents": 0,
+    "pairsWithDifferentReferents": 0,
+    "openRenewals": 6,
+    "renewalsWithLessonSubstitutes": 1,
+    "affectedParticipants": 2,
+    "realWrites": 0
+  },
+  "functions": [
+    {
+      "name": "acquisition-calendar-activity",
+      "sha256": "3adce685684c29e3d1d8999fca51ea43074dd472ede6584d8ab139fa60d48f9c",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "apple-caldav-link",
+      "sha256": "71133f7051123e76f702c4fbcf2f6d6ac897513d60b24ab2489e2b52a9ea724d",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "apple-calendar",
+      "sha256": "4d70fcda81c6f19bce5e65e4f006986aa5067c7879831f441dea9b3e542a22c9",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "apple-calendar-dry-run",
+      "sha256": "9ebcd27db72e9f8399b321a45aff784848c790ab5539a00de7d02ce1ffec80da",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "calendar-activity",
+      "sha256": "482ba69dead001721fb7749b47d8f2674316f2d8daf9e70b396aba7645b3acba",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "calendar-runtime",
+      "sha256": "057ef42d141492647e3d9996b11450ce39f0764b84885cb1cdd75990ab270be1",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "calendar-system-activity",
+      "sha256": "85d923b4e1da142c3f1a798ace10fe154f4bbc69829ab939cdf01c7cc1a88b51",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "expected-renewals-scheduled",
+      "sha256": "4f559bc6b4653a3c485cbc983cdfbc41b4195116373e72b4401602b7b8fdfd9a",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "form-notify",
+      "sha256": "f7f7e58062f4e35bc8297f8d2c452e0e65301f34010fb24e5d72776cfd2bbe95",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "foto-pt",
+      "sha256": "98df88f9d2452319e813f75b3b9689282226e67593042fc10310181fba45b017",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "pt-access-email",
+      "sha256": "41151571c3fedae23bb3099c9bbad65a0ba7cd96ae82dc0a016adf0e902de8db",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "schedule-client-package",
+      "sha256": "0061d9788a1e2de0cb7e282c593037020a530fce51698d4a5bddf19a2752d355",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "studio-calendar-activity",
+      "sha256": "632a4ad1b89447fe0938f08c2f091549d31f0225bbd3e59f3f1b13aa086ea8d0",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "whatsapp-agenda",
+      "sha256": "2411c559cac5ae358ee31fa2bcf33f4ba0b0ae8f9058655c08dbdcde472e8987",
+      "runtime": "nodejs24.x"
+    },
+    {
+      "name": "whatsapp-agenda-scheduled",
+      "sha256": "b259b41494650ae5c7b22f84e3307b56b4428876efdeae37f4a5c0ccb9fa2ca2",
+      "runtime": "nodejs24.x"
+    }
+  ],
+  "functionSchedules": [
+    {
+      "cron": "*/10 * * * *",
+      "name": "expected-renewals-scheduled"
+    },
+    {
+      "cron": "30 4,5 * * *",
+      "name": "whatsapp-agenda-scheduled"
+    }
+  ],
+  "liveBrowserPassed": true,
+  "configuration": {
+    "locked": true,
+    "branch": "main",
+    "stopBuilds": true,
+    "allowedBranches": [
+      "main"
+    ]
+  }
+}

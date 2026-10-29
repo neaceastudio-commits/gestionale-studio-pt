@@ -1,9 +1,10 @@
 # Calendario — recuperi della coppia nel pacchetto corrente
 
-Stato: **preparato e collaudato localmente**, 28 ottobre 2026.
+Stato: **attivato e verificato online**, 29 ottobre 2026.
+Preparazione iniziale: 28 ottobre 2026.
 Applicazione: Gestionale Studio PT, Calendario Studio.
 Branch: `feature/whatsapp-agenda-pt-v1`; HEAD iniziale `d242d2c`.
-Nessun candidato committato e nessuna pubblicazione in questo intervento.
+La preparazione locale del 28 ottobre e il rilascio del 29 ottobre sono documentati di seguito.
 
 ## Problema e comportamento corretto
 
@@ -159,3 +160,50 @@ altro PT nelle lezioni e una futura seduta individuale con un sostituto.
 Verifica riferimento al solo assegnato nei comandi, mantenimento dei PT
 elle righe delle lezioni e cambio orario della proposta salvato e riletto
 dal database locale senza riassegnare le lezioni o il cliente.
+
+
+## Pubblicazione completata — 29 ottobre 2026
+
+- Codice online: `eab841107014bdc3627421bb78dfad865588f77f`, ramo `release/calendar-save-guard-20261026`.
+- Produzione: `6ae38464506569b29d227988`, pubblicata `2026-10-29T17:37:56.917Z`.
+- Anteprima verificata: `6ae38437289de18637243278`.
+- Manifesto completo: 43 file. Cambiano soltanto index.html, js/app.js,
+  js/expected-renewals.js e js/pt-pair-sessions.js; confronto byte per byte
+  dei quattro asset su anteprima e dominio di produzione.
+- Tutte le 15 funzioni server conservano digest, runtime e configurazione.
+  Le due pianificazioni restano identiche. Risposta anonima del gateway: 401.
+- L’anteprima sul nuovo ramo aveva due digest differenti perché Netlify
+  incorpora il nome del ramo nei metadati delle funzioni V2 pianificate.
+  È stato quindi riusato il ramo di produzione esistente, con avanzamento
+  Git senza forzature e preservando i documenti precedenti. I sorgenti e i
+  test sono identici al candidato già collaudato `fa714c3b5e1fdba1781bb4bb59ded8c2bfcde4a1`.
+- Sul commit finale, suite completa Calendario superata nel checkout pulito,
+  incluso il controllo Git, più test del recupero con vero gateway e SQL
+  locale. Superate anche suite estesa coppia (35 test), integrazione SQL,
+  browser rinnovo, correzione coppia ed editor dei partecipanti sul codice
+  equivalente, senza rimuovere controlli o allargare permessi.
+- Prova browser sia sull’anteprima sia sugli asset realmente pubblicati,
+  con tutte le API applicative intercettate e dati sintetici nel database
+  locale: recupero singolo, ciclo originario, retry idempotente, riapertura,
+  PT assegnato nei comandi, PT effettivi conservati nelle lezioni, cambio
+  orario del rinnovo salvato e riletto senza riassegnare le lezioni.
+- Nessun appuntamento o dato reale modificato, nessuna migrazione eseguita.
+- Configurazione finale Netlify ripristinata: produzione locked, ramo main,
+  build sospese e soli rami main ammessi.
+
+Censimento globale read-only: 26 clienti PT attivi, tutti con titolare valido
+e attivo; nessuna coppia con titolari diversi. Controllati sei rinnovi aperti;
+il caso con un altro PT negli slot riguarda il rinnovo condiviso delle due
+Mereu. La correzione dei moduli si applica a tutti. Le singole lezioni possono
+continuare ad avere PT diversi dal titolare. Nessuna modifica agli elenchi o
+agli accessi del Portale PT.
+
+Stato Git finale del checkout di lavoro: ramo feature/whatsapp-agenda-pt-v1,
+modifiche locali preesistenti e nuove conservate, indice principale invariato.
+Candidato e prove salvati nel ramo di rilascio; git diff --check superato.
+I file principali sono i quattro asset sopra, i test calendar-pair-recovery,
+calendar-replacement-slot e calendar-expected-renewals-browser, lo script
+check-calendar-pt-pair.sh e il helper calendar-pair-recovery-release.cjs.
+
+Nessun passaggio esterno rimasto. Per le finestre già aperte ricaricare il
+Calendario, poi usare Quadro pacchetto → Genera mancanti per il recupero.
