@@ -1,8 +1,8 @@
-// Explicitly authorized Git release. Only two static assets may change.
+// Explicitly authorized Git release. Only the four reviewed static assets may change.
 const fs=require('node:fs'),assert=require('node:assert/strict'),crypto=require('node:crypto'),cp=require('node:child_process');
 const {api}=require('./calendar-client-release.cjs');
 const [mode,id]=process.argv.slice(2),root='/tmp/neacea-pair-recovery-',base=JSON.parse(fs.readFileSync(root+'baseline.json')),candidate=JSON.parse(fs.readFileSync(root+'candidate.json'));
-const siteId=base.site.id,assets=['index.html','js/pt-pair-sessions.js'];
+const siteId=base.site.id,assets=['index.html','js/pt-pair-sessions.js','js/app.js','js/expected-renewals.js'];
 const sha=b=>crypto.createHash('sha1').update(b).digest('hex');
 const gitFile=asset=>cp.execFileSync('git',['show',candidate.commit+':gestionale-studio-pt-netlify/app/calendario-studio/'+asset],{maxBuffer:8*1024*1024});
 const repo=branch=>Object.fromEntries([...['provider','repo_path','repo_url','repo_type','repo_owner_type','installation_id','deploy_key_id','public_repo','private_logs'].filter(k=>base.site.build_settings[k]!=null).map(k=>[k,base.site.build_settings[k]]),['repo_branch',branch]]);

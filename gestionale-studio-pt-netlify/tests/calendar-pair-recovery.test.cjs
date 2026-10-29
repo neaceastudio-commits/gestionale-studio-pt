@@ -8,7 +8,7 @@ function fixture(){
  const panels=[],toasts=[];let renewalOpens=0;
  const context=vm.createContext({console,Intl,Date,crypto,window:{},document:{getElementById:id=>elements[id],querySelectorAll:()=>[{value:'1'}]},
   App:{guardStudioManagement:()=>true},UI:{openModal:html=>panels.push(html),showToast:message=>toasts.push(message)},
-  State:{getClients:()=>clients,getAppointments:()=>rows,getOperators:()=>[{id:'pt',nome:'Trainer',active:true,roles:['PT']}]},
+  State:{getClients:()=>clients,getAppointments:()=>rows,getOperators:()=>[{id:'pt',nome:'Trainer',active:true,roles:['PT']},{id:'sub',nome:'Sostituto',active:true,roles:['PT']}]},
   Services:{getClient:id=>clients.find(c=>c.id===id),getClientSessionMetrics:()=>({completed:7,chargedAbsences:0,toSchedule:1}),serviceUsesPackageSessions:()=>true,appointmentInCurrentPackageCycle:a=>!a.notes?.includes('[RINNOVO-PREVISTO '),timeToMin:t=>Number(t.slice(0,2))*60+Number(t.slice(3))},
   PTSessionModel:require('../app/calendario-studio/js/pt-session-model'),
   ExpectedRenewals:{forClient:async()=>{renewalOpens++;return true;}}});
@@ -21,6 +21,7 @@ test('missing pair sessions open the current package even with an expected renew
  f.api.configure();const html=f.panels.at(-1);
  assert.match(html,/id="pair-sessions"[^>]*value="1"/);
  assert.doesNotMatch(html,/id="pair-(renew|amount|paid|count)-/);
+ assert.doesNotMatch(html,/Sostituto/,'package commands refer only to the assigned trainer');
  await f.api.open('a');assert.equal(f.renewalOpens(),1,'commercial renewal still opens the existing proposal');
 });
 test('current package preview never renews and its back action keeps that mode',async()=>{
@@ -46,4 +47,8 @@ test('a participant without available sessions cannot be silently renewed to boo
  assert.match(f.toasts.at(-1),/verifica il residuo/);
  assert.doesNotMatch(f.panels.at(-1),/id="pair-sessions"/);
  assert.equal(f.renewalOpens(),0);
+});
+test('pair planning always belongs to the assigned trainer, including after a temporary lesson',()=>{
+ const f=fixture(),input={start:'2099-11-02',time:'17:00',operatorId:'sub',days:[1],count:1,renewals:[null,null]};
+ assert.throws(()=>f.api.buildPlan(input,f.clients,f.rows),/PT assegnato/);
 });

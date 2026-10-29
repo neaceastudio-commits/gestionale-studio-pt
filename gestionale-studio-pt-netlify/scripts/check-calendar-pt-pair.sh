@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 for file in app/calendario-studio/js/{pt-session-model,pt-pair-sessions,app,services,supabase,pt-availability-overview,calendar-audit-view}.js netlify/functions/lib/{calendar-audit-endpoint,apple-calendar-package,pt-client-scope,pt-session-log}.js; do
   node --check "$file"
 done
-node --test tests/calendar-pt-pair.test.cjs tests/calendar-pair-recovery.test.cjs tests/calendar-audit-auth.test.cjs tests/package-early-session.test.cjs tests/pt-session-records-api.test.cjs
+node --test tests/calendar-pt-pair.test.cjs tests/calendar-pair-recovery.test.cjs tests/calendar-replacement-slot.test.cjs tests/calendar-audit-auth.test.cjs tests/package-early-session.test.cjs tests/pt-session-records-api.test.cjs
 node tests/package-renewal-ledger.test.cjs
 node tests/apple-caldav-display.test.cjs
 if [[ -n "${PGLITE_MODULE:-}" ]]; then

@@ -117,3 +117,45 @@ un’ora PT 1:2 maturata e 15 euro. Nessuna modifica al riepilogo ore.
 Il nuovo test browser può leggere gli asset dall’anteprima o dalla produzione
 tramite `CALENDAR_RELEASE_ORIGIN`, mantenendo tutte le API applicative
 intercettate e collegate ai soli dati sintetici del database locale.
+
+
+## Estensione richiesta — PT assegnato nei comandi pacchetto
+
+L’utente ha precisato che il problema dei tre nomi riguarda i moduli di
+cambio orari e rinnovo, non gli elenchi del Portale o le singole lezioni,
+e ha richiesto il controllo su tutti: «fa sempre capo il PT assegnato».
+La prima interpretazione sugli elenchi PT è stata quindi scartata; nessuna
+modifica agli accessi o agli elenchi del Portale.
+
+Censimento read-only sul database reale: 26 clienti PT attivi, tutti con
+un titolare valido e attivo; nessuna coppia con titolari differenti. Sei
+rinnovi aperti; un rinnovo condiviso di due clienti contiene un altro PT
+nei propri slot. Per il caso segnalato il titolare è Alessandro; Martina
+e Gianluca risultano PT di singole lezioni, non ulteriori titolari. Nessuna
+condivisione attiva sul cliente segnalato. Nessuna scrittura reale eseguita.
+
+Correzione estesa a tutti i pacchetti tramite i moduli comuni:
+
+- Cambio orari: mostra solo il PT assegnato; modificare l’orario conserva
+  il PT effettivo di ciascuna lezione.
+- Nuova programmazione, recuperi e rinnovo manuale: riferimento al PT assegnato,
+  senza recuperare il nome da una seduta svolta da un sostituto.
+- Rinnovi già previsti: riferimento del pacchetto esplicito e unico. Il
+  riepilogo giorni/orari non presenta i PT delle lezioni come titolari.
+  L’aggiornamento degli orari conserva le sostituzioni già programmate; i
+  nuovi giorni usano il PT assegnato.
+- Nelle righe delle singole lezioni restano visibili e modificabili i loro
+  PT effettivi. Assegnazioni cliente, storico, incassi e accessi invariati.
+
+Asset pubblici previsti: `index.html`, `js/app.js`, `js/expected-renewals.js`
+e `js/pt-pair-sessions.js`. Nessuna funzione server modificata: conservare
+tutti e quindici i bundle e le due pianificazioni.
+
+Nuove riproduzioni automatiche fallivano prima della correzione: il modulo
+coppia esponeva il sostituto fra i titolari proposti e accettava la nuova
+programmazione con quel PT. Dopo la correzione passano. Il test browser
+include tre PT sintetici, sedute storiche con sostituti, un rinnovo con un
+altro PT nelle lezioni e una futura seduta individuale con un sostituto.
+Verifica riferimento al solo assegnato nei comandi, mantenimento dei PT
+elle righe delle lezioni e cambio orario della proposta salvato e riletto
+dal database locale senza riassegnare le lezioni o il cliente.
