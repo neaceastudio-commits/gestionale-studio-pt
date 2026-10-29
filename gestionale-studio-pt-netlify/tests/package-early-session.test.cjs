@@ -9,7 +9,7 @@ function setup({persisted=true}={}) {
   let rows=[];
   const client={id:'test',sessionsTotal:8,sessionsRemaining:8,packageStart:'2026-09-25',packageCycleStart:persisted?'2026-09-25':'',notes:''};
   class Clock extends Date {constructor(...args){super(...(args.length?args:['2026-09-21T10:00:00Z']));}}
-  const ctx=vm.createContext({console,Date:Clock,document:{addEventListener(){}},CONFIG:{SERVICES:{pt11:{durationMin:60}},SHEETS:{enabled:false}},State:{getClients:()=>[client],getAppointments:()=>rows},UI:{showToast(){}},Calendar:{render(){}},confirm:()=>true});
+  const ctx=vm.createContext({console,Date:Clock,document:{addEventListener(){},getElementById(){return null;}},CONFIG:{SERVICES:{pt11:{durationMin:60}},SHEETS:{enabled:false}},State:{getClients:()=>[client],getAppointments:()=>rows},UI:{showToast(){}},Calendar:{render(){}},confirm:()=>true});
   for(const name of ['services','app'])vm.runInContext(fs.readFileSync(path.join(root,name+'.js'),'utf8')+`\nthis.${name==='app'?'App':'Services'}=${name==='app'?'App':'Services'};`,ctx);
   vm.runInContext('UI.showToast=()=>{};',ctx);
   ctx.App.guardPackageManagement=()=>true;ctx.App.guardPortalEdit=()=>true;ctx.App._withPtAudit=n=>n;ctx.App.openPackageOverview=()=>{};
