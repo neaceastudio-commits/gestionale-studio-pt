@@ -24,3 +24,8 @@ test('unknown weekday uses uniform pattern only; never invents 09:00',()=>{
  const slot=setup([row('2026-10-05','10:00','a',{durationMin:45,bufferMin:0})])._packageSlotForDate({},'2026-10-20');
  assert.equal(slot.startTime,'10:00');assert.equal(slot.durationMin,45);assert.equal(slot.bufferMin,0);
 });
+test('package suggestions keep the assigned PT despite substitutes in the reference lessons',()=>{
+ const app=setup([row('2026-10-05','10:00','substitute')]);
+ const slot=app._packageSlotForDate({ptAssegnato:'referent'},'2026-10-12');
+ assert.equal(slot.startTime,'10:00');assert.equal(slot.operatorId,'referent');
+});

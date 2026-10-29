@@ -16,7 +16,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    if(d.payload.action==='confirm')p.state='confirmed';
    return route.fulfill({json:p});
   }
-  if(u.pathname.includes('/rest/v1/')){assert.equal(req.method(),'GET');const t=u.pathname.split('/').pop();return route.fulfill({json:t==='clients'?[{id:'a',nome:'Cliente',cognome:'Prova',active:true,sessions_total:8,sessions_remaining:2,package_types:['PT 1:1']}]:t==='operators'?[{id:'pt',nome:'Trainer',active:true,roles:['PT']}]:[]});}
+  if(u.pathname.includes('/rest/v1/')){assert.equal(req.method(),'GET');const t=u.pathname.split('/').pop();return route.fulfill({json:t==='clients'?[{id:'a',nome:'Cliente',cognome:'Prova',active:true,pt_assegnato:'pt',sessions_total:8,sessions_remaining:2,package_types:['PT 1:1']}]:t==='operators'?[{id:'pt',nome:'Trainer',active:true,roles:['PT']}]:[]});}
   const f=path.join(__dirname,'../app/calendario-studio',u.pathname==='/'?'index.html':u.pathname.slice(1));return route.fulfill({contentType:f.endsWith('.js')?'application/javascript':f.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(f)});
  });
  await page.goto('https://calendar.test/?access=SIM');await page.waitForFunction(()=>State.getClients().length===1&&window.ExpectedRenewals);await page.waitForTimeout(700);
@@ -32,7 +32,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  await page.waitForFunction(()=>document.getElementById('pkg-expected-renewal').textContent.includes('8 lezioni'));assert.match(await page.locator('#pkg-expected-renewal').innerText(),/8 lezioni/);
  await page.locator('#pkg-expected-renewal button').click();await page.waitForSelector('[data-action=edit]');
  assert.match(await page.locator('#expected-renewals-body').innerText(),/non registra un incasso/);
- await page.click('[data-action=edit]');await page.check('[data-day="5"] [name=enabled]');await page.selectOption('[data-day="5"] [name=operatorId]','pt');await page.fill('[name=sessions0]','12');await page.fill('[name=amount0]','220');
+ await page.click('[data-action=edit]');await page.check('[data-day="5"] [name=enabled]');assert.equal(await page.inputValue('[data-day="5"] [name=operatorId]'),'pt');await page.fill('[name=sessions0]','12');await page.fill('[name=amount0]','220');
  fail=true;await page.getByRole('button',{name:'Salva proposta',exact:true}).click();await page.waitForFunction(()=>document.getElementById('expected-status').textContent.includes('cambiata'));assert.equal(await page.inputValue('[name=sessions0]'),'12');
  fail=false;await page.getByRole('button',{name:'Salva proposta',exact:true}).click();await page.waitForSelector('[data-action=confirm]');assert.equal(p.plan.slots.length,3);assert.equal(p.plan.clients[0].sessions,12);
  await page.click('[data-action=confirm]');await page.waitForFunction(()=>document.getElementById('expected-renewals-body').textContent.includes('Confermato · attesa'));

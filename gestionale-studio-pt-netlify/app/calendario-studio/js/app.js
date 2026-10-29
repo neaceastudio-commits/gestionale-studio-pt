@@ -2033,7 +2033,7 @@ const App = {
       a.startTime === candidates[0].startTime && a.operatorId === candidates[0].operatorId &&
       a.durationMin === candidates[0].durationMin);
     const slot = reference || (sameSlot ? candidates[0] : null);
-    return slot ? { startTime: slot.startTime, operatorId: slot.operatorId,
+    return slot ? { startTime: slot.startTime, operatorId: client.ptAssegnato || slot.operatorId,
       durationMin: slot.durationMin, bufferMin: slot.bufferMin } : null;
   },
 
@@ -2146,7 +2146,9 @@ const App = {
     ).join('');
     const renewalDefaultAppointment = appointments.find(appointment => appointment.serviceId === serviceId && appointment.date >= today);
     const renewalDefaultTime = renewalDefaultAppointment?.startTime || '';
-    const renewalDefaultOperatorId = renewalDefaultAppointment?.operatorId || client.ptAssegnato || '';
+    const renewalDefaultOperatorId = client.ptAssegnato || '';
+    const packageTrainer = App._assignedTrainer(client);
+    const packageTrainerLabel = packageTrainer ? App._operatorLabel(packageTrainer) : 'Non assegnato';
     const planningDays = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].map(g => `
       <label class="checkbox-label package-plan-day">
         <input type="checkbox" name="pkg-plan-day" value="${g}" ${days.includes(g) ? 'checked' : ''} onchange="App._limitPackagePlanDays('${client.id}', this)">
@@ -2309,6 +2311,7 @@ const App = {
         </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
           <h4>Modifica singole sedute</h4>
           <p>Per spostare una sola lezione Personal, cambia la sua data e il suo orario nell’elenco e premi “Salva seduta”. Le altre lezioni mantengono i loro orari.</p>
+          <p>Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</p>
           <button type="button" class="btn-primary" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Vai alle singole sedute</button>
           <h4>Cambio di tutte le sedute future</h4>
           <div class="package-reschedule-grid">
@@ -2324,12 +2327,11 @@ const App = {
                 <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
               </div>
               <div class="form-group">
-                <label>PT delle sedute</label>
-                <select id="pkg-plan-operator" class="form-input">
-                  <option value="">Mantieni/auto</option>
-                  ${operators.map(op => `<option value="${op.id}" ${op.id === (appointments.find(a => a.serviceId === serviceId && a.date >= today)?.operatorId || client.ptAssegnato) ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`).join('')}
+                <label>PT assegnato</label>
+                <select id="pkg-plan-operator" class="form-input" disabled>
+                  <option value="${App._escapeHtml(client.ptAssegnato || '')}">${App._escapeHtml(packageTrainerLabel)}</option>
                 </select>
-                <div class="form-hint">Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</div>
+                <div class="form-hint">Il pacchetto fa capo al PT assegnato. Le sostituzioni si gestiscono nelle singole lezioni; cambiare gli orari conserva il loro PT.</div>
               </div>
               <div class="form-group">
                 <label>Modifica future dal</label>
@@ -2445,10 +2447,9 @@ const App = {
                 <div class="form-hint">È l’orario delle lezioni, non l’ora in cui confermi il rinnovo. Se non ci sono sedute future va scelto esplicitamente.</div>
               </div>
               <div class="form-group">
-                <label>PT delle nuove sedute</label>
-                <select id="pkg-renew-operator" class="form-input">
-                  <option value="">Mantieni/auto</option>
-                  ${operators.map(operator => `<option value="${App._escapeHtml(operator.id)}" ${operator.id === renewalDefaultOperatorId ? 'selected' : ''}>${App._escapeHtml(`${operator.nome} ${operator.cognome}`)}</option>`).join('')}
+                <label>PT assegnato</label>
+                <select id="pkg-renew-operator" class="form-input" disabled>
+                  <option value="${App._escapeHtml(renewalDefaultOperatorId)}">${App._escapeHtml(packageTrainerLabel)}</option>
                 </select>
               </div>
             </div>
@@ -2751,9 +2752,7 @@ const App = {
     const days = App._selectedPackagePlanDays();
     const fromDate = document.getElementById('pkg-plan-from')?.value || App._dateStr(new Date());
     const time = document.getElementById('pkg-plan-time')?.value || '';
-    const operatorId = App.isPortalPtMode()
-      ? ''
-      : (document.getElementById('pkg-plan-operator')?.value || '');
+    const operatorId = ''; // Time changes preserve each lesson's assigned PT.
     if (!days.length) {
       UI.showToast('Seleziona almeno un giorno reale', 'error');
       return;
@@ -2827,7 +2826,7 @@ const App = {
       a.clientIds.includes(clientId) &&
       (!App.isPortalPtMode() || App.canEditAppointment(a))
     );
-    const fallbackOperator = selectedOperator ||
+    const fallbackOperator = currentClient.ptAssegnato || selectedOperator ||
       futureToReplace[0]?.operatorId ||
       [...allAppointments].reverse().find(a => a.serviceId === serviceId && (a.clientIds || []).includes(clientId))?.operatorId ||
       currentClient.ptAssegnato ||
@@ -3339,7 +3338,7 @@ const App = {
     const fromDate = planValidation.fromDate;
     const time = planValidation.time;
     const schedulingStart = App._renewalSchedulingStart(fromDate, time);
-    const selectedOperator = document.getElementById('pkg-renew-operator')?.value || currentClient.ptAssegnato || null;
+    const selectedOperator = currentClient.ptAssegnato || null;
     const renewCount = planValidation.sessions;
 
     const serviceId = App._packageServiceId(currentClient);

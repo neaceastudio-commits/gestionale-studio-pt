@@ -53,7 +53,7 @@ const model=require('../app/calendario-studio/js/pt-session-model');
   assert.deepEqual(await page.evaluate(()=>State.getClients().map(c=>Services.getClientSessionMetrics(c).noShow)),[0,1]);
   await page.reload();await page.waitForFunction(()=>State.getAppointments().length===2);
   await page.evaluate(()=>{Calendar.switchView('operators');PTAvailabilityOverview.changeHoursSummaryMonth('2026-11');PTAvailabilityOverview.openHoursSummary()});
-  const report=await page.locator('.pt-hours-card').innerText();assert.match(report,/15,00/);assert.match(report,/Ore PT prenotate: 1 h/);assert.match(report,/PT 1:2 maturato: 1 h/);
+  const report=await page.locator('.pt-hours-card').innerText();assert.match(report,/15,00/);assert.match(report,/Ore PT ancora prenotate: 1 h/);assert.match(report,/PT 1:2 maturato: 1 h/);
   await page.screenshot({path:'/tmp/neacea-pt-pair-hours.png',fullPage:true});
   assert.deepEqual(errors,[]);console.log('PASS browser: independent renewals → preview → failed save → stable retry → shared appointments → mixed attendance → reload → 15 EUR / one hour');
  }finally{await browser.close()}
