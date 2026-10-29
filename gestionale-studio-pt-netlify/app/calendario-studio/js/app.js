@@ -2311,6 +2311,7 @@ const App = {
         </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
           <h4>Modifica singole sedute</h4>
           <p>Per spostare una sola lezione Personal, cambia la sua data e il suo orario nell’elenco e premi “Salva seduta”. Le altre lezioni mantengono i loro orari.</p>
+          <p>Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</p>
           <button type="button" class="btn-primary" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Vai alle singole sedute</button>
           <h4>Cambio di tutte le sedute future</h4>
           <div class="package-reschedule-grid">
