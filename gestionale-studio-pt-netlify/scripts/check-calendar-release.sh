@@ -33,6 +33,7 @@ node tests/package-cycle-confirmation.test.cjs
 node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
 node tests/package-payment-persistence.test.cjs
+node --test tests/package-service-allocation.test.cjs tests/calendar-shared-finance.test.cjs tests/calendar-shared-finance-sql.test.cjs
 node --test tests/studio-calendar-protocol.test.cjs tests/calendar-complete-read.test.cjs tests/calendar-refresh.test.cjs
 node tests/acquisition-existing-client.test.cjs
 node tests/acquisition-nutrition-section.test.cjs
@@ -82,6 +83,24 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     tests/consent-anamnesis-regression.cjs
     tests/consent-data-integrity.test.cjs
     scripts/check-calendar-release.sh
+    app/calendario-studio/css/calendar.css
+    app/calendario-studio/js/app.js
+    app/calendario-studio/js/calendar-audit.js
+    app/calendario-studio/js/supabase.js
+    app/calendario-studio/js/package-ledger.js
+    app/calendario-studio/js/shared-finance.js
+    netlify/functions/lib/calendar-audit-endpoint.js
+    netlify/functions/calendar-client-finance.js
+    netlify/functions/lib/calendar-client-finance.js
+    supabase/migrations/20261030183151_calendar_shared_client_finance.sql
+    scripts/check-calendar-shared-finance.sh
+    tools/prepare-calendar-shared-function.cjs
+    tests/package-service-allocation.test.cjs
+    tests/calendar-shared-finance.test.cjs
+    tests/calendar-shared-finance-sql.test.cjs
+    tests/calendar-shared-finance-browser.cjs
+    tests/calendar-invoice-browser.cjs
+    tests/calendar-ui-census-browser.cjs
   )
   if ! git diff --quiet -- "${critical_paths[@]}" || ! git diff --cached --quiet -- "${critical_paths[@]}"; then
     echo "BLOCCATO: i file critici del Calendario non sono tutti salvati in un commit." >&2

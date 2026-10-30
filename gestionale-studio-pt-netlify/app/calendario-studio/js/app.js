@@ -2086,6 +2086,7 @@ const App = {
 
     const body = document.querySelector('.package-overview');
     if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
+    if (showFinance && typeof SharedFinance !== 'undefined') SharedFinance.refresh();
   },
 
   _openPackageFinance(clientId) {
@@ -2244,7 +2245,7 @@ const App = {
           </button>
           <button id="pkg-workspace-finance" class="package-workspace-button package-workspace-payment" type="button" aria-pressed="false" onclick="App._setPackageWorkspace('finance')">
             <span>💳</span>
-            <span><strong>Pagamenti</strong><small>${App._escapeHtml(currentFinance.status)} · saldo ${App._fmtMoney(currentFinance.balance)}</small></span>
+            <span><strong>Pagamenti</strong><small>${App._escapeHtml(currentFinance.status)} · saldo ${App._fmtMoney(currentFinance.balance)}</small>${currentPackageCycle?.serviceAmounts ? `<small>PT ${App._fmtMoney(currentPackageCycle.serviceAmounts.pt)} · Nutrizione ${App._fmtMoney(currentPackageCycle.serviceAmounts.nutrition)}</small>` : ''}</span>
           </button>
         </div>`}
 
@@ -2347,6 +2348,7 @@ const App = {
         </section>`}
 
         ${App.isPortalPtMode() || isArchived ? '' : `
+        <section id="shared-finance" class="package-panel package-finance-only" hidden aria-label="Quote e incassi condivisi"></section>
         <section class="package-panel package-payment-panel package-finance-only" hidden>
           <div class="package-section-heading">
             <div>
@@ -2584,6 +2586,7 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+    if (!isArchived && !App.isPortalPtMode() && typeof SharedFinance !== 'undefined') SharedFinance.mount(client.id);
     if (!isArchived && !App.isPortalPtMode()) App._updateRenewalPlanPreview();
     if (!isArchived && !App.isPortalPtMode() && typeof ExpectedRenewals !== 'undefined') ExpectedRenewals.attachPackage(client.id);
     if (document.getElementById('pkg-batch-from')) App._selectPackageTimeBatch(client.id);

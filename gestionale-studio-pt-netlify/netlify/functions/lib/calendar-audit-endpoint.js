@@ -1,7 +1,7 @@
 'use strict';
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
-const calendarRevision='20261026-client-save-v2';
+const calendarRevision='20261030-shared-finance-v1';
 const calendarWrites=new Set(['save','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{

@@ -4,7 +4,7 @@ window.CalendarAudit = (() => {
   const key='neacea-calendar-audit-session';let actor=null;
   let accessToken=new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
   const token=()=>accessToken;
-  const revision='20261026-client-save-v2';
+  const revision='20261030-shared-finance-v1';
   const readOperations=new Set(['session','list','client_shares']);
   let reloadRequired=false,updateCheck=null;
   const reloadError=()=>({error:'Il Calendario è stato aggiornato. Ricarica la pagina prima di salvare: nessuna modifica è stata applicata.',status:409,code:'CALENDAR_RELOAD_REQUIRED'});
@@ -121,5 +121,12 @@ window.CalendarAudit = (() => {
       row.append(button,status);host.append(row);
     }
   }
-  return {write,open,call,appleLink,openClientSharing,canShareClients:()=>actor?.role==='owner'&&actor.id==='staff_1',canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
+  async function clientFinance(payload) {
+    if(actor?.role!=='owner')return {error:'Pagamenti riservati alla Direzione'};
+    try {
+      const r=await fetch('/.netlify/functions/calendar-client-finance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,calendarRevision:revision,accessToken:token()})});
+      const data=await r.json();if(data.code==='CALENDAR_RELOAD_REQUIRED')requireReload();return r.ok?data:{error:data.error||'Operazione economica non confermata'};
+    }catch{return {error:'Connessione interrotta: aggiorna il riscontro prima di riprovare l’incasso'}}
+  }
+  return {write,open,call,clientFinance,appleLink,openClientSharing,canShareClients:()=>actor?.role==='owner'&&actor.id==='staff_1',canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
 })();

@@ -135,7 +135,7 @@ if(releaseOrigin&&!/^https:\/\/(?:[a-f0-9]+--)?new-calendar-neacea\.netlify\.app
   await page.screenshot({path:'/tmp/neacea-pair-recovery-current.png',fullPage:true});
   // Closing and cancelling the recovery changes only the old balances, not the successor.
   const save=async(a,before)=>{
-   const r=await handler({httpMethod:'POST',body:JSON.stringify({accessToken:'OWNER',calendarRevision:'20261026-client-save-v2',operation:'save',payload:{appointment:a,expected:before}})});
+   const r=await handler({httpMethod:'POST',body:JSON.stringify({accessToken:'OWNER',calendarRevision:'20261030-shared-finance-v1',operation:'save',payload:{appointment:a,expected:before}})});
    assert.equal(r.statusCode,200,r.body);return JSON.parse(r.body).appointment;
   };
   const done=await save(model.attendance(recovery,{a:'fatto',b:'fatto'}),recovery);

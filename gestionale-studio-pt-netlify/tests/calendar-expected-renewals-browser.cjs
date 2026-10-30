@@ -7,6 +7,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());
   if(u.hostname.startsWith('fonts.'))return route.fulfill({body:''});
   if(u.pathname.endsWith('whatsapp-agenda'))return route.fulfill({status:403,json:{error:'disabled'}});
+  if(u.pathname.endsWith('calendar-client-finance'))return route.fulfill({status:503,json:{error:'Scadenze non disponibile nella simulazione'}});
   if(u.pathname.endsWith('calendar-runtime'))return route.fulfill({json:{CALENDAR_FLEX_MODE:true}});
   if(u.pathname.endsWith('apple-caldav-link'))return route.fulfill({json:{eligible:false}});
   if(u.pathname.endsWith('calendar-activity')){const d=req.postDataJSON();if(d.operation==='session')return route.fulfill({json:{actor:{id:'staff_1',role:'owner'}}});assert.equal(d.operation,'expected_renewals');

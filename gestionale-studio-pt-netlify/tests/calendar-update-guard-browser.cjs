@@ -1,6 +1,6 @@
 // Real Calendar audit client, synthetic network only. No production data writes.
 const {chromium}=require('playwright'),fs=require('node:fs'),assert=require('node:assert/strict');
-const revision='20261026-client-save-v2',source=fs.readFileSync(__dirname+'/../app/calendario-studio/js/calendar-audit.js','utf8');
+const revision='20261030-shared-finance-v1',source=fs.readFileSync(__dirname+'/../app/calendario-studio/js/calendar-audit.js','utf8');
 (async()=>{const browser=await chromium.launch({headless:true});try{
  for(const scenario of ['focus','visibility','timer','server-rejection','mixed-assets','offline']){
   const page=await browser.newPage({viewport:{width:390,height:844}});let serverRevision=revision,writeCount=0,sessionCount=0,offline=false;const errors=[];

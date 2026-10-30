@@ -189,6 +189,7 @@ const PackageLedger = (() => {
   }
 
   function renew(client, metrics, input, options = {}) {
+    if (currentCycle(client)?.sharedPending) throw new Error('Completa prima la conferma dell’incasso condiviso');
     const values = validateRenewalInput(input);
     const now = options.now || new Date().toISOString();
     const idFactory = options.idFactory || (() => `pkg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
@@ -258,6 +259,7 @@ const PackageLedger = (() => {
     if (!cycle || cycle.source !== 'renewal' || cycle.voidedAt) {
       throw new Error('L’ultimo ciclo corrente non è un rinnovo annullabile');
     }
+    if (cycle.financeSource === 'scadenze') throw new Error('Il rinnovo usa incassi condivisi: serve prima una riconciliazione con Gestione Scadenze');
 
     const completed = Number(metrics?.completed || 0);
     const noShow = Number(metrics?.noShow || 0);
@@ -294,6 +296,7 @@ const PackageLedger = (() => {
   }
 
   function recordPayment(client, metrics, input, options = {}) {
+    assertLocalPayments(client);
     const now = options.now || new Date().toISOString();
     const idFactory = options.idFactory || (() => `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     const amount = roundMoney(input?.amount);
@@ -328,6 +331,9 @@ const PackageLedger = (() => {
     const ledger = clone(ensure(client, metrics, { now }));
     const cycle = currentCycle(ledger);
     if (!cycle) throw new Error('Nessun ciclo corrente disponibile');
+    if (cycle.serviceAmounts && roundMoney(cycle.serviceAmounts.pt + cycle.serviceAmounts.nutrition) !== nextAmount) {
+      throw new Error('Aggiorna insieme totale e quote PT/nutrizione nella ripartizione');
+    }
     const paid = cycleFinancial(cycle).paid;
     if (nextAmount + 0.009 < paid) throw new Error(`L’importo non può essere inferiore a quanto già incassato (€ ${paid.toFixed(2)})`);
     cycle.amount = nextAmount;
@@ -337,6 +343,7 @@ const PackageLedger = (() => {
   }
 
   function reconcilePaidTotal(client, metrics, input, options = {}) {
+    assertLocalPayments(client);
     const now = options.now || new Date().toISOString();
     const idFactory = options.idFactory || (() => `adj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     const targetPaid = roundMoney(input?.targetPaid);
@@ -370,6 +377,7 @@ const PackageLedger = (() => {
   }
 
   function reversePayment(client, metrics, paymentId, input = {}, options = {}) {
+    assertLocalPayments(client);
     const now = options.now || new Date().toISOString();
     const idFactory = options.idFactory || (() => `void_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     const date = normalizeDate(input?.date);
@@ -401,6 +409,26 @@ const PackageLedger = (() => {
     ledger.updatedAt = now;
     const updated = applyToClient(client, ledger);
     return { client: updated, ledger, cycle, reversedPayment: payment, finance: cycleFinancial(cycle) };
+  }
+
+  function assertLocalPayments(client) {
+    if (currentCycle(client)?.financeSource === 'scadenze') {
+      throw new Error('Questo ciclo usa gli incassi condivisi: modifica il pagamento in Gestione Scadenze e aggiorna il riscontro');
+    }
+  }
+
+  function setServiceAmounts(client, metrics, input, options = {}) {
+    const pt = parseMoneyInput(input?.pt), nutrition = parseMoneyInput(input?.nutrition);
+    const ledger = clone(ensure(client, metrics, options));
+    const cycle = currentCycle(ledger);
+    const total = input?.total === undefined ? cycle.amount : parseMoneyInput(input.total);
+    if (![pt, nutrition, total].every(n => Number.isFinite(n) && n >= 0)) throw new Error('Inserisci quote e totale validi, anche zero');
+    if (roundMoney(pt + nutrition) !== roundMoney(total)) throw new Error('La somma delle quote PT e nutrizione deve corrispondere al totale');
+    if (total < cycleFinancial(cycle).paid) throw new Error('Il totale non può essere inferiore agli incassi già registrati');
+    cycle.amount = roundMoney(total);
+    cycle.serviceAmounts = { pt: roundMoney(pt), nutrition: roundMoney(nutrition) };
+    ledger.updatedAt = options.now || new Date().toISOString();
+    return { client: applyToClient(client, ledger), ledger, cycle };
   }
 
   function summary(clients) {
@@ -458,9 +486,11 @@ const PackageLedger = (() => {
     undoLastRenewal,
     recordPayment,
     updateCurrentAmount,
+    setServiceAmounts,
     reconcilePaidTotal,
     reversePayment,
     summary,
     appointmentCycleId,
   };
 })();
+if (typeof module !== 'undefined' && module.exports) module.exports = PackageLedger;

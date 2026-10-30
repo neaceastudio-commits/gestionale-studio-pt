@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 process.env.PT_ACCESS_SECRET='SIM_UPDATE';process.env.SUPABASE_SERVICE_ROLE_KEY='SIM_SERVICE';
 const {handler}=require('../netlify/functions/calendar-activity');
-const revision='20261026-client-save-v2';
+const revision='20261030-shared-finance-v1';
 function access(){const p=Buffer.from(JSON.stringify({operatorId:'owner',email:'owner@example.test',accessLevel:'owner',exp:Date.now()+60000})).toString('base64url');return p+'.'+crypto.createHmac('sha256','SIM_UPDATE').update(p).digest('base64url')}
 function mock(){const calls=[],original=global.fetch;global.fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,status:200,text:async()=>JSON.stringify(url.includes('operator_effective_roles')?[{operator_id:'owner',email:'owner@example.test',active:true,system_roles:['owner'],legacy_roles:[]}]:url.includes('/operators?')?[{id:'owner',portal_access_enabled:true,portal_access_version:0}]:[])}};return {calls,restore:()=>global.fetch=original}}
 const event=(operation,calendarRevision)=>({httpMethod:'POST',body:JSON.stringify({operation,calendarRevision,accessToken:access(),payload:{method:'PATCH',rows:[{id:'synthetic',notes:'Old fallback omitted trainer'}]}})});
