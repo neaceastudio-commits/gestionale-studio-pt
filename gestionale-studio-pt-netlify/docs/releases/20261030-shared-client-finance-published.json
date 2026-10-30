@@ -1,0 +1,107 @@
+{
+  "calendar": {
+    "commit": "e989f58311b6b094de1b81c361d771203e865a70",
+    "branch": "release/calendar-shared-finance-20261030",
+    "deploy": "6ae4ec1ad7e2511834092478",
+    "origin": "https://new-calendar-neacea.netlify.app",
+    "live": true,
+    "publishedAt": "2026-10-30T19:12:44.024Z",
+    "files": 44,
+    "functions": 16,
+    "unchangedFunctions": 10,
+    "schedules": 2,
+    "anonymousStatus": 401
+  },
+  "nutrition": {
+    "commit": "74e8812678cb45e0969db645a93eb6779fd5b026",
+    "branch": "release/shared-payments-20261030",
+    "deploy": "6ae4eb827445f0950a655592",
+    "origin": "https://portale-nutrizione.netlify.app",
+    "live": true,
+    "publishedAt": "2026-10-30T19:09:56.277Z",
+    "files": 3,
+    "functions": 9,
+    "unchangedFunctions": 8,
+    "schedules": 0,
+    "anonymousStatus": 401
+  },
+  "syntheticSmoke": {
+    "phase": "live",
+    "origin": "https://new-calendar-neacea.netlify.app",
+    "syntheticOnly": true,
+    "calendarAuthenticationVerified": true,
+    "calendarDatabaseReached": true,
+    "missingSyntheticClientRejected": true,
+    "providerAuthenticatedInvalidPayloadRejected": true,
+    "oldCalendarRejected": true,
+    "realClientReads": 0,
+    "realWrites": 0,
+    "paymentsCreated": 0,
+    "invoicesCreated": 0
+  },
+  "migration": {
+    "project": "cdywqyqqmjhgkzwrrixc",
+    "name": "calendar_shared_client_finance",
+    "applied": true,
+    "securityDefiner": false,
+    "anonExecute": false,
+    "authenticatedExecute": false,
+    "serviceRoleExecute": true,
+    "remoteSyntheticTransactionRolledBack": true
+  },
+  "serverConfig": {
+    "keys": [
+      "SCADENZE_API_URL",
+      "SCADENZE_API_TOKEN"
+    ],
+    "scopes": [
+      "functions"
+    ],
+    "secretContexts": [
+      "production",
+      "branch-deploy",
+      "deploy-preview"
+    ],
+    "credentialsInSource": false
+  },
+  "calendarConfig": {
+    "branch": "main",
+    "stopBuilds": true,
+    "allowedBranches": [
+      "main"
+    ],
+    "locked": true
+  },
+  "nutritionConfig": {
+    "branch": "main",
+    "locked": true
+  },
+  "schedulerSources": {
+    "expected-renewals-scheduled": {
+      "unchangedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+        "gestionale-studio-pt-netlify/netlify/functions/expected-renewals-scheduled.mjs": "dec6a2384f6309a9c6d9f3a8b90dd8aebdc0a8c76a2fa11b573ea99aee47a93e"
+      }
+    },
+    "whatsapp-agenda-scheduled": {
+      "unchangedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/whatsapp-agenda.js": "c31753223d6c419d0a4117012adbee4761412c1fa6e4b29862ccb4eb9132a846",
+        "gestionale-studio-pt-netlify/netlify/functions/whatsapp-agenda-scheduled.mjs": "854ab9cca306d73a3ea6c2de1224b8b66ad58c38a64cd106b65ef84e1768bd7d"
+      }
+    }
+  },
+  "tests": {
+    "cleanCandidateReleaseSuite": "passed",
+    "calendarTargetedTests": 11,
+    "providerTargetedTests": 2,
+    "schedulerTests": 13,
+    "desktopMobileBrowser": "passed",
+    "previousPaymentBrowser": "passed",
+    "providerFullSuiteSyntaxBuild": "passed",
+    "productionEndToEndPaymentCreation": "not executed; synthetic local SQL/API coverage and remote transaction rollback only"
+  }
+}

@@ -1,7 +1,9 @@
 # Calendario — quote PT/nutrizione e incassi condivisi con Scadenze
 
-Stato al 30 ottobre 2026: **preparato e collaudato localmente**. Nessun deploy,
+Preparazione iniziale del 30 ottobre 2026: **preparato e collaudato localmente**. Nessun deploy,
 nessuna migrazione remota, nessuna scrittura su clienti reali, nessuna email.
+
+**Aggiornamento: pubblicato e verificato online.** Versioni effettive, prove e stato Git nel [rapporto di pubblicazione](20261030-shared-client-finance-published.md). Le sezioni seguenti descrivono la preparazione precedente.
 
 ## Comportamento
 
