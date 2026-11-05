@@ -36,6 +36,29 @@ async function originalSite() {
 function checkedCandidate() {
   assert.ok(fs.readFileSync(path.join(dir, 'candidate-check.log'), 'utf8').trim().endsWith('OK: pacchetto Calendario completo e verificato.'));
   assert.equal(git(['rev-parse', plan.branch]).toString().trim(), plan.commit);
+  const schedulers = fs.readFileSync(path.join(dir, 'scheduler-check.log'), 'utf8');
+  const count = Number(schedulers.match(/^# tests (\d+)$/m)?.[1]);
+  assert.ok(count > 0 && Number(schedulers.match(/^# pass (\d+)$/m)?.[1]) === count);
+  for (const kind of ['fail', 'cancelled', 'skipped', 'todo']) assert.match(schedulers, new RegExp('^# ' + kind + ' 0$', 'm'));
+}
+async function schedulerSources(name) {
+  // Netlify repackages ESM schedulers. A new archive digest is accepted only
+  // after comparing the complete import closure against the online commit.
+  assert.ok(['expected-renewals-scheduled', 'whatsapp-agenda-scheduled'].includes(name));
+  const esbuild = require('./coaching-editor/node_modules/esbuild');
+  assert.equal(esbuild.version, '0.25.12');
+  const root = path.resolve(__dirname, '..'), sourceHashes = {};
+  await esbuild.build({ absWorkingDir: root, entryPoints: ['netlify/functions/' + name + '.mjs'], bundle: true, platform: 'node', target: 'node24', format: 'esm', write: false,
+    plugins: [{ name: 'committed-scheduler-sources', setup(build) {
+      build.onLoad({ filter: /\.(?:js|mjs)$/ }, args => {
+        const file = 'gestionale-studio-pt-netlify/' + path.relative(root, args.path);
+        const current = git(['show', plan.commit + ':' + file]);
+        assert.equal(Buffer.compare(current, git(['show', base.deploy.commit_ref + ':' + file])), 0, 'Scheduler dependency changed: ' + file);
+        sourceHashes[file] = crypto.createHash('sha256').update(current).digest('hex');
+        return { contents: current.toString(), loader: 'js', resolveDir: path.dirname(args.path) };
+      });
+    } }] });
+  return sourceHashes;
 }
 async function verify(id, live = false) {
   const deploy = await api('/deploys/' + id);
@@ -46,10 +69,12 @@ async function verify(id, live = false) {
   const files = await api('/deploys/' + id + '/files');
   assert.deepEqual(Object.fromEntries(files.map(f => [f.path, f.sha])), expected, 'Complete public manifest');
   assert.equal(deploy.available_functions.length, base.deploy.available_functions.length);
+  const rebuiltSchedulers = [];
   for (const current of deploy.available_functions) {
     const prior = base.deploy.available_functions.find(f => f.n === current.n);
     assert.ok(prior, current.n);
-    for (const key of ['d', 'r', 'rg', 'm', 'rgo', 'mo', 'p', 'bd', 'im']) assert.deepEqual(current[key], prior[key], current.n + ': ' + key);
+    for (const key of ['r', 'rg', 'm', 'rgo', 'mo', 'p', 'bd', 'im']) assert.deepEqual(current[key], prior[key], current.n + ': ' + key);
+    if (current.d !== prior.d) rebuiltSchedulers.push({ name: current.n, baselineDigest: prior.d, digest: current.d, unchangedSourceClosure: await schedulerSources(current.n) });
   }
   assert.deepEqual(deploy.function_schedules, base.deploy.function_schedules);
   const origin = live ? 'https://new-calendar-neacea.netlify.app' : deploy.links.permalink;
@@ -68,7 +93,7 @@ async function verify(id, live = false) {
     assert.equal(site.build_settings.stop_builds, base.build.stop_builds);
     assert.deepEqual(site.build_settings.allowed_branches, base.build.allowed_branches);
   }
-  const proof = { commit: plan.commit, branch: plan.branch, deploy: id, baselineDeploy: base.deploy.id, baselineCommit: base.deploy.commit_ref, origin, live, publishedAt: deploy.published_at, files: files.length, changedAssets: assets, unchangedFunctions: deploy.available_functions.length, schedules: deploy.function_schedules, anonymousStatus: anonymous.status, hashes: Object.fromEntries(assets.map(a => [a, expected['/' + a]])) };
+  const proof = { commit: plan.commit, branch: plan.branch, deploy: id, baselineDeploy: base.deploy.id, baselineCommit: base.deploy.commit_ref, origin, live, publishedAt: deploy.published_at, files: files.length, changedAssets: assets, unchangedFunctionArchives: deploy.available_functions.length - rebuiltSchedulers.length, rebuiltSchedulers, schedules: deploy.function_schedules, anonymousStatus: anonymous.status, hashes: Object.fromEntries(assets.map(a => [a, expected['/' + a]])) };
   save(live ? 'published-verified' : 'preview-verified', proof);
   console.log(JSON.stringify(proof));
 }
