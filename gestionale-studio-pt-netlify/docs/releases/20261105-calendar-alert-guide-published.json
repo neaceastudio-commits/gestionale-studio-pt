@@ -1,0 +1,145 @@
+{
+  "preview": {
+    "commit": "701e4e90f7fa947c1d9886e28d79cfb64339906b",
+    "branch": "release/calendar-alert-guide-20261105",
+    "deploy": "6aecaa2edc21e5f7f786d5ff",
+    "baselineDeploy": "6ae4ec1ad7e2511834092478",
+    "baselineCommit": "e989f58311b6b094de1b81c361d771203e865a70",
+    "origin": "https://6aecaa2edc21e5f7f786d5ff--new-calendar-neacea.netlify.app",
+    "live": false,
+    "publishedAt": null,
+    "files": 44,
+    "changedAssets": [
+      "index.html",
+      "css/ui-fixes.css",
+      "js/clients.js"
+    ],
+    "unchangedFunctionArchives": 14,
+    "rebuiltSchedulers": [
+      {
+        "name": "expected-renewals-scheduled",
+        "baselineDigest": "9af05cf5b23b1864b382ddd84580ffd6059360be45264e2ca2b1341b0f3e31b8",
+        "digest": "80a5a31331bdcc924477218f5cb542699e68140998fc6069773fca1e7af0abdc",
+        "unchangedSourceClosure": {
+          "gestionale-studio-pt-netlify/netlify/functions/expected-renewals-scheduled.mjs": "dec6a2384f6309a9c6d9f3a8b90dd8aebdc0a8c76a2fa11b573ea99aee47a93e",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b"
+        }
+      },
+      {
+        "name": "whatsapp-agenda-scheduled",
+        "baselineDigest": "e3fe8dff14db92aa0d0350cc88277c6e487d12405f1120cec3ef6075ae9ef863",
+        "digest": "be0a516271cd489fabc933e72c04c0645182d3443ced00ddfeea5e72d2b4ff39",
+        "unchangedSourceClosure": {
+          "gestionale-studio-pt-netlify/netlify/functions/whatsapp-agenda-scheduled.mjs": "854ab9cca306d73a3ea6c2de1224b8b66ad58c38a64cd106b65ef84e1768bd7d",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/whatsapp-agenda.js": "c31753223d6c419d0a4117012adbee4761412c1fa6e4b29862ccb4eb9132a846",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183"
+        }
+      }
+    ],
+    "schedules": [
+      {
+        "cron": "*/10 * * * *",
+        "name": "expected-renewals-scheduled"
+      },
+      {
+        "cron": "30 4,5 * * *",
+        "name": "whatsapp-agenda-scheduled"
+      }
+    ],
+    "anonymousStatus": 401,
+    "hashes": {
+      "index.html": "fdc6f40866568b05a25592bdfbdfa249f3022411",
+      "css/ui-fixes.css": "28f9d4f373e7867c993c1f111d035c1863383796",
+      "js/clients.js": "dbb3b5b38326a57a9a1c6e262441873cfb54457f"
+    }
+  },
+  "production": {
+    "commit": "701e4e90f7fa947c1d9886e28d79cfb64339906b",
+    "branch": "release/calendar-alert-guide-20261105",
+    "deploy": "6aecaa91b88b57d167ca1f13",
+    "baselineDeploy": "6ae4ec1ad7e2511834092478",
+    "baselineCommit": "e989f58311b6b094de1b81c361d771203e865a70",
+    "origin": "https://new-calendar-neacea.netlify.app",
+    "live": true,
+    "publishedAt": "2026-11-05T16:11:19.400Z",
+    "files": 44,
+    "changedAssets": [
+      "index.html",
+      "css/ui-fixes.css",
+      "js/clients.js"
+    ],
+    "unchangedFunctionArchives": 14,
+    "rebuiltSchedulers": [
+      {
+        "name": "expected-renewals-scheduled",
+        "baselineDigest": "9af05cf5b23b1864b382ddd84580ffd6059360be45264e2ca2b1341b0f3e31b8",
+        "digest": "80a5a31331bdcc924477218f5cb542699e68140998fc6069773fca1e7af0abdc",
+        "unchangedSourceClosure": {
+          "gestionale-studio-pt-netlify/netlify/functions/expected-renewals-scheduled.mjs": "dec6a2384f6309a9c6d9f3a8b90dd8aebdc0a8c76a2fa11b573ea99aee47a93e",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b"
+        }
+      },
+      {
+        "name": "whatsapp-agenda-scheduled",
+        "baselineDigest": "e3fe8dff14db92aa0d0350cc88277c6e487d12405f1120cec3ef6075ae9ef863",
+        "digest": "be0a516271cd489fabc933e72c04c0645182d3443ced00ddfeea5e72d2b4ff39",
+        "unchangedSourceClosure": {
+          "gestionale-studio-pt-netlify/netlify/functions/whatsapp-agenda-scheduled.mjs": "854ab9cca306d73a3ea6c2de1224b8b66ad58c38a64cd106b65ef84e1768bd7d",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/whatsapp-agenda.js": "c31753223d6c419d0a4117012adbee4761412c1fa6e4b29862ccb4eb9132a846",
+          "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183"
+        }
+      }
+    ],
+    "schedules": [
+      {
+        "cron": "*/10 * * * *",
+        "name": "expected-renewals-scheduled"
+      },
+      {
+        "cron": "30 4,5 * * *",
+        "name": "whatsapp-agenda-scheduled"
+      }
+    ],
+    "anonymousStatus": 401,
+    "hashes": {
+      "index.html": "fdc6f40866568b05a25592bdfbdfa249f3022411",
+      "css/ui-fixes.css": "28f9d4f373e7867c993c1f111d035c1863383796",
+      "js/clients.js": "dbb3b5b38326a57a9a1c6e262441873cfb54457f"
+    }
+  },
+  "checks": {
+    "cleanCandidateReleaseSuite": "passed including final Git check",
+    "schedulerTests": 13,
+    "schedulerFailed": 0,
+    "schedulerSkipped": 0,
+    "localBrowser": "passed",
+    "previewBrowser": "passed",
+    "productionBrowser": "passed",
+    "viewports": [
+      1440,
+      390
+    ],
+    "browserApis": "intercepted with synthetic records",
+    "realClientReads": 0,
+    "realTestWrites": 0
+  },
+  "configuration": {
+    "productionBranch": "main",
+    "stopBuilds": true,
+    "allowedBranches": [
+      "main"
+    ],
+    "publishedDeployLocked": true
+  },
+  "workingCheckout": {
+    "branch": "feature/whatsapp-agenda-pt-v1",
+    "head": "105650c",
+    "preexistingChangesPreserved": true
+  }
+}

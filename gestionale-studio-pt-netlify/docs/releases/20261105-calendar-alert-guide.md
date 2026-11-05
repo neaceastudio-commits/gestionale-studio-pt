@@ -1,12 +1,14 @@
 # Calendario — Spiegazioni e possibili soluzioni degli alert
 
-Stato: **preparato e collaudato localmente**, non pubblicato.
+Stato: **attivato e verificato online** dopo la richiesta esplicita “pubblica”.
+Versione, prove e stato finale nel [rapporto di pubblicazione](20261105-calendar-alert-guide-published.md).
 
 Applicazione: Gestionale Studio PT, modulo Calendario.
 Branch: `feature/whatsapp-agenda-pt-v1`.
 HEAD rilevato all’avvio: `d242d2c`; alla verifica finale: `b174dc0`.
-La chat non ha eseguito commit o push; il checkout conteneva già lavorazioni
-locali e nel frattempo è stato aggiornato anche da attività esterne alla chat.
+Prima della richiesta di pubblicazione non erano stati eseguiti commit o push;
+il checkout conteneva già lavorazioni locali e nel frattempo è stato aggiornato
+anche da attività esterne alla chat.
 
 ## Comportamento
 
@@ -79,16 +81,16 @@ le richieste sono intercettate; i servizi esterni sono simulati. La prova non
 dimostra persistenza su database remoti e non la richiede per questa modifica
 di consultazione.
 
-## Stato Git e prossimo passo
+## Stato Git alla chiusura della preparazione locale
 
 File tracciati modificati per questo passo: `clients.js`, `ui-fixes.css`,
 `index.html` (quest’ultimo e `clients.js` avevano già modifiche locali).
 Nuovi file: test browser e questo rapporto. Lo script
 `tools/coaching-editor/check-calendar-clients.cjs` era già presente come file
 non tracciato ed è stato esteso senza sostituirne i controlli.
-Le altre lavorazioni del checkout sono conservate. Nessun commit, push, deploy,
-migrazione o modifica di servizi esterni eseguiti da questa chat.
+Le altre lavorazioni del checkout sono conservate. In questa prima fase non
+erano stati eseguiti commit, push, deploy, migrazioni o modifiche di servizi esterni.
 
-Prossimo passo, su richiesta esplicita di pubblicazione: individuare il commit
+Passo di rilascio inizialmente previsto, poi completato nel rapporto collegato: individuare il commit
 effettivamente online, preparare in Git il candidato limitato al Calendario,
 ricollaudarlo, pubblicarlo e verificare gli asset e l’interfaccia online.
