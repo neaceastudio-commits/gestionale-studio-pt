@@ -1954,7 +1954,11 @@
     }
 
     function latestClientProgram(clientId) {
-      return programsForClient(clientId)[0] || null;
+      // Non aprire un programma futuro o una bozza vuota al posto della scheda operativa reale.
+      const all = programsForClient(clientId);
+      const withExercises = all.filter(program => stateExerciseCount(stateFromProgram(program)) > 0);
+      if (!withExercises.length) return null;
+      return withExercises.find(program => program.period <= currentPeriodKey()) || withExercises[0];
     }
 
     function accessFunctionBase() {
@@ -2086,6 +2090,7 @@
           exercise.effort = exercise.effort || "Media 3/5";
           exercise.recoveryNote = exercise.recoveryNote || "";
           exercise.effortNote = exercise.effortNote || "";
+          exercise.resultEditedAt = Array.isArray(exercise.resultEditedAt) ? exercise.resultEditedAt : [];
           ensureExerciseWeekSets(exercise, next.sessions.length);
           next.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
         });
@@ -2154,8 +2159,8 @@
         sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
         sb("pt_calendar_sessions", "?select=*&order=date.asc,start_time.asc").catch(() => []),
         sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
-        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => []),
-        sb("carichi_allenamento", "?select=id,cliente_id,data,updated_at&order=updated_at.desc").catch(() => [])
+        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc"),
+        sb("carichi_allenamento", "?select=id,cliente_id,data,updated_at&order=updated_at.desc")
       ]);
       appState.sessions = (sessions || []).map(session => ({...session, trainer_id: sessionTrainerId(session)}));
       appState.recordedLoads = (recordedLoads || []).filter(row => row.data?.record_type === "pt_substitution");
@@ -2311,7 +2316,8 @@
         previousPlan: [],
         previousPeriod: "",
         recoveryNote: "",
-        effortNote: ""
+        effortNote: "",
+        resultEditedAt: []
       };
     }
 
@@ -2444,6 +2450,8 @@
           const weekIndex = Number(entry.week_index);
           if (!exercise || !Number.isInteger(weekIndex) || weekIndex < 0 || weekIndex >= programState.sessions.length ||
             !Array.isArray(entry.sets)) return;
+          // Prevale la modifica più recente sulla stessa settimana/esercizio.
+          if (timestampOf(exercise.resultEditedAt?.[weekIndex]) > timestampOf(row.updated_at)) return;
           ensureExerciseWeekSets(exercise, programState.sessions.length);
           exercise.weekSets[weekIndex] = entry.sets.map(set => normalizeSetEntry(set));
           syncExerciseWeekSummary(exercise, weekIndex);
@@ -2631,7 +2639,7 @@
         banner.classList.toggle("hidden", !readOnly);
         if (readOnly) {
           banner.innerHTML = isSubstituteClient()
-            ? `<strong>Sostituzione di oggi.</strong> Puoi registrare carichi, ripetizioni e RIR/RPE. Il programma di ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro PT")} resta invariato.`
+            ? `<strong>Sostituzione di oggi.</strong> Registra carichi, ripetizioni e RIR/RPE: i risultati saranno visibili anche al PT titolare, senza cambiare gli esercizi prescritti.`
             : `<strong>Consultazione in sola lettura.</strong> Stai consultando la scheda di ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Non puoi modificare o salvare questo programma.`;
         } else {
           banner.textContent = "";
@@ -2667,7 +2675,7 @@
         } else if (programDraft && localIsNewer(programDraft, program)) {
           appState.selectedProgramId = program?.id || programDraft.draftProgramId || "";
           STORAGE_KEY = storageKeyFor(clientId, appState.selectedProgramId);
-          state = programDraft;
+          state = applySubstituteLoads(program, programDraft);
           appState.saveMode = "local";
         } else if (savedFromProgram) {
           appState.selectedProgramId = program.id;
@@ -2697,7 +2705,7 @@
       } else {
         const localDraft = readLocalState(STORAGE_KEY);
         if (localDraft && localIsNewer(localDraft, program)) {
-          state = localDraft;
+          state = applySubstituteLoads(program, localDraft);
           appState.saveMode = "local";
         } else if (program) {
           state = stateFromProgram(program) || clientDefaultState(selectedClient());
@@ -2850,7 +2858,7 @@
           </article>`).join("");
       const emptyState = editable
         ? `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`
-        : `<div class="empty-focus"><strong>Nessuna scheda salvata</strong>Il Personal Trainer assegnato non ha ancora salvato programmi per questo cliente.</div>`;
+        : `<div class="empty-focus"><strong>Nessuna scheda operativa salvata</strong>Non viene mostrata alcuna scheda predefinita: il PT titolare deve salvare un programma con esercizi.</div>`;
       const archiveSection = archivedCards
         ? `<details class="archive-panel"><summary>Schede archiviate (${programsForClient(appState.selectedClientId, true).filter(program => program.archived).length})</summary><div class="program-list">${archivedCards}</div></details>`
         : "";
@@ -3135,7 +3143,8 @@
     }
 
     function programPayload(programId, savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt, clientId = appState.selectedClientId) {
-      const studioState = normalizeState(sourceState);
+      const existingProgram = appState.programs.find(item => item.id === programId);
+      const studioState = applySubstituteLoads(existingProgram, normalizeState(sourceState));
       studioState.lastSavedAt = savedAt;
       studioState.draftProgramId = programId;
       studioState.localDirty = false;
@@ -3671,7 +3680,7 @@
 
     function selectOperationalWeek(index) {
       state.activeWeekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(index) || 0));
-      if (canEditClient()) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (canEditClient()) autosave();
       renderExercises();
     }
 
@@ -3787,6 +3796,7 @@
         button.addEventListener("click", () => {
           state.currentSheet = button.dataset.previewSheet;
           renderAll();
+          if (canEditClient()) autosave();
         });
       });
       meta.innerHTML = `
@@ -4061,8 +4071,12 @@
       const set = exercise.weekSets?.[weekIndex]?.[setIndex];
       if (!set || !["reps", "load", "rir", "note"].includes(key)) return;
       set[key] = value;
+      if (!substitute) {
+        exercise.resultEditedAt = Array.isArray(exercise.resultEditedAt) ? exercise.resultEditedAt : [];
+        exercise.resultEditedAt[weekIndex] = new Date().toISOString();
+      }
       syncExerciseWeekSummary(exercise, weekIndex);
-      // A cover PT never rewrites the program: explicit result save is separate.
+      // Il sostituto salva nel registro condiviso, non modifica la struttura del programma.
       if (!substitute) autosave(exercise.id);
       renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
     }
@@ -4119,7 +4133,7 @@
         });
         appState.recordedLoads = appState.recordedLoads.filter(item => item.id !== recordId);
         appState.recordedLoads.push(row);
-        showToast("Carichi salvati per la sostituzione. Programma originale invariato.");
+        showToast("Carichi condivisi salvati: il PT titolare li vedrà nella stessa scheda.");
         return true;
       } catch (error) {
         console.error(error);
@@ -4481,6 +4495,24 @@
       return escapeHtml(value).replace(/`/g, "&#96;");
     }
 
+    async function refreshSharedLoads() {
+      const clientId = appState.selectedClientId;
+      const programId = appState.selectedProgramId;
+      if (!clientId || !programId) return;
+      try {
+        const rows = await sb("carichi_allenamento", "?select=id,cliente_id,data,updated_at&order=updated_at.desc");
+        appState.recordedLoads = (rows || []).filter(row => row.data?.record_type === "pt_substitution");
+        if (appState.selectedClientId !== clientId || appState.selectedProgramId !== programId) return;
+        const program = appState.programs.find(item => item.id === programId && item.client_id === clientId);
+        applySubstituteLoads(program, state);
+        renderExercises();
+        setEditorAvailability();
+      } catch (error) {
+        console.error("Impossibile aggiornare i carichi condivisi", error);
+        showToast("Carichi condivisi non aggiornati: controlla la connessione");
+      }
+    }
+
     function showView(viewId) {
       const target = document.getElementById(viewId);
       if (!target?.classList.contains("app-view")) return;
@@ -4491,7 +4523,10 @@
       });
       if (viewId === "programsView") renderProgramManager();
       if (viewId === "builderView") renderCreationPreview();
-      if (viewId === "sheetView") renderSheetPreview();
+      if (viewId === "sheetView") {
+        renderSheetPreview();
+        void refreshSharedLoads();
+      }
       renderMetrics();
       renderClientFocus();
       setEditorAvailability();
