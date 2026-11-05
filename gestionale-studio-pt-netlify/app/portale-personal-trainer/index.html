@@ -1463,6 +1463,8 @@
       operators: [],
       clients: [],
       programs: [],
+      sessions: [],
+      recordedLoads: [],
       currentPt: null,
       selectedClientId: "",
       selectedProgramId: "",
@@ -1871,7 +1873,7 @@
     }
 
     function isReadOnlySelection() {
-      return !!selectedClient() && isAdministrator(appState.currentPt) && !canEditClient();
+      return !!selectedClient() && !canEditClient();
     }
 
     function requireEditableClient() {
@@ -1903,9 +1905,28 @@
       return `${legacyStorageKeyFor(clientId)}_${programKey}`;
     }
 
+    // A day's replacement is derived from the calendar and never reassigns the client.
+    function studioToday() {
+      return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+    }
+    function substituteSessions(clientId, date = studioToday()) {
+      if (!appState.currentPt?.id || !clientId) return [];
+      return appState.sessions.filter(session =>
+        String(sessionTrainerId(session)) === String(appState.currentPt.id) &&
+        String(session.date || "").slice(0, 10) === date &&
+        !["annullato", "noshow"].includes(String(session.status || "").toLowerCase()) &&
+        sessionClientIds(session).includes(String(clientId))
+      );
+    }
+    function isSubstituteClient(client = selectedClient()) {
+      return !!(client && !canEditClient(client) && substituteSessions(client.client_id).length);
+    }
     function myClients() {
       if (isAdministrator(appState.currentPt)) return appState.clients;
-      return appState.clients.filter(client => String(clientTrainerId(client)) === String(appState.currentPt?.id || ""));
+      return appState.clients.filter(client =>
+        String(clientTrainerId(client)) === String(appState.currentPt?.id || "") ||
+        substituteSessions(client.client_id).length > 0
+      );
     }
 
     function selectedClient() {
@@ -1933,7 +1954,11 @@
     }
 
     function latestClientProgram(clientId) {
-      return programsForClient(clientId)[0] || null;
+      // Non aprire un programma futuro o una bozza vuota al posto della scheda operativa reale.
+      const all = programsForClient(clientId);
+      const withExercises = all.filter(program => stateExerciseCount(stateFromProgram(program)) > 0);
+      if (!withExercises.length) return null;
+      return withExercises.find(program => program.period <= currentPeriodKey()) || withExercises[0];
     }
 
     function accessFunctionBase() {
@@ -2065,6 +2090,7 @@
           exercise.effort = exercise.effort || "Media 3/5";
           exercise.recoveryNote = exercise.recoveryNote || "";
           exercise.effortNote = exercise.effortNote || "";
+          exercise.resultEditedAt = Array.isArray(exercise.resultEditedAt) ? exercise.resultEditedAt : [];
           ensureExerciseWeekSets(exercise, next.sessions.length);
           next.sessions.forEach((_, weekIndex) => syncExerciseWeekSummary(exercise, weekIndex));
         });
@@ -2129,12 +2155,15 @@
 
     async function loadPortalData() {
       if (appState.dataLoaded) return;
-      const [clients, sessions, acquisitions, programs] = await Promise.all([
+      const [clients, sessions, acquisitions, programs, recordedLoads] = await Promise.all([
         sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
         sb("pt_calendar_sessions", "?select=*&order=date.asc,start_time.asc").catch(() => []),
         sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
-        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
+        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc"),
+        sb("carichi_allenamento", "?select=id,cliente_id,data,updated_at&order=updated_at.desc")
       ]);
+      appState.sessions = (sessions || []).map(session => ({...session, trainer_id: sessionTrainerId(session)}));
+      appState.recordedLoads = (recordedLoads || []).filter(row => row.data?.record_type === "pt_substitution");
       appState.clients = (clients || []).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -2287,7 +2316,8 @@
         previousPlan: [],
         previousPeriod: "",
         recoveryNote: "",
-        effortNote: ""
+        effortNote: "",
+        resultEditedAt: []
       };
     }
 
@@ -2407,14 +2437,36 @@
       return true;
     }
 
+    // Apply recorded substitution results over the shared original program without rewriting it.
+    function applySubstituteLoads(program, programState) {
+      if (!program || !programState) return programState;
+      appState.recordedLoads
+        .filter(row => row.cliente_id === program.client_id && row.data?.program_id === program.id)
+        .sort((a, b) => String(a.updated_at || "").localeCompare(String(b.updated_at || "")))
+        .forEach(row => {
+          const entry = row.data || {};
+          const exercise = (programState.sheets[entry.sheet_key] || []).find(item =>
+            String(item.id) === String(entry.exercise_id));
+          const weekIndex = Number(entry.week_index);
+          if (!exercise || !Number.isInteger(weekIndex) || weekIndex < 0 || weekIndex >= programState.sessions.length ||
+            !Array.isArray(entry.sets)) return;
+          // Prevale la modifica più recente sulla stessa settimana/esercizio.
+          if (timestampOf(exercise.resultEditedAt?.[weekIndex]) > timestampOf(row.updated_at)) return;
+          ensureExerciseWeekSets(exercise, programState.sessions.length);
+          exercise.weekSets[weekIndex] = entry.sets.map(set => normalizeSetEntry(set));
+          syncExerciseWeekSummary(exercise, weekIndex);
+        });
+      return programState;
+    }
+
     function stateFromProgram(program) {
       const saved = program?.data?.pt_studio_state || program?.data?.studio_state || null;
       if (saved && saved.sheets && saved.sessions) {
         saved.sheetOrder = saved.sheetOrder || Object.keys(saved.sheets);
         saved.currentSheet = saved.currentSheet || saved.sheetOrder[0] || "A";
-        return normalizeState(saved);
+        return applySubstituteLoads(program, normalizeState(saved));
       }
-      return stateFromLegacyProgram(program?.data);
+      return applySubstituteLoads(program, stateFromLegacyProgram(program?.data));
     }
 
     function previousExerciseHistory(name, group = "") {
@@ -2504,6 +2556,7 @@
       document.getElementById("clientList").innerHTML = clients.length ? clients.map(client => `
         <button class="client-card ${client.client_id === appState.selectedClientId ? "active" : ""}" data-client-id="${escapeAttr(client.client_id)}" aria-pressed="${client.client_id === appState.selectedClientId}">
           <strong>${escapeHtml(fullName(client))}</strong>
+          ${isSubstituteClient(client) ? "<span>Affidato a te oggi · scheda condivisa</span>" : ""}
           <span>${escapeHtml(client.obiettivo || client.email || "Cliente PT")}</span>
           ${isAdministrator(appState.currentPt) ? `<span>PT: ${escapeHtml(fullName(trainerForClient(client)) || "Non assegnato")}</span>` : ""}
           <span>${programsForClient(client.client_id).length} programmi salvati${client.client_id === appState.selectedClientId ? " · Selezionato" : ""}</span>
@@ -2512,7 +2565,7 @@
       document.querySelectorAll("[data-client-id]").forEach(button => {
         button.addEventListener("click", () => {
           selectClient(button.dataset.clientId);
-          showView(isReadOnlySelection() ? "programsView" : "builderView");
+          showView(isSubstituteClient() ? "sheetView" : isReadOnlySelection() ? "programsView" : "builderView");
         });
       });
     }
@@ -2531,11 +2584,11 @@
         trainerFilter.value = selectedValue;
       }
       document.getElementById("currentAccessRole").textContent = owner ? "Proprietario" : "PT";
-      document.getElementById("clientsKicker").textContent = owner ? "Controllo attività Personal Trainer" : "Anagrafica assegnata";
+      document.getElementById("clientsKicker").textContent = owner ? "Controllo attività Personal Trainer" : "Clienti assegnati e sostituzioni";
       document.getElementById("clientsSubtitle").textContent = owner
         ? "Seleziona un cliente per consultare, senza modificarle, le schede preparate dal Personal Trainer assegnato."
         : "Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.";
-      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti";
+      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti e sostituzioni";
     }
 
     function setEditorAvailability() {
@@ -2566,6 +2619,12 @@
       document.querySelectorAll("#exerciseStack input, #exerciseStack select, #exerciseStack textarea, #exerciseStack button, #sheetPreviewStack input, #sheetPreviewStack select, #sheetPreviewStack textarea, #sheetPreviewStack button, #sessionRow button").forEach(field => {
         field.disabled = !canEdit;
       });
+      // Only result fields are writable during an authorized daily substitution.
+      if (isSubstituteClient()) {
+        document.querySelectorAll("#sheetPreviewStack .set-editor input, #sheetPreviewStack [data-save-substitute]").forEach(field => {
+          field.disabled = false;
+        });
+      }
       const saveButton = document.getElementById("saveBtn");
       if (saveButton) saveButton.classList.toggle("hidden", readOnly);
       const programActions = document.getElementById("programActionsPanel");
@@ -2579,7 +2638,9 @@
       if (banner) {
         banner.classList.toggle("hidden", !readOnly);
         if (readOnly) {
-          banner.innerHTML = `<strong>Modalità Proprietario · sola lettura.</strong> Stai consultando la scheda gestita da ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Nessun dato può essere modificato o salvato dal tuo accesso.`;
+          banner.innerHTML = isSubstituteClient()
+            ? `<strong>Sostituzione di oggi.</strong> Registra carichi, ripetizioni e RIR/RPE: i risultati saranno visibili anche al PT titolare, senza cambiare gli esercizi prescritti.`
+            : `<strong>Consultazione in sola lettura.</strong> Stai consultando la scheda di ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Non puoi modificare o salvare questo programma.`;
         } else {
           banner.textContent = "";
         }
@@ -2614,7 +2675,7 @@
         } else if (programDraft && localIsNewer(programDraft, program)) {
           appState.selectedProgramId = program?.id || programDraft.draftProgramId || "";
           STORAGE_KEY = storageKeyFor(clientId, appState.selectedProgramId);
-          state = programDraft;
+          state = applySubstituteLoads(program, programDraft);
           appState.saveMode = "local";
         } else if (savedFromProgram) {
           appState.selectedProgramId = program.id;
@@ -2644,7 +2705,7 @@
       } else {
         const localDraft = readLocalState(STORAGE_KEY);
         if (localDraft && localIsNewer(localDraft, program)) {
-          state = localDraft;
+          state = applySubstituteLoads(program, localDraft);
           appState.saveMode = "local";
         } else if (program) {
           state = stateFromProgram(program) || clientDefaultState(selectedClient());
@@ -2797,7 +2858,7 @@
           </article>`).join("");
       const emptyState = editable
         ? `<div class="empty-focus"><strong>Nessun programma salvato</strong>Crea un nuovo programma e compilalo secondo le esigenze del cliente.</div>`
-        : `<div class="empty-focus"><strong>Nessuna scheda salvata</strong>Il Personal Trainer assegnato non ha ancora salvato programmi per questo cliente.</div>`;
+        : `<div class="empty-focus"><strong>Nessuna scheda operativa salvata</strong>Non viene mostrata alcuna scheda predefinita: il PT titolare deve salvare un programma con esercizi.</div>`;
       const archiveSection = archivedCards
         ? `<details class="archive-panel"><summary>Schede archiviate (${programsForClient(appState.selectedClientId, true).filter(program => program.archived).length})</summary><div class="program-list">${archivedCards}</div></details>`
         : "";
@@ -3082,7 +3143,8 @@
     }
 
     function programPayload(programId, savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt, clientId = appState.selectedClientId) {
-      const studioState = normalizeState(sourceState);
+      const existingProgram = appState.programs.find(item => item.id === programId);
+      const studioState = applySubstituteLoads(existingProgram, normalizeState(sourceState));
       studioState.lastSavedAt = savedAt;
       studioState.draftProgramId = programId;
       studioState.localDirty = false;
@@ -3618,7 +3680,7 @@
 
     function selectOperationalWeek(index) {
       state.activeWeekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(index) || 0));
-      if (canEditClient()) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (canEditClient()) autosave();
       renderExercises();
     }
 
@@ -3701,6 +3763,9 @@
               </div>`;
             }).join("")}
           </div>
+          ${isSubstituteClient() && prefix === "use"
+            ? `<button class="btn" type="button" data-save-substitute onclick="saveSubstituteLoad(${exerciseIndex}, ${weekIndex})">Salva carichi sostituzione</button>`
+            : ""}
         </div>`;
     }
 
@@ -3717,13 +3782,13 @@
       const weekModel = operationalWeekModel(exercises);
       clientName.textContent = client ? fullName(client) : "Nessun cliente selezionato";
       period.textContent = periodLabel(state.meta.period);
-      document.getElementById("previewClientMeta").textContent = client?.obiettivo
-        ? isReadOnlySelection()
-          ? `Obiettivo: ${client.obiettivo} · consultazione in sola lettura`
-          : `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
-        : isReadOnlySelection()
-          ? "Consultazione in sola lettura."
-          : "Modifiche e carichi vengono salvati automaticamente.";
+      document.getElementById("previewClientMeta").textContent = isSubstituteClient()
+        ? "Sostituzione di oggi: inserisci i risultati e premi Salva carichi per ogni esercizio."
+        : client?.obiettivo
+          ? isReadOnlySelection()
+            ? `Obiettivo: ${client.obiettivo} · consultazione in sola lettura`
+            : `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
+          : isReadOnlySelection() ? "Consultazione in sola lettura." : "Modifiche e carichi vengono salvati automaticamente.";
       document.getElementById("sheetPreviewTitle").textContent = `Allenamento ${state.currentSheet}`;
       details.textContent = `${periodLabel(state.meta.period)} · ${state.sessions.length} settimane · ${exercises.length} esercizi`;
       tabs.innerHTML = state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" type="button" data-preview-sheet="${escapeAttr(key)}">Allenamento ${escapeHtml(key)}</button>`).join("");
@@ -3731,6 +3796,7 @@
         button.addEventListener("click", () => {
           state.currentSheet = button.dataset.previewSheet;
           renderAll();
+          if (canEditClient()) autosave();
         });
       });
       meta.innerHTML = `
@@ -3997,14 +4063,83 @@
     }
 
     function updateExerciseSet(exerciseIndex, weekIndex, setIndex, key, value) {
+      const substitute = isSubstituteClient();
+      if (!canEditClient() && !substitute) return;
+      if (substitute && !["reps", "load", "rir"].includes(key)) return;
       const exercise = state.sheets[state.currentSheet][exerciseIndex];
       ensureExerciseWeekSets(exercise, state.sessions.length);
       const set = exercise.weekSets?.[weekIndex]?.[setIndex];
       if (!set || !["reps", "load", "rir", "note"].includes(key)) return;
       set[key] = value;
+      if (!substitute) {
+        exercise.resultEditedAt = Array.isArray(exercise.resultEditedAt) ? exercise.resultEditedAt : [];
+        exercise.resultEditedAt[weekIndex] = new Date().toISOString();
+      }
       syncExerciseWeekSummary(exercise, weekIndex);
-      autosave(exercise.id);
+      // Il sostituto salva nel registro condiviso, non modifica la struttura del programma.
+      if (!substitute) autosave(exercise.id);
       renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
+    }
+
+    async function saveSubstituteLoad(exerciseIndex, weekIndex) {
+      const client = selectedClient();
+      if (!isSubstituteClient(client) || !appState.selectedProgramId) {
+        showToast("Puoi registrare solo la sostituzione di oggi su una scheda salvata");
+        return false;
+      }
+      const appointments = substituteSessions(client.client_id);
+      const program = appState.programs.find(item =>
+        item.id === appState.selectedProgramId && item.client_id === client.client_id && !item.archived);
+      const sheetKey = state.currentSheet;
+      const exercise = state.sheets[sheetKey]?.[exerciseIndex];
+      if (!appointments.length || !program || !exercise ||
+        !Number.isInteger(weekIndex) || weekIndex < 0 || weekIndex >= state.sessions.length) {
+        showToast("Nessuna scheda o seduta valida da registrare");
+        return false;
+      }
+      const sets = (exercise.weekSets?.[weekIndex] || []).map(set => normalizeSetEntry(set));
+      if (!sets.some(set => set.load || set.rir)) {
+        showToast("Inserisci almeno un carico o un RIR/RPE");
+        return false;
+      }
+      const today = studioToday();
+      const sessionId = appointments[0].appointment_id || "";
+      const recordId = ["pt_substitute", client.client_id, program.id, sessionId, sheetKey,
+        exercise.id, weekIndex, today].join("_").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const updatedAt = new Date().toISOString();
+      const row = {
+        id: recordId,
+        cliente_id: client.client_id,
+        data: {
+          record_type: "pt_substitution",
+          client_id: client.client_id,
+          program_id: program.id,
+          sheet_key: sheetKey,
+          exercise_id: exercise.id,
+          exercise_name: exercise.name,
+          week_index: weekIndex,
+          session_id: sessionId,
+          performed_by: appState.currentPt.id,
+          date: today,
+          sets
+        },
+        updated_at: updatedAt
+      };
+      try {
+        await sb("carichi_allenamento", "?on_conflict=id", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: row
+        });
+        appState.recordedLoads = appState.recordedLoads.filter(item => item.id !== recordId);
+        appState.recordedLoads.push(row);
+        showToast("Carichi condivisi salvati: il PT titolare li vedrà nella stessa scheda.");
+        return true;
+      } catch (error) {
+        console.error(error);
+        showToast("Carichi NON salvati. Controlla la connessione e riprova.");
+        return false;
+      }
     }
 
     function addExerciseSet(exerciseIndex, weekIndex) {
@@ -4360,6 +4495,24 @@
       return escapeHtml(value).replace(/`/g, "&#96;");
     }
 
+    async function refreshSharedLoads() {
+      const clientId = appState.selectedClientId;
+      const programId = appState.selectedProgramId;
+      if (!clientId || !programId) return;
+      try {
+        const rows = await sb("carichi_allenamento", "?select=id,cliente_id,data,updated_at&order=updated_at.desc");
+        appState.recordedLoads = (rows || []).filter(row => row.data?.record_type === "pt_substitution");
+        if (appState.selectedClientId !== clientId || appState.selectedProgramId !== programId) return;
+        const program = appState.programs.find(item => item.id === programId && item.client_id === clientId);
+        applySubstituteLoads(program, state);
+        renderExercises();
+        setEditorAvailability();
+      } catch (error) {
+        console.error("Impossibile aggiornare i carichi condivisi", error);
+        showToast("Carichi condivisi non aggiornati: controlla la connessione");
+      }
+    }
+
     function showView(viewId) {
       const target = document.getElementById(viewId);
       if (!target?.classList.contains("app-view")) return;
@@ -4370,7 +4523,10 @@
       });
       if (viewId === "programsView") renderProgramManager();
       if (viewId === "builderView") renderCreationPreview();
-      if (viewId === "sheetView") renderSheetPreview();
+      if (viewId === "sheetView") {
+        renderSheetPreview();
+        void refreshSharedLoads();
+      }
       renderMetrics();
       renderClientFocus();
       setEditorAvailability();
