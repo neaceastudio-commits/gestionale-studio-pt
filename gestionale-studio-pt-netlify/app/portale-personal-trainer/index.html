@@ -1907,8 +1907,7 @@
 
     // A day's replacement is derived from the calendar and never reassigns the client.
     function studioToday() {
-      const now = new Date();
-      return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
     }
     function substituteSessions(clientId, date = studioToday()) {
       if (!appState.currentPt?.id || !clientId) return [];
@@ -4054,14 +4053,79 @@
     }
 
     function updateExerciseSet(exerciseIndex, weekIndex, setIndex, key, value) {
+      const substitute = isSubstituteClient();
+      if (!canEditClient() && !substitute) return;
+      if (substitute && !["reps", "load", "rir"].includes(key)) return;
       const exercise = state.sheets[state.currentSheet][exerciseIndex];
       ensureExerciseWeekSets(exercise, state.sessions.length);
       const set = exercise.weekSets?.[weekIndex]?.[setIndex];
       if (!set || !["reps", "load", "rir", "note"].includes(key)) return;
       set[key] = value;
       syncExerciseWeekSummary(exercise, weekIndex);
-      autosave(exercise.id);
+      // A cover PT never rewrites the program: explicit result save is separate.
+      if (!substitute) autosave(exercise.id);
       renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
+    }
+
+    async function saveSubstituteLoad(exerciseIndex, weekIndex) {
+      const client = selectedClient();
+      if (!isSubstituteClient(client) || !appState.selectedProgramId) {
+        showToast("Puoi registrare solo la sostituzione di oggi su una scheda salvata");
+        return false;
+      }
+      const appointments = substituteSessions(client.client_id);
+      const program = appState.programs.find(item =>
+        item.id === appState.selectedProgramId && item.client_id === client.client_id && !item.archived);
+      const sheetKey = state.currentSheet;
+      const exercise = state.sheets[sheetKey]?.[exerciseIndex];
+      if (!appointments.length || !program || !exercise ||
+        !Number.isInteger(weekIndex) || weekIndex < 0 || weekIndex >= state.sessions.length) {
+        showToast("Nessuna scheda o seduta valida da registrare");
+        return false;
+      }
+      const sets = (exercise.weekSets?.[weekIndex] || []).map(set => normalizeSetEntry(set));
+      if (!sets.some(set => set.load || set.rir)) {
+        showToast("Inserisci almeno un carico o un RIR/RPE");
+        return false;
+      }
+      const today = studioToday();
+      const sessionId = appointments[0].appointment_id || "";
+      const recordId = ["pt_substitute", client.client_id, program.id, sessionId, sheetKey,
+        exercise.id, weekIndex, today].join("_").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const updatedAt = new Date().toISOString();
+      const row = {
+        id: recordId,
+        cliente_id: client.client_id,
+        data: {
+          record_type: "pt_substitution",
+          client_id: client.client_id,
+          program_id: program.id,
+          sheet_key: sheetKey,
+          exercise_id: exercise.id,
+          exercise_name: exercise.name,
+          week_index: weekIndex,
+          session_id: sessionId,
+          performed_by: appState.currentPt.id,
+          date: today,
+          sets
+        },
+        updated_at: updatedAt
+      };
+      try {
+        await sb("carichi_allenamento", "?on_conflict=id", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: row
+        });
+        appState.recordedLoads = appState.recordedLoads.filter(item => item.id !== recordId);
+        appState.recordedLoads.push(row);
+        showToast("Carichi salvati per la sostituzione. Programma originale invariato.");
+        return true;
+      } catch (error) {
+        console.error(error);
+        showToast("Carichi NON salvati. Controlla la connessione e riprova.");
+        return false;
+      }
     }
 
     function addExerciseSet(exerciseIndex, weekIndex) {
