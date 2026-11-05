@@ -2432,14 +2432,34 @@
       return true;
     }
 
+    // Apply recorded substitution results over the shared original program without rewriting it.
+    function applySubstituteLoads(program, programState) {
+      if (!program || !programState) return programState;
+      appState.recordedLoads
+        .filter(row => row.cliente_id === program.client_id && row.data?.program_id === program.id)
+        .sort((a, b) => String(a.updated_at || "").localeCompare(String(b.updated_at || "")))
+        .forEach(row => {
+          const entry = row.data || {};
+          const exercise = (programState.sheets[entry.sheet_key] || []).find(item =>
+            String(item.id) === String(entry.exercise_id));
+          const weekIndex = Number(entry.week_index);
+          if (!exercise || !Number.isInteger(weekIndex) || weekIndex < 0 || weekIndex >= programState.sessions.length ||
+            !Array.isArray(entry.sets)) return;
+          ensureExerciseWeekSets(exercise, programState.sessions.length);
+          exercise.weekSets[weekIndex] = entry.sets.map(set => normalizeSetEntry(set));
+          syncExerciseWeekSummary(exercise, weekIndex);
+        });
+      return programState;
+    }
+
     function stateFromProgram(program) {
       const saved = program?.data?.pt_studio_state || program?.data?.studio_state || null;
       if (saved && saved.sheets && saved.sessions) {
         saved.sheetOrder = saved.sheetOrder || Object.keys(saved.sheets);
         saved.currentSheet = saved.currentSheet || saved.sheetOrder[0] || "A";
-        return normalizeState(saved);
+        return applySubstituteLoads(program, normalizeState(saved));
       }
-      return stateFromLegacyProgram(program?.data);
+      return applySubstituteLoads(program, stateFromLegacyProgram(program?.data));
     }
 
     function previousExerciseHistory(name, group = "") {
@@ -2529,6 +2549,7 @@
       document.getElementById("clientList").innerHTML = clients.length ? clients.map(client => `
         <button class="client-card ${client.client_id === appState.selectedClientId ? "active" : ""}" data-client-id="${escapeAttr(client.client_id)}" aria-pressed="${client.client_id === appState.selectedClientId}">
           <strong>${escapeHtml(fullName(client))}</strong>
+          ${isSubstituteClient(client) ? "<span>Affidato a te oggi · scheda condivisa</span>" : ""}
           <span>${escapeHtml(client.obiettivo || client.email || "Cliente PT")}</span>
           ${isAdministrator(appState.currentPt) ? `<span>PT: ${escapeHtml(fullName(trainerForClient(client)) || "Non assegnato")}</span>` : ""}
           <span>${programsForClient(client.client_id).length} programmi salvati${client.client_id === appState.selectedClientId ? " · Selezionato" : ""}</span>
@@ -2591,6 +2612,12 @@
       document.querySelectorAll("#exerciseStack input, #exerciseStack select, #exerciseStack textarea, #exerciseStack button, #sheetPreviewStack input, #sheetPreviewStack select, #sheetPreviewStack textarea, #sheetPreviewStack button, #sessionRow button").forEach(field => {
         field.disabled = !canEdit;
       });
+      // Only result fields are writable during an authorized daily substitution.
+      if (isSubstituteClient()) {
+        document.querySelectorAll("#sheetPreviewStack .set-editor input, #sheetPreviewStack [data-save-substitute]").forEach(field => {
+          field.disabled = false;
+        });
+      }
       const saveButton = document.getElementById("saveBtn");
       if (saveButton) saveButton.classList.toggle("hidden", readOnly);
       const programActions = document.getElementById("programActionsPanel");
@@ -2604,7 +2631,9 @@
       if (banner) {
         banner.classList.toggle("hidden", !readOnly);
         if (readOnly) {
-          banner.innerHTML = `<strong>Modalità Proprietario · sola lettura.</strong> Stai consultando la scheda gestita da ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Nessun dato può essere modificato o salvato dal tuo accesso.`;
+          banner.innerHTML = isSubstituteClient()
+            ? `<strong>Sostituzione di oggi.</strong> Puoi registrare carichi, ripetizioni e RIR/RPE. Il programma di ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro PT")} resta invariato.`
+            : `<strong>Consultazione in sola lettura.</strong> Stai consultando la scheda di ${escapeHtml(fullName(trainerForClient(selectedClient())) || "un altro Personal Trainer")}. Non puoi modificare o salvare questo programma.`;
         } else {
           banner.textContent = "";
         }
@@ -3726,6 +3755,9 @@
               </div>`;
             }).join("")}
           </div>
+          ${isSubstituteClient() && prefix === "use"
+            ? `<button class="btn" type="button" data-save-substitute onclick="saveSubstituteLoad(${exerciseIndex}, ${weekIndex})">Salva carichi sostituzione</button>`
+            : ""}
         </div>`;
     }
 
@@ -3742,13 +3774,13 @@
       const weekModel = operationalWeekModel(exercises);
       clientName.textContent = client ? fullName(client) : "Nessun cliente selezionato";
       period.textContent = periodLabel(state.meta.period);
-      document.getElementById("previewClientMeta").textContent = client?.obiettivo
-        ? isReadOnlySelection()
-          ? `Obiettivo: ${client.obiettivo} · consultazione in sola lettura`
-          : `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
-        : isReadOnlySelection()
-          ? "Consultazione in sola lettura."
-          : "Modifiche e carichi vengono salvati automaticamente.";
+      document.getElementById("previewClientMeta").textContent = isSubstituteClient()
+        ? "Sostituzione di oggi: inserisci i risultati e premi Salva carichi per ogni esercizio."
+        : client?.obiettivo
+          ? isReadOnlySelection()
+            ? `Obiettivo: ${client.obiettivo} · consultazione in sola lettura`
+            : `Obiettivo: ${client.obiettivo} · modifiche e carichi salvati automaticamente`
+          : isReadOnlySelection() ? "Consultazione in sola lettura." : "Modifiche e carichi vengono salvati automaticamente.";
       document.getElementById("sheetPreviewTitle").textContent = `Allenamento ${state.currentSheet}`;
       details.textContent = `${periodLabel(state.meta.period)} · ${state.sessions.length} settimane · ${exercises.length} esercizi`;
       tabs.innerHTML = state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" type="button" data-preview-sheet="${escapeAttr(key)}">Allenamento ${escapeHtml(key)}</button>`).join("");
