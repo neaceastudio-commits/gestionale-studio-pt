@@ -1463,6 +1463,8 @@
       operators: [],
       clients: [],
       programs: [],
+      sessions: [],
+      recordedLoads: [],
       currentPt: null,
       selectedClientId: "",
       selectedProgramId: "",
@@ -1871,7 +1873,7 @@
     }
 
     function isReadOnlySelection() {
-      return !!selectedClient() && isAdministrator(appState.currentPt) && !canEditClient();
+      return !!selectedClient() && !canEditClient();
     }
 
     function requireEditableClient() {
@@ -1903,9 +1905,29 @@
       return `${legacyStorageKeyFor(clientId)}_${programKey}`;
     }
 
+    // A day's replacement is derived from the calendar and never reassigns the client.
+    function studioToday() {
+      const now = new Date();
+      return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+    }
+    function substituteSessions(clientId, date = studioToday()) {
+      if (!appState.currentPt?.id || !clientId) return [];
+      return appState.sessions.filter(session =>
+        String(sessionTrainerId(session)) === String(appState.currentPt.id) &&
+        String(session.date || "").slice(0, 10) === date &&
+        !["annullato", "noshow"].includes(String(session.status || "").toLowerCase()) &&
+        sessionClientIds(session).includes(String(clientId))
+      );
+    }
+    function isSubstituteClient(client = selectedClient()) {
+      return !!(client && !canEditClient(client) && substituteSessions(client.client_id).length);
+    }
     function myClients() {
       if (isAdministrator(appState.currentPt)) return appState.clients;
-      return appState.clients.filter(client => String(clientTrainerId(client)) === String(appState.currentPt?.id || ""));
+      return appState.clients.filter(client =>
+        String(clientTrainerId(client)) === String(appState.currentPt?.id || "") ||
+        substituteSessions(client.client_id).length > 0
+      );
     }
 
     function selectedClient() {
@@ -2129,12 +2151,15 @@
 
     async function loadPortalData() {
       if (appState.dataLoaded) return;
-      const [clients, sessions, acquisitions, programs] = await Promise.all([
+      const [clients, sessions, acquisitions, programs, recordedLoads] = await Promise.all([
         sb("clients", "?select=*&active=eq.true&order=cognome.asc,nome.asc"),
         sb("pt_calendar_sessions", "?select=*&order=date.asc,start_time.asc").catch(() => []),
         sb("acquisizioni", "?select=*&order=data_acquisizione.desc").catch(() => []),
-        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => [])
+        sb("schede_allenamento", "?select=id,cliente_id,data,created_at,updated_at&order=updated_at.desc").catch(() => []),
+        sb("carichi_allenamento", "?select=id,cliente_id,data,updated_at&order=updated_at.desc").catch(() => [])
       ]);
+      appState.sessions = (sessions || []).map(session => ({...session, trainer_id: sessionTrainerId(session)}));
+      appState.recordedLoads = (recordedLoads || []).filter(row => row.data?.record_type === "pt_substitution");
       appState.clients = (clients || []).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
@@ -2512,7 +2537,7 @@
       document.querySelectorAll("[data-client-id]").forEach(button => {
         button.addEventListener("click", () => {
           selectClient(button.dataset.clientId);
-          showView(isReadOnlySelection() ? "programsView" : "builderView");
+          showView(isSubstituteClient() ? "sheetView" : isReadOnlySelection() ? "programsView" : "builderView");
         });
       });
     }
@@ -2531,11 +2556,11 @@
         trainerFilter.value = selectedValue;
       }
       document.getElementById("currentAccessRole").textContent = owner ? "Proprietario" : "PT";
-      document.getElementById("clientsKicker").textContent = owner ? "Controllo attività Personal Trainer" : "Anagrafica assegnata";
+      document.getElementById("clientsKicker").textContent = owner ? "Controllo attività Personal Trainer" : "Clienti assegnati e sostituzioni";
       document.getElementById("clientsSubtitle").textContent = owner
         ? "Seleziona un cliente per consultare, senza modificarle, le schede preparate dal Personal Trainer assegnato."
         : "Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.";
-      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti";
+      document.getElementById("clientPanelTitle").textContent = owner ? "Tutti i clienti dello studio" : "I miei clienti e sostituzioni";
     }
 
     function setEditorAvailability() {
