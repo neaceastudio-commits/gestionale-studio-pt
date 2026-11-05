@@ -241,6 +241,20 @@
 .client-kpi-alert strong {
   color: var(--red);
 }
+.client-alert-summary {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.client-alert-summary small {
+  color: var(--text2);
+  font-size: 11px;
+}
+.client-alert-summary:focus-visible,
+.package-alert-button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
 .package-status {
   display: grid;
   gap: 5px;
@@ -255,7 +269,8 @@
   gap: 5px;
 }
 .package-alerts span,
-.package-alert-tags span {
+.package-alert-tags span,
+.package-alert-button {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -266,6 +281,26 @@
   font-weight: 800;
   line-height: 1.1;
 }
+.package-alert-button {
+  border: 1px solid #fed7aa;
+  font-family: inherit;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  min-height: 32px;
+  cursor: pointer;
+}
+.package-alert-guide section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+.package-alert-guide h4 { margin: 0 0 10px; }
+.package-alert-guide p { line-height: 1.55; }
+.package-alert-guide .btn { white-space: normal; }
 .package-alert-list {
   display: grid;
   gap: 10px;

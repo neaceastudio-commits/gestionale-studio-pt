@@ -87,18 +87,39 @@ const Clients = (() => {
       projectedEnd = dateToStr(addDays(start, weeks * 7));
     }
 
-    const alerts = [];
-    if (hasPackage && total <= 0) alerts.push('Sessioni totali mancanti');
-    if (serviceMetrics.needsCycleSetup) alerts.push('Conferma il ciclo corrente');
-    if (residualMismatch) alerts.push(`Residuo da riallineare: salvato ${storedRemaining}, corretto ${computedRemaining}`);
-    if (total > 0 && remaining <= 2 && remaining > 0) alerts.push('Pacchetto quasi finito');
-    if (toSchedule > 0) alerts.push(`${toSchedule} da programmare`);
-    if (overPlanned > 0) alerts.push(`${overPlanned} oltre pacchetto`);
-    if (remaining > 0 && !next) alerts.push('Nessun prossimo appuntamento');
-    if (total > 0 && completed >= total) alerts.push('Pacchetto completato');
+    const alertDetails = [];
+    const addAlert = (id, label, explanation, solution, action, actionLabel) =>
+      alertDetails.push({ id, label, explanation, solution, action, actionLabel });
+    if (hasPackage && total <= 0) addAlert('missing-total', 'Sessioni totali mancanti',
+      'Il cliente ha un pacchetto, ma non è indicato un numero valido di sedute acquistate. Il residuo non può essere verificato.',
+      'Controlla il pacchetto acquistato e imposta le sessioni totali in “Modifica pacchetto”. Non usare le sedute dello storico come totale del ciclo attuale.', 'edit', 'Apri Modifica pacchetto');
+    if (serviceMetrics.needsCycleSetup) addAlert('cycle', 'Conferma il ciclo corrente',
+      'È stato rilevato un rinnovo precedente, ma la separazione del ciclo corrente dallo storico deve ancora essere confermata.',
+      'Nel quadro pacchetto verifica la data di inizio e le sedute acquistate, poi usa “Conferma separazione”. Se i dati non corrispondono al pacchetto acquistato, correggili prima di confermare.', 'lessons', 'Verifica il ciclo');
+    if (residualMismatch) addAlert('residual', `Residuo da riallineare: salvato ${storedRemaining}, corretto ${computedRemaining}`,
+      `Il residuo salvato (${storedRemaining}) è diverso da quello calcolato dalle sedute e dalle rettifiche del ciclo (${computedRemaining}).`,
+      'Verifica prima il ciclo, gli stati delle sedute e le eventuali assenze scalate o rettifiche nel quadro pacchetto. Se il conteggio è corretto, nella lista Clienti usa “Allinea residuo”.', 'lessons', 'Controlla sedute e residuo');
+    if (total > 0 && remaining <= 2 && remaining > 0) addAlert('almost-finished', 'Pacchetto quasi finito',
+      `Restano ${remaining} sedute da utilizzare nel ciclo corrente. È un promemoria per organizzare la prosecuzione.`,
+      'Concorda con il cliente se proseguire. Controlla il rinnovo previsto nel quadro pacchetto oppure prepara il rinnovo da “Pagamenti e rinnovo”. Confermare il rinnovo non equivale a registrare un incasso.', 'finance', 'Apri pagamenti e rinnovo');
+    if (toSchedule > 0) addAlert('to-schedule', `${toSchedule} da programmare`,
+      `${toSchedule} sedute del residuo del ciclo non sono ancora coperte da prenotazioni.`,
+      'Controlla prima se ci sono appuntamenti già in agenda fuori dal ciclo. Nel quadro pacchetto puoi includerli, quando consentito, oppure usare “Genera mancanti”. Per la coppia PT 1:2 verifica entrambi i partecipanti prima di programmare.', 'lessons', 'Apri la programmazione');
+    if (overPlanned > 0) addAlert('over-planned', `${overPlanned} oltre pacchetto`,
+      `Il conteggio delle sedute consumate e programmate supera di ${overPlanned} il totale acquistato nel ciclo.`,
+      'Controlla le singole sedute, gli stati e il ciclo associato. Correggi eventuali duplicati o prenotazioni errate; se le sedute appartengono a un rinnovo, verifica il rinnovo prima di intervenire. Non aumentare il totale senza riscontro del pacchetto acquistato.', 'lessons', 'Verifica le singole sedute');
+    if (remaining > 0 && !next) addAlert('no-next', 'Nessun prossimo appuntamento',
+      'Ci sono sedute residue, ma nessuna prenotazione del ciclo corrente da oggi in avanti.',
+      'Concorda la prossima data con il cliente e prenotala dal quadro pacchetto. Verifica anche eventuali lezioni rimaste “Prenotato” in date passate. Se il percorso è in pausa, l’avviso può restare come promemoria.', 'lessons', 'Controlla gli appuntamenti');
+    if (total > 0 && completed >= total) addAlert('completed', 'Pacchetto completato',
+      'Le sedute segnate come fatte nel ciclo hanno raggiunto il totale acquistato. È un’informazione sulla conclusione del pacchetto.',
+      'Se il cliente prosegue, verifica il rinnovo previsto o prepara quello successivo. Se non prosegue, usa “Non rinnova” per conservarlo nello storico. Controlla separatamente gli eventuali pagamenti aperti.', 'finance', 'Apri pagamenti e rinnovo');
     if (!(typeof App !== 'undefined' && App.isPortalPtMode?.()) && finance.balance > 0) {
-      alerts.push(`Pagamento aperto: ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(finance.balance)}`);
+      addAlert('payment', `Pagamento aperto: ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(finance.balance)}`,
+        'Il valore del ciclo non risulta interamente coperto dagli incassi registrati o associati. L’avviso descrive il saldo presente nel gestionale.',
+        'In “Pagamenti” controlla gli incassi del ciclo e il riscontro con Scadenze. Se il pagamento è già in Scadenze, associalo al ciclo; altrimenti registra soltanto l’incasso effettivamente ricevuto. Una fattura o la conferma di un rinnovo non attestano un pagamento.', 'finance', 'Verifica i pagamenti');
     }
+    const alerts = alertDetails.map(alert => alert.label);
 
     return {
       total,
@@ -125,7 +146,58 @@ const Clients = (() => {
       needsCycleSetup: serviceMetrics.needsCycleSetup,
       finance,
       alerts,
+      alertDetails,
     };
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  }
+
+  function clientArgument(clientId) {
+    return `decodeURIComponent('${encodeURIComponent(String(clientId)).replace(/'/g, '%27')}')`;
+  }
+
+  function alertButton(client, alert) {
+    return `<button type="button" class="package-alert-button" onclick="event.stopPropagation();Clients.openAlerts(${clientArgument(client.id)},'${alert.id}')" aria-label="${escapeHtml(alert.label)}: spiegazione e possibili soluzioni">${escapeHtml(alert.label)} ⓘ</button>`;
+  }
+
+  function visibleAlertClients() {
+    const clients = typeof App !== 'undefined' && App.visibleClients ? App.visibleClients(State.getClients()) : State.getClients();
+    return clients.filter(client => client.active !== false);
+  }
+
+  function openAlertSummary() {
+    const items = visibleAlertClients().map(client => ({ client, metrics: getPackageMetrics(client) })).filter(item => item.metrics.alerts.length);
+    UI.openModal(`<div class="modal-header"><h3>Alert gestione</h3><button class="modal-close" aria-label="Chiudi" onclick="UI.closeModal()">×</button></div>
+      <div class="modal-body package-alert-guide"><p>${items.length} clienti con avvisi. Seleziona un alert per leggerne il significato e le possibili azioni.</p>
+      ${items.map(({ client, metrics }) => `<section><h4>${escapeHtml(`${client.nome} ${client.cognome}`)}</h4><div class="package-alert-tags">${metrics.alertDetails.map(alert => alertButton(client, alert)).join('')}</div></section>`).join('') || '<p>Nessun pacchetto richiede attenzione.</p>'}</div>`);
+  }
+
+  function openAlerts(clientId, alertId = '') {
+    const client = visibleAlertClients().find(client => client.id === clientId);
+    if (!client || !App.guardPackageManagement(clientId)) return;
+    const details = getPackageMetrics(client).alertDetails.filter(alert => !alertId || alert.id === alertId);
+    const ptMode = App.isPortalPtMode();
+    UI.openModal(`<div class="modal-header"><div><h3>Spiegazioni e soluzioni</h3><p class="modal-subtitle">${escapeHtml(`${client.nome} ${client.cognome}`)}</p></div><button class="modal-close" aria-label="Chiudi" onclick="UI.closeModal()">×</button></div>
+      <div class="modal-body package-alert-guide"><p>Gli avvisi si aggiornano in base ai dati registrati. Alcuni sono promemoria e non richiedono una correzione.</p>
+      ${details.map(alert => `<section><h4>${escapeHtml(alert.label)}</h4><p><strong>Cosa significa</strong><br>${escapeHtml(alert.explanation)}</p><p><strong>Cosa puoi fare</strong><br>${escapeHtml(alert.solution)}</p>
+        ${ptMode && alert.action === 'finance'
+          ? '<p>Per gestire rinnovi, pagamenti o archiviazione rivolgiti alla Direzione.</p>'
+          : `<button type="button" class="btn" onclick="Clients.openAlertAction(${clientArgument(client.id)},'${alert.id}')">${escapeHtml(alert.actionLabel)}</button>`}
+        ${ptMode && alert.id === 'residual' ? '<p>Chiedi alla Direzione l’eventuale riallineamento del residuo.</p>' : ''}</section>`).join('') || '<p>Questo avviso non è più presente. Ricontrolla la situazione aggiornata del cliente.</p>'}</div>
+      <div class="modal-footer"><button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button></div>`);
+  }
+
+  function openAlertAction(clientId, alertId) {
+    const client = visibleAlertClients().find(client => client.id === clientId);
+    if (!client || !App.guardPackageManagement(clientId)) return;
+    const alert = getPackageMetrics(client).alertDetails.find(alert => alert.id === alertId);
+    if (!alert) return openAlerts(clientId);
+    if (alert.action === 'finance' && !App.guardStudioManagement()) return;
+    if (alert.action === 'edit') App.openEditPackage(clientId);
+    else if (alert.action === 'finance') App._openPackageFinance(clientId);
+    else App.openPackageOverview(clientId);
   }
 
   function historyStatus(client) {
@@ -175,10 +247,11 @@ const Clients = (() => {
           <span>Da programmare</span>
           <strong>${toSchedule}</strong>
         </div>
-        <div class="client-kpi ${alerts.length ? 'client-kpi-alert' : ''}">
+        <button type="button" class="client-kpi client-alert-summary ${alerts.length ? 'client-kpi-alert' : ''}" onclick="Clients.openAlertSummary()" aria-label="Alert gestione: ${alerts.length} clienti, apri spiegazioni e soluzioni">
           <span>Alert gestione</span>
           <strong>${alerts.length}</strong>
-        </div>
+          <small>Clienti con avvisi · vedi dettagli</small>
+        </button>
       </div>
       ${showFinance ? `
       <details class="client-finance-disclosure">
@@ -304,13 +377,14 @@ const Clients = (() => {
     return items.map(({ client, metrics }) => `
       <div class="package-alert-row" onclick="Calendar.switchView('clients')">
         <div>
-          <div class="package-alert-name">${client.nome} ${client.cognome}</div>
+          <div class="package-alert-name">${escapeHtml(`${client.nome} ${client.cognome}`)}</div>
           <div class="package-alert-meta">
             Ciclo: ${metrics.completed}/${metrics.total || '—'} fatte · ${metrics.remaining} residue · ${metrics.lifetimeCompleted} complessive
           </div>
         </div>
         <div class="package-alert-tags">
-          ${metrics.alerts.slice(0, 2).map(a => `<span>${a}</span>`).join('')}
+          ${metrics.alertDetails.slice(0, 2).map(alert => alertButton(client, alert)).join('')}
+          <button type="button" class="btn-ghost btn-sm" onclick="event.stopPropagation();Clients.openAlerts(${clientArgument(client.id)})">Spiegazioni e soluzioni (${metrics.alerts.length})</button>
         </div>
       </div>
     `).join('');
@@ -426,7 +500,7 @@ const Clients = (() => {
                       <button class="btn-icon-sm" title="Aggiorna il residuo del cliente al valore corretto" onclick="event.stopPropagation();Clients.alignResidual('${c.id}')">
                         Allinea residuo
                       </button>` : ''}
-                    ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alerts.map(a => `<span>${a}</span>`).join('')}</div>` : ''}
+                    ${metrics.alerts.length ? `<div class="package-alerts">${metrics.alertDetails.map(alert => alertButton(c, alert)).join('')}</div>` : ''}
                   </div>`}
                 </td>
                 <td>
@@ -597,6 +671,9 @@ const Clients = (() => {
     getPackageMetrics,
     historyStatus,
     renderDashboardAlerts,
+    openAlertSummary,
+    openAlerts,
+    openAlertAction,
     exportPackagePayments,
   };
 })();

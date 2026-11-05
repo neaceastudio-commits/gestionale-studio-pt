@@ -1,0 +1,251 @@
+{
+  "siteId": "28855faa-de52-4e4c-b1c2-e2db4965670f",
+  "deploy": "6ae4ec1ad7e2511834092478",
+  "commit": "e989f58311b6b094de1b81c361d771203e865a70",
+  "files": {
+    "/_headers": "186fd5742871fcea5b60098ab314a04eeef5b002",
+    "/consenso/index.html": "50bac36c358388c2d2238ddbde9397ab30cd7639",
+    "/css/apple-calendar.css": "2b30b970d2e6feebf8e66602f297c0a6025915b1",
+    "/css/base.css": "f653b4b02d762e30e0c1ad5a36218c649bd31012",
+    "/css/calendar-audit-view.css": "d8de30a7b455d8f07dba254677ea5d5f4c269129",
+    "/css/calendar.css": "3662c20147f447399b5e1d9753d512fdb47833bd",
+    "/css/client-journey.css": "4e556d2e713fab6a176a451a27fee1bc79e3ba6a",
+    "/css/clients-fix.css": "c0828ebc9544fdae25b9d9c621a4056b6a290f1d",
+    "/css/expected-renewals.css": "c794ad4d26add69a62465c93188438fb2b1cc8fd",
+    "/css/layout.css": "5632135efaa9c64c2a337a2eaf3af084e5fba8b1",
+    "/css/pt-availability-overview.css": "af496f6a093f445cfed57274fc623e3cf0d5ba50",
+    "/css/pt-trainer-payments.css": "87f9565b8225f29ea281b98febd55d49759ec314",
+    "/css/ui-fixes.css": "eef96b07cd64604b265828b44c4f7d4f87887764",
+    "/index.html": "612c835d9a4a7838a98bde31b46ce837d921d0da",
+    "/js/app.js": "622b549e74a98206a8ee7e69495389cd5b10dfbb",
+    "/js/apple-calendar.js": "e32ca9aaedeb1cdad000eff9306f16bf4f53cd9f",
+    "/js/apple-operativo.js": "21698bd48c23b524d5a600967c4cb0ffac044f2c",
+    "/js/calendar-audit-view.js": "e1b600cf7d33d8204fb28ff56b5a744a92f9b1e4",
+    "/js/calendar-audit.js": "ca8a8342d3a41c3a50f28c512cfe22287bf33690",
+    "/js/calendar-flex.js": "b0652079cc445f98c444c8307ee184a726c5451d",
+    "/js/calendar.js": "595792d64ed05484b8ebbe08fbf5a66e628a75e9",
+    "/js/client-journey-model.js": "3154c81c46919f638d1d83d786847a5be1b7380a",
+    "/js/client-journey-scoring.js": "b232f7c75a3c4df86a64eaaaf84e0a333c072ecb",
+    "/js/client-journey.js": "857e113e42529848ce83faf11e444ac9fd836556",
+    "/js/clients.js": "f2287116412e888e0cc96945b14929376442da50",
+    "/js/config.js": "f8eacb3944472344ae616ed2c6ab0e8000ac60dd",
+    "/js/expected-renewals.js": "46e6d30f2692ce8e84ee3514e70fb1178c9d7146",
+    "/js/nutrition-fixes.js": "3ed34789f6807425562c295d4adc4720fa881190",
+    "/js/operators.js": "4f1b6e7f5be28060a7d276e3813fad7bb1258af5",
+    "/js/package-ledger.js": "76cc196319a2879067569a4e6d58e7d4de0ae937",
+    "/js/pt-availability-overview.js": "af6af8d33c865b85de51d92c8379f1bc744e5c32",
+    "/js/pt-hours-report.js": "8ce773602b0e4e57bf65f32c456d66251ed9a8f4",
+    "/js/pt-pair-sessions.js": "9b53f30be67dba1afb972415bce622b5eebc1250",
+    "/js/pt-session-correction.js": "2d5819f3ea50528087f85fca0ecdc941e284c140",
+    "/js/pt-session-model.js": "35822aa5c200eb6a9cb2049947ba987bc86c1a4c",
+    "/js/pt-trainer-payments.js": "6901774bb2df21faee5deaa06db1def281beb4c2",
+    "/js/services.js": "ec31078c6a5f7e09b0af8d90229795220422b25e",
+    "/js/session-fixes.js": "be05c5de5b3719fc3cd0c22e9261248cd251d9ee",
+    "/js/shared-finance.js": "a00f8ae2c3f04243e19963febdf2c310dad0eab3",
+    "/js/sheets.js": "9b3d47197376451a39e7047c1ec5d3ace9f21762",
+    "/js/state.js": "4f909020cc319aa85578864205cf6574836b7076",
+    "/js/supabase.js": "57b65f628c4ce9bb4aa30530be23308da36b26a1",
+    "/js/whatsapp-agenda.js": "a569d594db1bf44e8f174908e12223cb1ef6d34e",
+    "/netlify.toml": "5d5074f22e6ff8487b6fc9f2ecfd00ee0d91a3eb"
+  },
+  "functions": [
+    {
+      "n": "acquisition-calendar-activity",
+      "d": "315256dc1180c961fae542b49f4b39e6073ce9048ab75c76900899439e541bbf",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "apple-caldav-link",
+      "d": "71133f7051123e76f702c4fbcf2f6d6ac897513d60b24ab2489e2b52a9ea724d",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "apple-calendar",
+      "d": "4d70fcda81c6f19bce5e65e4f006986aa5067c7879831f441dea9b3e542a22c9",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "apple-calendar-dry-run",
+      "d": "9ebcd27db72e9f8399b321a45aff784848c790ab5539a00de7d02ce1ffec80da",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "calendar-activity",
+      "d": "4a46a4ce04efe13ad2d033145b995b9192ee351bfd119616e39b65ded3312f4b",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "calendar-client-finance",
+      "d": "41c9be3e3a8574217aca4e98e8b587f4f19a171251a2d63e48cdd7d906944ef8",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "calendar-runtime",
+      "d": "057ef42d141492647e3d9996b11450ce39f0764b84885cb1cdd75990ab270be1",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "calendar-system-activity",
+      "d": "85d923b4e1da142c3f1a798ace10fe154f4bbc69829ab939cdf01c7cc1a88b51",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "expected-renewals-scheduled",
+      "d": "9af05cf5b23b1864b382ddd84580ffd6059360be45264e2ca2b1341b0f3e31b8",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "bootstrapVersion": "2.24.0",
+        "runtimeAPIVersion": 2
+      },
+      "im": "stream"
+    },
+    {
+      "n": "form-notify",
+      "d": "f7f7e58062f4e35bc8297f8d2c452e0e65301f34010fb24e5d72776cfd2bbe95",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "foto-pt",
+      "d": "98df88f9d2452319e813f75b3b9689282226e67593042fc10310181fba45b017",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "pt-access-email",
+      "d": "41151571c3fedae23bb3099c9bbad65a0ba7cd96ae82dc0a016adf0e902de8db",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "schedule-client-package",
+      "d": "0061d9788a1e2de0cb7e282c593037020a530fce51698d4a5bddf19a2752d355",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "studio-calendar-activity",
+      "d": "8fb595c9de9361ebe6fef26c09f7d29e2815fed91b457d1a6d1157dd3cffd4cf",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "whatsapp-agenda",
+      "d": "2411c559cac5ae358ee31fa2bcf33f4ba0b0ae8f9058655c08dbdcde472e8987",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "runtimeAPIVersion": 1
+      }
+    },
+    {
+      "n": "whatsapp-agenda-scheduled",
+      "d": "e3fe8dff14db92aa0d0350cc88277c6e487d12405f1120cec3ef6075ae9ef863",
+      "r": "nodejs24.x",
+      "rg": "us-east-2",
+      "m": 1024,
+      "p": 10,
+      "bd": {
+        "bootstrapVersion": "2.24.0",
+        "runtimeAPIVersion": 2
+      },
+      "im": "stream"
+    }
+  ],
+  "schedules": [
+    {
+      "cron": "*/10 * * * *",
+      "name": "expected-renewals-scheduled"
+    },
+    {
+      "cron": "30 4,5 * * *",
+      "name": "whatsapp-agenda-scheduled"
+    }
+  ],
+  "configuration": {
+    "branch": "main",
+    "stopBuilds": true,
+    "allowedBranches": [
+      "main"
+    ],
+    "locked": true
+  }
+}
