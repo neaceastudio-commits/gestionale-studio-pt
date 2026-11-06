@@ -26,7 +26,7 @@ if(releaseOrigin&&!/^https:\/\/(?:[a-f0-9]+--)?new-calendar-neacea\.netlify\.app
   }
   for(let i=0;i<7;i++)await db.query('insert into appointments(id,service_id,client_ids,operator_id,date,start_time,duration_min,buffer_min,status,notes) values($1,$2,$3,$4,$5,$6,60,10,$7,$8)',
    ['old'+i,'pt12',JSON.stringify(['a','b']),i===0?'sub-a':i===5?'sub-b':'pt','2026-10-'+String(i+1).padStart(2,'0'),'17:00','fatto',model.write({notes:''},{version:1,participants:links}).notes]);
-  for(const f of ['20260912151523_calendar_prerelease_atomic.sql','20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261009070726_calendar_pt_pair_rules.sql','20261009091426_calendar_pair_payments_review.sql','20261009095441_calendar_expected_renewals.sql','20261012063548_calendar_charged_absence.sql'])await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations',f),'utf8'));
+  for(const f of ['20260912151523_calendar_prerelease_atomic.sql','20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261009070726_calendar_pt_pair_rules.sql','20261009091426_calendar_pair_payments_review.sql','20261009095441_calendar_expected_renewals.sql','20261012063548_calendar_charged_absence.sql','20261029180107_calendar_reprogram_empty_confirmed_renewal.sql'])await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations',f),'utf8'));
   await db.exec('update calendar_runtime_flags set enabled=true');
   // Serialize role switching because the browser may issue parallel reads.
   let queue=Promise.resolve();
@@ -100,6 +100,9 @@ if(releaseOrigin&&!/^https:\/\/(?:[a-f0-9]+--)?new-calendar-neacea\.netlify\.app
   assert.equal(await page.locator('[id^=pair-renew-],[id^=pair-amount-]').count(),0);
   assert.deepEqual(await page.locator('#pair-operator option').allTextContents(),['Trainer']);
   assert.equal(await page.locator('#pair-operator').isDisabled(),true);
+  await page.getByRole('button',{name:'Verifica e mostra anteprima',exact:true}).click();
+  await page.getByRole('alert').filter({hasText:'Completa data, orario, PT, giorni e numero sedute'}).waitFor({state:'visible'});
+  assert.equal(await page.locator('#pair-confirm').count(),0,'invalid preview remains editable and cannot be saved');
   await page.screenshot({path:'/tmp/neacea-pair-recovery-form.png',fullPage:true});
   await page.fill('#pair-start',recoveryDate);await page.check(`.pair-day[value="${day}"]`);
   await page.getByRole('button',{name:'Verifica e mostra anteprima',exact:true}).click();
@@ -153,6 +156,43 @@ if(releaseOrigin&&!/^https:\/\/(?:[a-f0-9]+--)?new-calendar-neacea\.netlify\.app
   assert.deepEqual((await future()).map(a=>a.date),initialFuture.map(a=>a.date));
   assert.ok((await future()).every(a=>a.operator_id==='sub-a'));
   assert.deepEqual((await all('clients')).map(c=>c.pt_assegnato),['pt','pt']);
+  // Confirm, remove the successor bookings and reactivate both clients.
+  // The booked recovery remains part of the original package throughout.
+  await save({...recovery,status:'prenotato'},(await all('appointments')).find(a=>a.id===recovery.id));
+  await rpc('calendar_expected_renewal',['owner','confirm',JSON.stringify({id:editedProposal.id,version:editedProposal.version})]);
+  for(const a of await future())await save({...a,status:'annullato'},a);
+  for(const active of [false,true])for(const id of ['a','b'])await rpc('calendar_audit_write',['owner','owner','calendar',crypto.randomUUID(),'client',JSON.stringify({method:'PATCH',rows:[{id,active,stato_abbonamento:active?'Attivo':'Non rinnova'}]})]);
+  const oldPackageClients=await all('clients'),oldRecovery=(await all('appointments')).find(a=>a.id===recovery.id);
+  await page.reload();await page.waitForFunction(()=>State.getClients().length===2);
+  await page.evaluate(()=>App.openPackageOverview('a'));
+  await page.getByRole('button',{name:'Riprogramma rinnovo',exact:true}).waitFor({timeout:5000});
+  assert.equal(await page.locator('#pkg-manual-renewal').isVisible(),false);
+  await page.getByRole('button',{name:'Riprogramma rinnovo',exact:true}).click();
+  await page.waitForSelector('#expected-edit');
+  await page.getByRole('button',{name:'Indietro',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Riprova attivazione',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Riprogramma rinnovo',exact:true}).click();
+  const reprogramDate=new Date(Date.now()+28*86400000).toISOString().slice(0,10);
+  await page.fill('[name=startDate]',reprogramDate);
+  await page.fill(`[data-day="${day}"] [name=time]`,'19:00');
+  await page.getByRole('button',{name:'Salva proposta',exact:true}).click();
+  await page.waitForSelector('[data-action=confirm]');
+  const reprogrammed=(await all('calendar_expected_renewals'))[0];
+  assert.equal(reprogrammed.id,editedProposal.id);assert.equal(reprogrammed.state,'pending');
+  assert.equal(reprogrammed.plan.startDate,reprogramDate);
+  assert.equal((await future()).filter(a=>a.status==='prenotato').length,8);
+  assert.equal((await future()).filter(a=>a.status==='annullato').length,8);
+  assert.deepEqual(await all('clients'),oldPackageClients);
+  assert.deepEqual((await all('appointments')).find(a=>a.id===recovery.id),oldRecovery);
+  await page.reload();await page.waitForFunction(()=>State.getClients().length===2);
+  await page.evaluate(()=>ExpectedRenewals.forClient('a'));await page.waitForSelector('[data-action=confirm]');
+  assert.match(await page.locator('#expected-renewals-body').innerText(),/8 prenotate/);
+  await page.click('[data-action=confirm]');
+  await page.waitForFunction(()=>document.getElementById('expected-renewals-body').textContent.includes('Confermato · attesa'));
+  assert.equal((await all('calendar_expected_renewals'))[0].state,'confirmed');
+  assert.deepEqual(await all('clients'),oldPackageClients,'confirmation waits for the original recovery');
+  await page.screenshot({path:'/tmp/neacea-renewal-reprogram-confirmed.png',fullPage:true});
+  console.log('PASS reprogram: empty confirmed renewal → reactivate pair → same proposal with 8 new bookings → reload → confirmation; recovery and old balances preserved.');
   await page.evaluate(()=>{
    const single={...State.getClients()[0],id:'single',ptPartnerId:null,packageTypes:['PT 1:1']};
    State.saveClients([...State.getClients(),single]);

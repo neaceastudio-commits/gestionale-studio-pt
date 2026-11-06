@@ -367,7 +367,8 @@ const SupabaseSync = (() => {
   }
 
   async function saveAppointmentAtomic(appt, before = null) {
-    const result = await request('rpc/calendar_save_appointment', {
+    const automaticRecovery = before && before.status !== 'annullato' && appt.status === 'annullato' && ['pt11','pt12','circuit'].includes(before.serviceId);
+    const result = automaticRecovery ? await CalendarAudit.call('cancel_and_recover', {expected: appointmentToDb(before)}) : await request('rpc/calendar_save_appointment', {
       method: 'POST', body: { p_appointment: appointmentToDb(appt), p_expected: before ? appointmentToDb(before) : null },
     });
     if (result?.error) return result;
@@ -377,12 +378,18 @@ const SupabaseSync = (() => {
       || expectedClients.some(id => !result.clients.some(c => c.id === id))) {
       return { error: 'Conferma del salvataggio incompleta. Ricarica il calendario prima di riprovare.' };
     }
+    if (automaticRecovery && (!result.recovery?.id || !['prenotato','fatto','noshow','annullato'].includes(result.recovery.status)
+      || result.recovery.service_id !== before.serviceId || JSON.stringify(result.recovery.client_ids) !== JSON.stringify(before.clientIds)
+      || !result.recovery.date || !result.recovery.start_time || !result.recovery.notes?.includes('[RECUPERO-DA ' + before.id + ']'))) {
+      return {error:'Conferma del recupero incompleta. Ricarica il Calendario prima di riprovare.'};
+    }
     const saved = appointmentFromDb(row);
-    const rows = State.getAppointments().filter(a => a.id !== saved.id);
-    State.saveAppointments([...rows, saved]);
+    const recovery = result.recovery ? appointmentFromDb(result.recovery) : null;
+    const rows = State.getAppointments().filter(a => a.id !== saved.id && a.id !== recovery?.id);
+    State.saveAppointments([...rows, saved, ...(recovery ? [recovery] : [])]);
     const clients = new Map(result.clients.map(c => [c.id, clientFromDb(c)]));
     State.saveClients(State.getClients().map(c => clients.get(c.id) || c));
-    return { appointment: saved, clients: [...clients.values()] };
+    return { appointment: saved, recovery, planningWarnings: result.planning_warnings || result.warnings || [], clients: [...clients.values()] };
   }
 
   async function pushAppointment(appt) {

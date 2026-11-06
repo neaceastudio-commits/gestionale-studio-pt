@@ -389,14 +389,14 @@ const Services = (() => {
           const conflictClients = (operatorConflict.clientIds || []).map(clientConflictLabel).join(', ') || 'nessun cliente';
           return `${String(operatorConflict.startTime || '').slice(0, 5)} con ${conflictClients}`;
         }).join(' · ');
-        planning.push(`${operatorFullName(appt.operatorId)} occupato alle ${conflictSummary}`);
+        warnings.push(`${operatorFullName(appt.operatorId)} occupato alle ${conflictSummary}`);
       }
     }
 
     const clientConflictId = (appt.clientIds || []).find(cid =>
       appts.some(a => (a.clientIds || []).includes(cid) && overlaps(appt, a, false))
     );
-    if (clientConflictId) planning.push(`${clientFullName(clientConflictId)} ha gia un appuntamento alle ${String(appt.startTime || '').slice(0, 5)}`);
+    if (clientConflictId) warnings.push(`${clientFullName(clientConflictId)} ha gia un appuntamento alle ${String(appt.startTime || '').slice(0, 5)}`);
 
     const incompatibleClient = (appt.clientIds || []).map(getClient).find(c =>
       c && svc && !svc.isBlock && !clientCanUseService(c, appt.serviceId)
@@ -432,7 +432,7 @@ const Services = (() => {
       const current = getRoomLoadAt(appt.date, appt.startTime, appt.durationMin, svc.room, appt.id);
       const add = appointmentRoomLoad(appt);
       const max = getRoomMax(svc.room);
-      if (current + add > max) planning.push(`${CONFIG.ROOMS[svc.room]?.label || 'Sala'} piena`);
+      if (current + add > max) warnings.push(`${CONFIG.ROOMS[svc.room]?.label || 'Sala'} piena`);
     }
 
     if (flex) {

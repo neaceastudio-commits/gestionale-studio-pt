@@ -3,6 +3,7 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
+bash scripts/check-calendar-automatic-recovery.sh
 
 node --check app/calendario-studio/js/pt-hours-report.js
 node --check app/calendario-studio/js/pt-availability-overview.js
@@ -43,6 +44,12 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    scripts/check-calendar-automatic-recovery.sh
+    tests/calendar-automatic-recovery.test.cjs
+    tests/calendar-automatic-recovery-concurrency.test.cjs
+    tests/calendar-automatic-recovery-browser.cjs
+    tests/helpers/calendar-recovery-db.cjs
+    supabase/migrations/20261106114015_calendar_automatic_recovery.sql
     app/calendario-studio
     app/acquisizione/index.html
     app/anamnesi-cliente/index.html

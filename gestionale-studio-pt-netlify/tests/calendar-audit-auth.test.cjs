@@ -52,3 +52,20 @@ test('manual groups require current owner and valid values; actor always comes f
   const call=m.calls.find(c=>c.url.includes('calendar_set_client_group'));assert.equal(call.body.p_actor_id,'owner');assert.equal(call.body.p_expected_group,null);assert.ok(!JSON.stringify(call.body).includes('FORGED'));
  }finally{m.restore()}
 });
+test('automatic recovery uses the verified actor, original snapshot and protocol guard, including older cancellation callers',async()=>{
+ const m=mock('owner');try{
+  const expected={id:'source',service_id:'pt12',status:'prenotato',client_ids:['a','b']};
+  for(const operation of ['cancel_and_recover','save']){
+   const result=await handler(event({accessToken:token('owner','owner'),operation,actor_id:'FORGED',payload:{expected,appointment:{...expected,status:'annullato'},recovery:{date:'FORGED'}}}));
+   assert.equal(result.statusCode,200);
+   const call=m.calls.filter(c=>c.url.includes('calendar_cancel_and_recover')).at(-1);
+   assert.equal(call.body.p_actor_id,'owner');assert.equal(call.body.p_actor_role,'owner');assert.deepEqual(call.body.p_expected,expected);
+   assert.ok(!JSON.stringify(call.body).includes('FORGED'),'the browser cannot select a date, actor or replacement');
+  }
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'cancel_and_recover',calendarRevision:undefined,payload:{expected}}))).statusCode,409);
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'cancel_and_recover',payload:{expected:{id:'x',service_id:'nutrizione'}}}))).statusCode,400);
+  const calls=m.calls.filter(c=>c.url.includes('calendar_cancel_and_recover')).length;
+  await handler(event({accessToken:token('owner','owner'),operation:'save',payload:{expected:{...expected,status:'annullato'},appointment:{...expected,status:'annullato',notes:'Modifica note dello storico'}}}));
+  assert.equal(m.calls.filter(c=>c.url.includes('calendar_cancel_and_recover')).length,calls,'editing an already cancelled historical row does not schedule another recovery');
+ }finally{m.restore()}
+});

@@ -52,3 +52,18 @@ test('pair planning always belongs to the assigned trainer, including after a te
  const f=fixture(),input={start:'2099-11-02',time:'17:00',operatorId:'sub',days:[1],count:1,renewals:[null,null]};
  assert.throws(()=>f.api.buildPlan(input,f.clients,f.rows),/PT assegnato/);
 });
+test('an incomplete recovery shows a persistent error and overlaps remain advisory',async()=>{
+ const f=fixture();await f.api.open('a',false);f.api.configure();
+ assert.match(f.panels.at(-1),/id="pair-plan-error"[^>]*role="alert"/);
+ let focused=false;
+ const error={hidden:true,textContent:'',scrollIntoView(){},focus(){focused=true;}};
+ Object.assign(f.elements,{'pair-plan-error':error,'pair-start':{value:''},'pair-time':{value:'17:00'},'pair-operator':{value:'pt'},'pair-sessions':{value:'1'}});
+ f.rows.push({id:'busy',serviceId:'pt11',clientIds:['other'],operatorId:'pt',date:'2099-11-02',startTime:'17:00',durationMin:60,status:'prenotato'});
+ f.api.preview();
+ assert.equal(error.hidden,false);assert.match(error.textContent,/Completa data/);assert.equal(focused,true);
+ assert.doesNotMatch(f.panels.at(-1),/id="pair-confirm"/);
+ f.elements['pair-start'].value='2099-11-02';f.api.preview();
+ assert.match(f.panels.at(-1),/Sovrapposizione.*2099-11-02.*17:00/);
+ assert.match(f.panels.at(-1),/id="pair-confirm"/);
+ assert.equal(f.rows.length,9,'preview does not write or alter appointments');
+});

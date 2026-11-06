@@ -848,7 +848,16 @@ const App = {
 
   _showAppointmentSaveError(message, form = document.getElementById('appt-service')) {
     UI.showToast(message, 'error');
-    if (!form || document.getElementById('appt-service') !== form) return;
+    if (!form) {
+      const body = document.querySelector?.('#modal-overlay.open .modal-body');
+      if (body) {
+        let errorBox = document.getElementById('calendar-appointment-error');
+        if (!errorBox) {errorBox = document.createElement('p');errorBox.id = 'calendar-appointment-error';errorBox.className = 'form-warning';errorBox.setAttribute('role','alert');errorBox.tabIndex = -1;body.prepend(errorBox);}
+        errorBox.textContent = message;errorBox.scrollIntoView?.({block:'nearest'});errorBox.focus?.();
+      }
+      return;
+    }
+    if (document.getElementById('appt-service') !== form) return;
     const errorBox = document.getElementById('appointment-save-error');
     if (errorBox) { errorBox.textContent = message; errorBox.hidden = false; }
   },
@@ -1089,11 +1098,33 @@ const App = {
       appt = App._preserveAppointmentPackage(appt, before);
       const result = await SupabaseSync.saveAppointmentAtomic(appt, before);
       if (result?.error || !result?.appointment) throw new Error(result?.error || 'Conferma mancante');
+      if (result.recovery) App._showAutomaticRecoveryNotice(result.recovery, result.planningWarnings);
+      else if (result.planningWarnings?.length) App._showAutomaticRecoveryNotice(result.appointment, result.planningWarnings, false);
       return result.appointment;
     } catch (error) {
       App._showAppointmentSaveError(error.message || 'Salvataggio non confermato. Ricarica il calendario e riprova.', form);
       return null;
     }
+  },
+  _showAutomaticRecoveryNotice(recovery, warnings = [], automatic = true) {
+    document.getElementById('calendar-recovery-notice')?.remove();
+    const notice = document.createElement('div');
+    notice.id = 'calendar-recovery-notice';
+    notice.className = 'calendar-recovery-notice';
+    notice.setAttribute('role', warnings.length ? 'alert' : 'status');
+    const message = document.createElement('p');
+    message.textContent = `${automatic ? 'Recupero programmato' : 'Appuntamento salvato'}: ${App._fmtLongDate(recovery.date)} alle ${String(recovery.startTime).slice(0,5)}.`;
+    notice.appendChild(message);
+    if (warnings.length) {
+      const warning = document.createElement('p');
+      warning.className = 'form-warning';
+      warning.textContent = `⚠ Sovrapposizione in agenda: ${automatic ? 'il recupero' : 'l’appuntamento'} è stato inserito comunque. Verifica gli appuntamenti dello stesso orario.`;
+      notice.appendChild(warning);
+    }
+    const open = document.createElement('button');open.className = 'btn';open.textContent = automatic ? 'Apri recupero' : 'Apri appuntamento';
+    open.onclick = () => {notice.remove();App.openDetail(recovery.id);};
+    const close = document.createElement('button');close.className = 'btn';close.textContent = 'Chiudi';close.onclick = () => notice.remove();
+    notice.append(open, close);document.body.appendChild(notice);
   },
   async _markDone(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
@@ -1146,7 +1177,7 @@ const App = {
   async _markCancelled(apptId) {
     const before = State.getAppointments().find(a => a.id === apptId);
     if (!before || !App.guardPortalEdit('appointment', before)) return;
-    if (!confirm(before.serviceId === 'pt12' ? 'Annullare la seduta condivisa per entrambi? Se già scalata, la seduta sarà restituita ai rispettivi pacchetti correnti. Rimarrà nello storico.' : Services.serviceUsesPackageSessions(before.serviceId)?'Annullare e lasciare la lezione da recuperare? La seduta non sarà scalata e rimarrà nello storico.':'Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
+    if (!confirm(Services.serviceUsesPackageSessions(before.serviceId) ? 'Annullare la seduta e programmare automaticamente il recupero secondo il pacchetto? Per PT 1:2 vale per entrambi. Eventuali sovrapposizioni saranno segnalate e non impediranno l’inserimento. La seduta originale resta nello storico.' : 'Annullare questo appuntamento? Rimarrà nello storico e non verrà eliminato.')) return;
     const cancelled = await App._persistAppointment({ ...before, status: 'annullato', notes: App._withPtAudit(before?.notes, 'appuntamento annullato') }, before);
     if (!cancelled) return;
     if (CONFIG.SHEETS.enabled) Sheets.pushAppointment(cancelled);

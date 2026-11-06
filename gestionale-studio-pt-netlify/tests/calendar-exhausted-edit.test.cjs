@@ -10,7 +10,8 @@ test('exhausted package allows correction of existing reservation and cancellati
  const {s,old,rows}=fixture();assert.equal(s.getClientSessionMetrics(s.getClient('c')).remaining,0);
  assert.equal(s.canBookAppointment({...old,date:'2026-10-15'}).ok,true);
  rows.push({...old,id:'occupant',date:'2026-10-15',clientIds:['other']});assert.equal(s.canBookAppointment({...old,date:'2026-10-15',status:'annullato'}).ok,true);
- assert.equal(s.canBookAppointment({...old,date:'2026-10-15'}).ok,false); // room checks still apply to moves
+ const overlapping=s.canBookAppointment({...old,date:'2026-10-15'});
+ assert.equal(overlapping.ok,true);assert.match(overlapping.warnings.join(' '),/piena/); // capacity is now an alert; package accounting stays enforced below
 });
 test('no bypass for new bookings, fabricated IDs, new participants, new cycle, reactivation or consumption',()=>{
  const {s,old,rows}=fixture();

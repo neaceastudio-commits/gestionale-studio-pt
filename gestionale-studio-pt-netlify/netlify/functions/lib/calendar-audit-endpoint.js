@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
 const calendarRevision='20261030-shared-finance-v1';
-const calendarWrites=new Set(['save','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
+const calendarWrites=new Set(['save','cancel_and_recover','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -63,6 +63,12 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    const changes=input.payload?.changes;
    if(!Array.isArray(changes)||changes.length<1||changes.length>100)return reply(400,{error:'Seleziona da 1 a 100 sedute'});
    return reply(200,await db('rpc/calendar_correct_pt_sessions',{method:'POST',body:{p_actor_id:actor.id,p_request_id:crypto.randomUUID(),p_changes:changes}}));
+  }
+  if(input.operation==='cancel_and_recover'||source==='calendar'&&input.operation==='save'&&input.payload?.appointment?.status==='annullato'&&input.payload?.expected?.status!=='annullato'&&['pt11','pt12','circuit'].includes(input.payload?.expected?.service_id)){
+   if(source!=='calendar')return reply(403,{error:'Recupero disponibile dal Calendario'});
+   const expected=input.payload?.expected;
+   if(!expected?.id||!['pt11','pt12','circuit'].includes(expected.service_id))return reply(400,{error:'Seleziona una seduta del pacchetto da recuperare'});
+   return reply(200,await db('rpc/calendar_cancel_and_recover',{method:'POST',body:{p_actor_id:actor.id,p_actor_role:actor.role,p_request_id:crypto.randomUUID(),p_expected:expected}}));
   }
   if(input.operation==='list'){
    if(actor.role!=='owner')return reply(403,{error:'Registro riservato alla Direzione'});

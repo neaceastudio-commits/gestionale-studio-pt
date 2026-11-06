@@ -1886,3 +1886,11 @@
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+.calendar-recovery-notice {
+  position: fixed; bottom: 16px; right: 16px; z-index: 10000;
+  width: min(440px, calc(100vw - 32px)); max-height: 70vh; overflow: auto;
+  padding: 16px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg2); color: var(--text); box-shadow: 0 8px 28px #0003;
+}
+.calendar-recovery-notice p { margin: 0 0 12px; }
+.calendar-recovery-notice button + button { margin-left: 8px; }
