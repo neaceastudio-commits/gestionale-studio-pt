@@ -2,7 +2,9 @@
 
 6 novembre 2026. Gestionale Studio PT / Calendario.
 Branch `feature/whatsapp-agenda-pt-v1`, HEAD `105650c`.
-Stato: **implementato e collaudato localmente, non attivo in produzione**.
+Stato aggiornato: **pubblicato e verificato il 6 novembre 2026**.
+[Versioni online e prove di pubblicazione](20261106-calendar-automatic-recovery-published.md).
+Il seguito conserva lo stato e le prove della preparazione locale precedente al rilascio.
 
 ## Comportamento richiesto
 
