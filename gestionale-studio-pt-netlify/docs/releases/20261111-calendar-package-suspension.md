@@ -91,7 +91,7 @@ Esito finale dell'11 novembre 2026:
   93 elementi non tracciati, comprese le lavorazioni preesistenti. Nessun file
   preesistente ripristinato, nessun commit o push in questa lavorazione.
 
-## Stato e prossimo passo
+## Stato alla preparazione locale
 
 Lavoro locale nel branch `feature/whatsapp-agenda-pt-v1`, HEAD iniziale
 `105650c`. Le numerose modifiche e i file non tracciati preesistenti sono
@@ -106,3 +106,60 @@ applicare la migrazione prima del nuovo gateway/client e verificare gli asset.
 L'eventuale sospensione reale deve mantenere un confronto prima/dopo di
 presenze, residuo, registro incassi e monte ore, con conferma da rilettura del
 database reale. Non sistemare automaticamente le due prenotazioni passate.
+
+## Pubblicazione autorizzata — 11 novembre 2026
+
+L'utente ha autorizzato «pubblica e fai commit». Produzione iniziale verificata
+tramite Netlify: `53923f6a1dfd1f5811df81000df38ad4a361c8ff`, deploy
+`6aede220376837392dd635d0`.
+
+Pubblicato il commit **`b3bb4c3b2cdea562fc31af8e0806e341f2286baa`**, branch
+`release/calendar-package-suspension-20261111`, sul deploy
+**`6af438703c3c7ac255e86eff`**, alle **10:42 Europe/Rome**. Anteprima verificata
+`6af437dd2604d128104e2973`. Dati di rilascio e hash nel
+[`20261111-calendar-package-suspension-published.json`](20261111-calendar-package-suspension-published.json).
+
+- Candidato creato con indice Git separato dal commit effettivamente online.
+  Conservati il serializer orario e la versione di `expected-renewals.js`
+  già in produzione; escluse le modifiche locali estranee. Nessun worktree.
+- Suite completa superata sul commit pulito, incluso il controllo Git;
+  nove prove mirate frontend/SQL e prova PostgreSQL con due connessioni superate.
+  Dipendenze installate dal lockfile del candidato. Per il pacchetto PostgreSQL
+  è stato eseguito il suo postinstall dichiarato (`npm rebuild`), necessario
+  a creare i link delle librerie native. Nessuna dipendenza globale o aggiunta.
+- Aggiunta normalizzazione degli snapshot tramite `jsonb_populate_record`:
+  il nuovo confronto accetta l'orario storico `HH:MM` senza cambiare il
+  serializer condiviso o le altre operazioni di salvataggio.
+- Migrazione applicata con versione database `20261111093950`. Corpo SQL
+  installato uguale al candidato (`md5 6fee5290b38308459f1d56d73f8b28aa`),
+  `security invoker`, `search_path` vuoto; esecuzione negata ad `anon` e
+  `authenticated`, consentita al solo ruolo server e al proprietario Postgres.
+  Nessuna nuova segnalazione degli advisor di sicurezza.
+- Verificati 44 file pubblici, 16 funzioni e due pianificazioni. Cambiati solo
+  cinque asset pubblici; dieci archivi funzione identici. Le funzioni che
+  importano il gateway e gli scheduler riconfezionati sono stati verificati
+  confrontando anche tutte le loro sorgenti dipendenti.
+- Browser su asset reali di anteprima e produzione, desktop e mobile,
+  con API sintetiche: Sospendi/Riattiva, pacchetto, storico, ore e compensi
+  superati. Il primo controllo desktop online ha avuto un timeout di rete IPv6;
+  la ripetizione con risoluzione IPv4 è passata. API anonima online respinta 401.
+- Configurazione finale verificata: produzione bloccata sul nuovo deploy,
+  ramo di build `main`, build sospese, soli rami `main` ammessi.
+- Lettura indipendente del database reale: cliente ancora attivo, pacchetto
+  8 lezioni / residuo 4; note del pacchetto identiche; 12 righe chiuse e
+  720 minuti registrati, con digest delle righe identico prima e dopo.
+  **Questa pubblicazione non ha sospeso automaticamente Veronica.**
+
+Il controllo automatico di approvazione ha respinto la creazione di record
+sintetici nel database di produzione: l'autorizzazione al rilascio non comprende
+questi dati di prova. La richiesta non è stata eseguita né aggirata; verificati
+zero record sintetici. Pertanto le prove di scrittura e riapertura riguardano
+il database locale di test; online sono stati verificati installazione SQL,
+permessi, asset, API anonima e conservazione dei dati reali in sola lettura.
+Non dichiarare collaudata una scrittura della nuova azione in produzione.
+
+Checkout di lavoro rimasto su `feature/whatsapp-agenda-pt-v1` / `105650c`,
+indice Git conservato byte per byte e lavorazioni preesistenti intatte.
+Il commit applicativo e il rapporto finale sono salvati sul ramo di rilascio.
+Prossimo passo operativo: ricaricare il Calendario e usare **Sospendi pacchetto**;
+alla ripresa usare **Riattiva cliente**, poi riprogrammare le lezioni residue.
