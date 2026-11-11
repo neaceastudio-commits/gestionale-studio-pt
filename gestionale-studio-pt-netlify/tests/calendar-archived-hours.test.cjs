@@ -22,7 +22,7 @@ test('archiving cancels only future bookings; closed presences and charged absen
  const futurePair=M.write(a('pair-future','pt12','prenotato',{date:'2099-01-04',clientIds:['a','b']}),{version:1,participants:{a:{status:'prenotato'},b:{status:'prenotato'}}});
  const future=a('future','pt11','prenotato',{date:'2099-01-05'});
  const c=context([{id:'a',nome:'Cliente',active:true},{id:'b',nome:'Partner',active:true}],[closed,absence,pair,futurePair,future]);const writes=[];
- Object.assign(c,{confirm:()=>true,App:{guardStudioManagement:()=>true,guardPortalEdit:()=>true},SupabaseSync:{saveAppointmentAtomic:async (x,before)=>{assert.equal(before.status,'prenotato');writes.push(x);return {appointment:x}},archiveClient:async (_,x)=>x},UI:{showToast(){},closeModal(){}}});
+ Object.assign(c,{confirm:()=>true,App:{guardStudioManagement:()=>true,guardPortalEdit:()=>true},SupabaseSync:{saveAppointmentAtomic:async()=>{throw Error('Archive must not create recovery')},archiveClient:async (client,x)=>{assert.ok(x.expectedAppointments.every(a=>a.status==='prenotato'));const updates=x.expectedAppointments.map(a=>({...a,status:'annullato'}));writes.push(...updates);c.State.saveAppointments(c.State.getAppointments().map(a=>updates.find(x=>x.id===a.id)||a));return {...client,active:false,statoAbbonamento:x.statoAbbonamento}}},UI:{showToast(){},closeModal(){}}});
  const begin=clientsSource.indexOf('  async function moveToHistory('),end=clientsSource.indexOf('  function alignResidual(');
  vm.runInContext("const Clients=(()=>{let viewMode='active';const todayStr=()=> '2026-10-13';const render=()=>{};"+clientsSource.slice(begin,end)+"return {confirmDelete};})();globalThis.clientActions=Clients;",c);
  await c.clientActions.confirmDelete('a');
@@ -32,7 +32,7 @@ test('archiving cancels only future bookings; closed presences and charged absen
 });
 test('a lesson closed by another PT during archiving is not cancelled or overwritten',async()=>{
  const future=a('race','pt11','prenotato',{date:'2026-10-13'}),c=context([{id:'a',nome:'Cliente',active:true}],[future]);let clientWrites=0;
- Object.assign(c,{confirm:()=>true,App:{guardStudioManagement:()=>true,guardPortalEdit:()=>true},SupabaseSync:{saveAppointmentAtomic:async (_,expected)=>{assert.equal(expected.status,'prenotato');c.State.saveAppointments([{...future,status:'fatto'}]);return {error:'Appointment changed'}},archiveClient:async()=>{clientWrites++;return {}}},UI:{showToast(){},closeModal(){}}});
+ Object.assign(c,{confirm:()=>true,App:{guardStudioManagement:()=>true,guardPortalEdit:()=>true},SupabaseSync:{saveAppointmentAtomic:async()=>{throw Error('Archive must not create recovery')},archiveClient:async (_,p)=>{assert.equal(p.expectedAppointments[0].status,'prenotato');c.State.saveAppointments([{...future,status:'fatto'}]);return {error:'Appointment changed'}}},UI:{showToast(){},closeModal(){}}});
  const begin=clientsSource.indexOf('  async function moveToHistory('),end=clientsSource.indexOf('  function alignResidual(');
  vm.runInContext("const Clients=(()=>{let viewMode='active';const todayStr=()=> '2026-10-13';const render=()=>{};"+clientsSource.slice(begin,end)+"return {confirmDelete};})();globalThis.clientActions=Clients;",c);
  await c.clientActions.confirmDelete('a');assert.equal(clientWrites,0);assert.equal(c.State.getClients()[0].active,true);assert.equal(c.State.getAppointments()[0].status,'fatto');

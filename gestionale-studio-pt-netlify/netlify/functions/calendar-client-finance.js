@@ -10,7 +10,7 @@ exports.createHandler=({auth=authenticate,database=db,provider=upstream}={})=>as
   const actor=await auth(input.accessToken);
   if(!actor)return reply(401,{error:'Accedi al Calendario'});
   if(actor.role!=='owner')return reply(403,{error:'Pagamenti riservati alla Direzione'});
-  if(input.calendarRevision!=='20261030-shared-finance-v1')return reply(409,{error:'Il Calendario è stato aggiornato: ricarica prima di gestire gli incassi',code:'CALENDAR_RELOAD_REQUIRED'});
+  if(input.calendarRevision!=='20261111-package-suspension-v1')return reply(409,{error:'Il Calendario è stato aggiornato: ricarica prima di gestire gli incassi',code:'CALENDAR_RELOAD_REQUIRED'});
   return reply(200,await createService({db:database,upstream:provider}).handle(actor,input));
  }catch(error){return reply(error.status||409,{error:error.message||'Operazione non confermata'})}
 };

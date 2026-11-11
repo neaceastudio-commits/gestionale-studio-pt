@@ -4,7 +4,7 @@ window.CalendarAudit = (() => {
   const key='neacea-calendar-audit-session';let actor=null;
   let accessToken=new URLSearchParams(location.search).get('access') || sessionStorage.getItem(key) || '';
   const token=()=>accessToken;
-  const revision='20261030-shared-finance-v1';
+  const revision='20261111-package-suspension-v1';
   const readOperations=new Set(['session','list','client_shares']);
   let reloadRequired=false,updateCheck=null;
   const reloadError=()=>({error:'Il Calendario è stato aggiornato. Ricarica la pagina prima di salvare: nessuna modifica è stata applicata.',status:409,code:'CALENDAR_RELOAD_REQUIRED'});

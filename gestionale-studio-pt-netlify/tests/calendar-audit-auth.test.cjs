@@ -3,7 +3,7 @@ process.env.PT_ACCESS_SECRET='SIM_SESSION';process.env.SUPABASE_SERVICE_ROLE_KEY
 const {handler}=require('../netlify/functions/calendar-activity');
 const {verify}=require('../netlify/functions/lib/calendar-audit-auth');
 const token=(id='pt',level='pt')=>{const p=Buffer.from(JSON.stringify({operatorId:id,email:id+'@example.test',accessLevel:level,exp:Date.now()+60000})).toString('base64url');return p+'.'+crypto.createHmac('sha256',process.env.PT_ACCESS_SECRET).update(p).digest('base64url')};
-const event=body=>({httpMethod:'POST',body:JSON.stringify({calendarRevision:'20261030-shared-finance-v1',...body})});
+const event=body=>({httpMethod:'POST',body:JSON.stringify({calendarRevision:'20261111-package-suspension-v1',...body})});
 function mock(actor='pt') {const calls=[];const saved=global.fetch;global.fetch=async(url,options)=>{const body=options.body?JSON.parse(options.body):null;calls.push({url,body,method:options.method});const value=url.includes('operator_effective_roles')?[{operator_id:actor,email:actor+'@example.test',active:true,legacy_roles:[actor==='owner'?'owner':'PT'],system_roles:[]}]:url.includes('/operators?')?[{id:actor,portal_access_enabled:true,portal_access_version:0}]:[];return {ok:true,status:200,text:async()=>JSON.stringify(value)}};return {calls,restore:()=>global.fetch=saved}}
 test('signed session is required; modified payload and expiry rejected',()=>{assert.ok(verify(token()));assert.equal(verify(token()+'x'),null);assert.equal(verify(''),null);const p=Buffer.from(JSON.stringify({operatorId:'pt',email:'pt@example.test',exp:1})).toString('base64url');assert.equal(verify(p+'.'+crypto.createHmac('sha256','SIM_SESSION').update(p).digest('base64url')),null)});
 test('browser cannot supply actor name/email/role/source/correlation ID',async()=>{const m=mock();try{const result=await handler(event({accessToken:token(),operation:'save',actor_name:'FORGED',actor_email:'FORGED',actor_role:'owner',source:'system',request_id:'FORGED',payload:{appointment:{id:'a'}}}));assert.equal(result.statusCode,200);const call=m.calls.find(c=>c.url.includes('calendar_audit_write'));assert.equal(call.body.p_actor_id,'pt');assert.equal(call.body.p_actor_role,'pt');assert.equal(call.body.p_source,'calendar');assert.ok(!JSON.stringify(call.body).includes('FORGED'))}finally{m.restore()}});
@@ -67,5 +67,15 @@ test('automatic recovery uses the verified actor, original snapshot and protocol
   const calls=m.calls.filter(c=>c.url.includes('calendar_cancel_and_recover')).length;
   await handler(event({accessToken:token('owner','owner'),operation:'save',payload:{expected:{...expected,status:'annullato'},appointment:{...expected,status:'annullato',notes:'Modifica note dello storico'}}}));
   assert.equal(m.calls.filter(c=>c.url.includes('calendar_cancel_and_recover')).length,calls,'editing an already cancelled historical row does not schedule another recovery');
+ }finally{m.restore()}
+});
+test('suspension and resumption require the current Calendar owner; arbitrary fields never reach SQL',async()=>{
+ const payload={clientId:'a',action:'archive',status:'Ibernato',expectedUpdatedAt:'2026-11-11T10:00:00Z',expectedAppointments:[],actorId:'FORGED',sessions_remaining:99};
+ let m=mock();try{assert.equal((await handler(event({accessToken:token(),operation:'client_lifecycle',payload}))).statusCode,403);assert.ok(!m.calls.some(c=>c.url.includes('/rpc/')))}finally{m.restore()}
+ m=mock('owner');try{
+  for(const action of ['archive','reactivate'])assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'client_lifecycle',payload:{...payload,action}}))).statusCode,200);
+  const body=m.calls.filter(c=>c.url.includes('/rpc/calendar_client_lifecycle')).at(-1).body;assert.equal(body.p_actor_id,'owner');assert.ok(!JSON.stringify(body).includes('FORGED'));assert.ok(!Object.hasOwn(body.p_payload,'sessions_remaining'));
+  assert.equal((await handler(event({calendarRevision:'20261030-shared-finance-v1',accessToken:token('owner','owner'),operation:'client_lifecycle',payload}))).statusCode,409);
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'client_lifecycle',payload:{...payload,status:'bad'}}))).statusCode,400);
  }finally{m.restore()}
 });

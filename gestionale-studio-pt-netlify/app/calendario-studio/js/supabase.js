@@ -536,11 +536,24 @@ const SupabaseSync = (() => {
   }
 
   async function archiveClient(client, archived) {
-    // Archiving is an administrative status change, never a balance or ledger edit.
-    const result=await patchClient({id:client.id,active:false,stato_abbonamento:archived.statoAbbonamento});
+    return changeClientLifecycle(client,'archive',archived.statoAbbonamento,archived.expectedAppointments||[]);
+  }
+
+  async function reactivateClient(client) {
+    return changeClientLifecycle(client,'reactivate','Attivo',[]);
+  }
+
+  async function changeClientLifecycle(client,action,status,appointments) {
+    const result=await CalendarAudit.call('client_lifecycle',{clientId:client.id,action,status,
+      expectedUpdatedAt:client.serverUpdatedAt,expectedAppointments:appointments.map(appointmentToDb)});
     if(result?.error)return result;
-    const row=Array.isArray(result)&&result.length===1?result[0]:null;
-    if(!row||row.id!==client.id||row.active!==false)return {error:'Archiviazione non confermata dal server'};
+    if(result?.client?.id!==client.id||result.client.active!==(action==='reactivate')||result.client.stato_abbonamento!==status||!Array.isArray(result.appointments))return {error:'Stato cliente non confermato: ricarica e verifica prima di riprovare'};
+    // Independent read confirms persistence; a lost response can be retried safely.
+    const rows=await request('clients',{query:'?select=*&id=eq.'+encodeURIComponent(client.id)});
+    const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;
+    if(!row||row.active!==result.client.active||row.stato_abbonamento!==status)return {error:'Rilettura cliente non confermata: ricarica e verifica prima di riprovare'};
+    const updates=new Map(result.appointments.map(a=>[a.id,appointmentFromDb(a)]));
+    State.saveAppointments(State.getAppointments().map(a=>updates.get(a.id)||a));
     return clientFromDb(row);
   }
 
@@ -671,5 +684,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { clientWriteRevision: '20261030-shared-finance-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

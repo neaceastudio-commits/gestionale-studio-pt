@@ -2609,7 +2609,7 @@ const App = {
           ${App.isPortalPtMode() ? '' : `<button class="btn-primary" onclick="Clients.reactivate('${client.id}')">Riattiva cliente</button>`}
         ` : `
           <button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
-          ${App.isPortalPtMode() ? '' : `<button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>`}
+          ${App.isPortalPtMode() ? '' : `<button class="btn btn-archive" onclick="Clients.suspend('${client.id}')">Sospendi pacchetto</button><button class="btn btn-archive" onclick="Clients.markNotRenewing('${client.id}')">Non rinnova</button>`}
           ${App.isPortalPtMode() ? '' : `<button id="pkg-footer-lessons" class="btn" hidden onclick="App._setPackageWorkspace('lessons')">Torna alle lezioni</button>`}
           ${App.isPortalPtMode() ? '' : `<button id="pkg-footer-finance" class="btn-primary" onclick="App._setPackageWorkspace('finance')">Pagamenti e rinnovo</button>`}
           <button class="btn-primary" onclick="UI.closeModal();App.openNewAppointment(null,'${client.id}')">Nuovo appuntamento</button>

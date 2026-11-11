@@ -33,7 +33,7 @@ test('database locale: conferma, riapertura, permessi, concorrenza, storico e ro
    assert.equal(action,'addPagamentoCondiviso');payments.push(p);return {success:true};
   };
   const handler=require('../netlify/functions/calendar-client-finance').createHandler({auth:async()=>({id:'owner',role:'owner'}),database,provider});
-  const api=async p=>{const r=await handler({httpMethod:'POST',body:JSON.stringify({calendarRevision:'20261030-shared-finance-v1',clientId:'flow',...p})});assert.equal(r.statusCode,200,r.body);return JSON.parse(r.body)};
+  const api=async p=>{const r=await handler({httpMethod:'POST',body:JSON.stringify({calendarRevision:'20261111-package-suspension-v1',clientId:'flow',...p})});assert.equal(r.statusCode,200,r.body);return JSON.parse(r.body)};
   const split=await api({action:'split',expectedNotes:'Originale flow',total:300,pt:200,nutrition:100});
   const cycle=require('../app/calendario-studio/js/package-ledger').currentCycle(split.client);
   await api({action:'register',cycleId:cycle.id,requestId:crypto.randomUUID(),date:'2026-10-01',amount:100});

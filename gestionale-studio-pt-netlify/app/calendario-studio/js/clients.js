@@ -514,6 +514,7 @@ const Clients = (() => {
                       ${ptMode ? '' : `<button class="btn-icon-sm" title="Trasferisci cliente a un altro PT" onclick="event.stopPropagation();App.openTransferClient('${c.id}')">⇄</button>`}
                       <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
                       ${ptMode ? '' : `
+                        <button class="btn-icon-sm archive" title="Sospendi pacchetto: conserva le lezioni residue" onclick="event.stopPropagation();Clients.suspend('${c.id}')">⏸</button>
                         <button class="btn-icon-sm archive" title="Non rinnova: sposta nello storico" onclick="event.stopPropagation();Clients.markNotRenewing('${c.id}')">📥</button>
                         <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
                       `}
@@ -548,47 +549,30 @@ const Clients = (() => {
     const affectedLabel = futureAppointments.length === 1
       ? '1 prenotazione futura sarà annullata o aggiornata'
       : `${futureAppointments.length} prenotazioni future saranno annullate o aggiornate`;
-    const ok = confirm(`${options.question} ${name}?\n\n${affectedLabel}. Le sedute future PT 1:2 saranno annullate per la coppia, senza consumare lezioni. Negli altri gruppi verrà rimosso solo questo cliente. Le sedute già chiuse e le ore maturate dai PT resteranno nello storico e nel riepilogo ore.`);
+    const ok = confirm(`${options.question} ${name}?\n\n${affectedLabel}, senza creare recuperi automatici. Pacchetto, pagamenti e lezioni residue saranno conservati e recuperabili alla riattivazione. Le sedute future PT 1:2 saranno annullate per la coppia, senza consumare lezioni. Negli altri gruppi verrà rimosso solo questo cliente. Le sedute già chiuse e le ore maturate dai PT resteranno nello storico e nel riepilogo ore.`);
     if (!ok) return;
 
-    const marker = `[${options.marker} ${today}]`;
     const archivedClient = {
-      ...client,
       active: false,
       statoAbbonamento: options.status,
+      expectedAppointments: futureAppointments,
     };
-    const audit = `${marker} ${new Date().toLocaleString('it-IT')} · ${name}`;
-    const updatedAppointments = futureAppointments.map(appt => {
-      const remainingClientIds = (appt.clientIds || []).filter(id =>
-        id !== clientId && clients.some(item => item.id === id && item.active !== false)
-      );
-      const notes = String(appt.notes || '').includes(marker)
-        ? String(appt.notes || '')
-        : [String(appt.notes || '').trim(), audit].filter(Boolean).join('\n');
-      return remainingClientIds.length && appt.serviceId !== 'pt12'
-        ? { ...appt, clientIds: remainingClientIds, notes, updatedAt: Date.now() }
-        : { ...appt, status: 'annullato', notes, updatedAt: Date.now() };
-    });
-
-    const appointmentSync = await Promise.all(updatedAppointments.map(appt => SupabaseSync.saveAppointmentAtomic(appt, appointments.find(before => before.id === appt.id))));
-    if (appointmentSync.some(result => result?.error)) {
-      UI.showToast('Operazione non eseguita: alcune prenotazioni future non sono state aggiornate', 'error');
-      return;
-    }
     const clientSync = await SupabaseSync.archiveClient(client, archivedClient);
     if (clientSync?.error) {
-      UI.showToast('Prenotazioni aggiornate, ma il cliente non è stato spostato nello storico: riprova', 'error');
+      UI.showToast(clientSync.error, 'error');
       return;
     }
 
-    const updatesById = new Map(appointmentSync.map(result => [result.appointment.id, result.appointment]));
-    State.saveAppointments(State.getAppointments().map(appt => updatesById.get(appt.id) || appt));
     State.saveClients(State.getClients().map(item => item.id === clientId ? clientSync : item));
     viewMode = 'history';
     UI.closeModal();
     render();
-    const suffix = updatedAppointments.length ? ` · ${updatedAppointments.length} prenotazioni aggiornate` : '';
+    const suffix = futureAppointments.length ? ` · ${futureAppointments.length} prenotazioni aggiornate` : '';
     UI.showToast(`${name} spostato nello storico${suffix}`, 'success');
+  }
+
+  function suspend(clientId) {
+    return moveToHistory(clientId, {question:'Sospendere il pacchetto di',status:'Ibernato'});
   }
 
   function markNotRenewing(clientId) {
@@ -607,20 +591,18 @@ const Clients = (() => {
     if (idx === -1) return;
     const client = clients[idx];
     const name = `${client.nome || ''} ${client.cognome || ''}`.trim() || 'questo cliente';
-    if (!confirm(`Riattivare ${name}?\n\nLe vecchie prenotazioni annullate non verranno ricreate. Dopo la riattivazione potrai impostare o rinnovare il pacchetto.`)) return;
-    const updated = { ...client, active: true, statoAbbonamento: 'Attivo' };
-    const result = await SupabaseSync.pushClient(updated);
+    if (!confirm(`Riattivare ${name} con lo stesso pacchetto e le lezioni residue?\n\nStorico, ore svolte e pagamenti resteranno invariati. Le prenotazioni annullate non verranno ricreate: potrai riprogrammare le lezioni residue.`)) return;
+    const result = await SupabaseSync.reactivateClient(client);
     if (result?.error) {
       UI.showToast('Cliente non riattivato: riprova', 'error');
       return;
     }
-    clients[idx] = updated;
-    State.saveClients(clients);
+    State.saveClients(State.getClients().map(item => item.id === clientId ? result : item));
     viewMode = 'active';
     UI.closeModal();
     render();
-    UI.showToast(`${name} riattivato: verifica ora il nuovo pacchetto`, 'success');
-    App.openEditPackage(clientId);
+    UI.showToast(`${name} riattivato con lo stesso pacchetto e le lezioni residue`, 'success');
+    App.openPackageOverview(clientId);
   }
 
   function toggleActive(clientId) {
@@ -665,6 +647,7 @@ const Clients = (() => {
     setView,
     toggleActive,
     markNotRenewing,
+    suspend,
     reactivate,
     confirmDelete,
     alignResidual,

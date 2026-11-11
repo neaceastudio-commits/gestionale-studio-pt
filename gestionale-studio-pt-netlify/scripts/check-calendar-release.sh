@@ -23,7 +23,7 @@ node tools/coaching-editor/check-calendar-clients.cjs
 node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-charged-absence.test.cjs
-node --test tests/calendar-archived-hours.test.cjs
+node --test tests/calendar-archived-hours.test.cjs tests/calendar-package-suspension.test.cjs
 node --test tests/calendar-exhausted-edit.test.cjs
 node --test tests/calendar-appointment-session-edit.test.cjs
 node --test tests/calendar-runtime-timeout.test.cjs
@@ -44,6 +44,9 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    tests/calendar-package-suspension.test.cjs
+    tests/calendar-package-suspension-concurrency.test.cjs
+    supabase/migrations/20261111091927_calendar_package_suspension.sql
     scripts/check-calendar-automatic-recovery.sh
     tests/calendar-automatic-recovery.test.cjs
     tests/calendar-automatic-recovery-concurrency.test.cjs

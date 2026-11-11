@@ -1,8 +1,8 @@
 'use strict';
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
-const calendarRevision='20261030-shared-finance-v1';
-const calendarWrites=new Set(['save','cancel_and_recover','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
+const calendarRevision='20261111-package-suspension-v1';
+const calendarWrites=new Set(['save','cancel_and_recover','client_lifecycle','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -31,6 +31,13 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    }
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
+  }
+  if(input.operation==='client_lifecycle'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Sospensione e riattivazione riservate alla Direzione'});
+   const {clientId,action,status,expectedUpdatedAt,expectedAppointments}=input.payload||{};
+   if(typeof clientId!=='string'||!clientId||!['archive','reactivate'].includes(action)||typeof expectedUpdatedAt!=='string'||
+    action==='archive'&&(!['Ibernato','Non rinnova','Eliminato'].includes(status)||!Array.isArray(expectedAppointments)))return reply(400,{error:'Operazione cliente non valida'});
+   return reply(200,await db('rpc/calendar_client_lifecycle',{method:'POST',body:{p_actor_id:actor.id,p_request_id:crypto.randomUUID(),p_payload:{clientId,action,status,expectedUpdatedAt,expectedAppointments}}}));
   }
   if(input.operation==='client_group'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Gruppi riservati alla Direzione'});
