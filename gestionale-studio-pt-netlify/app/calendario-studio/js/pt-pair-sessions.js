@@ -7,7 +7,7 @@
  const localDateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
  const money=cents=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(cents/100);
  const weekdays=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
- let firstId='',plan=null,busy=false,renewFirst=true;
+ let firstId='',plan=null,busy=false,renewFirst=true,solo=false;
  const eligible=c=>c.active!==false&&!/ibern/i.test(c.statoAbbonamento||'')&&(c.packageTypes||[]).includes('PT 1:2');
  function panel(title,body,footer){UI.openModal(`<div class="modal-header"><h2>${title}</h2><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body pt-pair-panel"><p id="pair-plan-error" class="form-warning" role="alert" tabindex="-1" hidden></p>${body}</div><div class="modal-footer">${footer}</div>`);}
  function showPlanError(error){
@@ -21,18 +21,30 @@
  async function open(id,renew=true){
   if(!App.guardStudioManagement())return;
   if(renew&&typeof ExpectedRenewals!=='undefined'&&await ExpectedRenewals.forClient(id))return;
-  firstId=id;plan=null;renewFirst=renew;
+  firstId=id;plan=null;renewFirst=renew;solo=false;
   const client=Services.getClient(id);if(!client||!eligible(client))return UI.showToast('Serve un cliente attivo con pacchetto PT 1:2','error');
+  const partner=Services.getClient(client.ptPartnerId);
+  if(!renew&&partner&&(partner.active===false||/ibern/i.test(partner.statoAbbonamento||''))){
+   return panel('Completa il pacchetto corrente PT 1:2',`<p>Il partner ${escape(name(partner))} è sospeso. Puoi recuperare da solo le ${available(client)} lezioni ancora da programmare.</p><p>Il tuo pacchetto resta PT 1:2. Le sedute individuali useranno soltanto il tuo residuo; il pacchetto del partner resta conservato. Compenso PT individuale: ${money(1000)} per ora.</p>`,`<button class="btn-primary" onclick="PTPairSessions.openSolo('${escape(id)}')">Recupera da solo</button>`);
+  }
   panel(renew?'Calendario e rinnovo PT 1:2':'Completa il pacchetto corrente PT 1:2',`${renew?'':'<p>Programma le sedute mancanti o da recuperare nei pacchetti correnti. Le date del prossimo rinnovo restano separate.</p>'}<p>Una seduta condivisa per due persone. Pacchetti, incassi e presenze restano separati.</p><label>Partner <select id="pair-partner"><option value="">Seleziona la seconda persona</option>${State.getClients().filter(c=>c.id===client.ptPartnerId&&eligible(c)).sort((a,b)=>name(a).localeCompare(name(b),'it')).map(c=>`<option value="${escape(c.id)}" selected>${escape(name(c))}</option>`).join('')}</select></label>`,`<button class="btn-primary" onclick="PTPairSessions.configure()">Continua</button>`);
  }
+ function openSolo(id){
+  if(!App.guardStudioManagement())return;
+  firstId=id;plan=null;renewFirst=false;solo=true;
+  try{const client=Services.getClient(id);assertSolo(client,Services.getClient(client?.ptPartnerId));configure();}catch(e){showPlanError(e);}
+ }
+ function assertSolo(client,partner){
+  if(!client||!eligible(client)||!partner||partner.id===client.id||client.ptPartnerId!==partner.id||partner.ptPartnerId!==client.id||!(partner.packageTypes||[]).includes('PT 1:2')||!(partner.active===false||/ibern/i.test(partner.statoAbbonamento||'')))throw Error('Il recupero individuale richiede un cliente attivo e il suo partner sospeso');
+ }
  function configure(){
-  const pair=[Services.getClient(firstId),Services.getClient(value('pair-partner'))];
-  if(pair.some(c=>!c)||pair[0].id===pair[1].id)return UI.showToast('Scegli due persone distinte','error');
+  const pair=solo?[Services.getClient(firstId)]:[Services.getClient(firstId),Services.getClient(value('pair-partner'))];
+  if(pair.some(c=>!c)||!solo&&pair[0].id===pair[1].id)return UI.showToast('Scegli due persone distinte','error');
   const missing=Math.min(...pair.map(c=>available(c)));
   if(!renewFirst&&missing<=0)return UI.showToast('Non ci sono sedute condivise mancanti: verifica il residuo e le prenotazioni di entrambe le persone','error');
   const operators=State.getOperators().filter(o=>o.active!==false&&o.id===pair[0].ptAssegnato&&(o.roles||[]).some(r=>/^(PT|personal_trainer|personal trainer)$/i.test(r)));
   if(!operators.length||pair.some(c=>c.ptAssegnato!==operators[0].id))return UI.showToast('Verifica il PT assegnato a entrambe le persone prima di programmare la coppia','error');
-  panel(renewFirst?'Programma le sedute della coppia':'Programma recuperi nel pacchetto corrente',`<div id="pair-form" data-partner="${escape(pair[1].id)}">${pair.map(fields).join('')}<fieldset><legend>Calendario condiviso</legend><label>Prima data utile <input id="pair-start" type="date"></label><label>Orario <input id="pair-time" type="time" value="17:00"></label><label>PT assegnato <select id="pair-operator" disabled>${operators.map(o=>`<option value="${escape(o.id)}" ${o.id===pair[0].ptAssegnato?'selected':''}>${escape(name(o))}</option>`).join('')}</select></label><div>${weekdays.map((d,i)=>`<label><input class="pair-day" type="checkbox" value="${i}"> ${d}</label>`).join('')}</div><label>Sedute condivise da generare <input id="pair-sessions" type="number" min="1" max="${renewFirst?100:missing}" value="${renewFirst?Math.min(...pair.map(c=>Number(c.sessionsTotal)||8)):missing}"></label></fieldset>${renewFirst?'<p>Chiudi prima le vecchie sedute ancora prenotate delle persone che rinnovi. Non verranno spostate nel nuovo pacchetto.</p>':'<p>Ogni recupero appartiene al pacchetto corrente di ciascuna persona. Scegli data e orario del recupero; il rinnovo già programmato conserva le sue date e il suo numero di lezioni.</p>'}<p>Un’assenza scala la seduta a entrambi. Il PT matura ${money(1500)} per un’ora condivisa, anche con uno o entrambi assenti.</p></div>`,`<button class="btn-primary" onclick="PTPairSessions.preview()">Verifica e mostra anteprima</button>`);
+  panel(solo?'Programma recuperi individuali':renewFirst?'Programma le sedute della coppia':'Programma recuperi nel pacchetto corrente',`<div id="pair-form" data-partner="${escape(pair[1]?.id||'')}">${pair.map(fields).join('')}<fieldset><legend>${solo?'Calendario individuale':'Calendario condiviso'}</legend><label>Prima data utile <input id="pair-start" type="date"></label><label>Orario <input id="pair-time" type="time" value="17:00"></label><label>PT assegnato <select id="pair-operator" disabled>${operators.map(o=>`<option value="${escape(o.id)}" ${o.id===pair[0].ptAssegnato?'selected':''}>${escape(name(o))}</option>`).join('')}</select></label><div>${weekdays.map((d,i)=>`<label><input class="pair-day" type="checkbox" value="${i}"> ${d}</label>`).join('')}</div><label>${solo?'Recuperi individuali':'Sedute condivise'} da generare <input id="pair-sessions" type="number" min="1" max="${renewFirst?100:missing}" value="${renewFirst?Math.min(...pair.map(c=>Number(c.sessionsTotal)||8)):missing}"></label></fieldset>${solo?'<p>Ogni recupero usa una lezione del tuo pacchetto corrente PT 1:2, senza rinnovo o nuovi incassi. Il partner sospeso non partecipa e non consuma lezioni.</p>':renewFirst?'<p>Chiudi prima le vecchie sedute ancora prenotate delle persone che rinnovi. Non verranno spostate nel nuovo pacchetto.</p>':'<p>Ogni recupero appartiene al pacchetto corrente di ciascuna persona. Scegli data e orario del recupero; il rinnovo già programmato conserva le sue date e il suo numero di lezioni.</p>'}<p>${solo?`Il PT matura ${money(1000)} per ogni ora individuale alla chiusura della seduta, secondo le normali regole delle presenze e delle assenze scalate.`:`Un’assenza scala la seduta a entrambi. Il PT matura ${money(1500)} per un’ora condivisa, anche con uno o entrambi assenti.`}</p></div>`,`<button class="btn-primary" onclick="PTPairSessions.preview()">Verifica e mostra anteprima</button>`);
  }
  function buildPlan(input,clients,appointments){
   const {start,time,operatorId,days,count,renewals}=input;
@@ -62,15 +74,22 @@
   if(rows.length!==count)throw Error('Piano troppo lungo');
   return {requestId:crypto.randomUUID(),clients:changed,appointments:rows,planningWarnings};
  }
+ function buildSoloPlan(input,client,partner,appointments){
+  assertSolo(client,partner);
+  const result=buildPlan({...input,renewals:[null]},[client],appointments),cycle=Services.getPackageCycleContext(client);
+  return {...result,mode:'pair_solo',suspendedPartnerId:partner.id,appointments:result.appointments.map(a=>({...a,service_id:'pt11',notes:`Recupero individuale da pacchetto PT 1:2 [CICLO-PACCHETTO-ID ${cycle.id}] [CICLO-PACCHETTO ${cycle.start}]`}))};
+ }
  function preview(){try{
   plan=null;
-  const clients=[Services.getClient(firstId),Services.getClient(document.getElementById('pair-form').dataset.partner)];
+  const clients=solo?[Services.getClient(firstId)]:[Services.getClient(firstId),Services.getClient(document.getElementById('pair-form').dataset.partner)];
   const renewals=clients.map((_,i)=>renewFirst&&document.getElementById('pair-renew-'+i).checked?{sessions:Number(value('pair-count-'+i)),amount:value('pair-amount-'+i),paidNow:value('pair-paid-'+i),paymentDate:value('pair-payment-'+i)}:null);
   if(renewals.some(r=>r&&r.amount===''))throw Error('Indica l’importo di ogni pacchetto da rinnovare (anche 0 se gratuito)');
-  plan=buildPlan({start:value('pair-start'),time:value('pair-time'),operatorId:value('pair-operator'),days:[...document.querySelectorAll('.pair-day:checked')].map(e=>Number(e.value)),count:Number(value('pair-sessions')),renewals},clients,State.getAppointments());
+  const input={start:value('pair-start'),time:value('pair-time'),operatorId:value('pair-operator'),days:[...document.querySelectorAll('.pair-day:checked')].map(e=>Number(e.value)),count:Number(value('pair-sessions')),renewals};
+  plan=solo?buildSoloPlan(input,clients[0],Services.getClient(clients[0].ptPartnerId),State.getAppointments()):buildPlan(input,clients,State.getAppointments());
+  if(solo){panel('Conferma recuperi individuali',`${plan.planningWarnings.map(w=>`<p class="form-warning" role="alert">⚠ ${escape(w)}</p>`).join('')}<p>${escape(name(clients[0]))}: ${plan.appointments.length} sedute individuali di 60 minuti nel pacchetto corrente PT 1:2.</p><p>Nessun rinnovo o nuovo incasso. Il partner sospeso conserva tutte le lezioni residue. Il PT matura ${money(1000)} per ora individuale; le ore già svolte restano nel riepilogo.</p><ul>${plan.appointments.map(a=>`<li>${escape(a.date)} · ${escape(a.start_time)} · 60 minuti</li>`).join('')}</ul>`,`<button class="btn" onclick="PTPairSessions.openSolo('${escape(firstId)}')">Modifica piano</button><button id="pair-confirm" class="btn-primary" onclick="PTPairSessions.save()">Conferma e salva recuperi</button>`);return;}
   panel(renewFirst?'Conferma calendario della coppia':'Conferma recuperi nel pacchetto corrente',`${plan.planningWarnings.map(w=>`<p class="form-warning" role="alert">⚠ ${escape(w)}</p>`).join('')}<p>${plan.appointments.length} appuntamenti condivisi · ${plan.appointments.length} ore PT prenotate. Il compenso matura alla chiusura della seduta.</p>${clients.map((c,i)=>`<p><strong>${escape(name(c))}</strong>: ${renewals[i]?`nuovo pacchetto di ${renewals[i].sessions} sedute; importo ${money(Number(renewals[i].amount)*100)}, incasso registrato ${money(Number(renewals[i].paidNow)*100)}. Vecchio residuo ${c.sessionsRemaining} conservato nello storico.`:'pacchetto corrente, nessun rinnovo e nessun nuovo incasso.'}</p>`).join('')}<ul>${plan.appointments.map(a=>`<li>${escape(a.date)} · ${escape(a.start_time)} · 60 minuti</li>`).join('')}</ul>${renewFirst?'<p>Il salvataggio comprende entrambi i pacchetti selezionati e tutte le sedute. Le sedute già esistenti restano nel loro ciclo.</p>':'<p>Le nuove sedute completano i pacchetti correnti delle due persone.</p>'}`,`<button class="btn" onclick="PTPairSessions.open('${escape(firstId)}',${renewFirst})">Modifica piano</button><button id="pair-confirm" class="btn-primary" onclick="PTPairSessions.save()">Conferma e salva coppia</button>`);
  }catch(e){showPlanError(e);}}
- async function save(){if(busy||!plan||!App.guardStudioManagement())return;busy=true;const btn=document.getElementById('pair-confirm');if(btn)btn.disabled=true;try{await SupabaseSync.renewPtPair(plan);plan=null;UI.closeModal();Calendar.render();UI.showToast('Coppia salvata: una sola seduta per ogni ora PT','success');}catch(e){UI.showToast(e.message,'error');}finally{busy=false;if(btn)btn.disabled=false;}}
+ async function save(){if(busy||!plan||!App.guardStudioManagement())return;busy=true;const btn=document.getElementById('pair-confirm');if(btn)btn.disabled=true;try{if(solo)await SupabaseSync.planPairSolo(plan);else await SupabaseSync.renewPtPair(plan);plan=null;UI.closeModal();Calendar.render();UI.showToast(solo?'Recuperi individuali salvati nello stesso pacchetto':'Coppia salvata: una sola seduta per ogni ora PT','success');}catch(e){showPlanError(e);}finally{busy=false;if(btn)btn.disabled=false;}}
  function detail(a){if(a.serviceId!=='pt12'||!PTSessionModel.read(a))return '';return `<div class="detail-section">${a.clientIds.map(id=>`<p>${escape(name(Services.getClient(id)||{}))}: ${escape({fatto:'Presente',noshow:'Assente · seduta scalata',prenotato:'Prenotato',annullato:'Annullato'}[a.status==='annullato'?'annullato':PTSessionModel.status(a,id)])}</p>`).join('')}</div>`;}
  function attendance(a){try{
   if(a.clientIds?.length!==2)throw Error('Questa vecchia seduta contiene una sola persona: correggi prima la coppia dalla Direzione');
@@ -78,5 +97,5 @@
   panel('Presenze PT 1:2',`<p>La seduta scala a entrambi anche in caso di assenza. Compenso PT per 60 minuti: ${money(1500)}.</p>${a.clientIds.map((id,i)=>`<label>${escape(name(Services.getClient(id)||{}))}<select id="pair-attendance-${i}"><option value="fatto">Presente</option><option value="noshow" ${PTSessionModel.status(a,id)==='noshow'?'selected':''}>Assente · scala la seduta</option></select></label>`).join('')}`,`<button class="btn-primary" onclick="PTPairSessions.saveAttendance('${escape(a.id)}')">Salva entrambe le presenze</button>`);
  }catch(e){UI.showToast(e.message,'error');}}
  async function saveAttendance(id){if(busy)return;const a=State.getAppointments().find(a=>a.id===id);if(!a||!App.guardPortalEdit('appointment',a))return;busy=true;try{const prepared=PTSessionModel.prepare(a,State.getClients(),Services.getPackageCycleContext,a);const next=PTSessionModel.attendance(prepared,Object.fromEntries(a.clientIds.map((id,i)=>[id,value('pair-attendance-'+i)])));const saved=await SupabaseSync.saveAppointmentAtomic(next,a);if(saved?.error)throw Error(saved.error);UI.closeModal();Calendar.render();UI.showToast('Presenze salvate, una seduta scalata a ciascuno','success');}catch(e){UI.showToast(e.message,'error');}finally{busy=false;}}
- window.PTPairSessions={open,configure,preview,save,buildPlan,attendance,saveAttendance,detail,escape};
+ window.PTPairSessions={open,openSolo,configure,preview,save,buildPlan,buildSoloPlan,attendance,saveAttendance,detail,escape};
 })();

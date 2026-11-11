@@ -366,6 +366,17 @@ const SupabaseSync = (() => {
     return result;
   }
 
+  async function planPairSolo(plan) {
+    const result=await CalendarAudit.call('plan_pair_solo',plan);
+    if(result?.error)throw new Error(result.error);
+    if(result?.mode!=='pair_solo'||result.requestId!==plan.requestId||result.appointments?.length!==plan.appointments.length||result.clients?.length!==1||result.clients[0].id!==plan.clients[0].id||plan.appointments.some(a=>!result.appointments.some(r=>r.id===a.id&&r.service_id==='pt11'&&r.client_ids?.length===1&&r.client_ids[0]===plan.clients[0].id)))throw new Error('Conferma incompleta: ricarica per verificare i recuperi');
+    const saved=new Map(result.appointments.map(a=>[a.id,appointmentFromDb(a)]));
+    State.saveAppointments([...State.getAppointments().filter(a=>!saved.has(a.id)),...saved.values()]);
+    const client=clientFromDb(result.clients[0]);
+    State.saveClients(State.getClients().map(c=>c.id===client.id?client:c));
+    return result;
+  }
+
   async function saveAppointmentAtomic(appt, before = null) {
     const automaticRecovery = before && before.status !== 'annullato' && appt.status === 'annullato' && ['pt11','pt12','circuit'].includes(before.serviceId);
     const result = automaticRecovery ? await CalendarAudit.call('cancel_and_recover', {expected: appointmentToDb(before)}) : await request('rpc/calendar_save_appointment', {
@@ -684,5 +695,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

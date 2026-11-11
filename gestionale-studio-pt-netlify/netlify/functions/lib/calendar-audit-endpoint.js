@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
 const calendarRevision='20261111-package-suspension-v1';
-const calendarWrites=new Set(['save','cancel_and_recover','client_lifecycle','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
+const calendarWrites=new Set(['save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -58,6 +58,12 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    const payload=input.payload||{};
    if(!['list','register','void'].includes(payload.action)||!/^\d{4}-\d{2}-01$/.test(payload.period||''))return reply(400,{error:'Mese o azione non validi'});
    return reply(200,await db('rpc/calendar_pt_payments',{method:'POST',body:{p_actor_id:actor.id,p_operation:payload.action,p_payload:payload}}));
+  }
+  if(input.operation==='plan_pair_solo'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Recuperi individuali riservati alla Direzione dal Calendario'});
+   const {requestId,clients,appointments,suspendedPartnerId}=input.payload||{};
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId||'')||!Array.isArray(clients)||clients.length!==1||!Array.isArray(appointments)||appointments.length<1||appointments.length>100||typeof suspendedPartnerId!=='string'||!suspendedPartnerId)return reply(400,{error:'Anteprima recuperi individuali non valida'});
+   return reply(200,await db('rpc/calendar_plan_pair_solo',{method:'POST',body:{p_actor_id:actor.id,p_request_id:requestId,p_payload:{mode:'pair_solo',clients,appointments,suspendedPartnerId}}}));
   }
   if(input.operation==='renew_pt_pair'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Rinnovo coppia riservato alla Direzione dal Calendario'});

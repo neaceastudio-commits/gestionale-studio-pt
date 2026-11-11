@@ -79,3 +79,13 @@ test('suspension and resumption require the current Calendar owner; arbitrary fi
   assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'client_lifecycle',payload:{...payload,status:'bad'}}))).statusCode,400);
  }finally{m.restore()}
 });
+test('solo pair recovery uses only verified owner identity and rejects malformed or stale-client requests',async()=>{
+ const payload={requestId:crypto.randomUUID(),mode:'pair_solo',clients:[{id:'a',expectedUpdatedAt:'2026-11-11',renewal:null}],suspendedPartnerId:'b',appointments:[{id:'one'}],actorId:'FORGED'};
+ let m=mock();try{assert.equal((await handler(event({accessToken:token(),operation:'plan_pair_solo',payload}))).statusCode,403);assert.ok(!m.calls.some(c=>c.url.includes('/rpc/')))}finally{m.restore()}
+ m=mock('owner');try{
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'plan_pair_solo',payload}))).statusCode,200);
+  const rpc=m.calls.find(c=>c.url.includes('calendar_plan_pair_solo'));assert.equal(rpc.body.p_actor_id,'owner');assert.ok(!JSON.stringify(rpc.body).includes('FORGED'));assert.equal(rpc.body.p_request_id,payload.requestId);
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'plan_pair_solo',payload:{...payload,clients:[]}}))).statusCode,400);
+  assert.equal((await handler(event({accessToken:token('owner','owner'),operation:'plan_pair_solo',calendarRevision:'20261030-shared-finance-v1',payload}))).statusCode,409);
+ }finally{m.restore()}
+});
