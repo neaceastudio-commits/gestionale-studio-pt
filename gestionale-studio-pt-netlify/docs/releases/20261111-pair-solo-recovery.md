@@ -77,3 +77,53 @@ lavorazioni conservate. Candidato da costruire sul commit realmente pubblicato
 Non creare appuntamenti reali per il cliente: le due date e gli orari devono
 essere scelti nel nuovo modulo. Verificare online pacchetti e storico invariati
 prima e dopo il rilascio, e annotare commit, migrazione, prove e stato Git finale.
+
+## Pubblicato — 11 novembre 2026, ore 11:23 Europe/Rome
+
+Commit applicativo **`d319a20537eae8a7dbe77b751f5c900bc8284535`**, branch
+`release/calendar-pair-solo-20261111`, deploy **`6af4421751ef5248e52c4899`**.
+Anteprima verificata `6af44151d728d63727c26e2b`. Dati e hash nel
+[`20261111-pair-solo-recovery-published.json`](20261111-pair-solo-recovery-published.json).
+
+La prima richiesta di migrazione è stata respinta dalla revisione automatica,
+che considerava la precedente autorizzazione limitata al rilascio della
+sospensione. Dopo la richiesta di autorizzazione l'utente ha precisato la
+condizione **€10 solo quando si allena da solo, €15 quando torna in coppia**.
+La distinzione è già quella dei due servizi esistenti, senza cambio delle tariffe;
+la successiva richiesta è stata accettata e la migrazione applicata.
+
+- Suite completa superata sul candidato Git pulito, incluso il controllo Git.
+  Superati i cinque test mirati, concorrenza PostgreSQL con due connessioni,
+  otto regressioni coppia/report ore e browser con SQL locale effettivo.
+- Migrazione database `20261111102149`. Corpo installato uguale alla sorgente
+  collaudata (`md5 1dc13abab0b83a1ca69fc7d38ee76726`), invoker, ricerca dello
+  schema vuota; esecuzione negata ad anon e authenticated, consentita al server.
+  Nessuna nuova segnalazione degli advisor di sicurezza.
+- Anteprima e dominio principale verificati per tutti i 44 asset, 16 funzioni,
+  due pianificazioni. Cambiati solo tre asset pubblici; undici archivi funzione
+  identici. Per i gateway ricompilati e gli scheduler riconfezionati confrontate
+  tutte le sorgenti dipendenti. Configurazione ripristinata: deploy bloccato,
+  ramo main, build sospese e soli rami main ammessi.
+- Browser su asset effettivi di anteprima e produzione collegato al database
+  locale: due sedute individuali nello stesso pacchetto, partner escluso,
+  risposta persa/retry, ricarica, presenze e compensi. Identità simulata nel test;
+  online API anonima 401, senza scritture sui clienti reali.
+- Lettura online finale: entrambi i pacchetti ancora 12 lezioni / residuo 2,
+  partner sospeso e altro cliente attivo. Digest delle intere righe cliente e
+  delle sedute già chiuse identici a prima del rilascio. Nessun appuntamento
+  reale creato o riscritto durante il lavoro.
+- Indice Git e branch del checkout originale conservati. Commit creato tramite
+  indice separato sul codice effettivamente online; escluse le altre lavorazioni
+  del repository, il serializer orario locale e la variante dei rinnovi non
+  pubblicata. Nessun worktree o altro repository applicativo modificato.
+
+Passo operativo: ricaricare il Calendario, aprire il quadro del cliente attivo,
+**Genera mancanti → Recupera da solo**, scegliere date e orari e confermare.
+Ogni futura seduta creata come coppia resta PT 1:2 a €15/ora; la possibilità di
+recuperare individualmente non converte né rinnova il pacchetto.
+
+Stato Git finale del checkout di lavoro: `feature/whatsapp-agenda-pt-v1` /
+`105650c`, 32 file tracciati modificati e 104 elementi non tracciati, incluse
+le lavorazioni precedenti; indice conservato byte per byte. Commit applicativo
+e rapporto pubblicati sul ramo di rilascio; `git diff --check` superato sia
+nel checkout sia per la differenza tra produzione precedente e candidato.

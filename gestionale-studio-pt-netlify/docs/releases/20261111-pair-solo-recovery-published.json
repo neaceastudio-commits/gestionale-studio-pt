@@ -1,0 +1,143 @@
+{
+  "commit": "d319a20537eae8a7dbe77b751f5c900bc8284535",
+  "branch": "release/calendar-pair-solo-20261111",
+  "deploy": "6af4421751ef5248e52c4899",
+  "baselineDeploy": "6af438703c3c7ac255e86eff",
+  "baselineCommit": "b3bb4c3b2cdea562fc31af8e0806e341f2286baa",
+  "origin": "https://new-calendar-neacea.netlify.app",
+  "live": true,
+  "publishedAt": "2026-11-11T10:23:33.704Z",
+  "files": 44,
+  "changedAssets": [
+    "index.html",
+    "js/pt-pair-sessions.js",
+    "js/supabase.js"
+  ],
+  "unchangedFunctionArchives": 11,
+  "rebuiltSchedulers": [
+    {
+      "name": "acquisition-calendar-activity",
+      "baselineDigest": "0f1d4c97f5bf4d3086a0586f8ec81e7856cad8a3facf942f6e0d5959973d1ec0",
+      "digest": "90b836b8e56efd592e09bafdd05b22a68eea349e977665c69f88e787b0071f03",
+      "verifiedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/acquisition-calendar-activity.js": "e68a1e7e7058cf3d64563fd3ae52dcc75617ac3ff94970a0b61fbda230894f67",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-endpoint.js": "c5562daa11f540387f2342d28b8b48f88a17e85ba1637e10b878e98060f3e594",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367"
+      }
+    },
+    {
+      "name": "calendar-activity",
+      "baselineDigest": "4068827c114d43b2d3e13be8fb729e8551919618e52260ff8468e79f73ae7e65",
+      "digest": "87be5494d9a3db932119fbecf11139ddfe58f248bfab29f36a2b17ffc58cddba",
+      "verifiedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/calendar-activity.js": "d20bdf9fc49ee5bd2aaf0228a6867fdd68f9097b5d6fc0634cd5118c340edd07",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-endpoint.js": "c5562daa11f540387f2342d28b8b48f88a17e85ba1637e10b878e98060f3e594",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b"
+      }
+    },
+    {
+      "name": "expected-renewals-scheduled",
+      "baselineDigest": "5dcc9d133111fc782961ebfb90315414c198bbc47c6ec8a36e5ef50b68203354",
+      "digest": "e382d476faabc30470c1e7ae901023cabcc5acac689b729bc45efc5c4bb6ed87",
+      "verifiedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/expected-renewals-scheduled.mjs": "dec6a2384f6309a9c6d9f3a8b90dd8aebdc0a8c76a2fa11b573ea99aee47a93e",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b"
+      }
+    },
+    {
+      "name": "studio-calendar-activity",
+      "baselineDigest": "b6233b4b460e1512c8ee9688921be0a7dc7a9c13565d2743b45483a4e9e8353b",
+      "digest": "333f4888ead199d063dc1435750523bb496c3fd1333f940c78df038ea82f9d7f",
+      "verifiedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/studio-calendar-activity.js": "28ed823d62ab70ffc968c53c132b2b8599c65c6b69622f1a2d4f13f761f8af13",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-endpoint.js": "c5562daa11f540387f2342d28b8b48f88a17e85ba1637e10b878e98060f3e594",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/expected-renewals.js": "5c6458141b9f2f1ef4a5bac2b291156560315ed398729bc74caffc2a5bf834f7",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/pt-session-metadata.js": "dc9450b1990ac795bdd0d3d2b41327c03a863249bb1e909785a5bcfa25aba367",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/apple-calendar-package.js": "2d1373756633f3c134347c2673c632b8ff72418db838004f2cca7a8343b31b3b"
+      }
+    },
+    {
+      "name": "whatsapp-agenda-scheduled",
+      "baselineDigest": "115fbb20863c1445a4cb71e3db6f705e1a8857034d0f2791d32823df740424ad",
+      "digest": "cb1cbf253449433134df590d0624d0e49e330d64cdecc64c435c00b1b878b9a1",
+      "verifiedSourceClosure": {
+        "gestionale-studio-pt-netlify/netlify/functions/whatsapp-agenda-scheduled.mjs": "854ab9cca306d73a3ea6c2de1224b8b66ad58c38a64cd106b65ef84e1768bd7d",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/whatsapp-agenda.js": "c31753223d6c419d0a4117012adbee4761412c1fa6e4b29862ccb4eb9132a846",
+        "gestionale-studio-pt-netlify/netlify/functions/lib/calendar-audit-auth.js": "932fba0439ea5cd6c1e109269341bd52ee72a8adb93f89ecd999a01898999183"
+      }
+    }
+  ],
+  "schedules": [
+    {
+      "cron": "*/10 * * * *",
+      "name": "expected-renewals-scheduled"
+    },
+    {
+      "cron": "30 4,5 * * *",
+      "name": "whatsapp-agenda-scheduled"
+    }
+  ],
+  "anonymousStatus": 401,
+  "hashes": {
+    "index.html": "8ff452a24ddf5ac7cab0cb89283c822a87fc4191",
+    "js/pt-pair-sessions.js": "0c8ebd9b933e1df3c7981caee52061952547c43f",
+    "js/supabase.js": "18ddffd8f09b321944771dc0b3746bbdde88f5fd"
+  },
+  "migration": {
+    "name": "calendar_pair_solo_recovery",
+    "databaseVersion": "20261111102149",
+    "sourceFile": "supabase/migrations/20261111100621_calendar_pair_solo_recovery.sql",
+    "securityInvoker": true,
+    "sourceAndInstalledBodyMd5": "1dc13abab0b83a1ca69fc7d38ee76726",
+    "executableBy": [
+      "postgres",
+      "service_role"
+    ]
+  },
+  "tests": {
+    "fullCommittedCandidate": true,
+    "focusedFrontendSql": 5,
+    "independentPostgresConnections": 1,
+    "pairAndHoursRegressions": 8,
+    "localBrowserRealTestDatabase": true,
+    "previewAssetsWithTestDatabase": true,
+    "productionAssetsWithTestDatabase": true,
+    "productionCustomerWrites": false
+  },
+  "rates": {
+    "individualCentsPerHour": 1000,
+    "pairCentsPerHour": 1500,
+    "existingRatesUnchanged": true
+  },
+  "preservedRealData": {
+    "bothPackagesTotal": 12,
+    "bothPackagesResidual": 2,
+    "suspendedPartnerStillInactive": true,
+    "activeClientStillActive": true,
+    "partnerRowDigestBeforeAfter": "2ff14256525eaf33da98a470df958466",
+    "activeClientRowDigestBeforeAfter": "18b2811ad2c3d93426e995b3ba82edde",
+    "sharedClosedRowsDigestBeforeAfter": "1d81a166e38563f6d52abb80c87358e6"
+  },
+  "configurationRestored": {
+    "productionBranch": "main",
+    "stopBuilds": true,
+    "allowedBranches": [
+      "main"
+    ],
+    "publishedDeployLocked": true
+  },
+  "indexPreserved": true,
+  "workingBranch": "feature/whatsapp-agenda-pt-v1",
+  "workingHead": "105650c",
+  "securityAdvisoriesChanged": false
+}
