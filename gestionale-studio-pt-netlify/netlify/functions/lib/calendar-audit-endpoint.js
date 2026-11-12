@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
 const calendarRevision='20261111-package-suspension-v1';
-const calendarWrites=new Set(['reactivate_pair','package_schedule','save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
+const calendarWrites=new Set(['join_pair_sessions','reactivate_pair','package_schedule','save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -31,6 +31,12 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    }
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
+  }
+  if(input.operation==='join_pair_sessions'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Conversione sedute riservata alla Direzione dal Calendario'});
+   const {requestId,clients,expectedAppointments,preview}=input.payload||{};
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId||'')||typeof preview!=='boolean'||!Array.isArray(clients)||clients.length!==2||clients.some(c=>!c?.id||typeof c.expectedUpdatedAt!=='string')||!Array.isArray(expectedAppointments)||expectedAppointments.length<1||expectedAppointments.length>100)return reply(400,{error:'Selezione delle sedute condivise non valida'});
+   return reply(200,await db('rpc/calendar_join_pair_sessions',{method:'POST',body:{p_actor_id:actor.id,p_request_id:requestId,p_payload:{clients,expectedAppointments},p_preview:preview}}));
   }
   if(input.operation==='reactivate_pair'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Riattivazione coppia riservata alla Direzione dal Calendario'});

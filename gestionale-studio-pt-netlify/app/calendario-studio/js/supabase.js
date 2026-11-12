@@ -366,6 +366,21 @@ const SupabaseSync = (() => {
     return {appointments,clients,warnings:result.warnings||[],requestId:result.requestId};
   }
 
+  async function joinPairSessions(plan, preview) {
+    const expectedAppointments=plan.expectedAppointments.map(a=>{const row=appointmentToDb(a);delete row.updated_at;return row;});
+    const result=await CalendarAudit.call('join_pair_sessions',{requestId:plan.requestId,clients:plan.clients,expectedAppointments,preview});
+    if(result?.error)return result;
+    const ids=plan.clients.map(c=>c.id);
+    if(result?.mode!=='join_pair_sessions'||result.requestId!==plan.requestId||result.preview!==preview||result.appointments?.length!==expectedAppointments.length||result.clients?.length!==2||ids.some(id=>!result.clients.some(c=>c.id===id))||expectedAppointments.some(old=>!result.appointments.some(a=>a.id===old.id&&a.service_id==='pt12'&&a.status==='prenotato'&&a.date===old.date&&a.start_time.slice(0,5)===old.start_time.slice(0,5)&&a.operator_id===old.operator_id&&a.client_ids?.length===2&&ids.every(id=>a.client_ids.includes(id)))))return {error:'Conferma incompleta: ricarica per verificare le sedute condivise'};
+    if(!preview){
+      for(const old of expectedAppointments){const rows=await request('appointments',{query:'?select=*&id=eq.'+encodeURIComponent(old.id)});const saved=Array.isArray(rows)&&rows[0];const confirmed=result.appointments.find(a=>a.id===old.id);if(!saved||JSON.stringify(saved)!==JSON.stringify(confirmed)){
+        // JSON property order is not part of the database row identity.
+        if(!saved||Object.keys(confirmed).some(k=>JSON.stringify(saved[k])!==JSON.stringify(confirmed[k])))return {error:'Rilettura delle sedute non confermata: riprova senza cambiare selezione'};
+      }}
+    }
+    return result;
+  }
+
   async function correctPtSessions(changes) {
     if (!window.CalendarAudit?.call) return { error: 'Rientra dal Portale con una sessione verificata' };
     const result = await CalendarAudit.call('correct_pt_sessions', { changes });
@@ -734,5 +749,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { reactivatePair, savePackageSchedule, clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { joinPairSessions, reactivatePair, savePackageSchedule, clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

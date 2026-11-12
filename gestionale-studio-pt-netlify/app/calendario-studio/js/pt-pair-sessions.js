@@ -7,7 +7,7 @@
  const localDateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
  const money=cents=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(cents/100);
  const weekdays=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
- let firstId='',plan=null,busy=false,renewFirst=true,solo=false;
+ let firstId='',plan=null,busy=false,renewFirst=true,solo=false,joinPlan=null;
  const eligible=c=>c.active!==false&&!/ibern/i.test(c.statoAbbonamento||'')&&(c.packageTypes||[]).includes('PT 1:2');
  function panel(title,body,footer){UI.openModal(`<div class="modal-header"><h2>${title}</h2><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body pt-pair-panel"><p id="pair-plan-error" class="form-warning" role="alert" tabindex="-1" hidden></p>${body}</div><div class="modal-footer">${footer}</div>`);}
  function showPlanError(error){
@@ -21,7 +21,7 @@
  async function open(id,renew=true){
   if(!App.guardStudioManagement())return;
   if(renew&&typeof ExpectedRenewals!=='undefined'&&await ExpectedRenewals.forClient(id))return;
-  firstId=id;plan=null;renewFirst=renew;solo=false;
+  firstId=id;plan=null;joinPlan=null;renewFirst=renew;solo=false;
   const client=Services.getClient(id);if(!client||!eligible(client))return UI.showToast('Serve un cliente attivo con pacchetto PT 1:2','error');
   const partner=Services.getClient(client.ptPartnerId);
   if(!renew&&partner&&(partner.active===false||/ibern/i.test(partner.statoAbbonamento||''))){
@@ -37,14 +37,42 @@
  function assertSolo(client,partner){
   if(!client||!eligible(client)||!partner||partner.id===client.id||client.ptPartnerId!==partner.id||partner.ptPartnerId!==client.id||!(partner.packageTypes||[]).includes('PT 1:2')||!(partner.active===false||/ibern/i.test(partner.statoAbbonamento||'')))throw Error('Il recupero individuale richiede un cliente attivo e il suo partner sospeso');
  }
- function configure(){
+ function configure(){try{
   const pair=solo?[Services.getClient(firstId)]:[Services.getClient(firstId),Services.getClient(value('pair-partner'))];
-  if(pair.some(c=>!c)||!solo&&pair[0].id===pair[1].id)return UI.showToast('Scegli due persone distinte','error');
+  if(pair.some(c=>!c)||!solo&&pair[0].id===pair[1].id)throw Error('Scegli due persone distinte');
   const missing=Math.min(...pair.map(c=>available(c)));
-  if(!renewFirst&&missing<=0)return UI.showToast('Non ci sono sedute condivise mancanti: verifica il residuo e le prenotazioni di entrambe le persone','error');
+  if(!renewFirst&&missing<=0){if(!solo&&offerJoin(pair))return;throw Error('Non ci sono sedute condivise mancanti: verifica il residuo e le prenotazioni di entrambe le persone');}
   const operators=State.getOperators().filter(o=>o.active!==false&&o.id===pair[0].ptAssegnato&&(o.roles||[]).some(r=>/^(PT|personal_trainer|personal trainer)$/i.test(r)));
-  if(!operators.length||pair.some(c=>c.ptAssegnato!==operators[0].id))return UI.showToast('Verifica il PT assegnato a entrambe le persone prima di programmare la coppia','error');
+  if(!operators.length||pair.some(c=>c.ptAssegnato!==operators[0].id))throw Error('Verifica il PT assegnato a entrambe le persone prima di programmare la coppia');
   panel(solo?'Programma recuperi individuali':renewFirst?'Programma le sedute della coppia':'Programma recuperi nel pacchetto corrente',`<div id="pair-form" data-partner="${escape(pair[1]?.id||'')}">${pair.map(fields).join('')}<fieldset><legend>${solo?'Calendario individuale':'Calendario condiviso'}</legend><label>Prima data utile <input id="pair-start" type="date"></label><label>Orario <input id="pair-time" type="time" value="17:00"></label><label>PT assegnato <select id="pair-operator" disabled>${operators.map(o=>`<option value="${escape(o.id)}" ${o.id===pair[0].ptAssegnato?'selected':''}>${escape(name(o))}</option>`).join('')}</select></label><div>${weekdays.map((d,i)=>`<label><input class="pair-day" type="checkbox" value="${i}"> ${d}</label>`).join('')}</div><label>${solo?'Recuperi individuali':'Sedute condivise'} da generare <input id="pair-sessions" type="number" min="1" max="${renewFirst?100:missing}" value="${renewFirst?Math.min(...pair.map(c=>Number(c.sessionsTotal)||8)):missing}"></label></fieldset>${solo?'<p>Ogni recupero usa una lezione del tuo pacchetto corrente PT 1:2, senza rinnovo o nuovi incassi. Il partner sospeso non partecipa e non consuma lezioni.</p>':renewFirst?'<p>Chiudi prima le vecchie sedute ancora prenotate delle persone che rinnovi. Non verranno spostate nel nuovo pacchetto.</p>':'<p>Ogni recupero appartiene al pacchetto corrente di ciascuna persona. Scegli data e orario del recupero; il rinnovo già programmato conserva le sue date e il suo numero di lezioni.</p>'}<p>${solo?`Il PT matura ${money(1000)} per ogni ora individuale alla chiusura della seduta, secondo le normali regole delle presenze e delle assenze scalate.`:`Un’assenza scala la seduta a entrambi. Il PT matura ${money(1500)} per un’ora condivisa, anche con uno o entrambi assenti.`}</p></div>`,`<button class="btn-primary" onclick="PTPairSessions.preview()">Verifica e mostra anteprima</button>`);
+ }catch(e){showPlanError(e);}}
+ function joinOptions(pair){
+  const joining=pair.find(c=>available(c)>0),source=pair.find(c=>c!==joining);
+  if(!joining||!source||!eligible(joining)||!eligible(source)||joining.ptPartnerId!==source.id||source.ptPartnerId!==joining.id||joining.ptAssegnato!==source.ptAssegnato)return null;
+  const now=new Date(),day=localDateStr(now),time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const rows=State.getAppointments().filter(a=>a.status==='prenotato'&&a.serviceId==='pt11'&&a.clientIds?.length===1&&a.clientIds[0]===source.id&&a.operatorId===source.ptAssegnato&&Number(a.durationMin)===60&&Services.appointmentInCurrentPackageCycle(a,source)&&!PTSessionModel.provisional(a)&&(a.date>day||a.date===day&&a.startTime.slice(0,5)>time)).sort((a,b)=>(a.date+a.startTime+a.id).localeCompare(b.date+b.startTime+b.id));
+  return rows.length?{joining,source,rows,capacity:available(joining)}:null;
+ }
+ function offerJoin(pair){
+  const option=joinOptions(pair);if(!option)return false;joinPlan=null;
+  panel('Completa la coppia dalle sedute già prenotate',`<p><strong>${escape(name(option.joining))}</strong> ha ${option.capacity} lezioni ancora da programmare. <strong>${escape(name(option.source))}</strong> ha già il proprio residuo prenotato.</p><p>Puoi aggiungere ${escape(name(option.joining))} alle sedute individuali qui sotto: diventano condivise PT 1:2, con gli stessi appuntamenti, giorni, orari e PT.</p><p>Seleziona fino a ${option.capacity} sedute. Nessun rinnovo, nuovo incasso o consumo di lezioni alla prenotazione.</p><div id="pair-join-options" data-joining="${escape(option.joining.id)}" data-source="${escape(option.source.id)}">${option.rows.map((a,i)=>`<label class="pair-join-option"><input type="checkbox" class="pair-join-selection" value="${escape(a.id)}" ${i<option.capacity?'checked':''}> <span>${escape(a.date)} · ${escape(a.startTime.slice(0,5))} · ${escape(name(option.source))} → ${escape(name(option.source))} e ${escape(name(option.joining))}</span></label>`).join('')}</div>`,`<button class="btn-primary" id="pair-join-review" onclick="PTPairSessions.previewJoin()">Mostra anteprima delle sedute condivise</button>`);
+  return true;
+ }
+ async function previewJoin(){
+  if(busy||!App.guardStudioManagement())return;busy=true;const button=document.getElementById('pair-join-review');if(button)button.disabled=true;
+  try{
+   const form=document.getElementById('pair-join-options'),pair=[Services.getClient(form.dataset.joining),Services.getClient(form.dataset.source)],option=joinOptions(pair);
+   const selected=[...document.querySelectorAll('.pair-join-selection:checked')].map(e=>e.value);
+   if(!option||!selected.length||selected.length>option.capacity||selected.some(id=>!option.rows.some(a=>a.id===id)))throw Error('Seleziona almeno una seduta senza superare il residuo da programmare');
+   joinPlan={requestId:crypto.randomUUID(),clients:pair.map(c=>({id:c.id,expectedUpdatedAt:c.serverUpdatedAt})),expectedAppointments:option.rows.filter(a=>selected.includes(a.id))};
+   const result=await SupabaseSync.joinPairSessions(joinPlan,true);if(result?.error)throw Error(result.error);
+   panel('Conferma le sedute condivise PT 1:2',`<p>Aggiungi <strong>${escape(name(option.joining))}</strong> a ${result.appointments.length} sedute già prenotate di <strong>${escape(name(option.source))}</strong>.</p>${result.appointments.map(a=>`<p>${escape(a.date)} · ${escape(a.start_time.slice(0,5))} · Individuale → PT 1:2 · ${escape(name(option.source))} e ${escape(name(option.joining))}</p>`).join('')}${result.warnings?.length?'<p class="form-warning">⚠ Sono presenti sovrapposizioni o capacità sala da verificare.</p>':''}<p>Stessi appuntamenti, orari e PT. Residui, pagamenti e storico restano invariati. Alla chiusura ogni seduta scalerà una lezione a ciascuna persona; il compenso PT sarà quello della seduta condivisa.</p>`,`<button class="btn" onclick="PTPairSessions.open('${escape(firstId)}',false)">Modifica selezione</button><button class="btn-primary" id="pair-join-confirm" onclick="PTPairSessions.saveJoin()">Conferma sedute condivise</button>`);
+  }catch(e){joinPlan=null;showPlanError(e);}finally{busy=false;if(button?.isConnected)button.disabled=false;}
+ }
+ async function saveJoin(){
+  if(busy||!joinPlan||!App.guardStudioManagement())return;busy=true;const button=document.getElementById('pair-join-confirm');if(button)button.disabled=true;
+  try{const result=await SupabaseSync.joinPairSessions(joinPlan,false);if(result?.error)throw Error(result.error);await SupabaseSync.pullAll();joinPlan=null;UI.closeModal();Calendar.render();Clients.render();App.openPackageOverview(firstId);UI.showToast('Sedute condivise confermate nei pacchetti correnti','success');}
+  catch(e){showPlanError(e);}finally{busy=false;if(button?.isConnected)button.disabled=false;}
  }
  function buildPlan(input,clients,appointments){
   const {start,time,operatorId,days,count,renewals}=input;
@@ -97,5 +125,5 @@
   panel('Presenze PT 1:2',`<p>La seduta scala a entrambi anche in caso di assenza. Compenso PT per 60 minuti: ${money(1500)}.</p>${a.clientIds.map((id,i)=>`<label>${escape(name(Services.getClient(id)||{}))}<select id="pair-attendance-${i}"><option value="fatto">Presente</option><option value="noshow" ${PTSessionModel.status(a,id)==='noshow'?'selected':''}>Assente · scala la seduta</option></select></label>`).join('')}`,`<button class="btn-primary" onclick="PTPairSessions.saveAttendance('${escape(a.id)}')">Salva entrambe le presenze</button>`);
  }catch(e){UI.showToast(e.message,'error');}}
  async function saveAttendance(id){if(busy)return;const a=State.getAppointments().find(a=>a.id===id);if(!a||!App.guardPortalEdit('appointment',a))return;busy=true;try{const prepared=PTSessionModel.prepare(a,State.getClients(),Services.getPackageCycleContext,a);const next=PTSessionModel.attendance(prepared,Object.fromEntries(a.clientIds.map((id,i)=>[id,value('pair-attendance-'+i)])));const saved=await SupabaseSync.saveAppointmentAtomic(next,a);if(saved?.error)throw Error(saved.error);UI.closeModal();Calendar.render();UI.showToast('Presenze salvate, una seduta scalata a ciascuno','success');}catch(e){UI.showToast(e.message,'error');}finally{busy=false;}}
- window.PTPairSessions={open,openSolo,configure,preview,save,buildPlan,buildSoloPlan,attendance,saveAttendance,detail,escape};
+ window.PTPairSessions={joinOptions,previewJoin,saveJoin,open,openSolo,configure,preview,save,buildPlan,buildSoloPlan,attendance,saveAttendance,detail,escape};
 })();

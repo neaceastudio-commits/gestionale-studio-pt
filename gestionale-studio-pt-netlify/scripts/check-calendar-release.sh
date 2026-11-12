@@ -25,6 +25,8 @@ node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-package-schedule.test.cjs tests/calendar-pair-reactivation.test.cjs tests/calendar-package-schedule-concurrency.test.cjs
 node tests/calendar-schedule-workflows-browser.cjs
+node --test tests/calendar-join-pair.test.cjs tests/calendar-join-pair-concurrency.test.cjs
+node tests/calendar-join-pair-browser.cjs
 node --test tests/calendar-charged-absence.test.cjs
 node --test tests/calendar-archived-hours.test.cjs tests/calendar-package-suspension.test.cjs tests/calendar-pair-solo-recovery.test.cjs
 node --test tests/calendar-exhausted-edit.test.cjs
@@ -47,6 +49,11 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    tests/calendar-join-pair-concurrency.test.cjs
+    tests/calendar-join-pair.test.cjs
+    tests/calendar-join-pair-browser.cjs
+    tests/helpers/calendar-join-pair-db.cjs
+    supabase/migrations/20261112112856_calendar_join_pair_sessions.sql
     tests/calendar-function-build.test.cjs
     tools/prepare-calendar-shared-function.cjs
     tests/calendar-package-schedule.test.cjs
