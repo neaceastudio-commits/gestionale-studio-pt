@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
 const calendarRevision='20261111-package-suspension-v1';
-const calendarWrites=new Set(['save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
+const calendarWrites=new Set(['reactivate_pair','package_schedule','save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -32,6 +32,12 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
   }
+  if(input.operation==='reactivate_pair'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Riattivazione coppia riservata alla Direzione dal Calendario'});
+   const {requestId,clientId,partnerId,expectedUpdatedAt,partnerExpectedUpdatedAt}=input.payload||{};
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId||'')||!clientId||!partnerId||clientId===partnerId||typeof expectedUpdatedAt!=='string'||typeof partnerExpectedUpdatedAt!=='string')return reply(400,{error:'Seleziona e verifica la coppia prima di confermare'});
+   return reply(200,await db('rpc/calendar_reactivate_pair',{method:'POST',body:{p_actor_id:actor.id,p_request_id:requestId,p_payload:{clientId,partnerId,expectedUpdatedAt,partnerExpectedUpdatedAt}}}));
+  }
   if(input.operation==='client_lifecycle'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Sospensione e riattivazione riservate alla Direzione'});
    const {clientId,action,status,expectedUpdatedAt,expectedAppointments}=input.payload||{};
@@ -58,6 +64,12 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    const payload=input.payload||{};
    if(!['list','register','void'].includes(payload.action)||!/^\d{4}-\d{2}-01$/.test(payload.period||''))return reply(400,{error:'Mese o azione non validi'});
    return reply(200,await db('rpc/calendar_pt_payments',{method:'POST',body:{p_actor_id:actor.id,p_operation:payload.action,p_payload:payload}}));
+  }
+  if(input.operation==='package_schedule'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Cambio orari riservato alla Direzione dal Calendario'});
+   const {requestId,preview,...payload}=input.payload||{};
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId||'')||typeof preview!=='boolean'||!payload.clientId||!Array.isArray(payload.slots)||!Array.isArray(payload.clients)||!Array.isArray(payload.expectedAppointments))return reply(400,{error:'Anteprima degli orari non valida'});
+   return reply(200,await db('rpc/calendar_package_schedule',{method:'POST',body:{p_actor_id:actor.id,p_request_id:requestId,p_payload:payload,p_preview:preview}}));
   }
   if(input.operation==='plan_pair_solo'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Recuperi individuali riservati alla Direzione dal Calendario'});

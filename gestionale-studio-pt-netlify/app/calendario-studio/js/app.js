@@ -1366,7 +1366,7 @@ const App = {
 
         <div class="form-group">
           <label>Note</label>
-          <textarea id="cl-notes" class="form-input" rows="2" ${personalReadOnlyAttr}>${App._escapeHtml(typeof PackageLedger !== 'undefined' ? PackageLedger.strip(client?.notes || '') : (client?.notes || ''))}</textarea>
+          <textarea id="cl-notes" class="form-input" rows="2" ${personalReadOnlyAttr}>${App._escapeHtml(typeof PackageSchedule !== 'undefined' ? PackageSchedule.strip(typeof PackageLedger !== 'undefined' ? PackageLedger.strip(client?.notes || '') : (client?.notes || '')) : (typeof PackageLedger !== 'undefined' ? PackageLedger.strip(client?.notes || '') : (client?.notes || '')))}</textarea>
           ${client && String(client.notes || '').includes(PackageLedger.START)
             ? '<div class="form-hint">Lo storico economico è protetto e non viene mostrato in questo campo.</div>'
             : ''}
@@ -1474,6 +1474,7 @@ const App = {
       }
       rawNotes = PackageLedger.serialize(rawNotes, ledger);
     }
+    if (!packageOnly && currentClient && typeof PackageSchedule !== 'undefined') rawNotes = PackageSchedule.preserve(rawNotes, currentClient.notes);
     const notes = packageOnly
       ? App._withPtAudit(rawNotes, 'pacchetto aggiornato')
       : rawNotes;
@@ -2064,12 +2065,15 @@ const App = {
       a.startTime === candidates[0].startTime && a.operatorId === candidates[0].operatorId &&
       a.durationMin === candidates[0].durationMin);
     const slot = reference || (sameSlot ? candidates[0] : null);
+    const configured = globalThis.PackageSchedule?.at(client, date)?.find(s => s.day === App._parseDate(date).getDay());
+    if (configured) return { startTime: configured.time, operatorId: client.ptAssegnato || slot?.operatorId, durationMin: slot?.durationMin || 60, bufferMin: slot?.bufferMin ?? 10 };
     return slot ? { startTime: slot.startTime, operatorId: client.ptAssegnato || slot.operatorId,
       durationMin: slot.durationMin, bufferMin: slot.bufferMin } : null;
   },
 
   _suggestPackageDates(client, count, options = {}) {
-    const days = Array.isArray(options.days) ? options.days : (Array.isArray(client.giorniSettimana) ? client.giorniSettimana : []);
+    const configured = globalThis.PackageSchedule?.at(client, App._dateStr(new Date()));
+    const days = Array.isArray(options.days) ? options.days : configured ? configured.map(s => PackageSchedule.days[s.day]) : (Array.isArray(client.giorniSettimana) ? client.giorniSettimana : []);
     if (!days.length || count <= 0) return [];
 
     const wanted = new Set(days);
@@ -2085,7 +2089,9 @@ const App = {
     const out = [];
     for (let guard = 0; out.length < count && guard < 420; guard += 1) {
       const date = App._dateStr(cursor);
-      if (wanted.has(App._weekdayName(date)) && !usedDates.has(date)) {
+      const effectiveSlots = !Array.isArray(options.days) && globalThis.PackageSchedule?.at(client, date);
+      const matches = effectiveSlots ? effectiveSlots.some(s => s.day === cursor.getDay()) : wanted.has(App._weekdayName(date));
+      if (matches && !usedDates.has(date)) {
         out.push(date);
         usedDates.add(date);
       }
@@ -2152,7 +2158,8 @@ const App = {
     if (currentFinance.paid > 0.009) renewalUndoBlocks.push('prima occorre stornare gli incassi del rinnovo');
     const financialSummary = PackageLedger.summary([client]);
     const pkgs = Array.isArray(client.packageTypes) ? client.packageTypes : [];
-    const days = Array.isArray(client.giorniSettimana) ? client.giorniSettimana : [];
+    const configuredDays = globalThis.PackageSchedule?.at(client, App._dateStr(new Date()));
+    const days = configuredDays ? configuredDays.map(s => PackageSchedule.days[s.day]) : (Array.isArray(client.giorniSettimana) ? client.giorniSettimana : []);
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
     const appointments = App._packageAppointments(client, true);
@@ -2310,16 +2317,17 @@ const App = {
             <button class="btn-primary" onclick="App._confirmCurrentPackageCycle('${client.id}')">Conferma separazione</button>
           </section>` : ''}
 
-        <div class="package-overview-grid package-lessons-only">
-          <section class="package-panel">
-            <h4>Giorni abituali del pacchetto</h4>
-            <div class="day-chip-row">
-              ${days.length ? days.map(day => `<span>${day}</span>`).join('') : '<em>Nessun giorno impostato</em>'}
-            </div>
-            <p>Questi giorni servono per proporre le sedute. Puoi cambiare data e orario di ogni singolo appuntamento, anche in giorni diversi, senza modificare il pacchetto.</p>
-          </section>
+        ${isArchived ? `
+        <section class="package-panel client-history-notice package-lessons-only">
+          <h4>Cliente nello storico</h4>
+          <p>Anagrafica, lezioni e conteggi sono conservati. Non è possibile programmare o modificare sedute finché il cliente non viene riattivato.</p>
+        </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
+          <div id="pkg-weekly-schedule"></div>
+        </section>`}
 
-          ${isArchived ? '' : `<section class="package-panel">
+        <div class="package-overview-grid package-lessons-only">
+
+          ${isArchived || !metrics.toSchedule ? '' : `<section class="package-panel">
             <h4>Prossime date suggerite</h4>
             ${appointments.some(a => a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && Services.serviceUsesPackageSessions(a.serviceId) && !Services.appointmentInCurrentPackageCycle(a, client)) && metrics.toSchedule > 0 ? `<p>Ci sono sedute già in agenda fuori dal ciclo. Prima di generarne altre, controlla l’elenco: puoi usare “Includi nel ciclo” per una lezione anticipata.</p><button class="btn" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Controlla le sedute</button>` : ''}
             <div class="suggested-date-row">
@@ -2336,47 +2344,7 @@ const App = {
           </section>`}
         </div>
 
-        ${isArchived ? `
-        <section class="package-panel client-history-notice package-lessons-only">
-          <h4>Cliente nello storico</h4>
-          <p>Anagrafica, lezioni e conteggi sono conservati. Non è possibile programmare o modificare sedute finché il cliente non viene riattivato.</p>
-        </section>` : `<section class="package-panel package-reschedule-panel package-lessons-only">
-          <h4>Modifica singole sedute</h4>
-          <p>Per spostare una sola lezione Personal, cambia la sua data e il suo orario nell’elenco e premi “Salva seduta”. Le altre lezioni mantengono i loro orari.</p>
-          <p>Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</p>
-          <button type="button" class="btn-primary" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Vai alle singole sedute</button>
-          <h4>Cambio di tutte le sedute future</h4>
-          <div class="package-reschedule-grid">
-            <div>
-              <label>Nuovi giorni reali</label>
-              <div class="checkbox-grid package-plan-grid">
-                ${planningDays}
-              </div>
-            </div>
-            <div class="package-reschedule-fields">
-              <div class="form-group">
-                <label>Orario</label>
-                <input id="pkg-plan-time" class="form-input" type="time" value="${appointments.find(a => a.serviceId === serviceId && a.date >= today)?.startTime || '09:00'}" step="900">
-              </div>
-              <div class="form-group">
-                <label>PT assegnato</label>
-                <select id="pkg-plan-operator" class="form-input" disabled>
-                  <option value="${App._escapeHtml(client.ptAssegnato || '')}">${App._escapeHtml(packageTrainerLabel)}</option>
-                </select>
-                <div class="form-hint">Il pacchetto fa capo al PT assegnato. Le sostituzioni si gestiscono nelle singole lezioni; cambiare gli orari conserva il loro PT.</div>
-              </div>
-              <div class="form-group">
-                <label>Modifica future dal</label>
-                <input id="pkg-plan-from" class="form-input" type="date" value="${today}">
-              </div>
-            </div>
-          </div>
-          <div class="package-reschedule-actions">
-            <button class="btn" onclick="App._savePackageSchedule('${client.id}')">Applica giorni, orario e PT alle future</button>
-            <button class="btn-primary" ${hasTotal ? '' : 'disabled'} onclick="App._regenerateFuturePackageAppointments('${client.id}')">Rigenera future</button>
-          </div>
-          <p>Questa sezione modifica soltanto il calendario del ciclo attuale. Non crea rinnovi e non tocca importi o pagamenti.</p>
-        </section>`}
+
 
         ${App.isPortalPtMode() || isArchived ? '' : `
         <section id="shared-finance" class="package-panel package-finance-only" hidden aria-label="Quote e incassi condivisi"></section>
@@ -2580,6 +2548,7 @@ const App = {
 
         <section class="package-panel package-lessons-only">
           <h4 id="pkg-single-sessions">Singole sedute: date e orari</h4>
+          <p>Modifica il PT degli appuntamenti, non il PT assegnato al cliente.</p>
           <p>Data e ora sono indipendenti per ogni riga. Puoi scegliere anche giorni diversi da quelli del pacchetto; restano i controlli sulla disponibilità del PT, del cliente e della sala.</p>
           ${!App.isPortalPtMode() ? '<p>Cliente prestato: assegna la seduta al nuovo PT e abilitalo in “Condividi cliente con PT”. Potrà compilare carichi, ripetizioni e note; la scheda resta al referente. “Trasferisci PT” cambia invece il referente del cliente.</p>' : ''}
           ${!isArchived && !App.isPortalPtMode() ? `
@@ -2617,6 +2586,7 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+    if (!isArchived && typeof PackageSchedule !== 'undefined') PackageSchedule.mount(client.id, document.getElementById('pkg-weekly-schedule'));
     if (!isArchived && !App.isPortalPtMode() && typeof SharedFinance !== 'undefined') SharedFinance.mount(client.id);
     if (!isArchived && !App.isPortalPtMode()) App._updateRenewalPlanPreview();
     if (!isArchived && !App.isPortalPtMode() && typeof ExpectedRenewals !== 'undefined') ExpectedRenewals.attachPackage(client.id);

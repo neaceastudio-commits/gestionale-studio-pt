@@ -590,11 +590,15 @@ const Clients = (() => {
     const idx = clients.findIndex(c => c.id === clientId);
     if (idx === -1) return;
     const client = clients[idx];
+    if ((client.packageTypes || []).includes('PT 1:2')) {
+      if (typeof ClientReactivation === 'undefined') return UI.showToast('Ricarica il Calendario per scegliere la coppia da riattivare', 'error');
+      return ClientReactivation.open(clientId);
+    }
     const name = `${client.nome || ''} ${client.cognome || ''}`.trim() || 'questo cliente';
     if (!confirm(`Riattivare ${name} con lo stesso pacchetto e le lezioni residue?\n\nStorico, ore svolte e pagamenti resteranno invariati. Le prenotazioni annullate non verranno ricreate: potrai riprogrammare le lezioni residue.`)) return;
     const result = await SupabaseSync.reactivateClient(client);
     if (result?.error) {
-      UI.showToast('Cliente non riattivato: riprova', 'error');
+      UI.showToast('Cliente non riattivato: ' + result.error, 'error');
       return;
     }
     State.saveClients(State.getClients().map(item => item.id === clientId ? result : item));

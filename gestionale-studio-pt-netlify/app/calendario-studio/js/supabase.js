@@ -327,6 +327,45 @@ const SupabaseSync = (() => {
     return { changed };
   }
 
+  async function reactivatePair(plan) {
+    const result=await CalendarAudit.call('reactivate_pair',plan);
+    if(result?.error)return result;
+    const ids=[plan.clientId,plan.partnerId];
+    if(result?.mode!=='reactivate_pair'||result.requestId!==plan.requestId||!Array.isArray(result.clients)||result.clients.length!==2
+      || ids.some(id=>!result.clients.some(c=>c.id===id&&c.active===true&&c.pt_partner_id===ids.find(x=>x!==id)&&c.package_types?.includes('PT 1:2'))))return {error:'Riattivazione non confermata: aggiorna il Calendario.'};
+    for(const id of ids){
+      const rows=await request('clients',{query:'?select=*&id=eq.'+encodeURIComponent(id)});
+      if(!Array.isArray(rows)||rows.length!==1||rows[0].active!==true||rows[0].pt_partner_id!==ids.find(x=>x!==id)||!rows[0].package_types?.includes('PT 1:2'))return {error:'Rilettura della coppia non confermata: riprova con la stessa selezione.'};
+    }
+    return result;
+  }
+
+  async function savePackageSchedule(plan, preview = false) {
+    if (!window.CalendarAudit?.call) return {error:'Rientra dal Portale con una sessione verificata'};
+    const result = await CalendarAudit.call('package_schedule', {...plan, preview,
+      expectedAppointments: plan.expectedAppointments.map(a => { const row=appointmentToDb(a); delete row.updated_at; return row; })});
+    if (result?.error) return result;
+    const original = new Map(plan.expectedAppointments.map(a => [a.id,a]));
+    if (result?.requestId !== plan.requestId || result.preview !== preview || !Array.isArray(result.appointments)
+      || result.appointments.length !== original.size || new Set(result.appointments.map(a=>a.id)).size !== original.size
+      || !Array.isArray(result.clients) || result.clients.length !== plan.clients.length
+      || plan.clients.some(c=>!result.clients.some(x=>x.id===c.id))
+      || result.appointments.some(a=>{
+        const b=original.get(a.id);return !b || a.status!==b.status || a.service_id!==b.serviceId
+          || a.operator_id!==b.operatorId || a.duration_min!==b.durationMin
+          || JSON.stringify(a.client_ids)!==JSON.stringify(b.clientIds) || a.notes!==(b.notes||'')
+          || !/^\d{4}-\d{2}-\d{2}$/.test(a.date||'') || !/^\d{2}:\d{2}/.test(a.start_time||'');
+      })) return {error:'Conferma incompleta: aggiorna il Calendario prima di riprovare.'};
+    const appointments=result.appointments.map(appointmentFromDb), clients=result.clients.map(clientFromDb);
+    if (!preview) {
+      const saved=new Map(appointments.map(a=>[a.id,a]));
+      State.saveAppointments(State.getAppointments().map(a=>saved.get(a.id)||a));
+      const confirmed=new Map(clients.map(c=>[c.id,c]));
+      State.saveClients(State.getClients().map(c=>confirmed.get(c.id)||c));
+    }
+    return {appointments,clients,warnings:result.warnings||[],requestId:result.requestId};
+  }
+
   async function correctPtSessions(changes) {
     if (!window.CalendarAudit?.call) return { error: 'Rientra dal Portale con una sessione verificata' };
     const result = await CalendarAudit.call('correct_pt_sessions', { changes });
@@ -695,5 +734,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { reactivatePair, savePackageSchedule, clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

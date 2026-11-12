@@ -2,6 +2,7 @@
 const crypto = require('node:crypto');
 const packages = require('./apple-calendar-package');
 const session = require('./pt-session-metadata');
+const weekly = require('../../../app/calendario-studio/js/package-schedule');
 const DAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
 const active = c => c && c.active !== false && !/ibern/i.test(c.stato_abbonamento || '');
 const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Rome'}).format(new Date());
@@ -18,14 +19,15 @@ function infer(clients,appointments,day=today()) {
  const rows=histories.flatMap(h=>h.rows.filter(a=>a.status!=='annullato'&&packages.inCycle(a,h.ctx)));
  const last=rows.map(a=>a.date).sort().at(-1)||day;
  const currentLedger=[...ledger(primary).cycles].reverse().find(c=>!c.closedAt)||{};
- const days=currentLedger.days?.length?currentLedger.days:primary.giorni_settimana||[];
+ const configured=weekly.at(primary,plus(last>=day?last:plus(day,-1),1));
+ const days=configured?configured.map(s=>DAYS[s.day]):currentLedger.days?.length?currentLedger.days:primary.giorni_settimana||[];
  const slots=days.map(name=>{
   const d=DAYS.findIndex(x=>x.toLowerCase()===String(name).toLowerCase());
   const candidates=rows.filter(a=>a.service_id===sid&&new Date(a.date+'T12:00:00Z').getUTCDay()===d&&!a.notes?.includes('[ORARIO-PROVVISORIO]')).sort((a,b)=>b.date.localeCompare(a.date));
   // A single rescheduled session must not replace the established weekly pattern.
   const counts=new Map();for(const a of candidates){const k=[a.start_time.slice(0,5),a.operator_id,a.duration_min].join('|');const v=counts.get(k)||{n:0,a};v.n++;counts.set(k,v);}
   const ranked=[...counts.values()].sort((a,b)=>b.n-a.n||b.a.date.localeCompare(a.a.date));const a=ranked[0]?.a;
-  return {day:d,time:a?.start_time.slice(0,5)||currentLedger.time||'',operatorId:a?.operator_id||currentLedger.operatorId||primary.pt_assegnato||'',duration:a?.duration_min||60};
+  return {day:d,time:configured?.find(s=>s.day===d)?.time||a?.start_time.slice(0,5)||currentLedger.time||'',operatorId:a?.operator_id||currentLedger.operatorId||primary.pt_assegnato||'',duration:a?.duration_min||60};
  });
  let issue='';
  if(!slots.length||slots.some(s=>s.day<0||!s.time||!s.operatorId))issue='Completa giorni, orari e PT della proposta.';

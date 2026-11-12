@@ -18,10 +18,13 @@ node --check netlify/functions/pt-access-email.js
 node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
+node --test tests/calendar-function-build.test.cjs
 node tests/calendar-release-regression.cjs
 node tools/coaching-editor/check-calendar-clients.cjs
 node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
+node --test tests/calendar-package-schedule.test.cjs tests/calendar-pair-reactivation.test.cjs tests/calendar-package-schedule-concurrency.test.cjs
+node tests/calendar-schedule-workflows-browser.cjs
 node --test tests/calendar-charged-absence.test.cjs
 node --test tests/calendar-archived-hours.test.cjs tests/calendar-package-suspension.test.cjs tests/calendar-pair-solo-recovery.test.cjs
 node --test tests/calendar-exhausted-edit.test.cjs
@@ -44,6 +47,15 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    tests/calendar-function-build.test.cjs
+    tools/prepare-calendar-shared-function.cjs
+    tests/calendar-package-schedule.test.cjs
+    tests/calendar-pair-reactivation.test.cjs
+    tests/calendar-package-schedule-concurrency.test.cjs
+    tests/calendar-schedule-workflows-browser.cjs
+    supabase/migrations/20261112103135_calendar_package_schedule.sql
+    supabase/migrations/20261112104008_calendar_reactivate_historical_pair.sql
+    netlify/functions/lib/expected-renewals.js
     tests/calendar-pair-solo-recovery.test.cjs
     tests/calendar-pair-solo-recovery-browser.cjs
     tests/calendar-pair-solo-concurrency.test.cjs

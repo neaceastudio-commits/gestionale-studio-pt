@@ -46,7 +46,7 @@ test('two individual recoveries persist and reopen; only the active package is c
   const r=await f.commit(p);assert.equal(r.appointments.length,2);assert.deepEqual(await f.all('clients'),clients,'planning never consumes or renews');
   const reopened=(await f.all('appointments')).filter(a=>p.appointments.some(x=>x.id===a.id));assert.equal(reopened.length,2);
   for(const a of reopened){assert.equal(a.service_id,'pt11');assert.deepEqual(a.client_ids,['a']);assert.match(a.notes,/CICLO-PACCHETTO-ID cycle-a/);assert.doesNotMatch(a.notes,/FORGED/);}
-  assert.deepEqual((await f.commit(p)).appointments,r.appointments,'same request cannot duplicate bookings');
+  assert.deepEqual((await f.commit(p)).appointments.toSorted((a,b)=>a.id.localeCompare(b.id)),r.appointments.toSorted((a,b)=>a.id.localeCompare(b.id)),'same request cannot duplicate or modify bookings; database row order is unspecified');
   const done=(await f.write({...reopened[0],status:'fatto'},reopened[0])).appointment;
   const retry=await f.commit(p);assert.equal(retry.clients[0].sessions_remaining,1);assert.equal(retry.appointments.find(a=>a.id===done.id).status,'fatto','retry returns current server data');
   await f.write({...reopened[1],status:'fatto'},reopened[1]);
