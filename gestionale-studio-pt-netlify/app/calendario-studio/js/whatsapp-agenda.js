@@ -13,6 +13,75 @@ window.WhatsAppAgenda = (() => {
     const button = element('button', 'WhatsApp Agenda PT'); button.id = 'whatsapp-agenda-open'; button.className = 'btn-ghost'; button.onclick = open;
     panel.querySelector('.view-header')?.append(button);
   }
+
+  function renderAgendaMessage(container, agenda) {
+    const message = element('pre', agenda.count ? agenda.text : 'Nessuna seduta: nessun messaggio.');
+    message.className = 'agenda-message';
+    container.replaceChildren(message);
+    if (agenda.issues.length) {
+      container.append(element('p', 'Dati incompleti: invio bloccato per questa agenda.'));
+    }
+  }
+
+  function mountDirectionPreview() {
+    const tab = document.getElementById('whatsapp-direction-tab');
+    const section = document.getElementById('direction-whatsapp');
+    if (!tab || !section) return;
+    const refresh = document.getElementById('agenda-direction-refresh');
+    const status = document.getElementById('agenda-direction-status');
+    const content = document.getElementById('agenda-direction-content');
+    let selectedOperator = '';
+
+    async function loadPreview() {
+      if (!section.open || refresh.disabled) return;
+      refresh.disabled = true;
+      content.replaceChildren();
+      status.textContent = 'Caricamento delle agende…';
+      try {
+        const { day, agendas } = await call({ action: 'agenda' });
+        const date = new Date(day + 'T12:00:00Z').toLocaleDateString('it-IT', {
+          dateStyle: 'full', timeZone: 'Europe/Rome'
+        });
+        if (!agendas.length) {
+          status.textContent = date + ' · Nessun PT attivo.';
+          return;
+        }
+        status.textContent = date + ' · Solo anteprima.';
+        const select = element('select');
+        select.className = 'form-input';
+        for (const agenda of agendas) {
+          select.add(new Option(agenda.operatorName, agenda.operatorId));
+        }
+        const initial = agendas.find(a => a.operatorId === selectedOperator)
+          || agendas.find(a => a.count > 0) || agendas[0];
+        select.value = initial.operatorId;
+        const label = element('label', 'Personal trainer');
+        label.className = 'agenda-operator-label';
+        label.append(select);
+        const result = element('div');
+        result.setAttribute('aria-live', 'polite');
+        content.append(label, result);
+        function showSelected() {
+          const agenda = agendas[select.selectedIndex];
+          selectedOperator = agenda.operatorId;
+          renderAgendaMessage(result, agenda);
+        }
+        select.addEventListener('change', showSelected);
+        showSelected();
+      } catch (error) {
+        status.textContent = error.message + ' Usa «Aggiorna anteprima» per riprovare.';
+      } finally {
+        refresh.disabled = false;
+      }
+    }
+
+    section.addEventListener('toggle', loadPreview);
+    tab.addEventListener('click', loadPreview);
+    refresh.addEventListener('click', loadPreview);
+    section.hidden = false;
+    tab.hidden = false;
+  }
+
   async function open() {
     if (!owner) return;
     UI.openModal('<div class="modal-header"><h3>WhatsApp Agenda PT</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body" id="whatsapp-agenda-panel"><p role="status">Caricamento…</p></div>');
@@ -38,15 +107,23 @@ window.WhatsAppAgenda = (() => {
         if (!data.sendingEnabled || !data.providerReady) result.append(element('p', 'Invio reale disabilitato o provider non configurato.'));
         for (const a of data.agendas) {
           result.append(element('h4', a.operatorName + (a.enabled ? '' : ' · invio non abilitato')));
-          const pre = element('pre', a.count ? a.text : 'Nessuna seduta: nessun messaggio.'); pre.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;background:var(--bg);padding:12px;border-radius:8px'; result.append(pre);
-          if (a.issues.length) result.append(element('p', 'Dati incompleti: invio bloccato per questa agenda.'));
+          const message = element('div');
+          renderAgendaMessage(message, a);
+          result.append(message);
         }
       } catch (e) { result.replaceChildren(element('p', e.message)); } finally { preview.disabled = false; } };
       panel.append(preview, result);
     } catch (e) { panel.replaceChildren(element('p', e.message)); }
   }
   document.addEventListener('DOMContentLoaded', async () => {
-    try { const session = await call({ action: 'session' }); owner = session.role === 'owner'; if (owner) mount(document.getElementById('view-operators')); } catch { /* No new access or permission is granted by the browser. */ }
+    try {
+      const session = await call({ action: 'session' });
+      owner = session.role === 'owner';
+      if (owner) {
+        mount(document.getElementById('view-operators'));
+        mountDirectionPreview();
+      }
+    } catch { /* No new access or permission is granted by the browser. */ }
   });
   return { mount, open };
 })();
