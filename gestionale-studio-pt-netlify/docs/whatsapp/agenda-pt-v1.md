@@ -16,6 +16,8 @@ Implementazione isolata per il sito Calendario; nessuna modifica a salvataggi ap
 
 ### Prova personale dalla Direzione
 
+Per questa prova la PR #17 ha come ramo di destinazione `release/calendar-pair-solo-20261111`. Su Netlify servono build attive e questo ramo tra quelli abilitati ai branch deploy. Nella scheda Deploys controllare che il contesto della richiesta sia `deploy-preview` e aprire il relativo link. Il progetto è `new-calendar-neacea`.
+
 Nel deploy di anteprima del Calendario, **Direzione → WhatsApp → Invia prova al mio numero** invia una sola seduta fittizia al destinatario impostato sul server. La funzione dedicata richiede una sessione Direzione. Accetta solo la lettura dello stato o la richiesta di prova. Verifica il mittente e ignora la selezione del trainer nell’anteprima dell’agenda.
 
 Configurare nelle Functions del deploy preview `WHATSAPP_AGENDA_TEST_TO` (E.164), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_API_VERSION` e il segreto `WHATSAPP_ACCESS_TOKEN`. La funzione usa il mittente e il site ID già configurati. Il destinatario deve aver aperto la conversazione scrivendo allo studio per ricevere il messaggio di testo libero. Il flag dell’agenda programmata può rimanere disattivato.
