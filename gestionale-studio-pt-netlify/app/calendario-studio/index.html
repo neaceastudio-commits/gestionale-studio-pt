@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/pt-availability-overview.css?v=20261013stable">
   <link rel="stylesheet" href="css/apple-calendar.css?v=1">
   <link rel="stylesheet" href="css/calendar-audit-view.css?v=1">
+  <link rel="stylesheet" href="css/whatsapp-agenda.css?v=1">
 <link rel="stylesheet" href="css/pt-trainer-payments.css?v=20261009">
 <link rel="stylesheet" href="css/expected-renewals.css?v=1">
 <link rel="stylesheet" href="css/client-journey.css?v=4">
@@ -34,6 +35,7 @@
     <button class="topbar-tab" data-view="situation">★ Situazione clienti</button>
     <button class="topbar-tab" data-view="clients">👤 Clienti</button>
     <button class="topbar-tab" data-view="operators">👥 Staff</button>
+    <button id="whatsapp-direction-tab" class="topbar-tab" data-view="direction" hidden>Direzione</button>
   </div>
 
   <div class="topbar-right">
@@ -69,6 +71,30 @@
 
   <!-- Staff / Operatori -->
   <div id="view-operators" class="view-panel"></div>
+
+  <section id="view-direction" class="view-panel" aria-labelledby="direction-title">
+    <h1 id="direction-title" class="page-title">Direzione</h1>
+    <details id="direction-whatsapp" class="card" hidden>
+      <summary>WhatsApp</summary>
+      <section class="agenda-preview" aria-labelledby="agenda-preview-title">
+        <header class="agenda-preview-header">
+          <div>
+            <h2 id="agenda-preview-title">Agenda PT</h2>
+            <p class="text-muted">Anteprima del messaggio di oggi</p>
+          </div>
+          <button id="agenda-direction-refresh" class="btn-ghost" type="button">Aggiorna anteprima</button>
+        </header>
+        <p id="agenda-direction-status" role="status"></p>
+        <div id="agenda-direction-content"></div>
+      </section>
+      <section class="agenda-preview" id="agenda-personal-test" aria-labelledby="agenda-test-title" hidden>
+        <h2 id="agenda-test-title">Prova sul mio WhatsApp</h2>
+        <p>Una seduta fittizia alle 09:00, sul numero personale concordato.</p>
+        <button id="agenda-test-send" class="btn-primary" type="button" disabled>Invia prova al mio numero</button>
+        <p id="agenda-test-status" role="status"></p>
+      </section>
+    </details>
+  </section>
 
 </div>
 
@@ -110,7 +136,7 @@
 <script src="js/client-journey.js?v=4"></script>
 <script src="js/app.js?v=20261111-suspension"></script>
 <script src="js/expected-renewals.js?v=20261029-assigned-pt"></script>
-<script src="js/whatsapp-agenda.js?v=1"></script>
+<script src="js/whatsapp-agenda.js?v=3"></script>
 <script src="js/apple-calendar.js?v=20261012a"></script>
 <script src="js/apple-operativo.js?v=1"></script>
 <script src="js/nutrition-fixes.js?v=29"></script>
