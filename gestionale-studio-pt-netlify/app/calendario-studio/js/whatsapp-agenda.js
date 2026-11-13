@@ -1,10 +1,13 @@
-/* Direction-only settings and preview; this UI never invokes a real send. */
+/* Staff settings, agenda previews and the separate owner-only personal test. */
 window.WhatsAppAgenda = (() => {
   let owner = false;
   const messages = { invalid_phone: 'Inserisci un numero WhatsApp in formato +39…; è obbligatorio per abilitare l’agenda.', migration_required: 'Migrazione WhatsApp non ancora applicata.', direction_only: 'Funzione riservata alla Direzione.', whatsapp_agenda_unavailable: 'Agenda non disponibile. Riprova.' };
   const element = (tag, text) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; return e; };
+  function sessionToken() {
+    return new URLSearchParams(location.search).get('access') || sessionStorage.getItem('neacea-calendar-audit-session') || '';
+  }
   async function call(input) {
-    const accessToken = new URLSearchParams(location.search).get('access') || sessionStorage.getItem('neacea-calendar-audit-session') || '';
+    const accessToken = sessionToken();
     const r = await fetch('/.netlify/functions/whatsapp-agenda', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...input, accessToken, dryRun: true }) });
     const result = await r.json(); if (!r.ok) throw Error(messages[result.error] || 'Operazione non riuscita. Riprova.'); return result;
   }
@@ -23,10 +26,49 @@ window.WhatsAppAgenda = (() => {
     }
   }
 
+  function mountPersonalTest(section) {
+    const panel = document.getElementById('agenda-personal-test');
+    const send = document.getElementById('agenda-test-send');
+    const status = document.getElementById('agenda-test-status');
+    const feedback = {
+      ready: 'Per la prova, scrivi prima al numero dello studio dal tuo WhatsApp personale.',
+      not_configured: 'Manca la configurazione WhatsApp dell’anteprima.',
+      sender_unverified: 'Il calendario non riesce a verificare il mittente NEACEA.',
+      pending: 'La prova è già stata avviata. Controlla la chat con NEACEA.',
+      accepted: 'Meta ha accettato la prova. Controlla la chat con NEACEA.',
+      rejected: 'Meta ha rifiutato il messaggio di prova.',
+      uncertain: 'Esito sconosciuto. Controlla la chat con NEACEA prima di riprovare.'
+    };
+    let busy = false;
+    async function update(action) {
+      if (!section.open || busy) return;
+      busy = true;
+      send.disabled = true;
+      try {
+        const response = await fetch('/.netlify/functions/whatsapp-agenda-test', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, accessToken: sessionToken() })
+        });
+        if (response.status === 404 || response.status === 403) { panel.hidden = true; return; }
+        const data = await response.json();
+        panel.hidden = false;
+        status.textContent = feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
+        send.disabled = !(response.ok && data.status === 'ready');
+      } catch {
+        panel.hidden = false;
+        status.textContent = 'Connessione interrotta. Riapri WhatsApp per verificare lo stato.';
+      } finally { busy = false; }
+    }
+    section.addEventListener('toggle', () => update('status'));
+    send.addEventListener('click', () => update('send'));
+    if (section.open) update('status');
+  }
+
   function mountDirectionPreview() {
     const tab = document.getElementById('whatsapp-direction-tab');
     const section = document.getElementById('direction-whatsapp');
     if (!tab || !section) return;
+    mountPersonalTest(section);
     const refresh = document.getElementById('agenda-direction-refresh');
     const status = document.getElementById('agenda-direction-status');
     const content = document.getElementById('agenda-direction-content');

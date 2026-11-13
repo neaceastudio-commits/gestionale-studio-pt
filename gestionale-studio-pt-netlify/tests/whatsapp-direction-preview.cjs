@@ -24,6 +24,8 @@ async function run(browser, role) {
   let failNext = false;
   let roster = operators;
   const calls = [];
+  const testCalls = [];
+  let testStatus = 'not_configured';
   const handler = createHandler({
     authenticate: async () => ({ id: 'demo', role }),
     service: { run: async ({ dryRun }) => {
@@ -44,6 +46,12 @@ async function run(browser, role) {
   await page.route('**/*', async route => {
     const request = route.request();
     const url = new URL(request.url());
+    if (url.pathname === '/.netlify/functions/whatsapp-agenda-test') {
+      const body = request.postDataJSON();
+      testCalls.push(body);
+      if (body.action === 'send') testStatus = 'accepted';
+      return route.fulfill({ json: { status: testStatus } });
+    }
     if (url.pathname === '/.netlify/functions/whatsapp-agenda') {
       const body = request.postDataJSON();
       calls.push(body);
@@ -85,10 +93,23 @@ async function run(browser, role) {
       await page.getByText(/Nessun PT attivo/).waitFor();
       assert.equal(await picker.count(), 0);
       assert.ok(calls.every(c => c.dryRun === true && ['session', 'agenda'].includes(c.action)));
+      const send = page.getByRole('button', { name: 'Invia prova al mio numero' });
+      await page.getByText('Manca la configurazione WhatsApp dell’anteprima.').waitFor();
+      assert.equal(await send.isDisabled(), true);
+      assert.ok(testCalls.every(c => c.action === 'status'));
+      const summary = page.getByText('WhatsApp', { exact: true });
+      await summary.click();
+      testStatus = 'ready';
+      await summary.click();
+      await send.click();
+      await page.getByText('Meta ha accettato la prova. Controlla la chat con NEACEA.').waitFor();
+      assert.equal(await send.isDisabled(), true);
+      assert.deepEqual(testCalls.filter(c => c.action === 'send'), [{ action: 'send', accessToken: '' }]);
     } else {
       assert.equal(await tab.count(), 0);
       assert.equal(await page.locator('#direction-whatsapp').isVisible(), false);
       assert.deepEqual(calls.map(c => c.action), ['session']);
+      assert.equal(testCalls.length, 0);
     }
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
