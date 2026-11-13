@@ -26,7 +26,7 @@ window.WhatsAppAgenda = (() => {
     }
   }
 
-  function mountPersonalTest(section) {
+  function mountPersonalTest(section, personalTestLink) {
     const panel = document.getElementById('agenda-personal-test');
     const send = document.getElementById('agenda-test-send');
     const status = document.getElementById('agenda-test-status');
@@ -49,7 +49,12 @@ window.WhatsAppAgenda = (() => {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action, accessToken: sessionToken() })
         });
-        if (response.status === 404 || response.status === 403) { panel.hidden = true; return; }
+        if (response.status === 404 || response.status === 403) {
+          panel.hidden = !personalTestLink;
+          status.textContent = response.status === 404 ? 'La prova è disponibile solo nell’anteprima del calendario.' : 'Per inviare la prova serve un accesso Direzione valido.';
+          if (personalTestLink && response.status === 403) showTestLogin(status.textContent);
+          return;
+        }
         const data = await response.json();
         panel.hidden = false;
         status.textContent = feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
@@ -64,11 +69,11 @@ window.WhatsAppAgenda = (() => {
     if (section.open) update('status');
   }
 
-  function mountDirectionPreview() {
+  function mountDirectionPreview(personalTestLink) {
     const tab = document.getElementById('whatsapp-direction-tab');
     const section = document.getElementById('direction-whatsapp');
     if (!tab || !section) return;
-    mountPersonalTest(section);
+    mountPersonalTest(section, personalTestLink);
     const refresh = document.getElementById('agenda-direction-refresh');
     const status = document.getElementById('agenda-direction-status');
     const content = document.getElementById('agenda-direction-content');
@@ -122,6 +127,7 @@ window.WhatsAppAgenda = (() => {
     refresh.addEventListener('click', loadPreview);
     section.hidden = false;
     tab.hidden = false;
+    if (personalTestLink) section.open = true;
   }
 
   async function open() {
@@ -157,15 +163,38 @@ window.WhatsAppAgenda = (() => {
       panel.append(preview, result);
     } catch (e) { panel.replaceChildren(element('p', e.message)); }
   }
+  function showTestLogin(message) {
+    const gate = document.getElementById('agenda-test-access');
+    const login = document.getElementById('agenda-test-login');
+    gate.hidden = false;
+    document.getElementById('agenda-test-access-status').textContent = message;
+    login.hidden = false;
+    login.onclick = () => CalendarAudit.login();
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
+    const personalTestLink = new URLSearchParams(location.search).get('view') === 'prova-whatsapp';
+    const gate = document.getElementById('agenda-test-access');
+    if (personalTestLink) {
+      gate.hidden = false;
+      if (!sessionToken()) {
+        showTestLogin('Accedi con l’email della Direzione e il codice del Portale PT.');
+        return;
+      }
+    }
     try {
       const session = await call({ action: 'session' });
       owner = session.role === 'owner';
       if (owner) {
+        gate.hidden = true;
         mount(document.getElementById('view-operators'));
-        mountDirectionPreview();
+        mountDirectionPreview(personalTestLink);
+      } else if (personalTestLink) {
+        showTestLogin(messages.direction_only);
       }
-    } catch { /* No new access or permission is granted by the browser. */ }
+    } catch (error) {
+      if (personalTestLink) showTestLogin(error.message + ' Puoi accedere di nuovo.');
+    }
   });
   return { mount, open };
 })();

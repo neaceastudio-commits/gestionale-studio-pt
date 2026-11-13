@@ -3981,6 +3981,8 @@ const App = {
 
   // ── INIT ─────────────────────────────────────────────
   async init() {
+    const personalTestLink = new URLSearchParams(location.search).get('view') === 'prova-whatsapp';
+    if (personalTestLink) Calendar.switchView('direction');
     await window.CalendarFlex?.ready;
     State.init();
     await App.refreshFromSupabase({ silent: true, force: true });
@@ -4001,7 +4003,7 @@ const App = {
     const initialView = allowedViews.includes(params.get('view'))
       ? params.get('view')
       : 'dashboard';
-    Calendar.switchView(initialView);
+    if (!personalTestLink) Calendar.switchView(initialView);
 
     window.addEventListener('focus', () => App.refreshFromSupabase({ silent: true }));
     document.addEventListener('visibilitychange', () => {

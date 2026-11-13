@@ -74,8 +74,19 @@
 
   <section id="view-direction" class="view-panel" aria-labelledby="direction-title">
     <h1 id="direction-title" class="page-title">Direzione</h1>
+    <div id="agenda-test-access" class="card agenda-preview" hidden>
+      <h2>Prova sul mio WhatsApp</h2>
+      <p id="agenda-test-access-status" role="status">Verifica dell’accesso in corso…</p>
+      <button id="agenda-test-login" class="btn-primary" type="button" hidden>Accedi come Direzione</button>
+    </div>
     <details id="direction-whatsapp" class="card" hidden>
       <summary>WhatsApp</summary>
+      <section class="agenda-preview" id="agenda-personal-test" aria-labelledby="agenda-test-title" hidden>
+        <h2 id="agenda-test-title">Prova sul mio WhatsApp</h2>
+        <p>Una seduta fittizia alle 09:00, sul numero personale concordato.</p>
+        <button id="agenda-test-send" class="btn-primary" type="button" disabled>Invia prova al mio numero</button>
+        <p id="agenda-test-status" role="status"></p>
+      </section>
       <section class="agenda-preview" aria-labelledby="agenda-preview-title">
         <header class="agenda-preview-header">
           <div>
@@ -86,12 +97,6 @@
         </header>
         <p id="agenda-direction-status" role="status"></p>
         <div id="agenda-direction-content"></div>
-      </section>
-      <section class="agenda-preview" id="agenda-personal-test" aria-labelledby="agenda-test-title" hidden>
-        <h2 id="agenda-test-title">Prova sul mio WhatsApp</h2>
-        <p>Una seduta fittizia alle 09:00, sul numero personale concordato.</p>
-        <button id="agenda-test-send" class="btn-primary" type="button" disabled>Invia prova al mio numero</button>
-        <p id="agenda-test-status" role="status"></p>
       </section>
     </details>
   </section>
@@ -127,16 +132,16 @@
 <script src="js/operators.js?v=31"></script>
 <script src="js/sheets.js?v=30"></script>
 <script src="js/calendar-audit-view.js?v=20261012a"></script>
-<script src="js/calendar-audit.js?v=20261111-package-suspension-v1&finance=20261030"></script>
+<script src="js/calendar-audit.js?v=20261111-package-suspension-v1&finance=20261030&wa=4"></script>
 <script src="js/pt-session-correction.js?v=1"></script>
 <script src="js/pt-trainer-payments.js?v=20261013audit"></script>
 <script src="js/pt-pair-sessions.js?v=20261111-solo-recovery"></script>
 <script src="js/client-journey-scoring.js?v=3"></script>
 <script src="js/client-journey-model.js?v=4"></script>
 <script src="js/client-journey.js?v=4"></script>
-<script src="js/app.js?v=20261111-suspension"></script>
+<script src="js/app.js?v=20261111-suspension-wa4"></script>
 <script src="js/expected-renewals.js?v=20261029-assigned-pt"></script>
-<script src="js/whatsapp-agenda.js?v=3"></script>
+<script src="js/whatsapp-agenda.js?v=4"></script>
 <script src="js/apple-calendar.js?v=20261012a"></script>
 <script src="js/apple-operativo.js?v=1"></script>
 <script src="js/nutrition-fixes.js?v=29"></script>
