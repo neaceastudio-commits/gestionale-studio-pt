@@ -96,6 +96,27 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     if (!response.ok) { const error = Error('provider_rejected'); error.providerCode = Number.isInteger(data?.error?.code) ? data.error.code : null; throw error; }
     return data;
   }
+  async function verifySender() {
+    const sender = await meta('?fields=display_phone_number');
+    if ('+' + String(sender.display_phone_number || '').replace(/\D/g, '') !== env.WHATSAPP_SENDER_PHONE) throw Error('sender_mismatch');
+  }
+  async function sendBiaDocument() {
+    return meta('/messages', {
+      messaging_product: 'whatsapp', recipient_type: 'individual', to: env.WHATSAPP_AGENDA_TEST_TO.slice(1),
+      type: 'document', document: {
+        link: 'https://deploy-preview-18--new-calendar-neacea.netlify.app/NEACEA-Prova-BIA.pdf',
+        filename: 'NEACEA-Prova-BIA.pdf',
+        caption: 'Ciao Gianluca, in allegato trovi la scheda dimostrativa per l’esecuzione della BIA. NEACEA Studio'
+      }
+    });
+  }
+  async function sendTestText() {
+    return meta('/messages', {
+      messaging_product: 'whatsapp', recipient_type: 'individual',
+      to: env.WHATSAPP_AGENDA_TEST_TO.slice(1), type: 'text',
+      text: { preview_url: false, body: 'NEACEA · Prova dal calendario\n\n09:00 · Cliente di prova · PT 1:1 · 3/8\n\nTotale: 1 seduta.' }
+    });
+  }
   async function run({ dryRun = true, scheduled = false } = {}) {
     if (dryRun !== false) return { dryRun: true, ...await preview() };
     if (scheduled && romeTime(now()).time !== '06:30') return { skipped: 'outside_rome_0630' };
@@ -105,8 +126,7 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     if (!data.migrationReady) return { sent: 0, blocked: 'migration_required' };
     const agendas = buildAgendas(data, day).filter(a => a.enabled && a.count > 0);
     if (!agendas.length) return { sent: 0, results: [] };
-    const sender = await meta('?fields=display_phone_number');
-    if ('+' + String(sender.display_phone_number || '').replace(/\D/g, '') !== env.WHATSAPP_SENDER_PHONE) throw Error('sender_mismatch');
+    await verifySender();
     const results = await Promise.all(agendas.map(async agenda => {
       let status = 'failed', messageId = null, error = null, payload;
       const phone = data.operators.find(o => o.id === agenda.operatorId).whatsapp_phone;
@@ -127,6 +147,6 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     }));
     return { sent: results.filter(r => r.status === 'accepted').length, results };
   }
-  return { preview, settings, configure, run };
+  return { preview, settings, configure, run, verifySender, sendTestText, sendBiaDocument };
 }
 module.exports = { createService, buildAgendas, romeTime, isPt, progress, providerConfig, templatePayload };

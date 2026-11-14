@@ -1,10 +1,13 @@
-/* Direction-only settings and preview; this UI never invokes a real send. */
+/* Staff settings, agenda previews and the separate owner-only personal test. */
 window.WhatsAppAgenda = (() => {
   let owner = false;
   const messages = { invalid_phone: 'Inserisci un numero WhatsApp in formato +39…; è obbligatorio per abilitare l’agenda.', migration_required: 'Migrazione WhatsApp non ancora applicata.', direction_only: 'Funzione riservata alla Direzione.', whatsapp_agenda_unavailable: 'Agenda non disponibile. Riprova.' };
   const element = (tag, text) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; return e; };
+  function sessionToken() {
+    return new URLSearchParams(location.search).get('access') || sessionStorage.getItem('neacea-calendar-audit-session') || '';
+  }
   async function call(input) {
-    const accessToken = new URLSearchParams(location.search).get('access') || sessionStorage.getItem('neacea-calendar-audit-session') || '';
+    const accessToken = sessionToken();
     const r = await fetch('/.netlify/functions/whatsapp-agenda', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...input, accessToken, dryRun: true }) });
     const result = await r.json(); if (!r.ok) throw Error(messages[result.error] || 'Operazione non riuscita. Riprova.'); return result;
   }
@@ -13,6 +16,130 @@ window.WhatsAppAgenda = (() => {
     const button = element('button', 'WhatsApp Agenda PT'); button.id = 'whatsapp-agenda-open'; button.className = 'btn-ghost'; button.onclick = open;
     panel.querySelector('.view-header')?.append(button);
   }
+
+  function renderAgendaMessage(container, agenda) {
+    const message = element('pre', agenda.count ? agenda.text : 'Nessuna seduta: nessun messaggio.');
+    message.className = 'agenda-message';
+    container.replaceChildren(message);
+    if (agenda.issues.length) {
+      container.append(element('p', 'Dati incompleti: invio bloccato per questa agenda.'));
+    }
+  }
+
+  function mountPersonalTest(section, personalTestLink) {
+    const panel = document.getElementById('agenda-personal-test');
+    const send = document.getElementById('agenda-test-send');
+    const status = document.getElementById('agenda-test-status');
+    const bia = new URLSearchParams(location.search).get('test') === 'bia';
+    if (bia) send.textContent = 'Invia prova BIA con PDF al mio numero';
+    const feedback = {
+      bia_scope_granted: 'Invio BIA rifiutato (10). Meta conferma il permesso di messaggistica del token. Verificare l’accesso dell’app e dell’utente di sistema all’account WhatsApp dello studio.',
+      bia_scope_missing: 'Invio BIA rifiutato (10). Il token dell’anteprima non dispone del permesso whatsapp_business_messaging.',
+      bia_permissions_unknown: 'Invio BIA rifiutato (10). Meta non ha restituito un elenco verificabile dei permessi del token.',
+      ready: 'Per la prova, scrivi prima al numero dello studio dal tuo WhatsApp personale.',
+      not_configured: 'Manca la configurazione WhatsApp dell’anteprima.',
+      token_invalid: 'Meta considera il token non valido o scaduto. Aggiorna WHATSAPP_ACCESS_TOKEN per l’anteprima e ricostruisci il deploy.',
+      sender_permission: 'Meta nega al token il permesso di leggere il numero mittente. Verifica le autorizzazioni sul numero dello studio.',
+      phone_id_unavailable: 'Meta non trova il numero tramite il Phone Number ID configurato o il token non ha accesso a quel numero.',
+      sender_mismatch: 'Il numero associato al Phone Number ID è diverso dal mittente NEACEA configurato.',
+      sender_unverified: 'Il calendario non riesce a verificare il mittente NEACEA.',
+      pending: 'La prova è già stata avviata. Controlla la chat con NEACEA.',
+      accepted: 'Meta ha accettato la prova. Controlla la chat con NEACEA.',
+      rejected: 'Meta ha rifiutato il messaggio di prova.',
+      uncertain: 'Esito sconosciuto. Controlla la chat con NEACEA prima di riprovare.'
+    };
+    let busy = false;
+    async function update(action) {
+      if (!section.open || busy) return;
+      busy = true;
+      send.disabled = true;
+      try {
+        const response = await fetch('/.netlify/functions/whatsapp-agenda-test', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: bia ? 'bia-' + action : action, accessToken: sessionToken() })
+        });
+        if (response.status === 404 || response.status === 403) {
+          panel.hidden = !personalTestLink;
+          status.textContent = response.status === 404 ? 'La prova è disponibile solo nell’anteprima del calendario.' : 'Per inviare la prova serve un accesso Direzione valido.';
+          if (personalTestLink && response.status === 403) showTestLogin(status.textContent);
+          return;
+        }
+        const data = await response.json();
+        panel.hidden = false;
+        const refusal = /^bia_rejected_(\d+)$/.exec(data.status);
+        status.textContent = data.status === 'bia_health' ? data.detail : refusal ? 'Meta ha rifiutato il PDF. Codice Meta: ' + (refusal[1] === '0' ? 'non disponibile' : refusal[1]) + '.' : feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
+        send.disabled = !(response.ok && data.status === 'ready');
+      } catch {
+        panel.hidden = false;
+        status.textContent = 'Connessione interrotta. Riapri WhatsApp per verificare lo stato.';
+      } finally { busy = false; }
+    }
+    section.addEventListener('toggle', () => update('status'));
+    send.addEventListener('click', () => update('send'));
+    if (section.open) update('status');
+  }
+
+  function mountDirectionPreview(personalTestLink) {
+    const tab = document.getElementById('whatsapp-direction-tab');
+    const section = document.getElementById('direction-whatsapp');
+    if (!tab || !section) return;
+    mountPersonalTest(section, personalTestLink);
+    const refresh = document.getElementById('agenda-direction-refresh');
+    const status = document.getElementById('agenda-direction-status');
+    const content = document.getElementById('agenda-direction-content');
+    let selectedOperator = '';
+
+    async function loadPreview() {
+      if (!section.open || refresh.disabled) return;
+      refresh.disabled = true;
+      content.replaceChildren();
+      status.textContent = 'Caricamento delle agende…';
+      try {
+        const { day, agendas } = await call({ action: 'agenda' });
+        const date = new Date(day + 'T12:00:00Z').toLocaleDateString('it-IT', {
+          dateStyle: 'full', timeZone: 'Europe/Rome'
+        });
+        if (!agendas.length) {
+          status.textContent = date + ' · Nessun PT attivo.';
+          return;
+        }
+        status.textContent = date + ' · Solo anteprima.';
+        const select = element('select');
+        select.className = 'form-input';
+        for (const agenda of agendas) {
+          select.add(new Option(agenda.operatorName, agenda.operatorId));
+        }
+        const initial = agendas.find(a => a.operatorId === selectedOperator)
+          || agendas.find(a => a.count > 0) || agendas[0];
+        select.value = initial.operatorId;
+        const label = element('label', 'Personal trainer');
+        label.className = 'agenda-operator-label';
+        label.append(select);
+        const result = element('div');
+        result.setAttribute('aria-live', 'polite');
+        content.append(label, result);
+        function showSelected() {
+          const agenda = agendas[select.selectedIndex];
+          selectedOperator = agenda.operatorId;
+          renderAgendaMessage(result, agenda);
+        }
+        select.addEventListener('change', showSelected);
+        showSelected();
+      } catch (error) {
+        status.textContent = error.message + ' Usa «Aggiorna anteprima» per riprovare.';
+      } finally {
+        refresh.disabled = false;
+      }
+    }
+
+    section.addEventListener('toggle', loadPreview);
+    tab.addEventListener('click', loadPreview);
+    refresh.addEventListener('click', loadPreview);
+    section.hidden = false;
+    tab.hidden = false;
+    if (personalTestLink) section.open = true;
+  }
+
   async function open() {
     if (!owner) return;
     UI.openModal('<div class="modal-header"><h3>WhatsApp Agenda PT</h3><button class="modal-close" onclick="UI.closeModal()">×</button></div><div class="modal-body" id="whatsapp-agenda-panel"><p role="status">Caricamento…</p></div>');
@@ -38,15 +165,46 @@ window.WhatsAppAgenda = (() => {
         if (!data.sendingEnabled || !data.providerReady) result.append(element('p', 'Invio reale disabilitato o provider non configurato.'));
         for (const a of data.agendas) {
           result.append(element('h4', a.operatorName + (a.enabled ? '' : ' · invio non abilitato')));
-          const pre = element('pre', a.count ? a.text : 'Nessuna seduta: nessun messaggio.'); pre.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;background:var(--bg);padding:12px;border-radius:8px'; result.append(pre);
-          if (a.issues.length) result.append(element('p', 'Dati incompleti: invio bloccato per questa agenda.'));
+          const message = element('div');
+          renderAgendaMessage(message, a);
+          result.append(message);
         }
       } catch (e) { result.replaceChildren(element('p', e.message)); } finally { preview.disabled = false; } };
       panel.append(preview, result);
     } catch (e) { panel.replaceChildren(element('p', e.message)); }
   }
+  function showTestLogin(message) {
+    const gate = document.getElementById('agenda-test-access');
+    const login = document.getElementById('agenda-test-login');
+    gate.hidden = false;
+    document.getElementById('agenda-test-access-status').textContent = message;
+    login.hidden = false;
+    login.onclick = () => CalendarAudit.login();
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
-    try { const session = await call({ action: 'session' }); owner = session.role === 'owner'; if (owner) mount(document.getElementById('view-operators')); } catch { /* No new access or permission is granted by the browser. */ }
+    const personalTestLink = new URLSearchParams(location.search).get('view') === 'prova-whatsapp';
+    const gate = document.getElementById('agenda-test-access');
+    if (personalTestLink) {
+      gate.hidden = false;
+      if (!sessionToken()) {
+        showTestLogin('Accedi con l’email della Direzione e il codice del Portale PT.');
+        return;
+      }
+    }
+    try {
+      const session = await call({ action: 'session' });
+      owner = session.role === 'owner';
+      if (owner) {
+        gate.hidden = true;
+        mount(document.getElementById('view-operators'));
+        mountDirectionPreview(personalTestLink);
+      } else if (personalTestLink) {
+        showTestLogin(messages.direction_only);
+      }
+    } catch (error) {
+      if (personalTestLink) showTestLogin(error.message + ' Puoi accedere di nuovo.');
+    }
   });
   return { mount, open };
 })();

@@ -8,11 +8,23 @@ Implementazione isolata per il sito Calendario; nessuna modifica a salvataggi ap
 - Giorno locale Europe/Rome; solo `pt11`/`pt12`, stato `prenotato`, stesso `operator_id`, operatore PT attivo. Circuit, altri servizi, Fatto, annullamenti, no-show e blocchi esclusi.
 - `sessions_total - sessions_remaining` su `sessions_total`, senza ricostruire la cronologia e senza correggere valori. Ogni partecipante PT 1:2 ha il proprio progresso. Una seduta condivisa conta una volta.
 - Le query escludono note, dati clinici, pagamenti e contatti cliente. Nessun corpo messaggio o telefono nel log invii.
-- Staff → **WhatsApp Agenda PT**: impostazioni per ciascun PT e anteprima Direzione. L'interfaccia chiama sempre `dryRun=true` e non ha pulsanti di invio. Il server ricontrolla la sessione firmata e il ruolo Direzione nel DB; nomi/ruoli forniti dal browser non danno permessi.
+- Staff → **WhatsApp Agenda PT**: impostazioni per ciascun PT e anteprima Direzione. Le richieste al servizio agenda mantengono `dryRun=true`. Il server ricontrolla la sessione firmata e il ruolo Direzione nel DB.
 - Impostazioni salvate mediante il gateway/RPC audit già esistente (`operator` + `PATCH`). Nessuna modifica al codice audit. Il suo allowlist esistente non include i numeri WhatsApp.
 - Prima della migrazione è possibile generare anteprime: gli operatori vengono considerati non abilitati e i campi di configurazione sono disabilitati.
 
 ## Pianificazione e idempotenza
+
+### Prova personale dalla Direzione
+
+Per questa prova la PR #17 ha come ramo di destinazione `release/calendar-pair-solo-20261111`. Su Netlify servono build attive e questo ramo tra quelli abilitati ai branch deploy. Nella scheda Deploys controllare che il contesto della richiesta sia `deploy-preview` e aprire il relativo link. Il progetto è `new-calendar-neacea`.
+
+Nel deploy di anteprima del Calendario, **Direzione → WhatsApp → Invia prova al mio numero** invia una sola seduta fittizia al destinatario impostato sul server. La funzione dedicata richiede una sessione Direzione. Accetta solo la lettura dello stato o la richiesta di prova. Verifica il mittente e ignora la selezione del trainer nell’anteprima dell’agenda.
+
+Configurare nelle Functions del deploy preview `WHATSAPP_AGENDA_TEST_TO` (E.164), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_API_VERSION` e il segreto `WHATSAPP_ACCESS_TOKEN`. La funzione usa il mittente e il site ID già configurati. Il destinatario deve aver aperto la conversazione scrivendo allo studio per ricevere il messaggio di testo libero. Il flag dell’agenda programmata può rimanere disattivato.
+
+La prenotazione atomica del singolo tentativo nel contenitore Blobs `calendar-whatsapp-preview-tests` rimane valida dopo un aggiornamento dell’anteprima. Si registrano solo gli stati tecnici. Un identificativo messaggio valido attesta l’accettazione di Meta. La consegna si verifica sul telefono.
+
+### Invio programmato ai PT
 
 `whatsapp-agenda-scheduled.mjs`: cron UTC `30 4,5 * * *`, con controllo server Europe/Rome alle 06:30. D'estate passa 04:30 UTC; d'inverno 05:30 UTC. L'altra chiamata non invia. Solo il sito identificato da `WHATSAPP_AGENDA_SITE_ID=SITE_ID` può inviare, e solo con `WHATSAPP_AGENDA_ENABLED=true` e provider completo.
 

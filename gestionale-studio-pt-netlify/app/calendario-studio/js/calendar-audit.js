@@ -128,5 +128,5 @@ window.CalendarAudit = (() => {
       const data=await r.json();if(data.code==='CALENDAR_RELOAD_REQUIRED')requireReload();return r.ok?data:{error:data.error||'Operazione economica non confermata'};
     }catch{return {error:'Connessione interrotta: aggiorna il riscontro prima di riprovare l’incasso'}}
   }
-  return {write,open,call,clientFinance,appleLink,openClientSharing,canShareClients:()=>actor?.role==='owner'&&actor.id==='staff_1',canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
+  return {write,open,call,login,clientFinance,appleLink,openClientSharing,canShareClients:()=>actor?.role==='owner'&&actor.id==='staff_1',canLinkApple:()=>actor?.role==='owner'&&actor.id==='staff_1'};
 })();
