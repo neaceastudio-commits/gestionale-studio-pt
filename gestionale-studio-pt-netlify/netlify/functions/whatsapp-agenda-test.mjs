@@ -18,7 +18,25 @@ async function checkMessagingPermission(env) {
     const result = await response.json();
     if (!response.ok || !Array.isArray(result.data)) return 'bia_permissions_unknown';
     const scope = result.data.find(entry => entry.permission === 'whatsapp_business_messaging');
-    if (scope?.status === 'granted') return 'bia_scope_granted';
+    if (scope?.status === 'granted') {
+      const phone = await fetch('https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/' + env.WHATSAPP_PHONE_NUMBER_ID + '?fields=health_status', {
+        headers: { Authorization: 'Bearer ' + env.WHATSAPP_ACCESS_TOKEN },
+        redirect: 'error', signal: AbortSignal.timeout(6000)
+      }).catch(() => null);
+      const report = phone?.ok ? await phone.json().catch(() => null) : null;
+      const health = report?.health_status;
+      if (!health?.can_send_message) return 'bia_scope_granted';
+      const labels = { APP: 'App', WABA: 'Account WhatsApp', BUSINESS: 'Portfolio', PHONE_NUMBER: 'Numero' };
+      const states = { AVAILABLE: 'disponibile', BLOCKED: 'bloccato', LIMITED: 'limitato' };
+      const rows = (Array.isArray(health.entities) ? health.entities : []).filter(e => Object.hasOwn(labels, e.entity_type));
+      const detail = rows.map(e => {
+        const reasons = (Array.isArray(e.errors) ? e.errors : []).slice(0, 3).map(x =>
+          [x.error_code, x.error_description, x.possible_solution].filter(Boolean).join(' · ').slice(0, 500)
+        );
+        return [labels[e.entity_type], states[e.can_send_message] || 'stato sconosciuto', ...reasons].join(' · ');
+      });
+      return { status: 'bia_health', detail: ['Stato di invio Meta: ' + (states[health.can_send_message] || 'sconosciuto'), ...detail].join('\n') };
+    }
     if (!scope && result.paging?.next) return 'bia_permissions_unknown';
     return 'bia_scope_missing';
   } catch { return 'bia_permissions_unknown'; }
@@ -58,7 +76,9 @@ export function createHandler({
         prior = await claims.get(key);
       }
       if (prior === 'bia_rejected_10' && input.action === 'bia-status') {
-        return reply(await checkMessagingPermission(env));
+        const check = await checkMessagingPermission(env);
+        if (typeof check === 'object') return Response.json(check, { headers: { 'Cache-Control': 'no-store' } });
+        return reply(check);
       }
       if (prior) return reply(prior);
       if (input.action === 'status') return reply('ready');
