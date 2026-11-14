@@ -35,6 +35,10 @@ window.WhatsAppAgenda = (() => {
     const feedback = {
       ready: 'Per la prova, scrivi prima al numero dello studio dal tuo WhatsApp personale.',
       not_configured: 'Manca la configurazione WhatsApp dell’anteprima.',
+      token_invalid: 'Meta considera il token non valido o scaduto. Aggiorna WHATSAPP_ACCESS_TOKEN per l’anteprima e ricostruisci il deploy.',
+      sender_permission: 'Meta nega al token il permesso di leggere il numero mittente. Verifica le autorizzazioni sul numero dello studio.',
+      phone_id_unavailable: 'Meta non trova il numero tramite il Phone Number ID configurato o il token non ha accesso a quel numero.',
+      sender_mismatch: 'Il numero associato al Phone Number ID è diverso dal mittente NEACEA configurato.',
       sender_unverified: 'Il calendario non riesce a verificare il mittente NEACEA.',
       pending: 'La prova è già stata avviata. Controlla la chat con NEACEA.',
       accepted: 'Meta ha accettato la prova. Controlla la chat con NEACEA.',

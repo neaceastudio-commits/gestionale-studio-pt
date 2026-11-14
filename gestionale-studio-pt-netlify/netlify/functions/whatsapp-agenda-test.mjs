@@ -38,8 +38,18 @@ export function createHandler({
       const claims = store();
       const prior = await claims.get(key);
       if (prior) return reply(prior);
-      if (input.action === 'status' || input.action === 'bia-status') return reply('ready');
-      try { await provider.verifySender(); } catch { return reply('sender_unverified', 409); }
+      if (input.action === 'status') return reply('ready');
+      try {
+        await provider.verifySender();
+      } catch (error) {
+        const code = error.providerCode;
+        const reason = code === 190 ? 'token_invalid' :
+          [10, 200].includes(code) ? 'sender_permission' :
+          code === 100 ? 'phone_id_unavailable' :
+          error.message === 'sender_mismatch' ? 'sender_mismatch' : 'sender_unverified';
+        return reply(reason, 409);
+      }
+      if (input.action === 'bia-status') return reply('ready');
       const claim = await claims.set(key, 'pending', { onlyIfNew: true });
       if (!claim.modified) return reply(await claims.get(key) || 'pending');
       let outcome;
