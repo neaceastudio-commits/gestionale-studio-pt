@@ -33,6 +33,9 @@ window.WhatsAppAgenda = (() => {
     const bia = new URLSearchParams(location.search).get('test') === 'bia';
     if (bia) send.textContent = 'Invia prova BIA con PDF al mio numero';
     const feedback = {
+      bia_scope_granted: 'Invio BIA rifiutato (10). Meta conferma il permesso di messaggistica del token. Verificare l’accesso dell’app e dell’utente di sistema all’account WhatsApp dello studio.',
+      bia_scope_missing: 'Invio BIA rifiutato (10). Il token dell’anteprima non dispone del permesso whatsapp_business_messaging.',
+      bia_permissions_unknown: 'Invio BIA rifiutato (10). Meta non ha restituito un elenco verificabile dei permessi del token.',
       ready: 'Per la prova, scrivi prima al numero dello studio dal tuo WhatsApp personale.',
       not_configured: 'Manca la configurazione WhatsApp dell’anteprima.',
       token_invalid: 'Meta considera il token non valido o scaduto. Aggiorna WHATSAPP_ACCESS_TOKEN per l’anteprima e ricostruisci il deploy.',

@@ -9,6 +9,21 @@ const reply = (status, code = 200) => Response.json({ status }, {
   status: code, headers: { 'Cache-Control': 'no-store' }
 });
 
+async function checkMessagingPermission(env) {
+  try {
+    const response = await fetch('https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/me/permissions', {
+      headers: { Authorization: 'Bearer ' + env.WHATSAPP_ACCESS_TOKEN },
+      redirect: 'error', signal: AbortSignal.timeout(6000)
+    });
+    const result = await response.json();
+    if (!response.ok || !Array.isArray(result.data)) return 'bia_permissions_unknown';
+    const scope = result.data.find(entry => entry.permission === 'whatsapp_business_messaging');
+    if (scope?.status === 'granted') return 'bia_scope_granted';
+    if (!scope && result.paging?.next) return 'bia_permissions_unknown';
+    return 'bia_scope_missing';
+  } catch { return 'bia_permissions_unknown'; }
+}
+
 export function createHandler({
   authenticate = auth.authenticate, env = process.env, store = openStore,
   provider = agenda.createService({ env })
@@ -41,6 +56,9 @@ export function createHandler({
       if (isBia && prior === 'rejected') {
         key += '-diagnostic';
         prior = await claims.get(key);
+      }
+      if (prior === 'bia_rejected_10' && input.action === 'bia-status') {
+        return reply(await checkMessagingPermission(env));
       }
       if (prior) return reply(prior);
       if (input.action === 'status') return reply('ready');
