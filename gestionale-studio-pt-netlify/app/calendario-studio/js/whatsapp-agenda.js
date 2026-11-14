@@ -30,6 +30,8 @@ window.WhatsAppAgenda = (() => {
     const panel = document.getElementById('agenda-personal-test');
     const send = document.getElementById('agenda-test-send');
     const status = document.getElementById('agenda-test-status');
+    const bia = new URLSearchParams(location.search).get('test') === 'bia';
+    if (bia) send.textContent = 'Invia prova BIA con PDF al mio numero';
     const feedback = {
       ready: 'Per la prova, scrivi prima al numero dello studio dal tuo WhatsApp personale.',
       not_configured: 'Manca la configurazione WhatsApp dell’anteprima.',
@@ -47,7 +49,7 @@ window.WhatsAppAgenda = (() => {
       try {
         const response = await fetch('/.netlify/functions/whatsapp-agenda-test', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, accessToken: sessionToken() })
+          body: JSON.stringify({ action: bia ? 'bia-' + action : action, accessToken: sessionToken() })
         });
         if (response.status === 404 || response.status === 403) {
           panel.hidden = !personalTestLink;

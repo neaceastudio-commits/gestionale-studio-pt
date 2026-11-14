@@ -3,7 +3,7 @@ import auth from './lib/calendar-audit-auth.js';
 import agenda from './lib/whatsapp-agenda.js';
 
 // This single claim spans preview rebuilds and is independent of the daily staff job.
-const key = 'agenda-personal-test-v1';
+const agendaKey = 'agenda-personal-test-v1';
 const openStore = () => getStore({ name: 'calendar-whatsapp-preview-tests', consistency: 'strong' });
 const reply = (status, code = 200) => Response.json({ status }, {
   status: code, headers: { 'Cache-Control': 'no-store' }
@@ -21,7 +21,7 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
-    if (!input || !['status', 'send'].includes(input.action) ||
+    if (!input || !['status', 'send', 'bia-status', 'bia-send'].includes(input.action) ||
         Object.keys(input).some(k => k !== 'action' && k !== 'accessToken')) return reply('invalid_request', 400);
     try {
       const actor = await authenticate(input.accessToken);
@@ -32,16 +32,19 @@ export function createHandler({
           !e164.test(env.WHATSAPP_AGENDA_TEST_TO || '') || env.WHATSAPP_AGENDA_TEST_TO === env.WHATSAPP_SENDER_PHONE) {
         return reply('not_configured');
       }
+      const isBia = input.action.startsWith('bia-');
+      if (isBia && env.WHATSAPP_AGENDA_TEST_TO !== '+393387731722') return reply('not_configured');
+      const key = isBia ? 'bia-personal-document-v1' : agendaKey;
       const claims = store();
       const prior = await claims.get(key);
       if (prior) return reply(prior);
-      if (input.action === 'status') return reply('ready');
+      if (input.action === 'status' || input.action === 'bia-status') return reply('ready');
       try { await provider.verifySender(); } catch { return reply('sender_unverified', 409); }
       const claim = await claims.set(key, 'pending', { onlyIfNew: true });
       if (!claim.modified) return reply(await claims.get(key) || 'pending');
       let outcome;
       try {
-        const result = await provider.sendTestText();
+        const result = isBia ? await provider.sendBiaDocument() : await provider.sendTestText();
         outcome = result.messages?.[0]?.id?.startsWith('wamid.') ? 'accepted' : 'uncertain';
       } catch (error) {
         outcome = error.message === 'provider_rejected' ? 'rejected' : 'uncertain';
