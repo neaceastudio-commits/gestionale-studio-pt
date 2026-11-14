@@ -5,7 +5,7 @@
 <nav aria-label="Sezioni"><button data-view="registro">Registro</button><button data-view="rubrica">Rubrica</button><button data-view="editor">Crea messaggio</button></nav><p id="notice" role="status"></p>
 <section id="registro"><h2>Registro invii</h2><div class="tools"><select id="group" aria-label="Tipo destinatario"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input type="search" id="query" placeholder="Cerca nome o comunicazione" aria-label="Cerca nel registro"></div><div class="metrics" id="metrics"></div><div class="scroll"><table><thead><tr><th>Destinatario</th><th>Comunicazione</th><th>Stato simulato</th><th>Ultimo evento</th><th>Dettaglio</th></tr></thead><tbody id="log"></tbody></table></div><div id="timeline"></div></section>
 <section id="rubrica" hidden><h2>Rubrica</h2><div class="tools"><select id="rg" aria-label="Tipo contatto"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input id="rq" type="search" aria-label="Cerca contatto" placeholder="Cerca un contatto"></div><div class="split"><div id="contacts"></div><div id="card" class="paper"></div></div></section>
-<section id="editor" hidden><h2>Crea messaggio</h2><div class="split"><form id="compose"><label>Nome della comunicazione<input id="subject" required maxlength="90"></label><label>Parti da un testo<select id="model"><option>Personalizzato</option><option>Ultime 2 sedute</option><option>Agenda PT</option><option>Promemoria appuntamento</option></select></label><fieldset><legend>Destinatari</legend><div id="recipients"></div></fieldset><label>Testo<textarea id="bodyText" required></textarea></label><button type="button" id="variable">Inserisci {nome}</button><label>Link facoltativo<input type="url" id="link" placeholder="https://"></label><label>Allegato facoltativo · PDF o immagine<input type="file" id="file" accept=".pdf,image/*"></label><span id="fileName"></span> <button type="button" id="removeFile" hidden>Rimuovi allegato</button><div class="cols"><label>Quando<select id="mode"><option>Subito</option><option>Programma</option></select></label><label id="whenBox" hidden>Data e ora locale<input id="when" type="datetime-local"></label></div><label id="repeatBox" hidden>Ricorrenza<select id="repeat"><option>Una volta</option><option>Ogni giorno</option><option>Ogni settimana</option><option>Ogni mese</option></select></label><div class="tools"><button type="button" id="draft">Salva bozza</button><button class="primary" type="submit">Simula comunicazione</button></div></form><aside><h3>Anteprima per il destinatario</h3><div class="bubble" id="preview"></div><p class="muted" id="schedule"></p><h3>Bozze salvate</h3><div id="draftList"></div></aside></div></section>
+<section id="editor" hidden><h2>Crea messaggio</h2><button id="newDraft" type="button">Nuova comunicazione</button><div class="split"><form id="compose"><label>Nome della comunicazione<input id="subject" required maxlength="90"></label><label>Parti da un testo<select id="model"><option>Personalizzato</option><option>Ultime 2 sedute</option><option>Agenda PT</option><option>Promemoria appuntamento</option></select></label><fieldset><legend>Destinatari</legend><div id="recipients"></div></fieldset><label>Testo<textarea id="bodyText" required></textarea></label><button type="button" id="variable">Inserisci {nome}</button><label>Link facoltativo<input type="url" id="link" placeholder="https://"></label><label>Allegato facoltativo · PDF o immagine<input type="file" id="file" accept=".pdf,image/*"></label><span id="fileName"></span> <a id="download" hidden>Scarica allegato</a> <button type="button" id="removeFile" hidden>Rimuovi allegato</button><div class="cols"><label>Quando<select id="mode"><option>Subito</option><option>Programma</option></select></label><label id="whenBox" hidden>Data e ora locale<input id="when" type="datetime-local"></label></div><label id="repeatBox" hidden>Ricorrenza<select id="repeat"><option>Una volta</option><option>Ogni giorno</option><option>Ogni settimana</option><option>Ogni mese</option></select></label><div class="tools"><button type="button" id="draft">Salva bozza</button><button class="primary" type="submit">Simula comunicazione</button></div></form><aside><h3>Anteprima per il destinatario</h3><div class="bubble" id="preview"></div><p class="muted" id="schedule"></p><h3>Bozze salvate</h3><div id="draftList"></div></aside></div></section>
 <p><a href="bozza-whatsapp.html">Apri la prova pacchetti e agende</a></p>
 </main><script>
 (()=>{
@@ -40,13 +40,60 @@ for(const id of ['query','group','rq','rg'])$(id).oninput=draw;
 const inputs=people.map(([name,group,ok],i)=>{const l=node('label',' '+name+' · '+group+(ok?'':' · consenso assente'));const c=document.createElement('input');c.type='checkbox';c.disabled=!ok;l.prepend(c);$('recipients').append(l);return c});
 const fields=['subject','model','bodyText','link','mode','when','repeat'];
 function values(){return {...Object.fromEntries(fields.map(k=>[k,$(k).value])),ids:inputs.flatMap((c,i)=>c.checked&&!c.disabled?[i]:[]),attachment}}
-function setForm(v={}){draftId=v.id||'';attachment=v.attachment||'';$('file').value='';for(const k of fields){const n=$(k);if(n.tagName==='SELECT')n.selectedIndex=0;else n.value='';if(v[k])n.value=v[k]}inputs.forEach((c,i)=>c.checked=!c.disabled&&!!v.ids?.includes(i));preview()}
+const localDrafts=new Map();
+let selectedFile=null, downloadUrl='', formVersion=0;
+function attach(file, legacyName=''){
+ if(downloadUrl) URL.revokeObjectURL(downloadUrl);
+ selectedFile=file;
+ attachment=file?.name||legacyName;
+ downloadUrl=file?URL.createObjectURL(file):'';
+ const link=$('download');
+ link.hidden=!file;
+ if(file){link.href=downloadUrl;link.download=file.name}
+ else link.removeAttribute('href');
+}
+function allDrafts(){
+ const drafts=new Map(data.drafts.map(d=>[d.id,d]));
+ for(const d of localDrafts.values()) drafts.set(d.id,d);
+ return [...drafts.values()].sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
+}
+const database=new Promise((resolve,reject)=>{
+ const request=indexedDB.open('neacea-whatsapp-drafts',1);
+ request.onupgradeneeded=()=>request.result.createObjectStore('drafts',{keyPath:'id'});
+ request.onsuccess=()=>resolve(request.result);
+ request.onerror=()=>reject(request.error);
+});
+async function loadDrafts(){
+ const db=await database;
+ const request=db.transaction('drafts').objectStore('drafts').getAll();
+ request.onsuccess=()=>{for(const d of request.result)localDrafts.set(d.id,d);preview()};
+ request.onerror=()=>{$('notice').textContent='Impossibile caricare le bozze salvate.'};
+}
+$('newDraft').onclick=()=>{setForm();$('notice').textContent='Nuova comunicazione.'};
+function setForm(v={}){formVersion++;draftId=v.id||'';attach(v.file||null,v.attachment);$('file').value='';for(const k of fields){const n=$(k);if(n.tagName==='SELECT')n.selectedIndex=0;else n.value='';if(v[k])n.value=v[k]}inputs.forEach((c,i)=>c.checked=!c.disabled&&!!v.ids?.includes(i));preview()}
 function message(v,i){return [v.bodyText.replaceAll('{nome}',people[i]?.[0].split(' ')[0]||'{nome}'),v.link,v.attachment?'Allegato · '+v.attachment:''].filter(Boolean).join('\n\n')}
 function timing(v){return v.mode==='Subito'?'Invio immediato':(v.when?v.when.replace('T',' alle '):'Scegli data e ora')+' · '+v.repeat}
-function preview(){const v=values(),scheduled=v.mode==='Programma';$('whenBox').hidden=$('repeatBox').hidden=!scheduled;$('when').required=scheduled;$('fileName').textContent=attachment;$('removeFile').hidden=!attachment;$('preview').textContent=message(v,v.ids[0])||'Scrivi il testo del messaggio.';$('schedule').textContent=v.ids.length+' destinatari · '+timing(v);$('draftList').replaceChildren();for(const d of data.drafts)$('draftList').append(button(d.subject||'Senza titolo',()=>setForm(d)));if(!data.drafts.length)$('draftList').textContent='Nessuna bozza';if(draftId)$('draftList').append(button('Nuova comunicazione',()=>setForm()))}
-$('compose').oninput=preview;$('file').onchange=()=>{attachment=$('file').files[0]?.name||'';preview()};$('removeFile').onclick=()=>{attachment='';$('file').value='';preview()};$('model').onchange=()=>{const m=$('model').value;const texts={'Ultime 2 sedute':'Ciao {nome}, ti restano 2 sedute del tuo pacchetto NEACEA.','Agenda PT':'Ciao {nome}, ecco il link alla tua agenda di oggi.','Promemoria appuntamento':'Ciao {nome}, ti ricordiamo il tuo prossimo appuntamento in studio.'};if(texts[m]){$('subject').value=m;$('bodyText').value=texts[m]}preview()};
+function preview(){const v=values(),scheduled=v.mode==='Programma';$('whenBox').hidden=$('repeatBox').hidden=!scheduled;$('when').required=scheduled;$('fileName').textContent=attachment+(attachment&&!selectedFile?' · solo nome nella vecchia bozza, riseleziona il file':'');$('removeFile').hidden=!attachment;$('preview').textContent=message(v,v.ids[0])||'Scrivi il testo del messaggio.';$('schedule').textContent=v.ids.length+' destinatari · '+timing(v);$('draftList').replaceChildren();for(const d of allDrafts())$('draftList').append(button(d.subject||'Senza titolo',()=>setForm(d)));if(!allDrafts().length)$('draftList').textContent='Nessuna bozza'}
+$('compose').oninput=preview;$('file').onchange=()=>{const file=$('file').files[0];if(file)attach(file);preview()};$('removeFile').onclick=()=>{attach(null);$('file').value='';preview()};$('model').onchange=()=>{const m=$('model').value;const texts={'Ultime 2 sedute':'Ciao {nome}, ti restano 2 sedute del tuo pacchetto NEACEA.','Agenda PT':'Ciao {nome}, ecco il link alla tua agenda di oggi.','Promemoria appuntamento':'Ciao {nome}, ti ricordiamo il tuo prossimo appuntamento in studio.'};if(texts[m]){$('subject').value=m;$('bodyText').value=texts[m]}preview()};
 $('variable').onclick=()=>{const t=$('bodyText');t.setRangeText('{nome}',t.selectionStart,t.selectionEnd,'end');t.focus();preview()};
-$('draft').onclick=()=>{const d={...values(),id:draftId||crypto.randomUUID()};draftId=d.id;data.drafts=[d,...data.drafts.filter(x=>x.id!==d.id)];save();preview();$('notice').textContent='Bozza salvata.'};
-$('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||!v.bodyText.trim()){$('notice').textContent='Indica titolo, testo e almeno un destinatario con consenso.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';view('registro')};setForm();view('registro');
+$('draft').onclick=async()=>{
+ const version=formVersion;
+ const d={...values(),id:draftId||crypto.randomUUID(),updated:stamp(),file:selectedFile};
+ $('draft').disabled=true;
+ try{
+  const db=await database;
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction('drafts','readwrite');
+   tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+   tx.objectStore('drafts').put(d);
+  });
+  localDrafts.set(d.id,d);
+  if(version===formVersion)draftId=d.id;
+  preview();$('notice').textContent='Bozza salvata in questo browser.';
+ }catch{$('notice').textContent='Salvataggio fallito. Verifica lo spazio disponibile e riprova.'}
+ finally{$('draft').disabled=false}
+};
+$('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||!v.bodyText.trim()){$('notice').textContent='Indica titolo, testo e almeno un destinatario con consenso.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';setForm();view('registro')};setForm();view('registro');loadDrafts().catch(()=>{$('notice').textContent='Archivio bozze non disponibile in questo browser.'});
 })();
 </script></body></html>
+
