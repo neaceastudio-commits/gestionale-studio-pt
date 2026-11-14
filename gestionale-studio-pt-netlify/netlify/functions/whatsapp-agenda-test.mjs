@@ -34,9 +34,14 @@ export function createHandler({
       }
       const isBia = input.action.startsWith('bia-');
       if (isBia && env.WHATSAPP_AGENDA_TEST_TO !== '+393387731722') return reply('not_configured');
-      const key = isBia ? 'bia-personal-document-v1' : agendaKey;
+      let key = isBia ? 'bia-personal-document-v1' : agendaKey;
       const claims = store();
-      const prior = await claims.get(key);
+      let prior = await claims.get(key);
+      // The old handler kept no provider code. Permit one explicit diagnostic retry only after a definite rejection.
+      if (isBia && prior === 'rejected') {
+        key += '-diagnostic';
+        prior = await claims.get(key);
+      }
       if (prior) return reply(prior);
       if (input.action === 'status') return reply('ready');
       try {
@@ -58,6 +63,11 @@ export function createHandler({
         outcome = result.messages?.[0]?.id?.startsWith('wamid.') ? 'accepted' : 'uncertain';
       } catch (error) {
         outcome = error.message === 'provider_rejected' ? 'rejected' : 'uncertain';
+        if (isBia && outcome === 'rejected') {
+          const code = Number.isInteger(error.providerCode) ? error.providerCode : 0;
+          outcome = 'bia_rejected_' + code;
+          console.warn('WhatsApp BIA: provider rejection, code=' + code);
+        }
       }
       await claims.set(key, outcome);
       return reply(outcome);

@@ -63,7 +63,8 @@ window.WhatsAppAgenda = (() => {
         }
         const data = await response.json();
         panel.hidden = false;
-        status.textContent = feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
+        const refusal = /^bia_rejected_(\d+)$/.exec(data.status);
+        status.textContent = refusal ? 'Meta ha rifiutato il PDF. Codice Meta: ' + (refusal[1] === '0' ? 'non disponibile' : refusal[1]) + '.' : feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
         send.disabled = !(response.ok && data.status === 'ready');
       } catch {
         panel.hidden = false;
