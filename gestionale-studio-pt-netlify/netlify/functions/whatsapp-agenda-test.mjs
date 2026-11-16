@@ -138,6 +138,11 @@ export function createHandler({
       if (plainText) key = 'personal-text-post-subscription-v1';
       const claims = store();
       let prior = await claims.get(key);
+      // Keep the original outcome. Allow one explicit text retry with the partner credential.
+      if (plainText && /^text_rejected_10(?: · |$)/.test(prior || '')) {
+        key += '-partner-token';
+        prior = await claims.get(key);
+      }
       // The old handler kept no provider code. Permit one explicit diagnostic retry only after a definite rejection.
       if (isBia && prior === 'rejected') {
         key += '-diagnostic';
