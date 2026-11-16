@@ -119,7 +119,7 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
-    if (!input || !['status', 'send', 'bia-status', 'bia-send', 'bia-subscribe'].includes(input.action) ||
+    if (!input || !['status', 'send', 'bia-status', 'bia-send', 'bia-subscribe', 'text-status', 'text-send'].includes(input.action) ||
         Object.keys(input).some(k => k !== 'action' && k !== 'accessToken')) return reply('invalid_request', 400);
     try {
       const actor = await authenticate(input.accessToken);
@@ -131,9 +131,11 @@ export function createHandler({
         return reply('not_configured');
       }
       const isBia = input.action.startsWith('bia-');
-      if (isBia && env.WHATSAPP_AGENDA_TEST_TO !== '+393387731722') return reply('not_configured');
+      const plainText = input.action.startsWith('text-');
+      if ((isBia || plainText) && env.WHATSAPP_AGENDA_TEST_TO !== '+393387731722') return reply('not_configured');
       if (input.action === 'bia-subscribe') return await subscribeStudioApp(env);
       let key = isBia ? 'bia-personal-document-v1' : agendaKey;
+      if (plainText) key = 'personal-text-post-subscription-v1';
       const claims = store();
       let prior = await claims.get(key);
       // The old handler kept no provider code. Permit one explicit diagnostic retry only after a definite rejection.
@@ -169,20 +171,20 @@ export function createHandler({
           error.message === 'sender_mismatch' ? 'sender_mismatch' : 'sender_unverified';
         return reply(reason, 409);
       }
-      if (input.action === 'bia-status') return reply('ready');
+      if (input.action === 'bia-status' || input.action === 'text-status') return reply('ready');
       const claim = await claims.set(key, 'pending', { onlyIfNew: true });
       if (!claim.modified) return reply(await claims.get(key) || 'pending');
       let outcome;
       try {
-        const result = isBia ? await provider.sendBiaDocument() : await provider.sendTestText();
+        const result = isBia ? await provider.sendBiaDocument() : await provider.sendTestText(plainText ? 'Ciao Gianluca' : undefined);
         outcome = result.messages?.[0]?.id?.startsWith('wamid.') ? 'accepted' : 'uncertain';
       } catch (error) {
         outcome = error.message === 'provider_rejected' ? 'rejected' : 'uncertain';
-        if (isBia && outcome === 'rejected') {
+        if ((isBia || plainText) && outcome === 'rejected') {
           const code = Number.isInteger(error.providerCode) ? error.providerCode : 0;
-          outcome = 'bia_rejected_' + code;
+          outcome = (plainText ? 'text_rejected_' : 'bia_rejected_') + code;
           if (error.providerDetail) outcome += ' · ' + error.providerDetail;
-          console.warn('WhatsApp BIA: provider rejection, code=' + code);
+          console.warn('WhatsApp personal test: provider rejection, code=' + code);
         }
       }
       await claims.set(key, outcome);

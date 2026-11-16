@@ -30,7 +30,10 @@ window.WhatsAppAgenda = (() => {
     const panel = document.getElementById('agenda-personal-test');
     const send = document.getElementById('agenda-test-send');
     const status = document.getElementById('agenda-test-status');
-    const bia = new URLSearchParams(location.search).get('test') === 'bia';
+    const test = new URLSearchParams(location.search).get('test');
+    const bia = test === 'bia';
+    const plainText = test === 'testo';
+    if (plainText) send.textContent = 'Invia «Ciao Gianluca» al mio numero';
     if (bia) send.textContent = 'Invia prova BIA con PDF al mio numero';
     const subscribe = element('button', 'Collega NEACEA Agenda PT al WABA');
     subscribe.type = 'button';
@@ -67,7 +70,7 @@ window.WhatsAppAgenda = (() => {
       try {
         const response = await fetch('/.netlify/functions/whatsapp-agenda-test', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: bia ? 'bia-' + action : action, accessToken: sessionToken() })
+          body: JSON.stringify({ action: (bia ? 'bia-' : plainText ? 'text-' : '') + action, accessToken: sessionToken() })
         });
         if (response.status === 404 || response.status === 403) {
           panel.hidden = !personalTestLink;
@@ -77,8 +80,8 @@ window.WhatsAppAgenda = (() => {
         }
         const data = await response.json();
         panel.hidden = false;
-        const refusal = /^bia_rejected_(\d+)(?: · (.*))?$/.exec(data.status);
-        status.textContent = data.status === 'bia_health' ? data.detail : refusal ? 'Meta ha rifiutato il PDF. Codice Meta: ' + (refusal[1] === '0' ? 'non disponibile' : refusal[1]) + '. ' + (refusal[2] || '') : feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
+        const refusal = /^(?:bia|text)_rejected_(\d+)(?: · (.*))?$/.exec(data.status);
+        status.textContent = data.status === 'bia_health' ? data.detail : refusal ? (plainText ? 'Meta ha rifiutato il testo. Codice Meta: ' : 'Meta ha rifiutato il PDF. Codice Meta: ') + (refusal[1] === '0' ? 'non disponibile' : refusal[1]) + '. ' + (refusal[2] || '') : feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
         if (['waba_unconfirmed', 'waba_wrong_app'].includes(data.status) && data.detail) {
           status.textContent += ' ' + data.detail;
         }

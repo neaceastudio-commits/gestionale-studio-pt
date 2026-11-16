@@ -122,11 +122,11 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
       }
     });
   }
-  async function sendTestText() {
+  async function sendTestText(body = 'NEACEA · Prova dal calendario\n\n09:00 · Cliente di prova · PT 1:1 · 3/8\n\nTotale: 1 seduta.') {
     return meta('/messages', {
       messaging_product: 'whatsapp', recipient_type: 'individual',
       to: env.WHATSAPP_AGENDA_TEST_TO.slice(1), type: 'text',
-      text: { preview_url: false, body: 'NEACEA · Prova dal calendario\n\n09:00 · Cliente di prova · PT 1:1 · 3/8\n\nTotale: 1 seduta.' }
+      text: { preview_url: false, body }
     });
   }
   async function run({ dryRun = true, scheduled = false } = {}) {
