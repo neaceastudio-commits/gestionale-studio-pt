@@ -1,0 +1,83 @@
+{
+  "commit": "31780e032d00a75ede40ec111ba083bad6d15f3b",
+  "branch": "release/calendar-renewals-recovery-20261116",
+  "deploy": "6afb38b6dd6b7cfc61bdf50d",
+  "baselineDeploy": "6af5a709d19df69b4dc7f94f",
+  "baselineCommit": "0f5e5428aa080df6c2a816986c104fd428d8859c",
+  "origin": "https://new-calendar-neacea.netlify.app",
+  "live": true,
+  "publishedAt": "2026-11-16T17:09:35.852Z",
+  "files": 47,
+  "changedAssets": [
+    "index.html",
+    "js/app.js",
+    "js/calendar.js",
+    "js/expected-renewals.js",
+    "js/supabase.js"
+  ],
+  "unchangedFunctionArchives": 11,
+  "schedules": [
+    {
+      "cron": "*/10 * * * *",
+      "name": "expected-renewals-scheduled"
+    },
+    {
+      "cron": "30 4,5 * * *",
+      "name": "whatsapp-agenda-scheduled"
+    }
+  ],
+  "anonymousStatus": 401,
+  "hashes": {
+    "index.html": "569f76668ea207027a9cc54ff61b96075d6ef137",
+    "js/app.js": "b04b48fea217fd5db9ba7e5944c689df3812c509",
+    "js/calendar.js": "15aa602e9479348db03aee948b16a84260473228",
+    "js/expected-renewals.js": "e5ea7255b718da45ee1d451c0c368bb99d77fc2a",
+    "js/supabase.js": "37a214b9e27caad42118e0530d8d6ed90adb7711"
+  },
+  "migration": "20261116170557",
+  "coverage": {
+    "clients": 20,
+    "proposals": 18,
+    "renewalReservations": 151,
+    "clientsWithoutDates": 0
+  },
+  "appleFeed": {
+    "checkedAt": "2026-11-16T17:12:09.596Z",
+    "expectedRenewalEvents": 151,
+    "checks": [
+      {
+        "scope": "studio",
+        "renewalEvents": 151,
+        "missing": 0
+      },
+      {
+        "scope": "staff_1776161672858",
+        "renewalEvents": 115,
+        "missing": 0
+      },
+      {
+        "scope": "op_1789402428545_hgw9",
+        "renewalEvents": 16,
+        "missing": 0
+      },
+      {
+        "scope": "staff_1",
+        "renewalEvents": 12,
+        "missing": 0
+      },
+      {
+        "scope": "op_1777745211367_hnvc",
+        "renewalEvents": 8,
+        "missing": 0
+      }
+    ]
+  },
+  "loiCherchi": {
+    "oldAppointments": 54,
+    "historyBefore": "3e7ac7c91c0cd16962310cce613e2cbc",
+    "historyAfter": "3e7ac7c91c0cd16962310cce613e2cbc",
+    "clientsBefore": "0d7a7be0848c2d785bf9a576eda95dde",
+    "clientsAfter": "0d7a7be0848c2d785bf9a576eda95dde",
+    "restoredBookings": 12
+  }
+}
