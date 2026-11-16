@@ -14,25 +14,39 @@ const targetWaba = '4508719189457199';
 const present = 'NEACEA Agenda PT presente.';
 const absent = 'NEACEA Agenda PT assente nell’elenco restituito da Meta.';
 
+function subscriptionResult(status, detail) {
+  return Response.json({ status, detail }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+function graphReason(response, data) {
+  const error = data?.error || {};
+  const parts = ['HTTP ' + response.status];
+  if (Number.isInteger(error.code)) parts.push('codice Meta ' + error.code);
+  if (Number.isInteger(error.error_subcode)) parts.push('sottocodice ' + error.error_subcode);
+  if (typeof error.fbtrace_id === 'string' && /^[\w-]{1,80}$/.test(error.fbtrace_id)) parts.push('Trace ID ' + error.fbtrace_id);
+  return parts.join(', ');
+}
+
 async function subscribeStudioApp(env) {
-  const before = await checkWabaSubscription(env);
-  if (before === present) return reply('waba_present');
-  if (before !== absent) return reply('waba_check_failed');
+  // The Graph subscription targets the caller app. Verify it before writing.
   const root = 'https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/';
   const options = () => ({ headers: { Authorization: 'Bearer ' + env.WHATSAPP_ACCESS_TOKEN },
     redirect: 'error', signal: AbortSignal.timeout(6000) });
   try {
     const app = await fetch(root + 'app?fields=id', options());
-    if (!app.ok || (await app.json()).id !== targetApp) return reply('waba_wrong_app');
-  } catch { return reply('waba_wrong_app'); }
-  let code;
+    const data = await app.json();
+    if (!app.ok) return subscriptionResult('waba_wrong_app', graphReason(app, data));
+    if (data.id !== targetApp) return subscriptionResult('waba_wrong_app', 'ID app diverso da quello previsto.');
+  } catch { return subscriptionResult('waba_wrong_app', 'Verifica app: risposta non disponibile.'); }
+  let actionResult = 'Nessuna risposta alla richiesta di iscrizione.';
   try {
-    const response = await fetch(root + targetWaba + '/subscribed_apps', { ...options(), method: 'POST' });
-    if (!response.ok) code = (await response.json()).error?.code;
-  } catch { /* Read the resulting state even if the request timed out. */ }
-  if (await checkWabaSubscription(env) === present) return reply('waba_present');
-  return Response.json({ status: 'waba_unconfirmed', code: Number.isInteger(code) ? code : null },
-    { headers: { 'Cache-Control': 'no-store' } });
+    const result = await fetch(root + targetWaba + '/subscribed_apps', { ...options(), method: 'POST' });
+    const data = await result.json();
+    actionResult = result.ok && data.success === true ? 'Meta ha accettato la richiesta.' : 'Richiesta: ' + graphReason(result, data) + '.';
+  } catch { /* A lost response does not establish whether the subscription succeeded. */ }
+  const after = await checkWabaSubscription(env);
+  if (after === present) return reply('waba_present');
+  return subscriptionResult('waba_unconfirmed', actionResult + ' Verifica successiva: ' + after);
 }
 
 async function checkWabaSubscription(env) {
@@ -45,8 +59,7 @@ async function checkWabaSubscription(env) {
     });
     const result = await response.json();
     if (!response.ok || !Array.isArray(result.data)) {
-      const code = result.error?.code;
-      return 'Controllo non disponibile' + (Number.isInteger(code) ? ' (codice Meta ' + code + ')' : '') + '.';
+      return 'Lettura elenco: ' + graphReason(response, result) + '.';
     }
     const ids = result.data.map(row => row?.whatsapp_business_api_data?.id);
     if (ids.includes(targetApp)) return present;

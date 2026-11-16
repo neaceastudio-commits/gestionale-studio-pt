@@ -42,7 +42,6 @@ window.WhatsAppAgenda = (() => {
     const feedback = {
       waba_present: 'Iscrizione verificata: NEACEA Agenda PT presente sul WABA dello studio.',
       waba_wrong_app: 'Meta non ha confermato l’identità dell’app del token. Iscrizione interrotta.',
-      waba_check_failed: 'Non è stato possibile verificare l’elenco delle app. Iscrizione interrotta.',
       waba_unconfirmed: 'Iscrizione al WABA non confermata. Ricarica la pagina per controllare lo stato.',
       bia_scope_granted: 'Invio BIA rifiutato (10). Meta conferma il permesso di messaggistica del token. Verificare l’accesso dell’app e dell’utente di sistema all’account WhatsApp dello studio.',
       bia_scope_missing: 'Invio BIA rifiutato (10). Il token dell’anteprima non dispone del permesso whatsapp_business_messaging.',
@@ -80,8 +79,11 @@ window.WhatsAppAgenda = (() => {
         panel.hidden = false;
         const refusal = /^bia_rejected_(\d+)(?: · (.*))?$/.exec(data.status);
         status.textContent = data.status === 'bia_health' ? data.detail : refusal ? 'Meta ha rifiutato il PDF. Codice Meta: ' + (refusal[1] === '0' ? 'non disponibile' : refusal[1]) + '. ' + (refusal[2] || '') : feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
-        if (data.status === 'waba_unconfirmed' && data.code) status.textContent += ' Codice Meta: ' + data.code;
-        subscribe.hidden = !String(data.status).includes('NEACEA Agenda PT assente nell’elenco');
+        if (['waba_unconfirmed', 'waba_wrong_app'].includes(data.status) && data.detail) {
+          status.textContent += ' ' + data.detail;
+        }
+        const failedBia = typeof data.status === 'string' && data.status.startsWith('bia_rejected_10 · ');
+        subscribe.hidden = !bia || !failedBia || data.status.endsWith('NEACEA Agenda PT presente.');
         subscribe.disabled = subscribe.hidden;
         send.disabled = !(response.ok && data.status === 'ready');
       } catch {
