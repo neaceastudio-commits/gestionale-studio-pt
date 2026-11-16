@@ -35,7 +35,11 @@ async function checkMessagingPermission(env) {
         );
         return [labels[e.entity_type], states[e.can_send_message] || 'stato sconosciuto', ...reasons].join(' · ');
       });
-      return { status: 'bia_health', detail: ['Stato di invio Meta: ' + (states[health.can_send_message] || 'sconosciuto'), ...detail].join('\n') };
+      const portfolioReady = rows.some(e => e.entity_type === 'BUSINESS' && e.can_send_message === 'AVAILABLE');
+      const retryReady = portfolioReady && ['AVAILABLE', 'LIMITED'].includes(health.can_send_message) &&
+        rows.every(e => e.can_send_message === 'AVAILABLE' || (e.can_send_message === 'LIMITED' &&
+          e.errors?.length > 0 && e.errors.every(issue => [138024, 138025].includes(Number(issue.error_code)))));
+      return { retryReady, status: 'bia_health', detail: ['Stato di invio Meta: ' + (states[health.can_send_message] || 'sconosciuto'), ...detail].join('\n') };
     }
     if (!scope && result.paging?.next) return 'bia_permissions_unknown';
     return 'bia_scope_missing';
@@ -75,10 +79,13 @@ export function createHandler({
         key += '-diagnostic';
         prior = await claims.get(key);
       }
-      if (prior === 'bia_rejected_10' && input.action === 'bia-status') {
+      if (isBia && prior === 'bia_rejected_10') {
+        key += '-verified-business';
+        prior = await claims.get(key);
+        if (prior) return reply(prior);
         const check = await checkMessagingPermission(env);
-        if (typeof check === 'object') return Response.json(check, { headers: { 'Cache-Control': 'no-store' } });
-        return reply(check);
+        if (typeof check !== 'object') return reply(check);
+        if (!check.retryReady) return Response.json(check, { headers: { 'Cache-Control': 'no-store' } });
       }
       if (prior) return reply(prior);
       if (input.action === 'status') return reply('ready');
