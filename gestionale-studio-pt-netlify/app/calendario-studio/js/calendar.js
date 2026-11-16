@@ -22,6 +22,15 @@ const Calendar = (() => {
     return `<span class="forced-overlap-badge${compact ? ' is-compact' : ''}" title="Doppio PT 1:1 autorizzato e tracciato">⚠ ${compact ? '2x PT' : 'Doppio PT'}</span>`;
   }
 
+  function renewalBadge(appt) {
+    const label = PTSessionModel.renewal(appt);
+    if (!label) return '';
+    const edit = App.canEditAppointment(appt)
+      ? `<button type="button" class="btn-icon-sm" title="Modifica questa seduta" aria-label="Modifica seduta del rinnovo" onclick="event.stopPropagation();App._renderAppointmentModal('${appt.id}','${appt.date}')">✎</button>`
+      : '';
+    return `<span class="status-pill">${label}</span>${edit}`;
+  }
+
   function italianDate(d) {
     return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   }
@@ -149,7 +158,7 @@ const Calendar = (() => {
                   </div>
                   <div class="appt-op">${Services.operatorFullName(a.operatorId)}</div>
                   <div class="appt-status">
-                    ${PTSessionModel.renewal(a)?`<span class="status-pill">${PTSessionModel.renewal(a)}</span>`:''}${PTSessionModel.provisional(a)?'<span class="status-pill">Orario da confermare</span>':forcedOverlapBadge(a)}
+                    ${renewalBadge(a)}${PTSessionModel.provisional(a)?'<span class="status-pill">Orario da confermare</span>':forcedOverlapBadge(a)}
                     <span class="status-pill status-${a.status}">${PTSessionModel.statusLabel(a,CONFIG.STATUS)}</span>
                     ${svc?.isGroup ? `<span class="circuit-badge">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>
@@ -239,7 +248,7 @@ const Calendar = (() => {
           <div class="event-svc" style="color:${svc?.color}">${svc?.label}</div>
           <div class="event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</div>
           <div class="event-op">${Services.operatorFullName(a.operatorId)}</div>
-          ${PTSessionModel.renewal(a)?`<span class="status-pill">${PTSessionModel.renewal(a)}</span>`:''}${PTSessionModel.provisional(a)?'<span class="status-pill">Da confermare</span>':forcedOverlapBadge(a, true)}
+          ${renewalBadge(a)}${PTSessionModel.provisional(a)?'<span class="status-pill">Da confermare</span>':forcedOverlapBadge(a, true)}
           ${svc?.isGroup ? `<div class="event-circuit">${a.clientIds.length}/${svc.maxClients} posti</div>` : ''}
         </div>`;
     });
@@ -325,7 +334,7 @@ const Calendar = (() => {
                     <span class="week-event-time">${a.startTime}</span>
                     <span class="week-event-svc" style="color:${svc?.color}">${svc?.label}</span>
                     <span class="week-event-client">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</span>
-                    ${PTSessionModel.renewal(a)?`<span class="status-pill">${PTSessionModel.renewal(a)}</span>`:''}${PTSessionModel.provisional(a)?'<span class="status-pill">Da confermare</span>':forcedOverlapBadge(a, true)}
+                    ${renewalBadge(a)}${PTSessionModel.provisional(a)?'<span class="status-pill">Da confermare</span>':forcedOverlapBadge(a, true)}
                     ${svc?.isGroup ? `<span class="circuit-mini">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>`;
               }).join('')}

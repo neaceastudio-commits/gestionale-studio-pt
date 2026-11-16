@@ -19,6 +19,9 @@ node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
 node --test tests/calendar-function-build.test.cjs
+node --test tests/calendar-empty-renewal-recovery.test.cjs
+node tests/calendar-empty-renewal-browser.cjs
+node tests/apple-calendar-professional.test.cjs
 node tests/calendar-release-regression.cjs
 node tools/coaching-editor/check-calendar-clients.cjs
 node tests/client-journey.test.cjs
@@ -49,6 +52,9 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    tests/calendar-empty-renewal-recovery.test.cjs
+    tests/calendar-empty-renewal-browser.cjs
+    supabase/migrations/20261116164805_calendar_restore_empty_renewal.sql
     tests/calendar-join-pair-concurrency.test.cjs
     tests/calendar-join-pair.test.cjs
     tests/calendar-join-pair-browser.cjs

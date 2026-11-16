@@ -1048,6 +1048,7 @@ const App = {
         ${canEdit && !isBlock?`
           <button class="act-btn primary" onclick="App._markDone('${appt.id}')">✓ Fatto</button>
           <button class="act-btn gold" onclick="App._markNoShow('${appt.id}')">${Services.serviceUsesPackageSessions(appt.serviceId)?'Non svolta · seduta scalata':'No-show'}</button>
+          ${appt.status === 'annullato' && Services.serviceUsesPackageSessions(appt.serviceId) ? `<button class="act-btn primary" onclick="App._markCancelled('${appt.id}')">Genera recupero</button>` : ''}
           ${appt.status !== 'annullato' && (App.isPortalPtMode()||Services.serviceUsesPackageSessions(appt.serviceId)) ? `<button class="act-btn del" onclick="App._markCancelled('${appt.id}')">${Services.serviceUsesPackageSessions(appt.serviceId)?'Annullata · da recuperare':'Annulla'}</button>` : ''}
         `:''}
         ${canEdit ? `<button class="btn-primary" onclick="App._renderAppointmentModal('${appt.id}','${appt.date}')">Modifica</button>` : '<button class="btn-primary" onclick="UI.closeModal()">Chiudi</button>'}

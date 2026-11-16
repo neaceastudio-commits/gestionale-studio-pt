@@ -4,7 +4,7 @@ const packages = require('./apple-calendar-package');
 const session = require('./pt-session-metadata');
 const weekly = require('../../../app/calendario-studio/js/package-schedule');
 const DAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
-const active = c => c && c.active !== false && !/ibern/i.test(c.stato_abbonamento || '');
+const active = c => c && c.active !== false && !/ibern|non\s+rinnova|eliminat/i.test(c.stato_abbonamento || '');
 const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Rome'}).format(new Date());
 const plus = (date,n) => new Date(Date.parse(date+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
 const key = link => `${link.id||link.cycleId||''}|${link.start||''}`;
@@ -21,7 +21,7 @@ function infer(clients,appointments,day=today()) {
  const currentLedger=[...ledger(primary).cycles].reverse().find(c=>!c.closedAt)||{};
  const configured=weekly.at(primary,plus(last>=day?last:plus(day,-1),1));
  const days=configured?configured.map(s=>DAYS[s.day]):currentLedger.days?.length?currentLedger.days:primary.giorni_settimana||[];
- const slots=days.map(name=>{
+ const inferredSlots=days.map(name=>{
   const d=DAYS.findIndex(x=>x.toLowerCase()===String(name).toLowerCase());
   const candidates=rows.filter(a=>a.service_id===sid&&new Date(a.date+'T12:00:00Z').getUTCDay()===d&&!a.notes?.includes('[ORARIO-PROVVISORIO]')).sort((a,b)=>b.date.localeCompare(a.date));
   // A single rescheduled session must not replace the established weekly pattern.
@@ -29,11 +29,14 @@ function infer(clients,appointments,day=today()) {
   const ranked=[...counts.values()].sort((a,b)=>b.n-a.n||b.a.date.localeCompare(a.a.date));const a=ranked[0]?.a;
   return {day:d,time:configured?.find(s=>s.day===d)?.time||a?.start_time.slice(0,5)||currentLedger.time||'',operatorId:a?.operator_id||currentLedger.operatorId||primary.pt_assegnato||'',duration:a?.duration_min||60};
  });
+ const slots=inferredSlots.filter(s=>s.day>=0&&s.time&&s.operatorId);
+ const missingDays=days.filter((_,i)=>!inferredSlots[i].time||!inferredSlots[i].operatorId||inferredSlots[i].day<0);
+ const notice=missingDays.length?'Giorni da completare: '+missingDays.join(', ')+'. Le date proposte usano gli orari abituali registrati.':'';
  let issue='';
  if(!slots.length||slots.some(s=>s.day<0||!s.time||!s.operatorId))issue='Completa giorni, orari e PT della proposta.';
  if(rows.some(a=>a.status==='prenotato'&&a.notes?.includes('[ORARIO-PROVVISORIO]')))issue='Orari variabili: concorda gli orari prima di generare le lezioni.';
  for(const h of histories){const booked=h.rows.filter(a=>a.status==='prenotato'&&packages.inCycle(a,h.ctx)).length;if(Number(h.c.sessions_remaining)>booked)issue='Il pacchetto corrente ha sedute residue ancora da programmare: verifica la decorrenza.';}
- return {serviceId:sid,startDate:plus(last>=day?last:plus(day,-1),1),slots,issue,
+ return {serviceId:sid,startDate:plus(last>=day?last:plus(day,-1),1),slots,issue,notice,
   clients:histories.map(({c,ctx})=>({id:c.id,source:{cycleId:ctx.id,start:ctx.start},cycleId:'expected_'+crypto.randomUUID().replaceAll('-',''),sessions:Number(c.sessions_total),amount:Number(c.importo)||0}))};
 }
 function appointmentsFor(p,existing=[],day=today()) {
@@ -75,7 +78,21 @@ function createService({db}) {
  async function snapshot(){const [clients,appointments,proposals]=await Promise.all([all('clients'),all('appointments'),all('calendar_expected_renewals')]);return {clients,appointments,proposals};}
  async function all(table){const rows=[];for(let n=0;n<100000;n+=1000){const page=await db(table,{query:`?select=*&order=id&limit=1000&offset=${n}`});rows.push(...page);if(page.length<1000)return rows;}throw Error('Calendario troppo ampio');}
  async function run(actor='staff_1') {
-  const s=await snapshot(), results=[];
+  let s=await snapshot();const results=[];
+  // A suspension can remove every reservation while leaving its proposal open.
+  // Restore only an entirely empty proposal; never rewrite partial attendance.
+  for(const p of s.proposals.filter(p=>['pending','confirmed'].includes(p.state)&&!p.plan.issue)){
+   const cs=p.plan.clients.map(c=>s.clients.find(x=>x.id===c.id));
+   if(cs.some(c=>!active(c)))continue;
+   const rows=s.appointments.filter(a=>a.notes?.includes(tag(p)));
+   if(rows.some(a=>a.status!=='annullato'))continue;
+   try{
+    const appointments=appointmentsFor(p,[],plus(today(),1));
+    await db('rpc/calendar_restore_empty_renewal',{method:'POST',body:{p_actor_id:actor,p_payload:{id:p.id,version:p.version,appointments}}});
+    results.push({id:p.id,restored:true});
+   }catch(e){results.push({id:p.id,error:e.message});}
+  }
+  if(results.some(r=>r.restored))s=await snapshot();
   for(const p of s.proposals.filter(p=>p.state==='confirmed')){
    const cs=p.plan.clients.map(c=>s.clients.find(x=>x.id===c.id));
    if(cs.some(c=>!active(c)))continue;
@@ -83,7 +100,7 @@ function createService({db}) {
    if(ready){try{await rpc(actor,'activate',{id:p.id,version:p.version,clients:activationClients(p,cs,s.appointments.filter(a=>a.notes?.includes(tag(p))))});results.push({id:p.id,activated:true});}catch(e){results.push({id:p.id,error:e.message});}}
   }
   const handled=new Set();
-  for(const c of s.clients.filter(c=>active(c)&&Number(c.sessions_total)>0&&Number(c.sessions_remaining)<=2&&c.package_types?.some(t=>/^PT 1:[12]$/.test(t)))){
+  for(const c of s.clients.filter(c=>active(c)&&Number(c.sessions_total)>0&&c.package_types?.some(t=>/^PT 1:[12]$/.test(t)))){
    if(handled.has(c.id)||s.proposals.some(p=>['pending','confirmed'].includes(p.state)&&p.client_ids.includes(c.id)))continue;
    const cs=c.pt_partner_id?[c,s.clients.find(x=>x.id===c.pt_partner_id)]:[c];
    if(cs.some(x=>!active(x))||cs.length===2&&cs[1].pt_partner_id!==c.id)continue;
@@ -97,8 +114,10 @@ function createService({db}) {
   return {results};
  }
  async function handle(actor,input){
-  if(input.action==='refresh'){await run(actor);input={action:'list'};}
-  if(input.action==='list'){const s=await snapshot();return {proposals:s.proposals.filter(p=>['pending','confirmed'].includes(p.state)&&p.client_ids.every(id=>active(s.clients.find(c=>c.id===id)))).map(p=>({...p,names:p.client_ids.map(id=>{const c=s.clients.find(c=>c.id===id);return `${c?.nome||''} ${c?.cognome||''}`.trim();}),performed:s.appointments.filter(a=>a.notes?.includes(tag(p))&&['fatto','noshow'].includes(a.status)).length,booked:s.appointments.filter(a=>a.notes?.includes(tag(p))&&a.status==='prenotato').length}))};}
+  if(input.action==='refresh'||input.action==='list'){
+   const result=await run(actor);input={action:'list',generationErrors:result.results.filter(r=>r.error)};
+  }
+  if(input.action==='list'){const s=await snapshot();return {generationErrors:input.generationErrors||[],proposals:s.proposals.filter(p=>['pending','confirmed'].includes(p.state)&&p.client_ids.every(id=>active(s.clients.find(c=>c.id===id)))).map(p=>({...p,names:p.client_ids.map(id=>{const c=s.clients.find(c=>c.id===id);return `${c?.nome||''} ${c?.cognome||''}`.trim();}),performed:s.appointments.filter(a=>a.notes?.includes(tag(p))&&['fatto','noshow'].includes(a.status)).length,booked:s.appointments.filter(a=>a.notes?.includes(tag(p))&&a.status==='prenotato').length}))};}
   if(!['edit','confirm','decline'].includes(input.action))throw Error('Azione rinnovo non valida');
   const s=await snapshot(),p=s.proposals.find(p=>p.id===input.id);if(!p)throw Error('Proposta non trovata');
   if(input.action==='edit'){

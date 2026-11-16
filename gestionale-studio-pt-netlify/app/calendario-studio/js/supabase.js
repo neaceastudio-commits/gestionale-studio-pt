@@ -269,7 +269,9 @@ const SupabaseSync = (() => {
       client_ids: a.clientIds || [],
       operator_id: a.operatorId || null,
       date: a.date,
-      start_time: a.startTime,
+      // PostgreSQL returns HH:MM:SS. Pair validation compares this field
+      // before casting: HH:MM must not turn an attendance edit into a move.
+      start_time: /^\d{2}:\d{2}$/.test(a.startTime) ? `${a.startTime}:00` : a.startTime,
       duration_min: parseInt(a.durationMin) || 60,
       buffer_min: parseInt(a.bufferMin) || 0,
       status: a.status || 'prenotato',
@@ -432,7 +434,7 @@ const SupabaseSync = (() => {
   }
 
   async function saveAppointmentAtomic(appt, before = null) {
-    const automaticRecovery = before && before.status !== 'annullato' && appt.status === 'annullato' && ['pt11','pt12','circuit'].includes(before.serviceId);
+    const automaticRecovery = before && appt.status === 'annullato' && ['pt11','pt12','circuit'].includes(before.serviceId);
     const result = automaticRecovery ? await CalendarAudit.call('cancel_and_recover', {expected: appointmentToDb(before)}) : await request('rpc/calendar_save_appointment', {
       method: 'POST', body: { p_appointment: appointmentToDb(appt), p_expected: before ? appointmentToDb(before) : null },
     });
