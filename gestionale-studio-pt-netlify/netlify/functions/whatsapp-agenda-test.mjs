@@ -155,14 +155,21 @@ export function createHandler({
           key += '-error-details';
           prior = await claims.get(key);
         }
-        if (input.action === 'bia-status' && prior?.startsWith('bia_rejected_10 · ')) {
+        if (!prior) {
+          const check = await checkMessagingPermission(env);
+          if (typeof check !== 'object') return reply(check);
+          if (!check.retryReady) return Response.json(check, { headers: { 'Cache-Control': 'no-store' } });
+        }
+      }
+      if (isBia && prior?.startsWith('bia_rejected_10 · ')) {
+        const textOutcome = await claims.get('personal-text-post-subscription-v1-partner-token');
+        if (textOutcome === 'accepted') {
+          key += '-partner-token';
+          prior = await claims.get(key);
+        } else if (input.action === 'bia-status') {
           const subscription = await checkWabaSubscription(env);
           return reply(prior + ' · Iscrizione webhook WABA: ' + subscription);
         }
-        if (prior) return reply(prior);
-        const check = await checkMessagingPermission(env);
-        if (typeof check !== 'object') return reply(check);
-        if (!check.retryReady) return Response.json(check, { headers: { 'Cache-Control': 'no-store' } });
       }
       if (prior) return reply(prior);
       if (input.action === 'status') return reply('ready');
