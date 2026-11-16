@@ -1,0 +1,34 @@
+{
+  "applicationCommit": "d6ae3f5ee3780f9fb262fb14498cc61405ecc1c8",
+  "deploy": "6afb47b0b6f47709f098a601",
+  "site": "https://new-calendar-neacea.netlify.app",
+  "publishedAt": "2026-11-16T18:13:26.648Z",
+  "databaseMigrations": [
+    "20261116180800",
+    "20261116181935"
+  ],
+  "filesVerified": 47,
+  "assets": [
+    "index.html",
+    "js/app.js",
+    "js/clients.js",
+    "js/expected-renewals.js",
+    "js/supabase.js"
+  ],
+  "unchangedFunctionArchives": 11,
+  "anonymousStatus": 401,
+  "coveredClients": 21,
+  "crossedCycles": 0,
+  "unplannedOrExcess": 0,
+  "overlappingClientBookings": 0,
+  "unresolvedPastAppointments": 8,
+  "appleFuturePtAppointments": 248,
+  "pastPhysicalHash": "bfd4758f3c3a3d726210cefafb2a0a91",
+  "cancelledRows": 369,
+  "cancelledHash": "f2e8eb234677106879ba7a9a1d31ee10",
+  "auditPrefixCount": 4241,
+  "auditPrefixLastId": 4669,
+  "auditPrefixHash": "7187a903556aae951b941ff8b6d6f43f",
+  "boiRepairRequest": "13799e6b-a53e-44ee-ad9c-89cf41b81967",
+  "historyRestoreRequest": "2bd5f993-2214-4918-a74e-30749f7713fb"
+}
