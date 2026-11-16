@@ -9,8 +9,34 @@ const reply = (status, code = 200) => Response.json({ status }, {
   status: code, headers: { 'Cache-Control': 'no-store' }
 });
 
+const targetApp = '1556937375911567';
+const targetWaba = '4508719189457199';
+const present = 'NEACEA Agenda PT presente.';
+const absent = 'NEACEA Agenda PT assente nell’elenco restituito da Meta.';
+
+async function subscribeStudioApp(env) {
+  const before = await checkWabaSubscription(env);
+  if (before === present) return reply('waba_present');
+  if (before !== absent) return reply('waba_check_failed');
+  const root = 'https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/';
+  const options = () => ({ headers: { Authorization: 'Bearer ' + env.WHATSAPP_ACCESS_TOKEN },
+    redirect: 'error', signal: AbortSignal.timeout(6000) });
+  try {
+    const app = await fetch(root + 'app?fields=id', options());
+    if (!app.ok || (await app.json()).id !== targetApp) return reply('waba_wrong_app');
+  } catch { return reply('waba_wrong_app'); }
+  let code;
+  try {
+    const response = await fetch(root + targetWaba + '/subscribed_apps', { ...options(), method: 'POST' });
+    if (!response.ok) code = (await response.json()).error?.code;
+  } catch { /* Read the resulting state even if the request timed out. */ }
+  if (await checkWabaSubscription(env) === present) return reply('waba_present');
+  return Response.json({ status: 'waba_unconfirmed', code: Number.isInteger(code) ? code : null },
+    { headers: { 'Cache-Control': 'no-store' } });
+}
+
 async function checkWabaSubscription(env) {
-  const url = new URL('https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/4508719189457199/subscribed_apps');
+  const url = new URL('https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/' + targetWaba + '/subscribed_apps');
   url.searchParams.set('limit', '100');
   try {
     const response = await fetch(url, {
@@ -23,9 +49,9 @@ async function checkWabaSubscription(env) {
       return 'Controllo non disponibile' + (Number.isInteger(code) ? ' (codice Meta ' + code + ')' : '') + '.';
     }
     const ids = result.data.map(row => row?.whatsapp_business_api_data?.id);
-    if (ids.includes('1556937375911567')) return 'NEACEA Agenda PT presente.';
+    if (ids.includes(targetApp)) return present;
     if (result.paging?.next || ids.some(id => typeof id !== 'string')) return 'Elenco incompleto.';
-    return 'NEACEA Agenda PT assente nell’elenco restituito da Meta.';
+    return absent;
   } catch {
     return 'Controllo non disponibile.';
   }
@@ -80,7 +106,7 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
-    if (!input || !['status', 'send', 'bia-status', 'bia-send'].includes(input.action) ||
+    if (!input || !['status', 'send', 'bia-status', 'bia-send', 'bia-subscribe'].includes(input.action) ||
         Object.keys(input).some(k => k !== 'action' && k !== 'accessToken')) return reply('invalid_request', 400);
     try {
       const actor = await authenticate(input.accessToken);
@@ -93,6 +119,7 @@ export function createHandler({
       }
       const isBia = input.action.startsWith('bia-');
       if (isBia && env.WHATSAPP_AGENDA_TEST_TO !== '+393387731722') return reply('not_configured');
+      if (input.action === 'bia-subscribe') return await subscribeStudioApp(env);
       let key = isBia ? 'bia-personal-document-v1' : agendaKey;
       const claims = store();
       let prior = await claims.get(key);

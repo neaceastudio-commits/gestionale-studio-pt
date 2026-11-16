@@ -32,7 +32,18 @@ window.WhatsAppAgenda = (() => {
     const status = document.getElementById('agenda-test-status');
     const bia = new URLSearchParams(location.search).get('test') === 'bia';
     if (bia) send.textContent = 'Invia prova BIA con PDF al mio numero';
+    const subscribe = element('button', 'Collega NEACEA Agenda PT al WABA');
+    subscribe.type = 'button';
+    subscribe.hidden = true;
+    if (bia) {
+      send.after(subscribe);
+      subscribe.addEventListener('click', () => update('subscribe'));
+    }
     const feedback = {
+      waba_present: 'Iscrizione verificata: NEACEA Agenda PT presente sul WABA dello studio.',
+      waba_wrong_app: 'Meta non ha confermato l’identità dell’app del token. Iscrizione interrotta.',
+      waba_check_failed: 'Non è stato possibile verificare l’elenco delle app. Iscrizione interrotta.',
+      waba_unconfirmed: 'Iscrizione al WABA non confermata. Ricarica la pagina per controllare lo stato.',
       bia_scope_granted: 'Invio BIA rifiutato (10). Meta conferma il permesso di messaggistica del token. Verificare l’accesso dell’app e dell’utente di sistema all’account WhatsApp dello studio.',
       bia_scope_missing: 'Invio BIA rifiutato (10). Il token dell’anteprima non dispone del permesso whatsapp_business_messaging.',
       bia_permissions_unknown: 'Invio BIA rifiutato (10). Meta non ha restituito un elenco verificabile dei permessi del token.',
@@ -53,6 +64,7 @@ window.WhatsAppAgenda = (() => {
       if (!section.open || busy) return;
       busy = true;
       send.disabled = true;
+      subscribe.disabled = true;
       try {
         const response = await fetch('/.netlify/functions/whatsapp-agenda-test', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -68,6 +80,9 @@ window.WhatsAppAgenda = (() => {
         panel.hidden = false;
         const refusal = /^bia_rejected_(\d+)(?: · (.*))?$/.exec(data.status);
         status.textContent = data.status === 'bia_health' ? data.detail : refusal ? 'Meta ha rifiutato il PDF. Codice Meta: ' + (refusal[1] === '0' ? 'non disponibile' : refusal[1]) + '. ' + (refusal[2] || '') : feedback[data.status] || 'Servizio non disponibile. Riapri WhatsApp per verificare lo stato.';
+        if (data.status === 'waba_unconfirmed' && data.code) status.textContent += ' Codice Meta: ' + data.code;
+        subscribe.hidden = !String(data.status).includes('NEACEA Agenda PT assente nell’elenco');
+        subscribe.disabled = subscribe.hidden;
         send.disabled = !(response.ok && data.status === 'ready');
       } catch {
         panel.hidden = false;
