@@ -82,6 +82,10 @@ export function createHandler({
       if (isBia && prior === 'bia_rejected_10') {
         key += '-verified-business';
         prior = await claims.get(key);
+        if (prior === 'bia_rejected_10') {
+          key += '-error-details';
+          prior = await claims.get(key);
+        }
         if (prior) return reply(prior);
         const check = await checkMessagingPermission(env);
         if (typeof check !== 'object') return reply(check);
@@ -111,6 +115,7 @@ export function createHandler({
         if (isBia && outcome === 'rejected') {
           const code = Number.isInteger(error.providerCode) ? error.providerCode : 0;
           outcome = 'bia_rejected_' + code;
+          if (error.providerDetail) outcome += ' · ' + error.providerDetail;
           console.warn('WhatsApp BIA: provider rejection, code=' + code);
         }
       }

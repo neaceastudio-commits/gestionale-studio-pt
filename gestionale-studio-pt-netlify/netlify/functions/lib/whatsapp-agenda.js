@@ -93,7 +93,19 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
   async function meta(path, body) {
     const response = await fetchImpl(`https://graph.facebook.com/${env.WHATSAPP_API_VERSION}/${env.WHATSAPP_PHONE_NUMBER_ID}${path}`, { method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(6000) });
     let data; try { data = await response.json(); } catch { throw Error('provider_response_unknown'); }
-    if (!response.ok) { const error = Error('provider_rejected'); error.providerCode = Number.isInteger(data?.error?.code) ? data.error.code : null; throw error; }
+    if (!response.ok) {
+      const info = data?.error || {};
+      const error = Error('provider_rejected');
+      error.providerCode = Number.isInteger(info.code) ? info.code : null;
+      const detail = [info.message, info.error_data?.details].filter(value => typeof value === 'string')
+        .map(value => value.split(env.WHATSAPP_ACCESS_TOKEN).join('[omesso]')
+          .replace(/https?:\/\/\S+|\b[A-Za-z0-9_-]{40,}\b|\+?\d[\d ().-]{7,}\d/g, '[omesso]')
+          .replace(/\s+/g, ' ').trim()).filter(Boolean);
+      if (Number.isInteger(info.error_subcode)) detail.push('Subcode ' + info.error_subcode);
+      if (/^[\w-]{4,80}$/.test(info.fbtrace_id || '')) detail.push('Trace ID ' + info.fbtrace_id);
+      error.providerDetail = [...new Set(detail)].join(' · ').slice(0, 1200);
+      throw error;
+    }
     return data;
   }
   async function verifySender() {
