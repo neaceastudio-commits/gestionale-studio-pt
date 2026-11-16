@@ -54,6 +54,8 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    tests/calendar-renewal-cancelled-history.test.cjs
+    supabase/migrations/20261116181624_calendar_preserve_cancelled_renewal_history.sql
     tests/calendar-expected-renewals.test.cjs
     tests/calendar-cycle-sequence.test.cjs
     tests/calendar-cycle-sequence-concurrency.test.cjs
