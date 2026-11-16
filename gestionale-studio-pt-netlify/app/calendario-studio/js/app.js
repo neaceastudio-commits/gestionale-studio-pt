@@ -2079,7 +2079,7 @@ const App = {
 
     const wanted = new Set(days);
     const trainingServiceId = App._packageServiceId(client);
-    const existing = App._packageAppointments(client, false).filter(a => a.serviceId === trainingServiceId);
+    const existing = App._packageAppointments(client, false).filter(a => a.serviceId === trainingServiceId && Services.appointmentInCurrentPackageCycle(a, client));
     const usedDates = new Set(existing.map(a => a.date));
     const lastPlanned = existing[existing.length - 1]?.date;
     const today = App._dateStr(new Date());
@@ -2238,7 +2238,7 @@ const App = {
               ${statusOptions}
             </select>` : `<span class="status-pill status-${a.status}">${PTSessionModel.statusLabel(a,CONFIG.STATUS)}</span>`}
           </td>
-          <td><span class="role-tag">${cycleLabel}</span>${canInclude ? `<button class="btn" onclick="App._includeAppointmentInPackage('${a.id}','${client.id}')">Includi nel ciclo</button>` : ''}</td>
+          <td><span class="role-tag">${cycleLabel}</span>${a.status==='prenotato'&&a.date<today?'<p role="alert">Esito da verificare · nessuna presenza attribuita</p>':''}${canInclude ? `<button class="btn" onclick="App._includeAppointmentInPackage('${a.id}','${client.id}')">Includi nel ciclo</button>` : ''}</td>
           <td>
             ${!canEditRow ? '<span class="client-history-readonly">Solo lettura</span>' : `<div class="package-row-actions">
               <button class="btn" title="Salva soltanto questa seduta" onclick="App._updatePackageAppointmentRow('${a.id}')">Salva seduta</button>

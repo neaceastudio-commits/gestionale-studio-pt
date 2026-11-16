@@ -19,6 +19,8 @@ node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
 node --test tests/calendar-function-build.test.cjs
+node --test tests/calendar-expected-renewals.test.cjs tests/calendar-cycle-sequence.test.cjs tests/calendar-cycle-sequence-concurrency.test.cjs
+node tests/calendar-cycle-sequence-browser.cjs
 node --test tests/calendar-empty-renewal-recovery.test.cjs
 node tests/calendar-empty-renewal-browser.cjs
 node tests/apple-calendar-professional.test.cjs
@@ -52,6 +54,11 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    tests/calendar-expected-renewals.test.cjs
+    tests/calendar-cycle-sequence.test.cjs
+    tests/calendar-cycle-sequence-concurrency.test.cjs
+    tests/calendar-cycle-sequence-browser.cjs
+    supabase/migrations/20261116174042_calendar_cycle_recovery_sequence.sql
     tests/calendar-empty-renewal-recovery.test.cjs
     tests/calendar-empty-renewal-browser.cjs
     supabase/migrations/20261116164805_calendar_restore_empty_renewal.sql

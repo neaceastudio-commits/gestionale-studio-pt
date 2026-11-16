@@ -35,7 +35,8 @@ function infer(clients,appointments,day=today()) {
  let issue='';
  if(!slots.length||slots.some(s=>s.day<0||!s.time||!s.operatorId))issue='Completa giorni, orari e PT della proposta.';
  if(rows.some(a=>a.status==='prenotato'&&a.notes?.includes('[ORARIO-PROVVISORIO]')))issue='Orari variabili: concorda gli orari prima di generare le lezioni.';
- for(const h of histories){const booked=h.rows.filter(a=>a.status==='prenotato'&&packages.inCycle(a,h.ctx)).length;if(Number(h.c.sessions_remaining)>booked)issue='Il pacchetto corrente ha sedute residue ancora da programmare: verifica la decorrenza.';}
+ // Missing current credits are reserved by the atomic maintenance RPC before
+ // aligning this successor. Past unresolved reservations are never attendance.
  return {serviceId:sid,startDate:plus(last>=day?last:plus(day,-1),1),slots,issue,notice,
   clients:histories.map(({c,ctx})=>({id:c.id,source:{cycleId:ctx.id,start:ctx.start},cycleId:'expected_'+crypto.randomUUID().replaceAll('-',''),sessions:Number(c.sessions_total),amount:Number(c.importo)||0}))};
 }
@@ -93,10 +94,23 @@ function createService({db}) {
    }catch(e){results.push({id:p.id,error:e.message});}
   }
   if(results.some(r=>r.restored))s=await snapshot();
+  for(const p of s.proposals.filter(p=>['pending','confirmed'].includes(p.state))){
+   const cs=p.client_ids.map(id=>s.clients.find(c=>c.id===id));
+   if(cs.some(c=>/non\s+rinnova/i.test(c?.stato_abbonamento||''))){
+    try{await rpc(actor,'decline',{id:p.id,version:p.version});results.push({id:p.id,declined:true});}catch(e){results.push({id:p.id,error:e.message});}
+    continue;
+   }
+   if(cs.some(c=>!active(c))||p.plan.issue)continue;
+   try{
+    const r=await db('rpc/calendar_maintain_package',{method:'POST',body:{p_actor_id:actor,p_proposal_id:p.id}});
+    if(r.issue)results.push({id:p.id,error:r.issue});
+   }catch(e){results.push({id:p.id,error:e.message});}
+  }
+  s=await snapshot();
   for(const p of s.proposals.filter(p=>p.state==='confirmed')){
    const cs=p.plan.clients.map(c=>s.clients.find(x=>x.id===c.id));
    if(cs.some(c=>!active(c)))continue;
-   const ready=cs.every(c=>Number(c.sessions_remaining)===0&&!s.appointments.some(a=>a.status==='prenotato'&&a.client_ids?.includes(c.id)&&!a.notes?.includes('[RINNOVO-PREVISTO ')&&packages.inCycle(a,packages.context(c,s.appointments.filter(x=>x.client_ids?.includes(c.id)&&!x.notes?.includes('[RINNOVO-PREVISTO '))))));
+   const ready=cs.every(c=>Number(c.sessions_remaining)===0&&!s.appointments.some(a=>a.status==='prenotato'&&a.date>=today()&&a.client_ids?.includes(c.id)&&!a.notes?.includes('[RINNOVO-PREVISTO ')&&packages.inCycle(a,packages.context(c,s.appointments.filter(x=>x.client_ids?.includes(c.id)&&!x.notes?.includes('[RINNOVO-PREVISTO '))))));
    if(ready){try{await rpc(actor,'activate',{id:p.id,version:p.version,clients:activationClients(p,cs,s.appointments.filter(a=>a.notes?.includes(tag(p))))});results.push({id:p.id,activated:true});}catch(e){results.push({id:p.id,error:e.message});}}
   }
   const handled=new Set();
@@ -108,7 +122,9 @@ function createService({db}) {
    const p={id:crypto.randomUUID(),plan:infer(cs,s.appointments)};
    if(s.proposals.some(old=>old.plan.clients.some(pc=>p.plan.clients.some(nc=>pc.id===nc.id&&key(pc.source)===key(nc.source)))))continue;
    let appointments;try{appointments=appointmentsFor(p);}catch(e){p.plan.issue=e.message;appointments=[];}
-   try{await rpc(actor,'create',{...p,appointments,clients:cs.map(c=>({id:c.id,expectedUpdatedAt:c.updated_at}))});results.push({id:p.id,created:true});}
+   try{await rpc(actor,'create',{...p,appointments,clients:cs.map(c=>({id:c.id,expectedUpdatedAt:c.updated_at}))});results.push({id:p.id,created:true});
+    if(!p.plan.issue){try{const r=await db('rpc/calendar_maintain_package',{method:'POST',body:{p_actor_id:actor,p_proposal_id:p.id}});if(r.issue)results.push({id:p.id,error:r.issue});}catch(e){results.push({id:p.id,error:e.message});}}
+   }
    catch(e){if(appointments.length){try{p.plan.issue='Calendario da verificare: '+e.message;await rpc(actor,'create',{...p,appointments:[],clients:cs.map(c=>({id:c.id,expectedUpdatedAt:c.updated_at}))});results.push({id:p.id,review:true});}catch(err){results.push({id:p.id,error:err.message});}}else results.push({id:p.id,error:e.message});}
   }
   return {results};
@@ -117,7 +133,7 @@ function createService({db}) {
   if(input.action==='refresh'||input.action==='list'){
    const result=await run(actor);input={action:'list',generationErrors:result.results.filter(r=>r.error)};
   }
-  if(input.action==='list'){const s=await snapshot();return {generationErrors:input.generationErrors||[],proposals:s.proposals.filter(p=>['pending','confirmed'].includes(p.state)&&p.client_ids.every(id=>active(s.clients.find(c=>c.id===id)))).map(p=>({...p,names:p.client_ids.map(id=>{const c=s.clients.find(c=>c.id===id);return `${c?.nome||''} ${c?.cognome||''}`.trim();}),performed:s.appointments.filter(a=>a.notes?.includes(tag(p))&&['fatto','noshow'].includes(a.status)).length,booked:s.appointments.filter(a=>a.notes?.includes(tag(p))&&a.status==='prenotato').length}))};}
+  if(input.action==='list'){const s=await snapshot();return {generationErrors:input.generationErrors||[],unresolved:s.appointments.filter(a=>a.status==='prenotato'&&a.date<today()&&['pt11','pt12','circuit'].includes(a.service_id)&&a.client_ids.some(id=>s.clients.find(c=>c.id===id)?.active!==false)).map(a=>({id:a.id,date:a.date,time:a.start_time.slice(0,5),clientIds:a.client_ids,names:a.client_ids.map(id=>{const c=s.clients.find(c=>c.id===id);return `${c?.nome||''} ${c?.cognome||''}`.trim();})})),proposals:s.proposals.filter(p=>['pending','confirmed'].includes(p.state)&&p.client_ids.every(id=>active(s.clients.find(c=>c.id===id)))).map(p=>({...p,names:p.client_ids.map(id=>{const c=s.clients.find(c=>c.id===id);return `${c?.nome||''} ${c?.cognome||''}`.trim();}),performed:s.appointments.filter(a=>a.notes?.includes(tag(p))&&['fatto','noshow'].includes(a.status)).length,booked:s.appointments.filter(a=>a.notes?.includes(tag(p))&&a.status==='prenotato').length}))};}
   if(!['edit','confirm','decline'].includes(input.action))throw Error('Azione rinnovo non valida');
   const s=await snapshot(),p=s.proposals.find(p=>p.id===input.id);if(!p)throw Error('Proposta non trovata');
   if(input.action==='edit'){

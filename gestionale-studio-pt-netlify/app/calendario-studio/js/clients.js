@@ -515,7 +515,7 @@ const Clients = (() => {
                       <button class="btn-icon-sm" title="Nuovo appuntamento" onclick="event.stopPropagation();App.openNewAppointment(null,'${c.id}')">📅</button>
                       ${ptMode ? '' : `
                         <button class="btn-icon-sm archive" title="Sospendi pacchetto: conserva le lezioni residue" onclick="event.stopPropagation();Clients.suspend('${c.id}')">⏸</button>
-                        <button class="btn-icon-sm archive" title="Non rinnova: sposta nello storico" onclick="event.stopPropagation();Clients.markNotRenewing('${c.id}')">📥</button>
+                        <button class="btn-icon-sm archive" title="Non rinnova: interrompi il prossimo pacchetto" onclick="event.stopPropagation();Clients.markNotRenewing('${c.id}')">📥</button>
                         <button class="btn-icon-sm danger" title="Elimina cliente" onclick="event.stopPropagation();Clients.confirmDelete('${c.id}')">🗑</button>
                       `}
                     `}
@@ -549,7 +549,7 @@ const Clients = (() => {
     const affectedLabel = futureAppointments.length === 1
       ? '1 prenotazione futura sarà annullata o aggiornata'
       : `${futureAppointments.length} prenotazioni future saranno annullate o aggiornate`;
-    const ok = confirm(`${options.question} ${name}?\n\n${affectedLabel}, senza creare recuperi automatici. Pacchetto, pagamenti e lezioni residue saranno conservati e recuperabili alla riattivazione. Le sedute future PT 1:2 saranno annullate per la coppia, senza consumare lezioni. Negli altri gruppi verrà rimosso solo questo cliente. Le sedute già chiuse e le ore maturate dai PT resteranno nello storico e nel riepilogo ore.`);
+    const ok = confirm(options.status==='Non rinnova' ? `${options.question} ${name}?\n\nSaranno liberate soltanto le prenotazioni del rinnovo. Le sedute e i recuperi ancora dovuti del pacchetto attuale restano in agenda, con giorni e orari già concordati. Presenze e pagamenti restano invariati.` : `${options.question} ${name}?\n\n${affectedLabel}, senza creare recuperi automatici. Pacchetto, pagamenti e lezioni residue saranno conservati e recuperabili alla riattivazione. Le sedute future PT 1:2 saranno annullate per la coppia, senza consumare lezioni. Negli altri gruppi verrà rimosso solo questo cliente. Le sedute già chiuse e le ore maturate dai PT resteranno nello storico e nel riepilogo ore.`);
     if (!ok) return;
 
     const archivedClient = {
@@ -564,11 +564,11 @@ const Clients = (() => {
     }
 
     State.saveClients(State.getClients().map(item => item.id === clientId ? clientSync : item));
-    viewMode = 'history';
+    viewMode = clientSync.active === false ? 'history' : 'active';
     UI.closeModal();
     render();
     const suffix = futureAppointments.length ? ` · ${futureAppointments.length} prenotazioni aggiornate` : '';
-    UI.showToast(`${name} spostato nello storico${suffix}`, 'success');
+    UI.showToast(options.status==='Non rinnova'?`${name}: rinnovo interrotto, residui conservati in agenda`:`${name} spostato nello storico${suffix}`, 'success');
   }
 
   function suspend(clientId) {

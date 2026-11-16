@@ -452,8 +452,9 @@ const SupabaseSync = (() => {
     }
     const saved = appointmentFromDb(row);
     const recovery = result.recovery ? appointmentFromDb(result.recovery) : null;
-    const rows = State.getAppointments().filter(a => a.id !== saved.id && a.id !== recovery?.id);
-    State.saveAppointments([...rows, saved, ...(recovery ? [recovery] : [])]);
+    const renewalRows = Array.isArray(result.renewal_appointments) ? result.renewal_appointments.map(appointmentFromDb) : [];
+    const changed = new Map([...renewalRows, saved, ...(recovery ? [recovery] : [])].map(a => [a.id,a]));
+    State.saveAppointments([...State.getAppointments().filter(a => !changed.has(a.id)), ...changed.values()]);
     const clients = new Map(result.clients.map(c => [c.id, clientFromDb(c)]));
     State.saveClients(State.getClients().map(c => clients.get(c.id) || c));
     return { appointment: saved, recovery, planningWarnings: result.planning_warnings || result.warnings || [], clients: [...clients.values()] };
@@ -614,7 +615,7 @@ const SupabaseSync = (() => {
     const result=await CalendarAudit.call('client_lifecycle',{clientId:client.id,action,status,
       expectedUpdatedAt:client.serverUpdatedAt,expectedAppointments:appointments.map(appointmentToDb)});
     if(result?.error)return result;
-    if(result?.client?.id!==client.id||result.client.active!==(action==='reactivate')||result.client.stato_abbonamento!==status||!Array.isArray(result.appointments))return {error:'Stato cliente non confermato: ricarica e verifica prima di riprovare'};
+    if(result?.client?.id!==client.id||(status==='Non rinnova'?typeof result.client.active!=='boolean':result.client.active!==(action==='reactivate'))||result.client.stato_abbonamento!==status||!Array.isArray(result.appointments))return {error:'Stato cliente non confermato: ricarica e verifica prima di riprovare'};
     // Independent read confirms persistence; a lost response can be retried safely.
     const rows=await request('clients',{query:'?select=*&id=eq.'+encodeURIComponent(client.id)});
     const row=Array.isArray(rows)&&rows.length===1?rows[0]:null;

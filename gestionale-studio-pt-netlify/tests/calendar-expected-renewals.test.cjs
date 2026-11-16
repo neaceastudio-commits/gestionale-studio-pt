@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),crypto=require('node:crypto');
-const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+const {PGlite}=require(process.env.PGLITE_MODULE||require.resolve('@electric-sql/pglite',{paths:[__dirname+'/../tools/coaching-editor']}));
 const renewal=require('../netlify/functions/lib/expected-renewals');
 const model=require('../app/calendario-studio/js/pt-session-model');
 const sql=n=>fs.readFileSync(__dirname+'/../supabase/migrations/'+n,'utf8');
@@ -13,7 +13,7 @@ test('expected renewal: isolated balances, actual work, confirmation, activation
  create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators;grant select on operator_effective_roles to service_role;
  insert into operator_availability values('pt','mon','["08:00-20:00"]',now());
  insert into appointments(id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes) values('old-a','pt11','["a"]','pt','2026-10-05','09:00',60,'fatto','[CICLO-PACCHETTO 2026-10-01]'),('old-b','pt11','["b"]','pt','2026-10-05','09:00',60,'noshow','[CICLO-PACCHETTO 2026-10-01]');`);
- for(const n of ['20260912151523_calendar_prerelease_atomic.sql','20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261009070726_calendar_pt_pair_rules.sql','20261009091426_calendar_pair_payments_review.sql','20261009095441_calendar_expected_renewals.sql'])await db.exec(sql(n));
+ for(const n of ['20260912151523_calendar_prerelease_atomic.sql','20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261009070726_calendar_pt_pair_rules.sql','20261009091426_calendar_pair_payments_review.sql','20261009095441_calendar_expected_renewals.sql','20261029180107_calendar_reprogram_empty_confirmed_renewal.sql','20261106114015_calendar_automatic_recovery.sql','20261116174042_calendar_cycle_recovery_sequence.sql'])await db.exec(sql(n));
  const q=async(text,values=[])=>{await db.exec('set role service_role');try{return await db.query(text,values)}finally{await db.exec('reset role')}};
  const get=async(table,id)=>(await db.query(`select to_jsonb(t) r from ${table} t where id=$1`,[id])).rows[0].r;
 
@@ -55,6 +55,7 @@ test('expected renewal: isolated balances, actual work, confirmation, activation
  await db.exec("alter table clients disable trigger all;update clients set sessions_remaining=0 where id='a';alter table clients enable trigger all");
  const current=await get('clients','a');const rows=(await db.query('select to_jsonb(a) r from appointments a join calendar_expected_renewal_appointments m on m.appointment_id=a.id where m.proposal_id=$1',[p.id])).rows.map(r=>r.r);
  const service=renewal.createService({db:async(table,options={})=>{
+  if(table==='rpc/calendar_maintain_package')return (await q('select calendar_maintain_package($1,$2) r',[options.body.p_actor_id,options.body.p_proposal_id])).rows[0].r;
   if(table==='rpc/calendar_expected_renewal')return call(options.body.p_action,options.body.p_payload,options.body.p_actor_id);
   if(options.query?.startsWith('?id=eq.'))return [await get(table,decodeURIComponent(options.query.slice(7)))];
   return (await db.query(`select to_jsonb(t) r from ${table} t order by id`)).rows.map(r=>r.r);
@@ -77,7 +78,7 @@ test('pair proposals preserve two cycles, one fee, edited dates, mixed attendanc
  create view operator_effective_roles as select id operator_id,nome,cognome,email,active,roles legacy_roles,'[]'::jsonb system_roles from operators;grant select on operator_effective_roles to service_role;
  insert into operator_availability values('pt','mon','["08:00-20:00"]',now());
  insert into appointments(id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes) values('old-a','pt11','["a"]','pt','2026-10-05','09:00',60,'fatto','[CICLO-PACCHETTO 2026-10-01]'),('old-b','pt11','["b"]','pt','2026-10-05','09:00',60,'noshow','[CICLO-PACCHETTO 2026-10-01]');`);
- for(const n of ['20260912151523_calendar_prerelease_atomic.sql','20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261009070726_calendar_pt_pair_rules.sql','20261009091426_calendar_pair_payments_review.sql','20261009095441_calendar_expected_renewals.sql'])await db.exec(sql(n));
+ for(const n of ['20260912151523_calendar_prerelease_atomic.sql','20260912212042_calendar_activity_audit.sql','20260913211931_calendar_flex_mode.sql','20260921101845_calendar_early_package_session.sql','20261004152442_calendar_pt_session_correction.sql','20261009070726_calendar_pt_pair_rules.sql','20261009091426_calendar_pair_payments_review.sql','20261009095441_calendar_expected_renewals.sql','20261029180107_calendar_reprogram_empty_confirmed_renewal.sql','20261106114015_calendar_automatic_recovery.sql','20261116174042_calendar_cycle_recovery_sequence.sql'])await db.exec(sql(n));
  const q=async(text,values=[])=>{await db.exec('set role service_role');try{return await db.query(text,values)}finally{await db.exec('reset role')}};
  const get=async(table,id)=>(await db.query(`select to_jsonb(t) r from ${table} t where id=$1`,[id])).rows[0].r;
 
