@@ -9,6 +9,28 @@ const reply = (status, code = 200) => Response.json({ status }, {
   status: code, headers: { 'Cache-Control': 'no-store' }
 });
 
+async function checkWabaSubscription(env) {
+  const url = new URL('https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/4508719189457199/subscribed_apps');
+  url.searchParams.set('limit', '100');
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: 'Bearer ' + env.WHATSAPP_ACCESS_TOKEN },
+      redirect: 'error', signal: AbortSignal.timeout(6000)
+    });
+    const result = await response.json();
+    if (!response.ok || !Array.isArray(result.data)) {
+      const code = result.error?.code;
+      return 'Controllo non disponibile' + (Number.isInteger(code) ? ' (codice Meta ' + code + ')' : '') + '.';
+    }
+    const ids = result.data.map(row => row?.whatsapp_business_api_data?.id);
+    if (ids.includes('1556937375911567')) return 'NEACEA Agenda PT presente.';
+    if (result.paging?.next || ids.some(id => typeof id !== 'string')) return 'Elenco incompleto.';
+    return 'NEACEA Agenda PT assente nell’elenco restituito da Meta.';
+  } catch {
+    return 'Controllo non disponibile.';
+  }
+}
+
 async function checkMessagingPermission(env) {
   try {
     const response = await fetch('https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/me/permissions', {
@@ -85,6 +107,10 @@ export function createHandler({
         if (prior === 'bia_rejected_10') {
           key += '-error-details';
           prior = await claims.get(key);
+        }
+        if (input.action === 'bia-status' && prior?.startsWith('bia_rejected_10 · ')) {
+          const subscription = await checkWabaSubscription(env);
+          return reply(prior + ' · Iscrizione webhook WABA: ' + subscription);
         }
         if (prior) return reply(prior);
         const check = await checkMessagingPermission(env);
