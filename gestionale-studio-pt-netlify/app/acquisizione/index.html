@@ -584,6 +584,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
   </div>
 </div>
 
+<script src="/studio-private-data.js?v=20261117"></script>
 <script>
 const SUPABASE_URL='https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY='sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
@@ -699,6 +700,7 @@ function showAccessError(error){
 
 function sbUrl(table,query=''){return SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+table+query}
 async function sb(table,{method='GET',query='',body=null,headers={}}={}){
+  if(window.NeaceaPrivateData.supports(table)&&(method==='GET'||table==='acquisizioni')){try{return await window.NeaceaPrivateData.request(table,{method,query,body,headers});}catch(e){return {error:e.message};}}
   if(table==='clients'&&method!=='GET'){
     const id=new URLSearchParams(query).get('id')?.replace(/^eq\./,'');
     const rows=(Array.isArray(body)?body:[body]).map(row=>({...row,id:row?.id||id}));
