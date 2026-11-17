@@ -7,7 +7,7 @@ body{min-height:0}main{padding:14px 0;max-width:none}nav button{font-weight:700}
 <section id="registro"><h2>Registro invii</h2><div class="tools"><select id="group" aria-label="Tipo destinatario"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input type="search" id="query" placeholder="Cerca nome o comunicazione" aria-label="Cerca nel registro"></div><div class="metrics" id="metrics"></div><div class="scroll"><table><thead><tr><th>Destinatario</th><th>Comunicazione</th><th>Stato</th><th>Ultimo evento</th><th>Dettaglio</th></tr></thead><tbody id="log"></tbody></table></div><div id="timeline"></div></section>
 <section id="rubrica" hidden><h2>Rubrica</h2><div class="tools"><select id="rg" aria-label="Tipo contatto"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input id="rq" type="search" aria-label="Cerca contatto" placeholder="Cerca un contatto"></div><div class="split"><div id="contacts"></div><div id="card" class="paper"></div></div></section>
 <section id="bozze" hidden><h2>Bozze salvate</h2><div id="libraryDrafts"></div></section>
-<section id="editor" hidden><h2>Crea messaggio</h2><button id="newDraft" type="button">Nuova comunicazione</button><div class="split"><form id="compose"><label>Nome della comunicazione<input id="subject" required maxlength="90"></label><label>Parti da un testo<select id="model"><option>Personalizzato</option><option>Ultime 2 sedute</option><option>Agenda PT</option><option>Promemoria appuntamento</option></select></label><fieldset><legend>Destinatari</legend><div class="tools"><button type="button" data-group="Clienti">Seleziona clienti</button><button type="button" data-group="PT">Seleziona PT</button><button type="button" data-group="">Azzera selezione</button></div><div id="recipients">Caricamento contatti del calendario…</div></fieldset><label>Testo<textarea id="bodyText" required></textarea></label><button type="button" id="variable">Inserisci {nome}</button><label>Link facoltativo<input type="url" id="link" placeholder="https://"></label><label>Allegato facoltativo · PDF o immagine<input type="file" id="file" accept="application/pdf,image/jpeg,image/png"></label><span id="fileName"></span> <a id="download" hidden>Scarica allegato</a> <button type="button" id="removeFile" hidden>Rimuovi allegato</button><div class="cols"><label>Quando<select id="mode"><option>Subito</option><option>Programma</option></select></label><label id="whenBox" hidden>Data e ora locale<input id="when" type="datetime-local"></label></div><label id="repeatBox" hidden>Ricorrenza<select id="repeat"><option>Una volta</option><option>Ogni giorno</option><option>Ogni settimana</option><option>Ogni mese</option></select></label><div class="tools"><button type="button" id="draft">Salva bozza</button><button type="submit">Simula comunicazione</button><button class="primary" id="sendNow" type="button">Invia ora su WhatsApp</button></div></form><aside><h3>Anteprima per il destinatario</h3><label id="recipientChoice" hidden>Visualizza come<select id="previewRecipient"></select></label><div class="bubble" id="preview"></div><p class="muted" id="schedule"></p><h3>Bozze salvate</h3><div id="draftList"></div></aside></div></section>
+<section id="editor" hidden><h2>Crea messaggio</h2><button id="newDraft" type="button">Nuova comunicazione</button><div class="split"><form id="compose"><label>Nome della comunicazione<input id="subject" required maxlength="90"></label><label>Parti da un testo<select id="model"><option>Personalizzato</option><option>Ultime 2 sedute</option><option>Agenda PT</option><option>Promemoria appuntamento</option></select></label><fieldset id="agendaRules" hidden><legend>Matrice Agenda PT</legend><label>Matrici salvate<select id="ruleSaved"><option value="">Nuova matrice</option></select></label><div class="cols"><label>Cadenza<select id="frequency"><option value="weekly">Ogni settimana</option><option value="daily">Ogni giorno</option></select></label><label id="weekdayBox">Giorno di invio<select id="weekday"><option value="0">Domenica</option><option value="1" selected>Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option></select></label><label>Ora di Roma<input id="ruleTime" type="time" value="08:00"></label><label>Dati da leggere<select id="period"><option value="week">Sedute della settimana</option><option value="day">Sedute del giorno</option></select></label><label>Periodo rispetto alla data di invio<select id="offset"><option value="-1">Precedente</option><option value="0" selected>Corrente</option><option value="1">Successivo</option></select></label><label>Calcola l’anteprima come se partisse<select id="previewAt"><option value="today">Oggi</option><option value="next">Alla prossima scadenza</option></select></label></div><p>L’agenda include le sedute PT 1:1 e 1:2 prenotate. La matrice in anteprima prepara i messaggi. L’invio automatico è disattivato.</p><p id="agendaInfo" role="status"></p><div class="tools"><button type="button" id="saveRule">Salva matrice</button><button type="button" id="reloadAgenda">Aggiorna dal calendario</button></div><p id="ruleNotice" role="status"></p></fieldset><fieldset><legend>Destinatari</legend><div class="tools"><button type="button" data-group="Clienti">Seleziona clienti</button><button type="button" data-group="PT">Seleziona PT</button><button type="button" data-group="">Azzera selezione</button></div><div id="recipients">Caricamento contatti del calendario…</div></fieldset><label>Testo<textarea id="bodyText" required></textarea></label><button type="button" id="variable">Inserisci {nome}</button><label>Link facoltativo<input type="url" id="link" placeholder="https://"></label><label>Allegato facoltativo · PDF o immagine<input type="file" id="file" accept="application/pdf,image/jpeg,image/png"></label><span id="fileName"></span> <a id="download" hidden>Scarica allegato</a> <button type="button" id="removeFile" hidden>Rimuovi allegato</button><div class="cols"><label>Quando<select id="mode"><option>Subito</option><option>Programma</option></select></label><label id="whenBox" hidden>Data e ora locale<input id="when" type="datetime-local"></label></div><label id="repeatBox" hidden>Ricorrenza<select id="repeat"><option>Una volta</option><option>Ogni giorno</option><option>Ogni settimana</option><option>Ogni mese</option></select></label><div class="tools"><button type="button" id="draft">Salva bozza</button><button type="submit">Simula comunicazione</button><button class="primary" id="sendNow" type="button">Invia ora su WhatsApp</button></div></form><aside><h3>Anteprima per il destinatario</h3><label id="recipientChoice" hidden>Visualizza come<select id="previewRecipient"></select></label><div class="bubble" id="preview"></div><p class="muted" id="schedule"></p><h3>Bozze salvate</h3><div id="draftList"></div></aside></div></section>
 
 </main><script>
 (()=>{
@@ -57,6 +57,7 @@ async function loadStaff(){
    box.type='checkbox';box.disabled=!available;
    label.prepend(box);$('recipients').append(label);inputs.set(id,box);
   }
+  if(isAgenda()){applyAudience(true);renderReport()}
   draw();preview();
   const contacts=[];
   const update=()=>{submit.disabled=!contacts.some(c=>c.box.checked)||!$('staffText').value.trim();$('staffCompose').disabled=submit.disabled;$('staffResult').replaceChildren()};
@@ -82,6 +83,89 @@ async function loadStaff(){
 function event(r,s){r.events.push({s,t:stamp()});save();filter='Tutti';draw()}
 for(const id of ['query','group','rq','rg'])$(id).oninput=draw;
 const inputs=new Map();
+const rules=new Map(), agendas=new Map();
+let generation=0, chosenRule='', report=null;
+const isAgenda=()=>$('model').value==='Agenda PT';
+function ruleValues(){
+ return {frequency:$('frequency').value,weekday:Number($('weekday').value),time:$('ruleTime').value,
+         period:$('period').value,offset:Number($('offset').value)};
+}
+function fillRule(rule={}){
+ $('frequency').value=rule.frequency||'weekly';$('weekday').value=rule.weekday??1;
+ $('ruleTime').value=rule.time||'08:00';$('period').value=rule.period||'week';$('offset').value=rule.offset??0;
+ $('previewAt').value=rule.previewAt||'today';
+}
+async function agendaRequest(endpoint,fields){
+ const accessToken=new URLSearchParams(parent.location.search).get('access')||sessionStorage.getItem('neacea-calendar-audit-session')||'';
+ const res=await fetch('/.netlify/functions/'+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...fields,accessToken})});
+ if(!res.ok)throw Error(String(res.status));
+ return res.json();
+}
+function applyAudience(autoSelect){
+ const weekly=isAgenda();
+ for(const [id,box] of inputs){
+  const row=agendas.get(id);
+  box.disabled=!people[id][2]||(weekly&&(!row||row.incomplete));
+  box.parentNode.hidden=weekly&&!row;
+  if(box.disabled)box.checked=false;
+  else if(autoSelect)box.checked=weekly;
+ }
+ for(const b of document.querySelectorAll('[data-group]'))b.hidden=weekly&&b.dataset.group==='Clienti';
+}
+const dayLabel=day=>day.split('-').reverse().join('/');
+function renderReport(){
+ if(!report)return;
+ const missing=report.agendas.filter(r=>!people['pt:'+r.operatorId]?.[2]||r.incomplete).map(r=>r.name);
+ const range=dayLabel(report.start)+(report.end===report.start?'':' – '+dayLabel(report.end));
+ $('agendaInfo').textContent='Prossima scadenza prevista: '+dayLabel(report.plan.nextDay)+' alle '+report.plan.time+
+  ' · Agenda in anteprima: '+range+' · '+report.agendas.length+' PT con sedute.'+
+  (missing.length?' Esclusi per numero mancante o dati incompleti: '+missing.join(', ')+'.':'');
+}
+async function refreshAgenda(){
+ const ticket=++generation;if(isAgenda())$('mode').value='Subito';report=null;agendas.clear();applyAudience(true);
+ $('agendaRules').hidden=!isAgenda();$('weekdayBox').hidden=$('frequency').value==='daily';
+ if(!isAgenda()){preview();return}
+ $('agendaInfo').textContent='Ricerca delle sedute nel calendario…';preview();
+ try{
+  const data=await agendaRequest('whatsapp-agenda',{action:'weekly-agenda',rule:ruleValues(),previewAt:$('previewAt').value});
+  if(ticket!==generation)return;
+  if(!Array.isArray(data.agendas))throw Error();
+  report=data;for(const row of data.agendas)agendas.set('pt:'+row.operatorId,row);
+  applyAudience(true);renderReport();preview();
+ }catch{if(ticket===generation)$('agendaInfo').textContent='Agenda indisponibile. Controlla l’orario e premi Aggiorna dal calendario.'}
+}
+function showRules(){
+ const select=$('ruleSaved');select.replaceChildren(new Option('Nuova matrice',''));
+ for(const r of rules.values())select.add(new Option(r.title,r.id));
+ select.value=chosenRule;
+}
+async function readRules(){
+ try{
+  const {rules:rows}=await agendaRequest('whatsapp-agenda-test',{action:'agenda-rules'});
+  for(const row of rows)rules.set(row.id,row);
+  showRules();
+ }catch{$('ruleNotice').textContent='Elenco delle matrici salvate indisponibile.'}
+}
+$('ruleSaved').onchange=()=>{
+ chosenRule=$('ruleSaved').value;const r=rules.get(chosenRule);
+ fillRule(r);$('subject').value=r?.title||'Agenda PT';$('bodyText').value=r?.intro||'Ciao {nome}, ecco la tua agenda.';$('link').value=r?.link||'';
+ attach(null);$('file').value='';$('ruleNotice').textContent='';refreshAgenda();
+};
+$('saveRule').onclick=async()=>{
+ const out=$('ruleNotice'), title=$('subject').value.trim(), intro=$('bodyText').value, link=$('link').value;
+ if(!title||!intro.trim()||!$('ruleTime').value||!$('link').checkValidity()){out.textContent='Completa nome, testo, ora ed eventuale link.';return}
+ if(attachment){out.textContent='Per conservare il file usa Salva bozza. Per salvare la matrice rimuovi l’allegato.';return}
+ const id=chosenRule||crypto.randomUUID(), revision=rules.get(id)?.revision;
+ $('saveRule').disabled=true;
+ try{
+  const {rule}=await agendaRequest('whatsapp-agenda-test',{action:'agenda-save-rule',rule:{id,revision,title,intro,link,...ruleValues()}});
+  rules.set(rule.id,rule);chosenRule=rule.id;showRules();out.textContent='Matrice salvata. Invio automatico disattivato.';
+ }catch(e){out.textContent=e.message==='409'?'Matrice aggiornata altrove. Ricarica prima di modificarla.':'Salvataggio della matrice non riuscito.'}
+ finally{$('saveRule').disabled=false}
+};
+for(const id of ['frequency','weekday','ruleTime','period','offset','previewAt'])$(id).onchange=refreshAgenda;
+$('reloadAgenda').onclick=refreshAgenda;
+
 const fields=['subject','model','bodyText','link','mode','when','repeat'];
 document.querySelectorAll('[data-group]').forEach(b=>b.onclick=()=>{
  inputs.forEach((c,i)=>{c.checked=!c.disabled && people[i][1]===b.dataset.group});
@@ -111,7 +195,7 @@ function drawSavedDrafts(){
  if(!list.childElementCount)list.append(node('p','Nessuna bozza salvata.'),button('Crea una bozza',()=>{setForm();view('editor')}));
 }
 
-function values(){return {...Object.fromEntries(fields.map(k=>[k,$(k).value])),ids:Array.from(inputs).filter(([,box])=>box.checked&&!box.disabled).map(([id])=>id),attachment}}
+function values(){return {...Object.fromEntries(fields.map(k=>[k,$(k).value])),ids:Array.from(inputs).filter(([,box])=>box.checked&&!box.disabled).map(([id])=>id),attachment,...(isAgenda()?{rule:{...ruleValues(),previewAt:$('previewAt').value}}:{})}}
 const localDrafts=new Map();
 let selectedFile=null, downloadUrl='', formVersion=0;
 function attach(file, legacyName=''){
@@ -142,16 +226,17 @@ async function loadDrafts(){
  request.onerror=()=>{$('notice').textContent='Impossibile caricare le bozze salvate.'};
 }
 $('newDraft').onclick=()=>{setForm();$('notice').textContent='Nuova comunicazione.'};
-function setForm(v={}){formVersion++;draftId=v.id||'';attach(v.file||null,v.attachment);$('file').value='';for(const k of fields){const n=$(k);if(n.tagName==='SELECT')n.selectedIndex=0;else n.value='';if(v[k])n.value=v[k]}inputs.forEach((c,i)=>c.checked=!c.disabled&&!!v.ids?.includes(i));preview()}
-function message(v,i){return [v.bodyText.replaceAll('{nome}',people[i]?.[0].split(' ')[0]||'{nome}'),v.link,v.attachment?'Allegato · '+v.attachment:''].filter(Boolean).join('\n\n')}
+function setForm(v={}){formVersion++;draftId=v.id||'';attach(v.file||null,v.attachment);$('file').value='';for(const k of fields){const n=$(k);if(n.tagName==='SELECT')n.selectedIndex=0;else n.value='';if(v[k])n.value=v[k]}chosenRule='';showRules();fillRule(v.rule);generation++;report=null;agendas.clear();applyAudience(false);$('ruleNotice').textContent='';$('agendaRules').hidden=!isAgenda();
+inputs.forEach((c,i)=>c.checked=!c.disabled&&!!v.ids?.includes(i));if(isAgenda())refreshAgenda();else preview()}
+function message(v,i){if(v.model==='Agenda PT'&&!agendas.has(i))return '';return [v.bodyText.replaceAll('{nome}',people[i]?.[0].split(' ')[0]||'{nome}'),v.model==='Agenda PT'?agendas.get(i)?.text:'',v.link,v.attachment?'Allegato · '+v.attachment:''].filter(Boolean).join('\n\n')}
 function timing(v){return v.mode==='Subito'?'Invio immediato':(v.when?v.when.replace('T',' alle '):'Scegli data e ora')+' · '+v.repeat}
-function preview(){const v=values(),scheduled=v.mode==='Programma';$('sendNow').hidden=scheduled;$('sendNow').disabled=sending||!v.ids.length;$('whenBox').hidden=$('repeatBox').hidden=!scheduled;$('when').required=scheduled;$('fileName').textContent=attachment+(attachment&&!selectedFile?' · solo nome nella vecchia bozza, riseleziona il file':'');$('removeFile').hidden=!attachment;const selector=$('previewRecipient'),previous=selector.value;
+function preview(){const v=values(),scheduled=v.mode==='Programma';$('mode').parentNode.hidden=isAgenda();$('sendNow').hidden=scheduled;$('sendNow').disabled=sending||!v.ids.length;$('whenBox').hidden=$('repeatBox').hidden=!scheduled;$('when').required=scheduled;$('fileName').textContent=attachment+(attachment&&!selectedFile?' · solo nome nella vecchia bozza, riseleziona il file':'');$('removeFile').hidden=!attachment;const selector=$('previewRecipient'),previous=selector.value;
  selector.replaceChildren(...v.ids.map(i=>new Option(people[i][0],String(i))));
  if(v.ids.includes(previous) && previous!=='')selector.value=previous;
  $('recipientChoice').hidden=v.ids.length<2;
  drawSavedDrafts();
- $('preview').textContent=message(v,selector.value||undefined)||'Scrivi il testo del messaggio.';$('schedule').textContent=v.ids.length+' destinatari · '+timing(v);$('draftList').replaceChildren();for(const d of allDrafts())$('draftList').append(button(d.subject||'Senza titolo',()=>setForm(d)));if(!allDrafts().length)$('draftList').textContent='Nessuna bozza'}
-$('compose').oninput=preview;$('file').onchange=()=>{const file=$('file').files[0];if(file)attach(file);preview()};$('removeFile').onclick=()=>{attach(null);$('file').value='';preview()};$('model').onchange=()=>{const m=$('model').value;const texts={'Ultime 2 sedute':'Ciao {nome}, ti restano 2 sedute del tuo pacchetto NEACEA.','Agenda PT':'Ciao {nome}, ecco il link alla tua agenda di oggi.','Promemoria appuntamento':'Ciao {nome}, ti ricordiamo il tuo prossimo appuntamento in studio.'};if(texts[m]){$('subject').value=m;$('bodyText').value=texts[m]}preview()};
+ $('preview').textContent=message(v,selector.value||undefined)||(isAgenda()?'Nessuna agenda selezionata.':'Scrivi il testo del messaggio.');$('schedule').textContent=v.ids.length+' destinatari · '+timing(v);$('draftList').replaceChildren();for(const d of allDrafts())$('draftList').append(button(d.subject||'Senza titolo',()=>setForm(d)));if(!allDrafts().length)$('draftList').textContent='Nessuna bozza'}
+$('compose').oninput=preview;$('file').onchange=()=>{const file=$('file').files[0];if(file)attach(file);preview()};$('removeFile').onclick=()=>{attach(null);$('file').value='';preview()};$('model').onchange=()=>{const m=$('model').value;const texts={'Ultime 2 sedute':'Ciao {nome}, ti restano 2 sedute del tuo pacchetto NEACEA.','Agenda PT':'Ciao {nome}, ecco la tua agenda.','Promemoria appuntamento':'Ciao {nome}, ti ricordiamo il tuo prossimo appuntamento in studio.'};if(texts[m]){$('subject').value=m;$('bodyText').value=texts[m]}if(isAgenda()){chosenRule='';showRules();fillRule();refreshAgenda()}else if(!$('agendaRules').hidden){refreshAgenda()}else preview()};
 $('variable').onclick=()=>{const t=$('bodyText');t.setRangeText('{nome}',t.selectionStart,t.selectionEnd,'end');t.focus();preview()};
 $('draft').onclick=async()=>{
  const version=formVersion;
@@ -222,7 +307,7 @@ $('sendNow').onclick=async()=>{
  finally{form.inert=false;sending=false;preview()}
 };
 
-$('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||!v.bodyText.trim()){$('notice').textContent='Indica titolo, testo e almeno un destinatario con numero disponibile.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';setForm();view('registro')};setForm();view('editor');loadStaff().then(loadDrafts).catch(()=>{$('notice').textContent='Archivio bozze non disponibile in questo browser.'});
+$('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||!v.bodyText.trim()){$('notice').textContent='Indica titolo, testo e almeno un destinatario con numero disponibile.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';setForm();view('registro')};setForm();view('editor');readRules();loadStaff().then(loadDrafts).catch(()=>{$('notice').textContent='Archivio bozze non disponibile in questo browser.'});
 })();
 </script></body></html>
 

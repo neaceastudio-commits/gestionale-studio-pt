@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { agendaRules } from './lib/whatsapp-agenda-rules-store.mjs';
 import { sendSelected } from './lib/whatsapp-compose.mjs';
 import { readPlan } from './lib/bia-timed-preview.mjs';
 import auth from './lib/calendar-audit-auth.js';
@@ -121,6 +122,13 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
+    if (['agenda-rules','agenda-save-rule'].includes(input?.action)) {
+      try {
+        const actor=await authenticate(input.accessToken);
+        if(actor?.role!=='owner')return reply('direction_only',403);
+        return await agendaRules(input,store());
+      } catch { return reply('service_unavailable',503); }
+    }
     if (input?.action === 'composer-send') {
       try {
         const actor = await authenticate(input.accessToken);
