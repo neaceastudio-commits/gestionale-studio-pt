@@ -14,7 +14,8 @@ test('Calendar Netlify build packages all generated functions with their depende
   const command=JSON.parse(config.match(/^\s*command\s*=\s*(".*")\s*$/m)[1]);
   const r=cp.spawnSync('bash',['-c',command],{cwd:dir,encoding:'utf8'});assert.equal(r.status,0,r.stderr);
   const functionsDir=path.join(dir,'.netlify/calendar-functions');
-  const entries=fs.readdirSync(functionsDir).filter(n=>/\.(mjs|js)$/.test(n));assert.equal(entries.length,16);
-  for(const entry of entries){await esbuild.build({entryPoints:[path.join(functionsDir,entry)],bundle:true,platform:'node',target:'node24',format:'esm',write:false,logLevel:'silent'});}
+  const entries=fs.readdirSync(functionsDir).filter(n=>/\.(mjs|js)$/.test(n));
+  assert.deepEqual(entries.sort(),['acquisition-calendar-activity.js','apple-caldav-link.js','apple-calendar-dry-run.js','apple-calendar.js','calendar-activity.js','calendar-client-finance.js','calendar-runtime.js','calendar-system-activity.js','expected-renewals-scheduled.mjs','form-notify.js','foto-pt.js','pt-access-email.js','schedule-client-package.js','studio-calendar-activity.js','whatsapp-agenda.js','whatsapp-agenda-scheduled.mjs','whatsapp-messages.mjs'].sort());
+  for(const entry of entries){await esbuild.build({entryPoints:[path.join(functionsDir,entry)],nodePaths:[path.resolve(root,'../node_modules')],bundle:true,platform:'node',target:'node24',format:'esm',write:false,logLevel:'silent'});}
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });

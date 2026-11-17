@@ -66,6 +66,6 @@ export async function deliverySetup({store,env}){
   const health=await store.get('delivery-health',{type:'json'});
   const configured=Boolean(env.WHATSAPP_WEBHOOK_PATH_SECRET&&env.WHATSAPP_WEBHOOK_VERIFY_TOKEN);
   return json({configured,verifiedAt:verification?.verifiedAt||null,receivedAt:health?.receivedAt||null,
-    ...(configured?{url:'https://deploy-preview-18--new-calendar-neacea.netlify.app/.netlify/functions/whatsapp-agenda-test/events/'+env.WHATSAPP_WEBHOOK_PATH_SECRET,verifyToken:env.WHATSAPP_WEBHOOK_VERIFY_TOKEN}:{})});
+    ...(configured?{url:'https://calendario.neacea.com/.netlify/functions/whatsapp-messages/events/'+env.WHATSAPP_WEBHOOK_PATH_SECRET,verifyToken:env.WHATSAPP_WEBHOOK_VERIFY_TOKEN}:{})});
 }
 
