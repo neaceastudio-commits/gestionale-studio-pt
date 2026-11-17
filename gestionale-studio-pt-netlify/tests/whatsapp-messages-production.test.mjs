@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {createHandler} from '../netlify/functions/lib/whatsapp-messages-handler.mjs';
+const site='28855faa-de52-4e4c-b1c2-e2db4965670f';
+const context={site:{id:site},deploy:{context:'production',published:true}};
+let calls=0,role='owner';const records=new Map();
+const store=()=>({list:async()=>({blobs:[]}),get:async()=>null,getWithMetadata:async()=>null,setJSON:async(k,v)=>{records.set(k,v);return {modified:true,etag:'revision-1'}}});
+const handler=createHandler({env:{WHATSAPP_AGENDA_SITE_ID:site},authenticate:async()=>role?{role}:null,store,provider:{},send:async()=>{calls++;return Response.json({status:'Accettato da Meta',messageId:'wamid.fake'})},templates:async()=>({templates:[]})});
+const request=(action,extra={})=>new Request('https://calendario.neacea.com/.netlify/functions/whatsapp-messages',{method:'POST',body:JSON.stringify({action,accessToken:'mock',...extra})});
+for(const invalidRole of [null,'pt','secretary']){role=invalidRole;assert.equal((await handler(request('composer-send'),context)).status,403)}
+assert.equal(calls,0);role='owner';
+assert.equal((await handler(request('composer-send'),{...context,site:{id:'other'}})).status,404);
+assert.equal((await handler(request('composer-send'),{...context,deploy:{context:'branch-deploy'}})).status,404);
+for(const action of ['send','bia-send','bia-subscribe','text-send','agenda-preview-background'])assert.equal((await handler(request(action),context)).status,400);
+assert.equal(calls,0);
+assert.deepEqual(await (await handler(request('composer-templates'),context)).json(),{templates:[]});
+assert.deepEqual(await (await handler(request('agenda-rules'),context)).json(),{rules:[]});
+const saved=await handler(request('agenda-save-rule',{rule:{id:'11111111-1111-4111-8111-111111111111',title:'Agenda settimanale',intro:'Ciao {nome}',link:'',frequency:'weekly',weekday:1,time:'08:00',period:'week',offset:0,enabled:true}}),context);
+assert.equal(saved.status,200);assert.equal((await saved.json()).rule.enabled,false,'saving a rule never activates it');assert.equal(calls,0);
+assert.equal((await handler(request('composer-send'),context)).status,200);assert.equal(calls,1);
+assert.equal((await handler(new Request('https://example.test',{method:'POST',body:'{' }),context)).status,400);
+assert.equal((await handler(new Request('https://example.test'),context)).status,405);
+console.log('PASS production owner authorization, wrong-site isolation, no legacy test actions, draft-only rule saves, explicit send dispatch and malformed requests; network mocked.');

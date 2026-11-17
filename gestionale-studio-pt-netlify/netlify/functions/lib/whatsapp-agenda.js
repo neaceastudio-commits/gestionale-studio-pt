@@ -60,12 +60,13 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     const rows = [];
     for (let offset = 0; ; offset += 1000) { const page = await db(table, { query: `${query}&limit=1000&offset=${offset}` }); rows.push(...page); if (page.length < 1000) return rows; }
   }
-  async function load(day) {
+  async function load(day, lastDay = day) {
+    const range = day === lastDay ? "&date=eq." + day : "&date=gte." + day + "&date=lte." + lastDay;
     const [operators, roles, clients, appointments] = await Promise.all([
       all('operators', '?select=id,nome,cognome,active,roles&order=id'),
       all('operator_effective_roles', '?select=operator_id,active,system_roles,legacy_roles&order=operator_id'),
       all('clients', '?select=id,nome,cognome,sessions_total,sessions_remaining&order=id'),
-      all('appointments', '?select=id,date,start_time,service_id,client_ids,operator_id,status,notes&status=eq.prenotato&service_id=in.(pt11,pt12)&date=eq.' + day + '&order=id')
+      all('appointments', '?select=id,date,start_time,service_id,client_ids,operator_id,status,notes&status=eq.prenotato&service_id=in.(pt11,pt12)' + range + '&order=id')
     ]);
     let config = [], migrationReady = true;
     try { config = await all('operators', '?select=id,whatsapp_phone,whatsapp_agenda_enabled&order=id'); }
@@ -79,6 +80,53 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
   async function settings() {
     const data = await load(romeTime(now()).day);
     return { migrationReady: data.migrationReady, operators: data.operators.filter(o => isPt({ ...o, active: true })).map(o => ({ id: o.id, name: clean(`${o.nome || ''} ${o.cognome || ''}`), active: o.active, whatsapp_phone: o.whatsapp_phone || '', whatsapp_agenda_enabled: o.whatsapp_agenda_enabled === true })) };
+  }
+  async function directory() {
+    const [staff, clients] = await Promise.all([
+      settings(),
+      all('clients', '?select=id,nome,cognome,telefono,active,stato_abbonamento&order=id')
+    ]);
+    return {
+      operators: staff.operators.filter(op => op.active),
+      clients: clients.map(c => ({
+        id: c.id,
+        active: c.active !== false,
+        status: c.stato_abbonamento || '',
+        name: clean([c.nome, c.cognome].filter(Boolean).join(' ')),
+        hasPhone: Boolean(String(c.telefono || '').trim())
+      })).filter(c => c.name).sort((a,b) => a.name.localeCompare(b.name,'it'))
+    };
+  }
+  async function weeklyAgenda(referenceDay, period = 'week') {
+    const day = referenceDay || romeTime(now()).day;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw Error('invalid_day');
+    const date = new Date(day + 'T12:00:00Z');
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== day) throw Error('invalid_day');
+    if (period === 'week') date.setUTCDate(date.getUTCDate() - (date.getUTCDay()+6)%7);
+    const days = [];
+    for (let i=0; i<(period === 'day' ? 1 : 7); i++) {
+      days.push(date.toISOString().slice(0,10));
+      date.setUTCDate(date.getUTCDate()+1);
+    }
+    const data = await load(days[0],days[days.length-1]);
+    const agendas = new Map();
+    const format = new Intl.DateTimeFormat('it-IT',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
+    for (const day of days) {
+      for (const agenda of buildAgendas(data,day)) {
+        if (!agenda.count) continue;
+        let week = agendas.get(agenda.operatorId);
+        if (!week) {
+          week = {operatorId:agenda.operatorId, name:agenda.operatorName, count:0, blocks:[], incomplete:false};
+          agendas.set(agenda.operatorId,week);
+        }
+        week.count += agenda.count;
+        if (agenda.lines.length !== agenda.count) week.incomplete = true;
+        week.blocks.push([format.format(new Date(day+'T12:00:00Z')),...agenda.lines].join('\n'));
+      }
+    }
+    return {start:days[0],end:days[days.length-1],agendas:[...agendas.values()].map(({blocks,...week})=>({
+      ...week, text:blocks.join('\n\n')+'\n\nTotale sedute: '+week.count
+    }))};
   }
   async function configure(actor, input) {
     if (actor?.role !== 'owner') throw Error('direction_only');
@@ -95,6 +143,10 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     let data; try { data = await response.json(); } catch { throw Error('provider_response_unknown'); }
     if (!response.ok) { const error = Error('provider_rejected'); error.providerCode = Number.isInteger(data?.error?.code) ? data.error.code : null; throw error; }
     return data;
+  }
+  async function verifySender() {
+    const sender = await meta('?fields=display_phone_number');
+    if ('+' + String(sender.display_phone_number || '').replace(/\D/g, '') !== env.WHATSAPP_SENDER_PHONE) throw Error('sender_mismatch');
   }
   async function run({ dryRun = true, scheduled = false } = {}) {
     if (dryRun !== false) return { dryRun: true, ...await preview() };
@@ -127,6 +179,6 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     }));
     return { sent: results.filter(r => r.status === 'accepted').length, results };
   }
-  return { preview, settings, configure, run };
+  return { preview, settings, directory, weeklyAgenda, verifySender, configure, run };
 }
 module.exports = { createService, buildAgendas, romeTime, isPt, progress, providerConfig, templatePayload };

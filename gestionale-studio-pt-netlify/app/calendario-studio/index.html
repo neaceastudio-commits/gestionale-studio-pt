@@ -35,6 +35,7 @@
     <button class="topbar-tab" data-view="situation">★ Situazione clienti</button>
     <button class="topbar-tab" data-view="clients">👤 Clienti</button>
     <button class="topbar-tab" data-view="operators">👥 Staff</button>
+    <button class="topbar-tab" data-view="messaggi" id="messages-tab" hidden>Messaggi</button>
   </div>
 
   <div class="topbar-right">
@@ -47,6 +48,8 @@
 
 <!-- ── MAIN ──────────────────────────────────────── -->
 <div class="main-content">
+
+  <div id="view-messaggi" class="view-panel"><p id="messages-access-state" role="status">Accesso Direzione richiesto.</p></div>
 
   <!-- Dashboard -->
   <div id="view-dashboard" class="view-panel active"></div>
@@ -111,7 +114,7 @@
 <script src="js/client-journey.js?v=4"></script>
 <script src="js/package-schedule.js?v=20261112"></script>
 <script src="js/client-reactivation.js?v=20261112"></script>
-<script src="js/app.js?v=20261116-cycle-sequence"></script>
+<script src="js/app.js?v=20261116-cycle-sequence&patch=20261117-messages"></script>
 <script src="js/expected-renewals.js?v=20261116-cycle-sequence"></script>
 <script src="js/whatsapp-agenda.js?v=1"></script>
 <script src="js/apple-calendar.js?v=20261012a"></script>
@@ -132,5 +135,6 @@
   updateClock();
   setInterval(updateClock, 30000);
 </script>
+<script src="js/whatsapp-messages-launcher.js?v=1"></script>
 </body>
 </html>

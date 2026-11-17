@@ -3968,7 +3968,7 @@ const App = {
     const params = new URLSearchParams(window.location.search);
     const allowedViews = App.isPortalPtMode()
       ? ['dashboard', 'day', 'week', 'room', 'clients', 'situation']
-      : ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'situation', 'operators'];
+      : ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'situation', 'operators', 'messaggi'];
     const initialView = allowedViews.includes(params.get('view'))
       ? params.get('view')
       : 'dashboard';
