@@ -1,0 +1,15 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(require('node:path').join(__dirname,'../app/calendario-studio/comunicazioni.html'),'utf8'),src=fs.readFileSync(require('node:path').join(__dirname,'../app/calendario-studio/js/comunicazioni.js'),'utf8');
+
+const slice=(a,b)=>src.slice(src.indexOf(a),src.indexOf(b,src.indexOf(a)));
+const ctx={};vm.createContext(ctx);
+vm.runInContext(`const people={'cliente:a':['Cliente attivo','Clienti',true,true],'cliente:i':['Ibernato','Clienti',true,false],'pt:a':['Anna','PT',true],'pt:b':['Bruno','PT',true]};let audience='Clienti';let weekly=false;const inAudience=id=>people[id][1]===audience;const availableClient=id=>people[id][3]!==false;const isAgenda=()=>weekly;const inputs=new Map(Object.keys(people).map(k=>[k,{checked:true,parentNode:{}}]));const agendas=new Map();const document={querySelectorAll:()=>[]};const el={};const $=id=>(el[id]??={});const filterRecipients=()=>{};`+slice('function applyAudience','const dayLabel')+slice('function draftAudience','function drawSavedDrafts'),ctx);
+vm.runInContext('applyAudience(false)',ctx);
+assert.deepEqual(Array.from(vm.runInContext('[...inputs].filter(([,b])=>b.checked).map(([id])=>id)',ctx)),['cliente:a']);
+assert.equal(vm.runInContext("inputs.get('cliente:i').disabled&&inputs.get('cliente:i').parentNode.hidden",ctx),true);
+vm.runInContext("audience='PT';weekly=true;agendas.set('pt:b',{text:'solo Bruno'});applyAudience(true)",ctx);
+assert.deepEqual(Array.from(vm.runInContext('[...inputs].filter(([,b])=>b.checked).map(([id])=>id)',ctx)),['pt:b']);
+assert.equal(vm.runInContext("draftAudience({ids:['pt:a']})",ctx),'PT');
+assert.equal(vm.runInContext("draftAudience({ids:['cliente:a']})",ctx),'Clienti');
+assert.ok(html.includes('data-audience="Clienti"')&&html.includes('data-audience="PT"'));
+console.log('PASS separate audiences, archived client exclusion, automatic calendar PT selection, scoped legacy drafts');

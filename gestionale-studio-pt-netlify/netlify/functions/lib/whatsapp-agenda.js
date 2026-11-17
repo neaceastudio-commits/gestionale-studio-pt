@@ -60,12 +60,13 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     const rows = [];
     for (let offset = 0; ; offset += 1000) { const page = await db(table, { query: `${query}&limit=1000&offset=${offset}` }); rows.push(...page); if (page.length < 1000) return rows; }
   }
-  async function load(day) {
+  async function load(day, lastDay = day) {
+    const range = day === lastDay ? '&date=eq.' + day : '&date=gte.' + day + '&date=lte.' + lastDay;
     const [operators, roles, clients, appointments] = await Promise.all([
       all('operators', '?select=id,nome,cognome,active,roles&order=id'),
       all('operator_effective_roles', '?select=operator_id,active,system_roles,legacy_roles&order=operator_id'),
       all('clients', '?select=id,nome,cognome,sessions_total,sessions_remaining&order=id'),
-      all('appointments', '?select=id,date,start_time,service_id,client_ids,operator_id,status,notes&status=eq.prenotato&service_id=in.(pt11,pt12)&date=eq.' + day + '&order=id')
+      all('appointments', '?select=id,date,start_time,service_id,client_ids,operator_id,status,notes&status=eq.prenotato&service_id=in.(pt11,pt12)' + range + '&order=id')
     ]);
     let config = [], migrationReady = true;
     try { config = await all('operators', '?select=id,whatsapp_phone,whatsapp_agenda_enabled&order=id'); }
@@ -80,6 +81,53 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     const data = await load(romeTime(now()).day);
     return { migrationReady: data.migrationReady, operators: data.operators.filter(o => isPt({ ...o, active: true })).map(o => ({ id: o.id, name: clean(`${o.nome || ''} ${o.cognome || ''}`), active: o.active, whatsapp_phone: o.whatsapp_phone || '', whatsapp_agenda_enabled: o.whatsapp_agenda_enabled === true })) };
   }
+  async function directory() {
+    const [staff, clients] = await Promise.all([
+      settings(),
+      all('clients', '?select=id,nome,cognome,telefono,active,stato_abbonamento&order=id')
+    ]);
+    return {
+      operators: staff.operators.filter(op => op.active),
+      clients: clients.map(c => ({
+        id: c.id,
+        active: c.active !== false,
+        status: c.stato_abbonamento || '',
+        name: clean([c.nome, c.cognome].filter(Boolean).join(' ')),
+        hasPhone: Boolean(String(c.telefono || '').trim())
+      })).filter(c => c.name).sort((a,b) => a.name.localeCompare(b.name,'it'))
+    };
+  }
+  async function weeklyAgenda(referenceDay, period = 'week') {
+    const day = referenceDay || romeTime(now()).day;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw Error('invalid_day');
+    const date = new Date(day + 'T12:00:00Z');
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== day) throw Error('invalid_day');
+    if (period === 'week') date.setUTCDate(date.getUTCDate() - (date.getUTCDay()+6)%7);
+    const days = [];
+    for (let i=0; i<(period === 'day' ? 1 : 7); i++) {
+      days.push(date.toISOString().slice(0,10));
+      date.setUTCDate(date.getUTCDate()+1);
+    }
+    const data = await load(days[0],days[days.length-1]);
+    const agendas = new Map();
+    const format = new Intl.DateTimeFormat('it-IT',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
+    for (const day of days) {
+      for (const agenda of buildAgendas(data,day)) {
+        if (!agenda.count) continue;
+        let week = agendas.get(agenda.operatorId);
+        if (!week) {
+          week = {operatorId:agenda.operatorId, name:agenda.operatorName, count:0, blocks:[], incomplete:false};
+          agendas.set(agenda.operatorId,week);
+        }
+        week.count += agenda.count;
+        if (agenda.lines.length !== agenda.count) week.incomplete = true;
+        week.blocks.push([format.format(new Date(day+'T12:00:00Z')),...agenda.lines].join('\n'));
+      }
+    }
+    return {start:days[0],end:days[days.length-1],agendas:[...agendas.values()].map(({blocks,...week})=>({
+      ...week, text:blocks.join('\n\n')+'\n\nTotale sedute: '+week.count
+    }))};
+  }
   async function configure(actor, input) {
     if (actor?.role !== 'owner') throw Error('direction_only');
     const phone = String(input.whatsapp_phone || '').trim() || null, enabled = input.whatsapp_agenda_enabled;
@@ -93,8 +141,41 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
   async function meta(path, body) {
     const response = await fetchImpl(`https://graph.facebook.com/${env.WHATSAPP_API_VERSION}/${env.WHATSAPP_PHONE_NUMBER_ID}${path}`, { method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(6000) });
     let data; try { data = await response.json(); } catch { throw Error('provider_response_unknown'); }
-    if (!response.ok) { const error = Error('provider_rejected'); error.providerCode = Number.isInteger(data?.error?.code) ? data.error.code : null; throw error; }
+    if (!response.ok) {
+      const info = data?.error || {};
+      const error = Error('provider_rejected');
+      error.providerCode = Number.isInteger(info.code) ? info.code : null;
+      const detail = [info.message, info.error_data?.details].filter(value => typeof value === 'string')
+        .map(value => value.split(env.WHATSAPP_ACCESS_TOKEN).join('[omesso]')
+          .replace(/https?:\/\/\S+|\b[A-Za-z0-9_-]{40,}\b|\+?\d[\d ().-]{7,}\d/g, '[omesso]')
+          .replace(/\s+/g, ' ').trim()).filter(Boolean);
+      if (Number.isInteger(info.error_subcode)) detail.push('Subcode ' + info.error_subcode);
+      if (/^[\w-]{4,80}$/.test(info.fbtrace_id || '')) detail.push('Trace ID ' + info.fbtrace_id);
+      error.providerDetail = [...new Set(detail)].join(' · ').slice(0, 1200);
+      throw error;
+    }
     return data;
+  }
+  async function verifySender() {
+    const sender = await meta('?fields=display_phone_number');
+    if ('+' + String(sender.display_phone_number || '').replace(/\D/g, '') !== env.WHATSAPP_SENDER_PHONE) throw Error('sender_mismatch');
+  }
+  async function sendBiaDocument(caption = 'Ciao Gianluca, in allegato trovi la scheda dimostrativa per l’esecuzione della BIA. NEACEA Studio') {
+    return meta('/messages', {
+      messaging_product: 'whatsapp', recipient_type: 'individual', to: env.WHATSAPP_AGENDA_TEST_TO.slice(1),
+      type: 'document', document: {
+        link: 'https://deploy-preview-18--new-calendar-neacea.netlify.app/NEACEA-Prova-BIA.pdf',
+        filename: 'NEACEA-Prova-BIA.pdf',
+        caption
+      }
+    });
+  }
+  async function sendTestText(body = 'NEACEA · Prova dal calendario\n\n09:00 · Cliente di prova · PT 1:1 · 3/8\n\nTotale: 1 seduta.') {
+    return meta('/messages', {
+      messaging_product: 'whatsapp', recipient_type: 'individual',
+      to: env.WHATSAPP_AGENDA_TEST_TO.slice(1), type: 'text',
+      text: { preview_url: false, body }
+    });
   }
   async function run({ dryRun = true, scheduled = false } = {}) {
     if (dryRun !== false) return { dryRun: true, ...await preview() };
@@ -105,8 +186,7 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     if (!data.migrationReady) return { sent: 0, blocked: 'migration_required' };
     const agendas = buildAgendas(data, day).filter(a => a.enabled && a.count > 0);
     if (!agendas.length) return { sent: 0, results: [] };
-    const sender = await meta('?fields=display_phone_number');
-    if ('+' + String(sender.display_phone_number || '').replace(/\D/g, '') !== env.WHATSAPP_SENDER_PHONE) throw Error('sender_mismatch');
+    await verifySender();
     const results = await Promise.all(agendas.map(async agenda => {
       let status = 'failed', messageId = null, error = null, payload;
       const phone = data.operators.find(o => o.id === agenda.operatorId).whatsapp_phone;
@@ -127,6 +207,7 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     }));
     return { sent: results.filter(r => r.status === 'accepted').length, results };
   }
-  return { preview, settings, configure, run };
+  return { preview, settings, directory, weeklyAgenda, configure, run, verifySender, sendTestText, sendBiaDocument };
 }
 module.exports = { createService, buildAgendas, romeTime, isPt, progress, providerConfig, templatePayload };
+

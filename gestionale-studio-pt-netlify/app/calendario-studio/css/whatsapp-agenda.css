@@ -1,0 +1,38 @@
+#whatsapp-direction-tab[hidden],
+#direction-whatsapp[hidden] {
+  display: none;
+}
+
+#direction-title { margin-bottom: 16px; }
+#direction-whatsapp { max-width: 780px; }
+#direction-whatsapp > summary {
+  padding: 16px 20px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.agenda-preview {
+  padding: 20px;
+  border-top: 1px solid var(--border);
+}
+.agenda-preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.agenda-preview-header h2 { font-size: 1.35rem; }
+#agenda-direction-status { margin: 16px 0; color: var(--text2); }
+.agenda-operator-label { display: grid; gap: 4px; font-weight: 700; }
+.agenda-operator-label select { width: 100%; max-width: 26rem; }
+.agenda-message {
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.55;
+}

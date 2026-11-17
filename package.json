@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "name": "neacea-calendar-functions",
+  "dependencies": {
+    "@netlify/blobs": "10.7.13"
+  }
+}
