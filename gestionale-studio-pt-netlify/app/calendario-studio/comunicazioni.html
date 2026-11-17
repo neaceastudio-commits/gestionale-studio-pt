@@ -2,7 +2,7 @@
 <link rel="stylesheet" href="css/base.css?v=29"><style>
 *{box-sizing:border-box}body{margin:0;background:var(--bg2);color:var(--text);font:16px/1.5 'Nunito',sans-serif}header{background:var(--blue);color:white;padding:17px max(5vw,calc((100vw - 1160px)/2));font-weight:700}header span{float:right;font-weight:400}main{max-width:1200px;margin:auto;padding:26px 20px 60px}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.05em;margin:0}h2,h3{margin:.25em 0 .65em}p{margin:7px 0 15px}small,.muted{color:var(--text2)}button,select,input,textarea{font:inherit;border:1px solid var(--border2);border-radius:8px;background:white;color:inherit;padding:8px 12px}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button[aria-pressed=true],.primary{background:var(--blue);color:white}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--gold)}nav,.tools,.metrics{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.metrics button{text-align:left;flex:1;min-width:100px}.metrics strong{display:block;font-size:25px}section,details,.paper{background:white;border:1px solid var(--border);border-radius:14px;padding:20px;margin:14px 0}.split{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,1fr);gap:18px}.scroll{overflow:auto}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--border);vertical-align:top}th{font-size:13px;color:var(--text2)}label{display:block;margin:10px 0}label>input:not([type=checkbox]),label>select,label>textarea{display:block;width:100%}textarea{min-height:100px}fieldset{border:1px solid var(--border);border-radius:8px}.bubble{background:var(--blue-pale);padding:18px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}.tag{font-size:13px;font-weight:650;white-space:nowrap}output{display:block}summary{cursor:pointer;font-weight:650}#notice{color:var(--blue-mid);font-weight:600}.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}[hidden]{display:none!important}@media(max-width:760px){.split,.cols{grid-template-columns:1fr}main{padding:18px 12px}section{padding:14px}}
 body{min-height:0}main{padding:14px 0;max-width:none}nav button{font-weight:700}</style></head><body><main><h2>Gestione messaggi</h2><p class="muted">Anteprima · Contatti del calendario. Invio WhatsApp manuale ai contatti selezionati. Le bozze restano in questo browser.</p>
-<nav aria-label="Destinatari"><button type="button" data-audience="Clienti" aria-pressed="true">Clienti</button><button type="button" data-audience="PT" aria-pressed="false">Personal Trainer</button></nav><p id="audienceInfo"></p><nav aria-label="Sezioni"><button data-view="staffDirectory">PT dello studio</button><button data-view="registro">Registro</button><button data-view="rubrica">Rubrica</button><button data-view="bozze">Bozze</button><button data-view="editor">Crea messaggio</button></nav><p id="notice" role="status"></p>
+<nav aria-label="Destinatari"><button type="button" data-audience="Clienti" aria-pressed="true">Clienti</button><button type="button" data-audience="PT" aria-pressed="false">Personal Trainer</button></nav><p id="audienceInfo"></p><details id="timedAgendaBox" hidden><summary>Prova invio automatico delle agende PT</summary><p>Una sola prova ad Alessandro e Tamara, tra due minuti. Le sedute vengono lette dal calendario all’orario di invio. Ogni PT riceve solo la propria agenda PDF.</p><button type="button" id="startTimedAgenda">Avvia prova tra 2 minuti</button><button type="button" id="checkTimedAgenda">Controlla prova</button><p id="timedAgendaStatus" role="status">Nessuna prova caricata.</p></details><nav aria-label="Sezioni"><button data-view="staffDirectory">PT dello studio</button><button data-view="registro">Registro</button><button data-view="rubrica">Rubrica</button><button data-view="bozze">Bozze</button><button data-view="editor">Crea messaggio</button></nav><p id="notice" role="status"></p>
 <section id="staffDirectory" hidden><h3>Numeri WhatsApp dei PT</h3><p id="staffStatus" role="status"></p><div id="staffContacts"></div><label>Testo di prova<textarea id="staffText">Ciao {nome}, la tua agenda NEACEA è pronta.</textarea></label><button id="staffPreview" type="button">Prepara anteprime</button><button type="button" id="staffCompose" disabled>Apri in Crea messaggio</button><div id="staffResult" aria-live="polite"></div></section>
 <section id="registro"><h2>Registro invii</h2><div class="tools"><button type="button" id="refreshDelivery">Aggiorna esiti</button><label><input type="checkbox" id="showSimulations"> Includi simulazioni</label></div><p id="deliveryNotice" role="status"></p><details id="deliveryConnection"><summary>Collegamento degli esiti WhatsApp</summary><p>Il provider deve inoltrare gli eventi del numero a questo indirizzo. Gli esiti diventano disponibili dopo il collegamento.</p><button type="button" id="loadDeliverySetup">Mostra parametri di collegamento</button><div id="deliverySetup" hidden><label>URL callback<input readonly id="deliveryUrl"></label><button type="button" id="copyDeliveryUrl">Copia URL</button><label>Token di verifica<input readonly type="password" id="deliveryVerify"></label><button type="button" id="copyDeliveryVerify">Copia token di verifica</button><p>Conserva questi parametri nel pannello del provider.</p></div><p id="deliverySetupNotice" role="status"></p></details><div class="tools"><select hidden id="group" aria-label="Tipo destinatario"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input type="search" id="query" placeholder="Cerca nome o comunicazione" aria-label="Cerca nel registro"></div><div class="metrics" id="metrics"></div><div class="scroll"><table><thead><tr><th>Destinatario</th><th>Comunicazione</th><th>Stato</th><th>Ultimo evento</th><th>Dettaglio</th></tr></thead><tbody id="log"></tbody></table></div><div id="timeline"></div></section>
 <section id="rubrica" hidden><h2>Rubrica</h2><div class="tools"><select hidden id="rg" aria-label="Tipo contatto"><option>Tutti</option><option>Clienti</option><option>PT</option></select><label id="archiveToggle"><input type="checkbox" id="showArchived"> Mostra anche lo storico · sola consultazione</label><input id="rq" type="search" aria-label="Cerca contatto" placeholder="Cerca un contatto"></div><div class="split"><div id="contacts"></div><div id="card" class="paper"></div></div></section>
@@ -438,7 +438,7 @@ function updateAudienceUI(){
  for(const b of document.querySelectorAll('[data-audience]'))b.setAttribute('aria-pressed',b.dataset.audience===audience);
  const pt=audience==='PT';
  document.querySelector('[data-view="staffDirectory"]').hidden=!pt;
- $('prepareAgenda').hidden=!pt;$('archiveToggle').hidden=pt;
+ $('prepareAgenda').hidden=!pt;$('archiveToggle').hidden=pt;$('timedAgendaBox').hidden=!pt;
  for(const option of $('model').options)if(option.value==='Agenda PT')option.hidden=!pt;
  $('audienceInfo').textContent=pt?'Personal Trainer · Rubrica, bozze e registro dedicati ai PT.':'Clienti · Rubrica dei soli attivi, bozze e registro dedicati ai clienti.';
 }
@@ -464,9 +464,51 @@ for(const b of document.querySelectorAll('[data-audience]'))b.onclick=()=>setAud
 $('showArchived').onchange=draw;
 $('prepareAgenda').onclick=()=>{setForm({audience:'PT',model:'Agenda PT',subject:'Agenda PT',bodyText:'Ciao {nome}, ecco la tua agenda.'});view('editor')};
 
+
+let timedAgendaState='ready',checkingTimedAgenda=false;
+async function checkTimedAgenda(){
+ if(checkingTimedAgenda)return;
+ checkingTimedAgenda=true;$('checkTimedAgenda').disabled=true;
+ try{
+  const plan=await agendaRequest('agenda-preview-status',{});timedAgendaState=plan.state;
+  $('startTimedAgenda').disabled=plan.state!=='ready';
+  const states={ready:'Prova disponibile.',scheduled:'Invio programmato',running:'Invio automatico in corso',completed:'Prova eseguita',completed_with_errors:'Prova conclusa con errori',expired:'Prova scaduta senza invio'};
+  const due=plan.dueAt?new Date(plan.dueAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+  $('timedAgendaStatus').textContent=(states[plan.state]||plan.state)+(due?' · orario Roma '+due:'')+(plan.results?.length?' · '+plan.results.map(r=>r.name+': '+(r.delivery?.status||r.status||'in attesa')).join(' · '):'');
+  let changed=false;
+  for(const result of plan.results||[]){
+   if(!result.status)continue;
+   const id='timed-agenda-v1/'+result.id,old=data.rows.find(r=>r.id===id);
+   const events=[{s:result.status,t:new Date(result.attemptedAt).toISOString()},...(result.delivery?.events||[])];
+   const finalStatus=result.delivery?.status||result.status;
+   const finalEvent=events.filter(e=>e.s===finalStatus).at(-1);
+   const ordered=events.filter(e=>e!==finalEvent);if(finalEvent)ordered.push(finalEvent);
+   const row={id,p:'pt:'+result.id,real:true,messageId:result.messageId,title:'Prova agenda automatica PT',schedule:'Agenda PDF personale · '+(result.start||'')+' / '+(result.end||''),events:ordered,errorCodes:result.delivery?.codes||[]};
+   if(JSON.stringify(old)!==JSON.stringify(row)){data.rows=data.rows.filter(r=>r.id!==id);data.rows.unshift(row);changed=true}
+  }
+  if(changed){save();draw()}
+ }catch{$('timedAgendaStatus').textContent='Stato della prova non disponibile. Premi Controlla prova.'}
+ finally{checkingTimedAgenda=false;$('checkTimedAgenda').disabled=false}
+}
+$('checkTimedAgenda').onclick=checkTimedAgenda;
+$('startTimedAgenda').onclick=async()=>{
+ if(!confirm('Programmare una sola prova tra 2 minuti ad Alessandro e Tamara, ciascuno con la propria agenda PDF?'))return;
+ $('startTimedAgenda').disabled=true;
+ try{
+  const accessToken=new URLSearchParams(parent.location.search).get('access')||sessionStorage.getItem('neacea-calendar-audit-session')||'';
+  const response=await fetch('/.netlify/functions/agenda-preview-background',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken})});
+  if(response.status!==202)throw Error();
+  timedAgendaState='scheduled';$('timedAgendaStatus').textContent='Richiesta inviata. Attendo la conferma della programmazione…';
+  setTimeout(checkTimedAgenda,1500);
+ }catch{$('timedAgendaStatus').textContent='Avvio non confermato. Premi Controlla prova prima di riprovare.'}
+};
+$('timedAgendaBox').ontoggle=()=>{if($('timedAgendaBox').open)checkTimedAgenda()};
+setInterval(()=>{if(!document.hidden&&['scheduled','running'].includes(timedAgendaState))checkTimedAgenda()},10000);
+
 $('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||(!isTemplate()&&!v.bodyText.trim())){$('notice').textContent='Indica titolo, testo e almeno un destinatario con numero disponibile.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';setForm();view('registro')};setForm();setAudience('Clienti',false);view('editor');readRules();readTemplates();loadStaff().then(()=>{refreshDelivery();return loadDrafts()}).catch(()=>{$('notice').textContent='Archivio bozze non disponibile in questo browser.'});
 })();
 </script></body></html>
+
 
 
 
