@@ -1,3 +1,4 @@
+import { listTemplates } from './lib/whatsapp-templates.mjs';
 import { receiveEvents, deliveryStatuses, deliverySetup } from './lib/whatsapp-delivery.mjs';
 import { getStore } from '@netlify/blobs';
 import { agendaRules } from './lib/whatsapp-agenda-rules-store.mjs';
@@ -126,10 +127,11 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
-    if (['composer-status','composer-setup'].includes(input?.action)) {
+    if (['composer-status','composer-setup','composer-templates'].includes(input?.action)) {
       try {
         const actor=await authenticate(input.accessToken);
         if(actor?.role!=='owner')return reply('direction_only',403);
+        if(input.action==='composer-templates')return Response.json(await listTemplates(env),{headers:{'Cache-Control':'no-store'}});
         return input.action==='composer-status'
           ? await deliveryStatuses(input,{store:store(),env})
           : await deliverySetup({store:store(),env});
@@ -240,3 +242,4 @@ export function createHandler({
 }
 
 export default createHandler();
+

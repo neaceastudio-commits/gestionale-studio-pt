@@ -1,3 +1,4 @@
+import { prepareTemplate } from './whatsapp-templates.mjs';
 import { createHash } from 'node:crypto';
 import agenda from './whatsapp-agenda.js';
 
@@ -28,7 +29,7 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
   const body = typeof input.body === 'string' ? input.body.trim() : '';
   const file = input.file;
   if (!contact || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(input.batch) ||
-      !body || body.length > (file ? 1024 : 4096)) return reply('Messaggio o destinatario non valido.',400);
+      (!input.template && (!body || body.length > (file ? 1024 : 4096)))) return reply('Messaggio o destinatario non valido.',400);
   const allowedFiles = ['application/pdf','image/jpeg','image/png'];
   if (file && (!allowedFiles.includes(file.type) || typeof file.name !== 'string' || !file.name.trim() ||
       typeof file.base64 !== 'string' || !file.base64.length || file.base64.length > 4194304 ||
@@ -37,6 +38,11 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
       !env.WHATSAPP_ACCESS_TOKEN || !/^v\d+\.\d+$/.test(env.WHATSAPP_API_VERSION || '')) return reply('Mittente studio non configurato.',409);
   const phone = await lookup(db,contact[1],contact[2]);
   if (!phone || phone === env.WHATSAPP_SENDER_PHONE) return reply('Numero destinatario non disponibile.',400);
+  let template=null;
+  if(input.template){
+    try{template=await prepareTemplate(input.template,file,env,fetchImpl)}
+    catch(error){return reply(error.message==='templates_unavailable'?'Elenco modelli Meta non disponibile.':error.message,400)}
+  }
   const key = 'manual/' + input.batch + '/' + createHash('sha256').update(phone).digest('hex');
   const claims = store();
   const prior = await claims.getWithMetadata(key);
@@ -70,6 +76,10 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
       form.append('file',new Blob([Buffer.from(file.base64,'base64')],{type:file.type}),filename);
       const media = await post('/media',{headers,body:form});
       if (!media.id) throw Error('upload');
+      if(template){
+        const type=file.type==='application/pdf'?'document':'image';
+        template.components.unshift({type:'header',parameters:[{type,[type]:{id:media.id,...(type==='document'?{filename}:{})}}]});
+      }
       payload.type = file.type === 'application/pdf' ? 'document' : 'image';
       payload[payload.type] = {id:media.id,caption:body};
       if (payload.type === 'document') payload.document.filename = filename;
@@ -77,6 +87,7 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
       payload.type = 'text';
       payload.text = {body,preview_url:false};
     }
+    if(template){payload.type='template';payload.template=template;delete payload.document;delete payload.image;delete payload.text}
     const data = await post('/messages',{headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     messageId = data.messages?.[0]?.id?.startsWith('wamid.') ? data.messages[0].id : null;
     result = messageId ? 'Accettato da Meta' : pending;
@@ -86,3 +97,4 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
   await claims.set(key,result,{metadata:{messageId,contact:input.contact,createdAt:new Date().toISOString()}});
   return reply(result,200,messageId);
 }
+
