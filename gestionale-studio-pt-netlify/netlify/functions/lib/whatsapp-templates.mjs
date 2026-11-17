@@ -1,3 +1,4 @@
+import agendaText from './whatsapp-agenda-text.js';
 const waba='4508719189457199';
 export async function listTemplates(env,fetchImpl=fetch){
   const root='https://graph.facebook.com/'+env.WHATSAPP_API_VERSION+'/'+waba+'/message_templates';
@@ -33,6 +34,7 @@ export async function prepareTemplate(input,file,env,fetchImpl=fetch){
   if(!input||typeof input.name!=='string'||typeof input.language!=='string'||!Array.isArray(input.parameters))throw Error('Modello non valido.');
   const {templates}=await listTemplates(env,fetchImpl);
   const t=templates.find(t=>t.name===input.name&&t.language===input.language);
+  if(input.name===agendaText.name){const issue=agendaText.templateIssue(templates);if(issue)throw Error(issue)}
   if(!t||t.status!=='APPROVED'||!t.supported)throw Error('Il modello deve essere approvato e supportato dal pannello.');
   if(input.parameters.length!==t.parameterCount||input.parameters.some(p=>typeof p!=='string'||!p.trim()||p.length>1024||/[\n\r\t]/.test(p)))throw Error('Completa i campi del modello con testo su una sola riga.');
   const rendered=t.body.replace(/\{\{(\d+)\}\}/g,(_,n)=>input.parameters[Number(n)-1]);

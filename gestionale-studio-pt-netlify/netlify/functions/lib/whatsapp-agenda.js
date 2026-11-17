@@ -116,10 +116,11 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
         if (!agenda.count) continue;
         let week = agendas.get(agenda.operatorId);
         if (!week) {
-          week = {operatorId:agenda.operatorId, name:agenda.operatorName, count:0, blocks:[], incomplete:false};
+          week = {operatorId:agenda.operatorId, name:agenda.operatorName, count:0, blocks:[], entries:[], incomplete:false};
           agendas.set(agenda.operatorId,week);
         }
         week.count += agenda.count;
+        week.entries.push(...agenda.lines.map(text=>({day,text})));
         if (agenda.lines.length !== agenda.count) week.incomplete = true;
         week.blocks.push([format.format(new Date(day+'T12:00:00Z')),...agenda.lines].join('\n'));
       }

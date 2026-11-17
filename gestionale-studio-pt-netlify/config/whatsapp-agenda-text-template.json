@@ -1,0 +1,31 @@
+{
+  "name": "neacea_agenda_pt_testo_v1",
+  "language": "it",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Ciao {{1}}, ecco le sedute PT assegnate a te nel calendario NEACEA per il periodo {{2}}.\nRiepilogo {{3}} di {{4}}.\n\nSeduta: {{5}}\nSeduta: {{6}}\nSeduta: {{7}}\nSeduta: {{8}}\nSeduta: {{9}}\nSeduta: {{10}}\n\nOgni riga riporta giorno, orario, clienti e servizio. Il simbolo — indica una riga senza altre sedute.\nPer eventuali variazioni fa fede il calendario NEACEA.",
+      "example": {
+        "body_text": [
+          [
+            "PT Esempio",
+            "23/11/2026 - 29/11/2026",
+            "1",
+            "1",
+            "23/11/2026 · 09:00 · Cliente Alfa · PT 1:1 · 0/8",
+            "23/11/2026 · 10:00 · Cliente Beta · PT 1:1 · 1/8",
+            "24/11/2026 · 09:00 · Cliente Gamma · PT 1:1 · 2/8",
+            "24/11/2026 · 10:00 · Cliente Delta · PT 1:1 · 0/8",
+            "25/11/2026 · 09:00 · Cliente Epsilon · PT 1:1 · 3/8",
+            "25/11/2026 · 10:00 · Cliente Zeta · PT 1:1 · 0/8"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Agenda personale PT · NEACEA"
+    }
+  ]
+}

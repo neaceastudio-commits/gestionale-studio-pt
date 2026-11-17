@@ -3,6 +3,8 @@
 if(window.parent === window){location.replace('./?view=messaggi');return;}
 
 const $=id=>document.getElementById(id);
+const agendaModel=window.WhatsAppAgendaText;
+const agendaPages=(id)=>agendaModel.pages(report,agendas.get(id));
 const people=Object.create(null);
 let audience='Clienti',directoryLoaded=false;
 
@@ -192,11 +194,12 @@ async function loadDrafts(){
  request.onerror=()=>{$('notice').textContent='Impossibile caricare le bozze salvate.'};
 }
 $('newDraft').onclick=()=>{setForm();$('notice').textContent='Nuova comunicazione.'};
-function setForm(v={}){if(v.mode==='Programma')$('notice').textContent='Bozza riaperta: la vecchia data era una simulazione. Nessun invio è programmato.';v={...v,mode:'Subito'};if(v.audience)setAudience(v.audience,false);else if(v.model==='Agenda PT')setAudience('PT',false);else if(v.ids?.length)setAudience(v.ids[0].startsWith('pt:')?'PT':'Clienti',false);formVersion++;draftId=v.id||'';attach(v.file||null,v.attachment);$('file').value='';for(const k of fields){const n=$(k);if(n.tagName==='SELECT')n.selectedIndex=0;else n.value='';if(v[k])n.value=v[k]}chosenRule='';showRules();fillRule(v.rule);generation++;report=null;agendas.clear();applyAudience(false);$('ruleNotice').textContent='';$('agendaRules').hidden=!isAgenda();
+function setForm(v={}){if(v.mode==='Programma')$('notice').textContent='Bozza riaperta: la vecchia data era una simulazione. Nessun invio è programmato.';v={...v,mode:'Subito'};if(v.audience)setAudience(v.audience,false);else if(v.model==='Agenda PT')setAudience('PT',false);else if(v.ids?.length)setAudience(v.ids[0].startsWith('pt:')?'PT':'Clienti',false);formVersion++;draftId=v.id||'';attach(v.file||null,v.attachment);$('file').value='';for(const k of fields){const n=$(k);if(n.tagName==='SELECT')n.selectedIndex=0;else n.value='';if(v[k])n.value=v[k]}if(isAgenda()&&!v.sendFormat)$('sendFormat').value='template';chosenRule='';showRules();fillRule(v.rule);generation++;report=null;agendas.clear();applyAudience(false);$('ruleNotice').textContent='';$('agendaRules').hidden=!isAgenda();
 inputs.forEach((c,i)=>c.checked=!c.disabled&&!!v.ids?.includes(i));restoreTemplate(v);if(isAgenda())refreshAgenda();else preview()}
 function message(v,i){
  if(v.model==='Agenda PT'){
   const row=agendas.get(i);if(!row||!report)return '';
+  if(v.sendFormat==='template'){try{return agendaPages(i).map(p=>'Messaggio '+(p.part+1)+' di '+p.parts+'\n'+p.text).join('\n\n──────────\n\n')}catch{return ''}}
   return agendaText(report,row,v.bodyText,v.link);
  }
  if(v.sendFormat==='template'){
@@ -225,20 +228,27 @@ function preview(){
  $('characterCount').textContent=text.length+' caratteri per questo destinatario';
  $('draftCount').textContent=allDrafts().filter(d=>draftAudience(d)===audience).length;
  for(const b of document.querySelectorAll('[data-kind]'))b.setAttribute('aria-pressed',b.dataset.kind===(isAgenda()?'Agenda PT':'Personalizzato'));
- $('formatHelp').textContent=isTemplate()?'Il testo approvato resta fisso: personalizza i campi previsti e controlla l’anteprima.':'Il testo libero richiede un messaggio ricevuto dal destinatario nelle ultime 24 ore. Oltre questa finestra serve un modello approvato.';
- $('attachmentBox').hidden=isAgenda();if(isTemplate()&&['DOCUMENT','IMAGE'].includes(selectedTemplate()?.header))$('attachmentBox').open=true;$('formatLabel').hidden=isAgenda();
+ $('formatHelp').textContent=isAgenda()&&isTemplate()?'Modello testuale approvato: utilizzabile anche oltre le 24 ore. Le agende lunghe sono divise in messaggi, senza tagliare sedute.':isTemplate()?'Il testo approvato resta fisso: personalizza i campi previsti e controlla l’anteprima.':'Il testo libero richiede un messaggio ricevuto dal destinatario nelle ultime 24 ore. Oltre questa finestra serve un modello approvato.';
+ $('attachmentBox').hidden=isAgenda();if(isTemplate()&&['DOCUMENT','IMAGE'].includes(selectedTemplate()?.header))$('attachmentBox').open=true;$('formatLabel').hidden=false;
  $('bodyLabelHint').textContent=isAgenda()?'· introduzione, le sedute vengono aggiunte sotto':'';
+ let messageCount=v.ids.length;
+ if(isAgenda()&&isTemplate()){try{messageCount=v.ids.reduce((n,id)=>n+agendaPages(id).length,0)}catch{messageCount=0}}
  const summary=$('reviewSummary');summary.replaceChildren();
- for(const [label,value] of [['Destinatari',String(v.ids.length)],['Contenuto',isAgenda()?'Agenda personale':isTemplate()?'Modello approvato':'Testo libero'],['Allegato',isAgenda()?'Nessuno':attachment||'Nessuno']]){const row=node('div','');row.append(node('span',label),node('strong',value));summary.append(row)}
+ for(const [label,value] of [['Destinatari',String(v.ids.length)],['Contenuto',isAgenda()?'Agenda personale':isTemplate()?'Modello approvato':'Testo libero'],['Messaggi WhatsApp',String(messageCount)],['Allegato',isAgenda()?'Nessuno':attachment||'Nessuno']]){const row=node('div','');row.append(node('span',label),node('strong',value));summary.append(row)}
  const blocker=dispatchBlocker(v);$('sendBlocker').textContent=blocker;
  $('sendNow').hidden=false;$('sendNow').disabled=sending||!!blocker;
- $('sendNow').textContent=sending?'Invio in corso…':'Controlla e invia'+(v.ids.length?' · '+v.ids.length:'');
+ $('sendNow').textContent=sending?'Invio in corso…':'Controlla e invia'+(v.ids.length?' · '+messageCount+' messaggi':'');
  drawSavedDrafts();filterRecipients();
 }
 function dispatchBlocker(v){
  if(!v.ids.length)return 'Seleziona almeno un destinatario.';
  if(!v.subject.trim())return 'Dai un nome alla comunicazione.';
  if(isAgenda()&&!report)return 'Attendi il caricamento del calendario.';
+ if(isAgenda()&&isTemplate()){
+  const issue=agendaModel.templateIssue(templateCatalogue);if(issue)return issue;
+  try{for(const id of v.ids)agendaPages(id)}catch(e){return e.message}
+  return '';
+ }
  if(isTemplate()){
   const t=selectedTemplate();if(!t||!t.supported||t.status!=='APPROVED')return 'Scegli un modello approvato.';
   if(v.templateParameters.some(p=>!p.trim()))return 'Completa tutti i campi del modello.';
@@ -345,6 +355,7 @@ async function readTemplates(){
  finally{$('reloadTemplates').disabled=false}
 }
  $('reloadTemplates').onclick=readTemplates;
+ $('refreshAgendaTemplates').onclick=readTemplates;
  $('sendFormat').onchange=()=>{updateFormat();showTemplateFields();preview()};
  $('templateName').onchange=()=>{showTemplateFields();preview()};
 
@@ -373,13 +384,22 @@ $('sendNow').onclick=async()=>{
   if(t.header==='IMAGE'&&!['image/jpeg','image/png'].includes(file?.type)){notice.textContent='Questo modello richiede un’immagine.';return}
   if(!['DOCUMENT','IMAGE'].includes(t.header)&&file){notice.textContent='Questo modello non prevede allegati. Scegli un modello con documento o rimuovi il file.';return}
  }
- const items=v.ids.map(id=>({id,name:people[id][0],body:message({...v,attachment:''},id).trim(),...(isAgenda()?{agenda:{rule:ruleValues(),previewAt:$('previewAt').value,revision:agendas.get(id)?.revision,intro:v.bodyText,link:v.link}}:t?{template:{name:t.name,language:t.language,parameters:templateParameters(v,id)}}:{})}));
+ const items=v.ids.flatMap(id=>{
+  const base={id,name:people[id][0]};
+  if(isAgenda()){
+   const agenda={format:v.sendFormat,rule:ruleValues(),previewAt:$('previewAt').value,revision:agendas.get(id)?.revision,intro:v.bodyText,link:v.link};
+   if(isTemplate())return agendaPages(id).map(p=>({...base,part:p.part,parts:p.parts,body:p.text,agenda:{...agenda,part:p.part,parts:p.parts}}));
+   return [{...base,body:message({...v,attachment:''},id).trim(),agenda}];
+  }
+  return [{...base,body:message({...v,attachment:''},id).trim(),...(t?{template:{name:t.name,language:t.language,parameters:templateParameters(v,id)}}:{})}];
+ });
  if(items.some(item=>!item.body||item.body.length>(file?1024:4096))){
   notice.textContent=file?'Con allegato puoi usare fino a 1024 caratteri, incluso il link.':'Il messaggio deve contenere da 1 a 4096 caratteri.';return;
  }
  const token=new URLSearchParams(parent.location.search).get('access')||sessionStorage.getItem('neacea-calendar-audit-session');
  if(!token){notice.textContent='Riapri il calendario con il tuo accesso Direzione.';return}
- if(!confirm('Inviare ora su WhatsApp a '+items.length+' destinatari?\n\n'+items.map(item=>item.name).join('\n')+(isAgenda()?'\n\nOgni PT riceve le proprie sedute come testo, senza allegati.':file?'\n\nAllegato: '+file.name:'')))return;
+ const recipients=v.ids.map(id=>people[id][0]+' · '+items.filter(item=>item.id===id).length+' messaggi');
+ if(!confirm('Inviare ora '+items.length+' messaggi WhatsApp a '+v.ids.length+' destinatari?\n\n'+recipients.join('\n')+(isAgenda()?'\n\nOgni PT riceve soltanto le proprie sedute, nelle parti mostrate in anteprima. Nessun allegato.':file?'\n\nAllegato: '+file.name:'')))return;
  sending=true;
  const form=$('compose');form.inert=true;$('sendNow').disabled=true;
  const signature=JSON.stringify([formVersion,v.subject,items,file?[file.name,file.size,file.lastModified]:null]);
@@ -387,6 +407,7 @@ $('sendNow').onclick=async()=>{
  const batch=lastDispatch.batch;
  try{
   const media=file?{name:file.name,type:file.type,base64:await asBase64(file)}:null;
+  let interrupted=false;
   for(const [index,item] of items.entries()){
    notice.textContent='Invio '+(index+1)+' di '+items.length+' · '+item.name;
    let status='Esito da verificare', messageId=null;
@@ -396,13 +417,14 @@ $('sendNow').onclick=async()=>{
     if(typeof result.status==='string')status=result.status;
     if(typeof result.messageId==='string')messageId=result.messageId;
    }catch{}
-   const rowId=batch+'_'+item.id;
-   const row={id:rowId,p:item.id,real:true,messageId,title:v.subject,message:item.body,schedule:item.agenda?'Agenda personale · solo testo':file?'Allegato · '+file.name:'',events:[{s:status,t:stamp()}]};
+   const rowId=batch+'_'+item.id+(Number.isInteger(item.part)?'_parte_'+item.part:'');
+   const row={id:rowId,p:item.id,real:true,messageId,title:v.subject+(Number.isInteger(item.part)?' · '+(item.part+1)+'/'+item.parts:''),message:item.body,schedule:item.agenda?'Agenda personale · solo testo':file?'Allegato · '+file.name:'',events:[{s:status,t:stamp()}]};
    data.rows=data.rows.filter(r=>r.id!==rowId);
    data.rows.unshift(row);save();
+   if(item.agenda&&status!=='Accettato da Meta'){interrupted=true;break}
   }
   $('group').value='Tutti';$('query').value='';filter='Tutti';detail='';
-  notice.textContent='Esito per destinatario nel registro. “Accettato da Meta” indica la presa in carico.';
+  notice.textContent=(interrupted?'Invio agenda interrotto: le parti successive non sono state inviate. Controlla il registro. ':'')+'Esito per messaggio nel registro. “Accettato da Meta” indica la presa in carico.';
   view('registro');
  }catch{notice.textContent='Impossibile preparare l’invio. Controlla il file e riprova.'}
  finally{form.inert=false;sending=false;preview()}
@@ -478,9 +500,11 @@ function setAudience(next,redraw=true){
 }
 function configureAgendaFormat(){
  if(audience!=='PT')setAudience('PT',false);
- $('sendFormat').value='free';$('sendFormat').disabled=true;$('templateBox').hidden=true;
+ $('sendFormat').disabled=false;$('templateBox').hidden=true;
+ const useTemplate=isTemplate();
+ $('agendaTemplateNotice').textContent=useTemplate?(agendaModel.templateIssue(templateCatalogue)||'Modello testuale approvato da Meta · utilizzabile anche oltre le 24 ore.'):'Testo libero: il PT deve aver scritto allo studio nelle ultime 24 ore. Il pannello non verifica automaticamente questa finestra.';
  $('templateName').required=false;for(const n of $('templateParams').querySelectorAll('input'))n.required=false;
- for(const id of ['bodyText','link','variable']){const n=$(id);n.disabled=false;if(id==='variable')n.hidden=false;else n.parentNode.hidden=false}
+ for(const id of ['bodyText','link','variable']){const n=$(id);n.disabled=useTemplate;if(id==='variable')n.hidden=useTemplate;else n.parentNode.hidden=useTemplate}
  $('bodyText').required=false;$('file').disabled=true;
  if(selectedFile||attachment){attach(null);$('file').value=''}
 }
