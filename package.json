@@ -1,0 +1,7 @@
+{
+  "name": "neacea-calendar-production",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=22 <25" },
+  "dependencies": { "@netlify/blobs": "11.0.3" }
+}

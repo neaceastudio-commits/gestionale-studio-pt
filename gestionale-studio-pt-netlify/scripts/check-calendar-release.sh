@@ -18,7 +18,8 @@ node --check netlify/functions/pt-access-email.js
 node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
-node --test tests/calendar-function-build.test.cjs
+node --test tests/calendar-function-build.test.cjs tests/whatsapp-agenda-template.test.mjs
+node tests/whatsapp-agenda-template-browser.cjs
 node --test tests/calendar-expected-renewals.test.cjs tests/calendar-cycle-sequence.test.cjs tests/calendar-cycle-sequence-concurrency.test.cjs
 node tests/calendar-cycle-sequence-browser.cjs
 node --test tests/calendar-empty-renewal-recovery.test.cjs
@@ -54,6 +55,16 @@ node tests/consent-data-integrity.test.cjs
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   critical_paths=(
+    app/calendario-studio/comunicazioni.html
+    app/calendario-studio/js/comunicazioni.js
+    app/calendario-studio/js/whatsapp-agenda-text.js
+    netlify/functions/lib/whatsapp-agenda-document.mjs
+    netlify/functions/lib/whatsapp-agenda-text.js
+    netlify/functions/lib/whatsapp-agenda.js
+    netlify/functions/lib/whatsapp-compose.mjs
+    netlify/functions/lib/whatsapp-templates.mjs
+    tests/whatsapp-agenda-template.test.mjs
+    tests/whatsapp-agenda-template-browser.cjs
     tests/calendar-renewal-cancelled-history.test.cjs
     supabase/migrations/20261116181624_calendar_preserve_cancelled_renewal_history.sql
     tests/calendar-expected-renewals.test.cjs
