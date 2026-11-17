@@ -9,6 +9,7 @@ const SupabaseSync = (() => {
   }
 
   async function request(table, { method = 'GET', query = '', body = null, headers = {} } = {}) {
+    if(method==='GET' && typeof window!=='undefined' && window.NeaceaPrivateData?.supports(table)) {try{return await window.NeaceaPrivateData.read(table,query);}catch(e){return {error:e.message,status:401};}}
     if (method !== 'GET' && typeof window !== 'undefined' && window.CalendarAudit && ['appointments','clients','operators','operator_availability','rpc/calendar_save_appointment'].includes(table)) {
       return window.CalendarAudit.write(table, { method, query, body });
     }
