@@ -156,7 +156,20 @@ window.WhatsAppAgenda = (() => {
     const tab = document.getElementById('whatsapp-direction-tab');
     const section = document.getElementById('direction-whatsapp');
     if (!tab || !section) return;
-    mountPersonalTest(section, personalTestLink);
+    const frame = document.getElementById('message-manager');
+    const managerLink = new URLSearchParams(location.search).get('area') === 'messaggi';
+    function loadManager() {
+      if (section.open && !frame.hasAttribute('src')) frame.src = 'comunicazioni.html';
+    }
+    frame.onload = () => {
+      const doc = frame.contentDocument;
+      if (!doc?.querySelector('main')) return;
+      const resize = () => { frame.style.height = Math.ceil(doc.body.getBoundingClientRect().height + 4) + 'px'; };
+      new ResizeObserver(resize).observe(doc.body);
+      resize();
+    };
+    section.addEventListener('toggle', loadManager);
+    if (!managerLink) mountPersonalTest(section, personalTestLink);
     const refresh = document.getElementById('agenda-direction-refresh');
     const status = document.getElementById('agenda-direction-status');
     const content = document.getElementById('agenda-direction-content');
@@ -211,6 +224,7 @@ window.WhatsAppAgenda = (() => {
     section.hidden = false;
     tab.hidden = false;
     if (personalTestLink) section.open = true;
+    loadManager();
   }
 
   async function open() {
