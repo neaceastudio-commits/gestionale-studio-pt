@@ -9,6 +9,8 @@ assert.deepEqual(Array.from(vm.runInContext('[...inputs].filter(([,b])=>b.checke
 assert.equal(vm.runInContext("inputs.get('cliente:i').disabled&&inputs.get('cliente:i').parentNode.hidden",ctx),true);
 vm.runInContext("audience='PT';weekly=true;agendas.set('pt:b',{text:'solo Bruno'});applyAudience(true)",ctx);
 assert.deepEqual(Array.from(vm.runInContext('[...inputs].filter(([,b])=>b.checked).map(([id])=>id)',ctx)),['pt:b']);
+assert.equal(vm.runInContext("inputs.get('pt:a').disabled",ctx),true);
+assert.equal(vm.runInContext("inputs.get('pt:a').parentNode.hidden",ctx),false,'PT without agenda remains visible with disabled selection');
 assert.equal(vm.runInContext("draftAudience({ids:['pt:a']})",ctx),'PT');
 assert.equal(vm.runInContext("draftAudience({ids:['cliente:a']})",ctx),'Clienti');
 assert.ok(html.includes('data-audience="Clienti"')&&html.includes('data-audience="PT"'));

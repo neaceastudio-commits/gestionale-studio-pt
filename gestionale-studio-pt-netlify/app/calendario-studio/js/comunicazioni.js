@@ -4,7 +4,7 @@ if(window.parent === window){location.replace('./?view=prova-whatsapp&area=messa
 
 const $=id=>document.getElementById(id);
 const people=Object.create(null);
-let audience='Clienti';
+let audience='Clienti',directoryLoaded=false;
 
 const inAudience=id=>people[id]?.[1]===audience;
 const availableClient=id=>people[id]?.[3]!==false;
@@ -24,6 +24,7 @@ function save(){try{localStorage.setItem(key,JSON.stringify(data))}catch{$('noti
 function view(name){for(const b of document.querySelectorAll('[data-view]')){const on=b.dataset.view===name;b.setAttribute('aria-pressed',on);$(b.dataset.view).hidden=!on}draw();if(name==='automazioni')drawAutomations();if(name==='bozze')drawSavedDrafts();}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>view(b.dataset.view));
 function draw(){
+ updateDirectoryAudit();
  const base=data.rows.filter(r=>(r.real||$('showSimulations').checked)&&people[r.p]&&inAudience(r.p)&&($('group').value==='Tutti'||people[r.p][1]===$('group').value)&&(people[r.p][0]+' '+r.title).toLowerCase().includes($('query').value.toLowerCase()));
  $('metrics').replaceChildren();for(const s of ['Tutti',...stages]){const b=button(s,()=>{filter=s;detail='';draw()});b.prepend(node('strong',base.filter(r=>statusMatches(r,s)).length));b.setAttribute('aria-pressed',s===filter);$('metrics').append(b)}
  const rows=base.filter(r=>statusMatches(r,filter)).sort((a,b)=>latest(b).t.localeCompare(latest(a).t));$('log').replaceChildren();
@@ -33,8 +34,8 @@ function draw(){
 if(r.messageId)area.append(node('p','ID messaggio · '+r.messageId));
 if(r.errorCodes?.length)area.append(node('p','Codici Meta · '+r.errorCodes.join(', ')+(r.errorCodes.includes(131047)?' · Invio fuori dalla finestra di 24 ore. Serve un modello approvato.':'')));
 if(r.message)area.append(node('p',r.message));if(r.schedule)area.append(node('p',r.schedule));for(const e of r.events)area.append(node('div',fmt(e.t)+' · '+e.s));const s=latest(r).s;const next={Programmato:'Inviato',Inviato:'Consegnato',Consegnato:'Letto'}[s];if(next&&!r.real)area.append(button({Inviato:'Simula invio',Consegnato:'Simula consegna',Letto:'Simula lettura'}[next],()=>event(r,next)));if(s==='Inviato'&&!r.real)area.append(button('Simula errore',()=>event(r,'Errore')))}
- const ids=Object.keys(people).filter(i=>inAudience(i)&&(availableClient(i)||$('showArchived').checked)&&($('rg').value==='Tutti'||people[i][1]===$('rg').value)&&people[i][0].toLowerCase().includes($('rq').value.toLowerCase()));if(!ids.includes(selected))selected=ids[0];$('contacts').replaceChildren();for(const i of ids){const b=button(people[i][0]+(!availableClient(i)?' · '+(people[i][4]||'Archiviato'):''),()=>{selected=i;draw()});b.setAttribute('aria-pressed',i===selected);$('contacts').append(b,document.createElement('br'))}
- const card=$('card');card.replaceChildren();if(selected===undefined){card.textContent='Nessun contatto trovato.';return}const person=people[selected];card.append(node('h3',person[0]),node('p',!availableClient(selected)?'Storico · '+(person[4]||'Archiviato')+' · invio disabilitato':person[2]?'Numero WhatsApp disponibile':'Numero mancante'),node('h4','Storico messaggi'));const history=data.rows.filter(r=>r.real&&r.p===selected).sort((a,b)=>latest(b).t.localeCompare(latest(a).t));if(!history.length)card.append(node('p','Nessuna comunicazione'));for(const r of history)card.append(button(r.title+' · '+(r.real?'':'Simulazione · ')+latest(r).s,()=>{filter='Tutti';$('group').value='Tutti';$('query').value='';detail=r.id;view('registro')}));if(person[2]&&availableClient(selected))card.append(button('Scrivi a '+person[0],()=>{setForm({ids:[selected]});view('editor')}));
+ const ids=Object.keys(people).filter(i=>inAudience(i)&&(availableClient(i)||$('showArchived').checked)&&($('rg').value==='Tutti'||people[i][1]===$('rg').value)&&people[i][0].toLowerCase().includes($('rq').value.toLowerCase()));if(!ids.includes(selected))selected=ids[0];$('contacts').replaceChildren();for(const i of ids){const b=button(people[i][0]+(!availableClient(i)?' · '+(inactiveLabel(i)):''),()=>{selected=i;draw()});b.setAttribute('aria-pressed',i===selected);$('contacts').append(b,document.createElement('br'))}
+ const card=$('card');card.replaceChildren();if(selected===undefined){card.textContent='Nessun contatto trovato.';return}const person=people[selected];card.append(node('h3',person[0]),node('p',!availableClient(selected)?inactiveLabel(selected)+' · invio disabilitato':person[2]?'Numero WhatsApp disponibile':'Numero mancante'),node('h4','Storico messaggi'));const history=data.rows.filter(r=>r.real&&r.p===selected).sort((a,b)=>latest(b).t.localeCompare(latest(a).t));if(!history.length)card.append(node('p','Nessuna comunicazione'));for(const r of history)card.append(button(r.title+' · '+(r.real?'':'Simulazione · ')+latest(r).s,()=>{filter='Tutti';$('group').value='Tutti';$('query').value='';detail=r.id;view('registro')}));if(person[2]&&availableClient(selected))card.append(button('Scrivi a '+person[0],()=>{setForm({ids:[selected]});view('editor')}));
 }
 async function loadStaff(){
  const status=$('staffStatus'), submit=$('staffPreview');
@@ -45,15 +46,15 @@ async function loadStaff(){
   const response=await fetch('/.netlify/functions/whatsapp-agenda',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'directory',accessToken:token,dryRun:true})});
   if(!response.ok)throw Error();
   const settings=await response.json();
-  const staff=settings.operators.filter(op=>op.active);
+  const staff=settings.operators.filter(op=>op.active);directoryLoaded=true;
   for(const op of staff)people['pt:'+op.id]=[op.name,'PT',Boolean(op.whatsapp_phone)];
   for(const client of settings.clients)people['cliente:'+client.id]=[client.name,'Clienti',client.hasPhone,client.active!==false,client.status];
   $('recipients').replaceChildren();
   for(const [id,[name,group,available]] of Object.entries(people).sort((a,b)=>a[1][0].localeCompare(b[1][0],'it'))){
-   const label=node('label',' '+name+' · '+group+(available?'':' · numero mancante'));
+   const label=node('label',''),info=node('span',name);info.className='recipient-label';
    const box=document.createElement('input');
    box.type='checkbox';box.dataset.contact=id;box.disabled=!available;
-   label.prepend(box);$('recipients').append(label);inputs.set(id,box);
+   box.info=info;label.append(box,info);$('recipients').append(label);inputs.set(id,box);
   }
   applyAudience(isAgenda());if(isAgenda())renderReport();
   updateAudienceUI();draw();preview();
@@ -86,9 +87,10 @@ function applyAudience(autoSelect){
  for(const [id,box] of inputs){
   const row=agendas.get(id);
   box.disabled=!people[id][2]||!availableClient(id)||!inAudience(id)||(weekly&&(!row||row.incomplete));
-  box.parentNode.hidden=!inAudience(id)||!availableClient(id)||(weekly&&!row);
+  box.parentNode.hidden=!inAudience(id)||!availableClient(id);
   if(box.disabled)box.checked=false;
   else if(autoSelect)box.checked=weekly;
+  if(box.info)box.info.textContent=people[id][0]+(!people[id][2]?' · numero mancante':weekly&&!report?' · caricamento agenda':weekly&&!row?' · nessuna seduta nel periodo':weekly&&row.incomplete?' · dati incompleti':weekly?' · '+row.count+' sedute':'');
  }
  for(const b of document.querySelectorAll('[data-group]'))b.hidden=weekly||!!b.dataset.group&&b.dataset.group!==audience;
  $('recipientSummary').textContent=weekly?'Selezionati dal calendario. Puoi escludere singoli PT.':audience==='Clienti'?'Solo clienti attivi. Ibernati e archiviati esclusi.':'Seleziona uno o più Personal Trainer.';
@@ -216,9 +218,10 @@ function preview(){
  selector.value=v.ids.includes(previous)&&previous!==''?previous:(v.ids[0]||'');
  $('recipientChoice').hidden=!v.ids.length;
  const text=message(v,selector.value||undefined);
+ updateDirectoryAudit();
  $('preview').textContent=text||(isAgenda()?'Scegli un periodo con sedute per vedere l’agenda personale.':'Il testo del messaggio comparirà qui.');
  $('schedule').textContent='Invio manuale · nessuna programmazione attiva';
- $('selectionCount').textContent=v.ids.length+' destinatari selezionati';
+ $('selectionCount').textContent=v.ids.length+' destinatari selezionati';$('selectedNames').textContent=v.ids.map(id=>people[id][0]).join(' · ');
  $('characterCount').textContent=text.length+' caratteri per questo destinatario';
  $('draftCount').textContent=allDrafts().filter(d=>draftAudience(d)===audience).length;
  for(const b of document.querySelectorAll('[data-kind]'))b.setAttribute('aria-pressed',b.dataset.kind===(isAgenda()?'Agenda PT':'Personalizzato'));
@@ -254,7 +257,20 @@ function dispatchBlocker(v){
 }
 function filterRecipients(){
  const q=$('recipientSearch').value.trim().toLocaleLowerCase('it');
- for(const [id,box] of inputs){box.parentNode.hidden=!inAudience(id)||!availableClient(id)||(isAgenda()&&!agendas.has(id))||!people[id][0].toLocaleLowerCase('it').includes(q)}
+ for(const [id,box] of inputs){box.parentNode.hidden=!inAudience(id)||!availableClient(id)||!people[id][0].toLocaleLowerCase('it').includes(q)}
+}
+function inactiveLabel(id){
+ const status=people[id]?.[4]||'';
+ return status==='Attivo'?'Scheda disattivata · abbonamento etichettato Attivo':status||'Scheda disattivata';
+}
+function updateDirectoryAudit(){
+ if(!directoryLoaded){$('recipientAudit').textContent=$('directoryAudit').textContent='Rubrica non ancora caricata.';return}
+ const all=Object.keys(people).filter(inAudience),active=all.filter(availableClient),withPhone=active.filter(id=>people[id][2]),inactive=all.length-active.length;
+ const mismatched=all.filter(id=>!availableClient(id)&&people[id][4]==='Attivo').length;
+ const text=audience==='PT'?all.length+' PT in rubrica · '+withPhone.length+' con numero WhatsApp · '+(active.length-withPhone.length)+' senza numero':all.length+' schede totali · '+active.length+' attive ('+withPhone.length+' con telefono, '+(active.length-withPhone.length)+' senza) · '+inactive+' disattivate, escluse dall’invio'+(mismatched?' · '+mismatched+' disattivate conservano l’etichetta abbonamento “Attivo”':'');
+ $('recipientAudit').textContent=text;$('directoryAudit').textContent=text;
+ if(isAgenda())$('recipientAudit').textContent+=' · '+[...inputs].filter(([id,b])=>inAudience(id)&&!b.disabled).length+' PT selezionabili per questa agenda';
+ if(!$('recipients').children.length)$('recipientAudit').textContent='Rubrica in caricamento.';
 }
 $('recipientSearch').oninput=filterRecipients;
 $('compose').oninput=preview;$('file').onchange=()=>{const file=$('file').files[0];if(file)attach(file);preview()};$('removeFile').onclick=()=>{attach(null);$('file').value='';preview()};$('model').onchange=()=>{const m=$('model').value;const texts={'Ultime 2 sedute':'Ciao {nome}, ti restano 2 sedute del tuo pacchetto NEACEA.','Agenda PT':'Ciao {nome}, ecco la tua agenda.','Promemoria appuntamento':'Ciao {nome}, ti ricordiamo il tuo prossimo appuntamento in studio.'};if(texts[m]){$('subject').value=m;$('bodyText').value=texts[m]}updateFormat();if(isAgenda()){chosenRule='';showRules();fillRule();refreshAgenda()}else if(!$('agendaRules').hidden){refreshAgenda()}else preview()};
