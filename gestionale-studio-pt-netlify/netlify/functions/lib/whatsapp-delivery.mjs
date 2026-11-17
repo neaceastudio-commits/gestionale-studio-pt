@@ -13,6 +13,7 @@ export async function receiveEvents(request,{env,store,now=Date.now}) {
   if(request.method==='GET'){
     if(url.searchParams.get('hub.mode')!=='subscribe'||!env.WHATSAPP_WEBHOOK_VERIFY_TOKEN||
        !same(url.searchParams.get('hub.verify_token'),env.WHATSAPP_WEBHOOK_VERIFY_TOKEN))return new Response(null,{status:403});
+    try{await store.setJSON('delivery-verification',{verifiedAt:new Date(now()).toISOString()})}catch{return new Response(null,{status:503})}
     return new Response(url.searchParams.get('hub.challenge')||'',{headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
   }
   if(request.method!=='POST')return new Response(null,{status:405});
@@ -59,8 +60,9 @@ export async function deliveryStatuses(input,{store,env}){
   return json({results,receivedAt:health?.receivedAt||null,configured:Boolean(env.WHATSAPP_WEBHOOK_PATH_SECRET&&env.WHATSAPP_WEBHOOK_VERIFY_TOKEN)});
 }
 export async function deliverySetup({store,env}){
+  const verification=await store.get('delivery-verification',{type:'json'});
   const health=await store.get('delivery-health',{type:'json'});
   const configured=Boolean(env.WHATSAPP_WEBHOOK_PATH_SECRET&&env.WHATSAPP_WEBHOOK_VERIFY_TOKEN);
-  return json({configured,receivedAt:health?.receivedAt||null,
+  return json({configured,verifiedAt:verification?.verifiedAt||null,receivedAt:health?.receivedAt||null,
     ...(configured?{url:'https://deploy-preview-18--new-calendar-neacea.netlify.app/.netlify/functions/whatsapp-agenda-test/events/'+env.WHATSAPP_WEBHOOK_PATH_SECRET,verifyToken:env.WHATSAPP_WEBHOOK_VERIFY_TOKEN}:{})});
 }
