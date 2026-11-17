@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { readPlan } from './lib/bia-timed-preview.mjs';
 import auth from './lib/calendar-audit-auth.js';
 import agenda from './lib/whatsapp-agenda.js';
 
@@ -119,7 +120,7 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
-    if (!input || !['status', 'send', 'bia-status', 'bia-send', 'bia-subscribe', 'text-status', 'text-send'].includes(input.action) ||
+    if (!input || !['status', 'send', 'bia-status', 'bia-send', 'bia-subscribe', 'bia-timed-status', 'text-status', 'text-send'].includes(input.action) ||
         Object.keys(input).some(k => k !== 'action' && k !== 'accessToken')) return reply('invalid_request', 400);
     try {
       const actor = await authenticate(input.accessToken);
@@ -133,6 +134,10 @@ export function createHandler({
       const isBia = input.action.startsWith('bia-');
       const plainText = input.action.startsWith('text-');
       if ((isBia || plainText) && env.WHATSAPP_AGENDA_TEST_TO !== '+393387731722') return reply('not_configured');
+      if (input.action === 'bia-timed-status') {
+        if (env.WHATSAPP_SENDER_PHONE !== '+393520525230' || env.WHATSAPP_PHONE_NUMBER_ID !== '1153168214557448') return reply('not_configured');
+        return Response.json(await readPlan(store()), { headers: { 'Cache-Control': 'no-store' } });
+      }
       if (input.action === 'bia-subscribe') return await subscribeStudioApp(env);
       let key = isBia ? 'bia-personal-document-v1' : agendaKey;
       if (plainText) key = 'personal-text-post-subscription-v1';

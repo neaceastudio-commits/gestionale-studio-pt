@@ -112,13 +112,13 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     const sender = await meta('?fields=display_phone_number');
     if ('+' + String(sender.display_phone_number || '').replace(/\D/g, '') !== env.WHATSAPP_SENDER_PHONE) throw Error('sender_mismatch');
   }
-  async function sendBiaDocument() {
+  async function sendBiaDocument(caption = 'Ciao Gianluca, in allegato trovi la scheda dimostrativa per l’esecuzione della BIA. NEACEA Studio') {
     return meta('/messages', {
       messaging_product: 'whatsapp', recipient_type: 'individual', to: env.WHATSAPP_AGENDA_TEST_TO.slice(1),
       type: 'document', document: {
         link: 'https://deploy-preview-18--new-calendar-neacea.netlify.app/NEACEA-Prova-BIA.pdf',
         filename: 'NEACEA-Prova-BIA.pdf',
-        caption: 'Ciao Gianluca, in allegato trovi la scheda dimostrativa per l’esecuzione della BIA. NEACEA Studio'
+        caption
       }
     });
   }

@@ -26,11 +26,64 @@ window.WhatsAppAgenda = (() => {
     }
   }
 
+  function mountTimedTest(section, panel, send, status) {
+    send.textContent = 'Prenota BIA di prova';
+    const time = value => new Date(value).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' });
+    let submittedAt = 0;
+    let timer;
+    async function refresh() {
+      clearTimeout(timer);
+      if (!section.open) return;
+      send.disabled = true;
+      try {
+        const response = await fetch('/.netlify/functions/whatsapp-agenda-test', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'bia-timed-status', accessToken: sessionToken() })
+        });
+        if (response.status === 403) { showTestLogin('Accedi come Direzione per programmare la prova.'); return; }
+        if (!response.ok) throw Error();
+        const data = await response.json();
+        panel.hidden = false;
+        if (data.status === 'ready') {
+          const registering = submittedAt && Date.now() - submittedAt < 30000;
+          status.textContent = registering ? 'Registrazione della prenotazione in corso…' :
+            submittedAt ? 'Prenotazione non confermata. Puoi riprovare.' :
+            'Prenota una BIA dimostrativa per domani. Tra due minuti il server invierà il promemoria con PDF solo al tuo …1722.';
+          send.disabled = Boolean(registering);
+          if (registering) timer = setTimeout(refresh, 2000);
+        } else if (data.status === 'scheduled' || data.status === 'pending') {
+          status.textContent = data.status === 'scheduled' ? 'Prenotata. Promemoria previsto alle ' + time(data.dueAt) + ' (ora italiana). Puoi chiudere la pagina.' : 'Invio in corso.';
+          timer = setTimeout(refresh, 5000);
+        } else {
+          const labels = { accepted: 'Meta ha accettato il promemoria programmato. Controlla WhatsApp sul tuo …1722.',
+            expired: 'La prova è scaduta prima dell’invio.', uncertain: 'Esito incerto. Controlla la chat.',
+            sender_mismatch: 'Mittente diverso dal numero dello studio.', not_configured: 'Configurazione del numero di prova incompleta.' };
+          status.textContent = labels[data.status] || (/^rejected_\d+$/.test(data.status) ?
+            'Meta ha rifiutato il promemoria. Codice ' + data.status.slice(9) + '.' : 'Stato non disponibile.');
+        }
+      } catch { panel.hidden = false; status.textContent = 'Esito non disponibile. Ricarica per controllare la prenotazione.'; }
+    }
+    send.disabled = true;
+    section.addEventListener('toggle', refresh);
+    send.addEventListener('click', async () => {
+      send.disabled = true;
+      try {
+        const response = await fetch('/.netlify/functions/bia-preview-background', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: sessionToken() }) });
+        if (!response.ok) throw Error();
+        submittedAt = Date.now();
+        await refresh();
+      } catch { status.textContent = 'Prenotazione non confermata. Ricarica per verificare.'; }
+    });
+    if (section.open) refresh();
+  }
+
   function mountPersonalTest(section, personalTestLink) {
     const panel = document.getElementById('agenda-personal-test');
     const send = document.getElementById('agenda-test-send');
     const status = document.getElementById('agenda-test-status');
     const test = new URLSearchParams(location.search).get('test');
+    if (test === 'bia-programmata') return mountTimedTest(section, panel, send, status);
     const bia = test === 'bia';
     const plainText = test === 'testo';
     if (plainText) send.textContent = 'Invia «Ciao Gianluca» al mio numero';
