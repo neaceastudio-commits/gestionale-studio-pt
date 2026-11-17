@@ -80,6 +80,20 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     const data = await load(romeTime(now()).day);
     return { migrationReady: data.migrationReady, operators: data.operators.filter(o => isPt({ ...o, active: true })).map(o => ({ id: o.id, name: clean(`${o.nome || ''} ${o.cognome || ''}`), active: o.active, whatsapp_phone: o.whatsapp_phone || '', whatsapp_agenda_enabled: o.whatsapp_agenda_enabled === true })) };
   }
+  async function directory() {
+    const [staff, clients] = await Promise.all([
+      settings(),
+      all('clients', '?select=id,nome,cognome,telefono&order=id')
+    ]);
+    return {
+      operators: staff.operators.filter(op => op.active),
+      clients: clients.map(c => ({
+        id: c.id,
+        name: clean([c.nome, c.cognome].filter(Boolean).join(' ')),
+        hasPhone: Boolean(String(c.telefono || '').trim())
+      })).filter(c => c.name).sort((a,b) => a.name.localeCompare(b.name,'it'))
+    };
+  }
   async function configure(actor, input) {
     if (actor?.role !== 'owner') throw Error('direction_only');
     const phone = String(input.whatsapp_phone || '').trim() || null, enabled = input.whatsapp_agenda_enabled;
@@ -159,6 +173,6 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
     }));
     return { sent: results.filter(r => r.status === 'accepted').length, results };
   }
-  return { preview, settings, configure, run, verifySender, sendTestText, sendBiaDocument };
+  return { preview, settings, directory, configure, run, verifySender, sendTestText, sendBiaDocument };
 }
 module.exports = { createService, buildAgendas, romeTime, isPt, progress, providerConfig, templatePayload };

@@ -10,6 +10,7 @@ exports.createHandler = ({ authenticate = auth.authenticate, service = createSer
     const actor = await authenticate(input.accessToken);
     if (actor?.role !== 'owner') return reply(403, { error: 'direction_only' });
     if (input.action === 'session') return reply(200, { role: actor.role });
+    if (input.action === 'directory') return reply(200, await service.directory());
     if (input.action === 'settings') return reply(200, await service.settings());
     if (input.action === 'configure') return reply(200, await service.configure(actor, input));
     if (input.action && input.action !== 'agenda') return reply(400, { error: 'invalid_action' });
