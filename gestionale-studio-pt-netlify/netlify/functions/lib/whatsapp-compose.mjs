@@ -28,7 +28,7 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
   const reply = (status, code = 200, messageId = null) => Response.json({status, ...(messageId ? {messageId} : {})}, {status:code,headers:{'Cache-Control':'no-store'}});
   if(input.agenda){
     try{input=await prepareAgendaDocument(input,provider)}
-    catch(e){const allowed=['Agenda o destinatario non valido.','Regola agenda non valida.','Nessuna agenda completa disponibile per questo PT.','Il calendario è cambiato: aggiorna l’anteprima prima di inviare.'];return reply(allowed.includes(e.message)?e.message:'Agenda non disponibile. Aggiorna l’anteprima prima di inviare.',409)}
+    catch(e){const allowed=['Agenda o destinatario non valido.','Regola agenda non valida.','Nessuna agenda completa disponibile per questo PT.','Il calendario è cambiato: aggiorna l’anteprima prima di inviare.','Agenda troppo lunga: scegli un giorno. Nessuna seduta è stata tagliata.','Testo agenda non valido.'];return reply(allowed.includes(e.message)?e.message:'Agenda non disponibile. Aggiorna l’anteprima prima di inviare.',409)}
   }
   const contact = /^(cliente|pt):([a-zA-Z0-9_-]{1,128})$/.exec(input.contact);
   const body = typeof input.body === 'string' ? input.body.trim() : '';

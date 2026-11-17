@@ -31,6 +31,14 @@ export async function prepareAgendaDocument(input,provider){
  const row=report.agendas.find(r=>r.operatorId===input.contact.slice(3));
  if(!row||!row.count||row.incomplete)throw Error('Nessuna agenda completa disponibile per questo PT.');
  if(agendaRevision(report,row)!==input.agenda.revision)throw Error('Il calendario è cambiato: aggiorna l’anteprima prima di inviare.');
- const period=dayLabel(report.start)+(report.start===report.end?'':' - '+dayLabel(report.end));
- return {...input,body:'',file:{name:'Agenda-NEACEA-'+report.start+'-'+report.end+'.pdf',type:'application/pdf',base64:agendaPdf(report,row).toString('base64')},template:{name:agendaTemplate,language:'it',parameters:[row.name.split(' ')[0],period,String(row.count)]}};
+ const intro=typeof input.agenda.intro==='string'?input.agenda.intro:'Ciao {nome}, ecco la tua agenda NEACEA.';
+ const link=typeof input.agenda.link==='string'?input.agenda.link:'';
+ if(intro.length>2000||link.length>2000||(link&&!/^https?:\/\//i.test(link)))throw Error('Testo agenda non valido.');
+ const body=agendaText(report,row,intro,link);
+ if(body.length>4096)throw Error('Agenda troppo lunga: scegli un giorno. Nessuna seduta è stata tagliata.');
+ // A calendar agenda is always text. Ignore legacy file/template fields from old drafts.
+ return {...input,body,file:null,template:null};
+}
+export function agendaText(report,row,intro,link){
+ return [(intro||'Ciao {nome}, ecco la tua agenda NEACEA.').replaceAll('{nome}',row.name.split(' ')[0]),'Periodo: '+dayLabel(report.start)+(report.start===report.end?'':' – '+dayLabel(report.end)),row.text,link||''].filter(Boolean).join('\n\n').trim();
 }
