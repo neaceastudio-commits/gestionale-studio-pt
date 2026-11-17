@@ -14,7 +14,9 @@ exports.createHandler = ({ authenticate = auth.authenticate, service = createSer
     if (input.action === 'directory') return reply(200, await service.directory());
     if (input.action === 'weekly-agenda') {
       const plan = projection(input.rule, input.previewAt);
-      return reply(200, {plan, ...await service.weeklyAgenda(plan.day, plan.period)});
+      const report=await service.weeklyAgenda(plan.day, plan.period);
+      const {agendaRevision}=await import('./lib/whatsapp-agenda-document.mjs');
+      return reply(200, {plan,...report,agendas:report.agendas.map(row=>({...row,revision:agendaRevision(report,row)}))});
     }
     if (input.action === 'settings') return reply(200, await service.settings());
     if (input.action === 'configure') return reply(200, await service.configure(actor, input));
@@ -26,3 +28,4 @@ exports.createHandler = ({ authenticate = auth.authenticate, service = createSer
   }
 };
 exports.handler = exports.createHandler();
+

@@ -1,4 +1,5 @@
 import { prepareTemplate } from './whatsapp-templates.mjs';
+import { prepareAgendaDocument } from './whatsapp-agenda-document.mjs';
 import { createHash } from 'node:crypto';
 import agenda from './whatsapp-agenda.js';
 
@@ -13,8 +14,8 @@ function normalize(value) {
 async function lookup(db, group, id) {
   const where = '&id=eq.' + encodeURIComponent(id);
   if (group === 'cliente') {
-    const [client] = await db('clients', {query:'?select=telefono' + where});
-    return normalize(client?.telefono);
+    const [client] = await db('clients', {query:'?select=telefono,active' + where});
+    return client && client.active !== false ? normalize(client.telefono) : '';
   }
   const [[op], [roles]] = await Promise.all([
     db('operators', {query:'?select=id,active,roles,whatsapp_phone' + where}),
@@ -25,6 +26,10 @@ async function lookup(db, group, id) {
 
 export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch}) {
   const reply = (status, code = 200, messageId = null) => Response.json({status, ...(messageId ? {messageId} : {})}, {status:code,headers:{'Cache-Control':'no-store'}});
+  if(input.agenda){
+    try{input=await prepareAgendaDocument(input,provider)}
+    catch(e){const allowed=['Agenda o destinatario non valido.','Regola agenda non valida.','Nessuna agenda completa disponibile per questo PT.','Il calendario è cambiato: aggiorna l’anteprima prima di inviare.'];return reply(allowed.includes(e.message)?e.message:'Agenda non disponibile. Aggiorna l’anteprima prima di inviare.',409)}
+  }
   const contact = /^(cliente|pt):([a-zA-Z0-9_-]{1,128})$/.exec(input.contact);
   const body = typeof input.body === 'string' ? input.body.trim() : '';
   const file = input.file;

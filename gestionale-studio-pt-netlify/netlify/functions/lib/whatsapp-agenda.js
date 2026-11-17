@@ -84,12 +84,14 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
   async function directory() {
     const [staff, clients] = await Promise.all([
       settings(),
-      all('clients', '?select=id,nome,cognome,telefono&order=id')
+      all('clients', '?select=id,nome,cognome,telefono,active,stato_abbonamento&order=id')
     ]);
     return {
       operators: staff.operators.filter(op => op.active),
       clients: clients.map(c => ({
         id: c.id,
+        active: c.active !== false,
+        status: c.stato_abbonamento || '',
         name: clean([c.nome, c.cognome].filter(Boolean).join(' ')),
         hasPhone: Boolean(String(c.telefono || '').trim())
       })).filter(c => c.name).sort((a,b) => a.name.localeCompare(b.name,'it'))
@@ -208,3 +210,4 @@ function createService({ db, env = process.env, fetchImpl = global.fetch, now = 
   return { preview, settings, directory, weeklyAgenda, configure, run, verifySender, sendTestText, sendBiaDocument };
 }
 module.exports = { createService, buildAgendas, romeTime, isPt, progress, providerConfig, templatePayload };
+
