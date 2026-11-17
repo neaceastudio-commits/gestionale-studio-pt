@@ -1,0 +1,84 @@
+import { createHash } from 'node:crypto';
+import agenda from './whatsapp-agenda.js';
+
+function normalize(value) {
+  let phone = String(value || '').replace(/[\s().-]/g, '');
+  if (phone.startsWith('00')) phone = '+' + phone.slice(2);
+  else if (/^3\d{9}$/.test(phone)) phone = '+39' + phone;
+  else if (/^393\d{9}$/.test(phone)) phone = '+' + phone;
+  return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
+}
+
+async function lookup(db, group, id) {
+  const where = '&id=eq.' + encodeURIComponent(id);
+  if (group === 'cliente') {
+    const [client] = await db('clients', {query:'?select=telefono' + where});
+    return normalize(client?.telefono);
+  }
+  const [[op], [roles]] = await Promise.all([
+    db('operators', {query:'?select=id,active,roles,whatsapp_phone' + where}),
+    db('operator_effective_roles', {query:'?select=active,system_roles,legacy_roles&operator_id=eq.' + encodeURIComponent(id)})
+  ]);
+  return op && agenda.isPt({...op,...roles}) ? normalize(op.whatsapp_phone) : '';
+}
+
+export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch}) {
+  const reply = (status, code = 200) => Response.json({status}, {status:code,headers:{'Cache-Control':'no-store'}});
+  const contact = /^(cliente|pt):([a-zA-Z0-9_-]{1,128})$/.exec(input.contact);
+  const body = typeof input.body === 'string' ? input.body.trim() : '';
+  const file = input.file;
+  if (!contact || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(input.batch) ||
+      !body || body.length > (file ? 1024 : 4096)) return reply('Messaggio o destinatario non valido.',400);
+  const allowedFiles = ['application/pdf','image/jpeg','image/png'];
+  if (file && (!allowedFiles.includes(file.type) || typeof file.name !== 'string' || !file.name.trim() ||
+      typeof file.base64 !== 'string' || !file.base64.length || file.base64.length > 4194304 ||
+      !/^[a-zA-Z0-9+/]+={0,2}$/.test(file.base64))) return reply('Allegato non valido.',400);
+  if (env.WHATSAPP_SENDER_PHONE !== '+393520525230' || env.WHATSAPP_PHONE_NUMBER_ID !== '1153168214557448' ||
+      !env.WHATSAPP_ACCESS_TOKEN || !/^v\d+\.\d+$/.test(env.WHATSAPP_API_VERSION || '')) return reply('Mittente studio non configurato.',409);
+  const phone = await lookup(db,contact[1],contact[2]);
+  if (!phone || phone === env.WHATSAPP_SENDER_PHONE) return reply('Numero destinatario non disponibile.',400);
+  const key = 'manual/' + input.batch + '/' + createHash('sha256').update(phone).digest('hex');
+  const claims = store();
+  const prior = await claims.get(key);
+  if (prior) return reply(prior);
+  await provider.verifySender();
+  const pending = 'Esito da verificare';
+  if (!(await claims.set(key,pending,{onlyIfNew:true})).modified) return reply(await claims.get(key) || pending);
+  const root = 'https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/' + env.WHATSAPP_PHONE_NUMBER_ID;
+  const headers = {Authorization:'Bearer ' + env.WHATSAPP_ACCESS_TOKEN};
+  async function post(path, options) {
+    const response = await fetchImpl(root + path,{method:'POST',redirect:'error',signal:AbortSignal.timeout(9000),...options});
+    const data = await response.json();
+    if (!response.ok) {
+      const error = new Error('meta');
+      error.code = Number(data.error?.code) || response.status;
+      throw error;
+    }
+    return data;
+  }
+  let result;
+  try {
+    const payload = {messaging_product:'whatsapp',recipient_type:'individual',to:phone.slice(1)};
+    if (file) {
+      const filename = file.name.replace(/[\\/\x00-\x1f]/g,'_').slice(-150);
+      const form = new FormData();
+      form.append('messaging_product','whatsapp');
+      form.append('type',file.type);
+      form.append('file',new Blob([Buffer.from(file.base64,'base64')],{type:file.type}),filename);
+      const media = await post('/media',{headers,body:form});
+      if (!media.id) throw Error('upload');
+      payload.type = file.type === 'application/pdf' ? 'document' : 'image';
+      payload[payload.type] = {id:media.id,caption:body};
+      if (payload.type === 'document') payload.document.filename = filename;
+    } else {
+      payload.type = 'text';
+      payload.text = {body,preview_url:false};
+    }
+    const data = await post('/messages',{headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    result = data.messages?.[0]?.id?.startsWith('wamid.') ? 'Accettato da Meta' : pending;
+  } catch (error) {
+    result = error.message === 'meta' ? 'Rifiutato da Meta · ' + error.code : pending;
+  }
+  await claims.set(key,result);
+  return reply(result);
+}

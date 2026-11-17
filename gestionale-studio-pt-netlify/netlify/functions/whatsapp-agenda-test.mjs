@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { sendSelected } from './lib/whatsapp-compose.mjs';
 import { readPlan } from './lib/bia-timed-preview.mjs';
 import auth from './lib/calendar-audit-auth.js';
 import agenda from './lib/whatsapp-agenda.js';
@@ -120,6 +121,13 @@ export function createHandler({
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
+    if (input?.action === 'composer-send') {
+      try {
+        const actor = await authenticate(input.accessToken);
+        if (actor?.role !== 'owner') return reply('Accesso Direzione richiesto.',403);
+        return await sendSelected(input,{db:auth.db,env,provider,store});
+      } catch { return reply('Esito da verificare',503); }
+    }
     if (!input || !['status', 'send', 'bia-status', 'bia-send', 'bia-subscribe', 'bia-timed-status', 'text-status', 'text-send'].includes(input.action) ||
         Object.keys(input).some(k => k !== 'action' && k !== 'accessToken')) return reply('invalid_request', 400);
     try {
