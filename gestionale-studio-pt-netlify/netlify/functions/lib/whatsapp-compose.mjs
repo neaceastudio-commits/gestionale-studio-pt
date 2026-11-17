@@ -23,7 +23,7 @@ async function lookup(db, group, id) {
 }
 
 export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch}) {
-  const reply = (status, code = 200) => Response.json({status}, {status:code,headers:{'Cache-Control':'no-store'}});
+  const reply = (status, code = 200, messageId = null) => Response.json({status, ...(messageId ? {messageId} : {})}, {status:code,headers:{'Cache-Control':'no-store'}});
   const contact = /^(cliente|pt):([a-zA-Z0-9_-]{1,128})$/.exec(input.contact);
   const body = typeof input.body === 'string' ? input.body.trim() : '';
   const file = input.file;
@@ -39,11 +39,14 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
   if (!phone || phone === env.WHATSAPP_SENDER_PHONE) return reply('Numero destinatario non disponibile.',400);
   const key = 'manual/' + input.batch + '/' + createHash('sha256').update(phone).digest('hex');
   const claims = store();
-  const prior = await claims.get(key);
-  if (prior) return reply(prior);
+  const prior = await claims.getWithMetadata(key);
+  if (prior) return reply(prior.data,200,prior.metadata?.messageId);
   await provider.verifySender();
   const pending = 'Esito da verificare';
-  if (!(await claims.set(key,pending,{onlyIfNew:true})).modified) return reply(await claims.get(key) || pending);
+  if (!(await claims.set(key,pending,{onlyIfNew:true})).modified) {
+    const current=await claims.getWithMetadata(key);
+    return reply(current?.data||pending,200,current?.metadata?.messageId);
+  }
   const root = 'https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/' + env.WHATSAPP_PHONE_NUMBER_ID;
   const headers = {Authorization:'Bearer ' + env.WHATSAPP_ACCESS_TOKEN};
   async function post(path, options) {
@@ -56,7 +59,7 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
     }
     return data;
   }
-  let result;
+  let result, messageId = null;
   try {
     const payload = {messaging_product:'whatsapp',recipient_type:'individual',to:phone.slice(1)};
     if (file) {
@@ -75,10 +78,11 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
       payload.text = {body,preview_url:false};
     }
     const data = await post('/messages',{headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    result = data.messages?.[0]?.id?.startsWith('wamid.') ? 'Accettato da Meta' : pending;
+    messageId = data.messages?.[0]?.id?.startsWith('wamid.') ? data.messages[0].id : null;
+    result = messageId ? 'Accettato da Meta' : pending;
   } catch (error) {
     result = error.message === 'meta' ? 'Rifiutato da Meta · ' + error.code : pending;
   }
-  await claims.set(key,result);
-  return reply(result);
+  await claims.set(key,result,{metadata:{messageId,contact:input.contact,createdAt:new Date().toISOString()}});
+  return reply(result,200,messageId);
 }

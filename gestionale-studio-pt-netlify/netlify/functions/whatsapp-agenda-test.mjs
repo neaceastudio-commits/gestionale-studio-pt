@@ -1,3 +1,4 @@
+import { receiveEvents, deliveryStatuses, deliverySetup } from './lib/whatsapp-delivery.mjs';
 import { getStore } from '@netlify/blobs';
 import { agendaRules } from './lib/whatsapp-agenda-rules-store.mjs';
 import { sendSelected } from './lib/whatsapp-compose.mjs';
@@ -119,9 +120,21 @@ export function createHandler({
         !env.WHATSAPP_AGENDA_SITE_ID || context.site.id !== env.WHATSAPP_AGENDA_SITE_ID) {
       return reply('unavailable', 404);
     }
+    if(new URL(request.url).pathname.includes('/whatsapp-agenda-test/events/')) {
+      return receiveEvents(request,{env,store:store()});
+    }
     if (request.method !== 'POST') return reply('method_not_allowed', 405);
     let input;
     try { input = await request.json(); } catch { return reply('invalid_request', 400); }
+    if (['composer-status','composer-setup'].includes(input?.action)) {
+      try {
+        const actor=await authenticate(input.accessToken);
+        if(actor?.role!=='owner')return reply('direction_only',403);
+        return input.action==='composer-status'
+          ? await deliveryStatuses(input,{store:store(),env})
+          : await deliverySetup({store:store(),env});
+      }catch{return reply('service_unavailable',503)}
+    }
     if (['agenda-rules','agenda-save-rule'].includes(input?.action)) {
       try {
         const actor=await authenticate(input.accessToken);

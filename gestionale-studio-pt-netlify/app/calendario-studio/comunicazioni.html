@@ -4,7 +4,7 @@
 body{min-height:0}main{padding:14px 0;max-width:none}nav button{font-weight:700}</style></head><body><main><h2>Gestione messaggi</h2><p class="muted">Anteprima · Contatti del calendario. Invio WhatsApp manuale ai contatti selezionati. Le bozze restano in questo browser.</p>
 <nav aria-label="Sezioni"><button data-view="staffDirectory">PT dello studio</button><button data-view="registro">Registro</button><button data-view="rubrica">Rubrica</button><button data-view="bozze">Bozze</button><button data-view="editor">Crea messaggio</button></nav><p id="notice" role="status"></p>
 <section id="staffDirectory" hidden><h3>Numeri WhatsApp dei PT</h3><p id="staffStatus" role="status"></p><div id="staffContacts"></div><label>Testo di prova<textarea id="staffText">Ciao {nome}, la tua agenda NEACEA è pronta.</textarea></label><button id="staffPreview" type="button">Prepara anteprime</button><button type="button" id="staffCompose" disabled>Apri in Crea messaggio</button><div id="staffResult" aria-live="polite"></div></section>
-<section id="registro"><h2>Registro invii</h2><div class="tools"><select id="group" aria-label="Tipo destinatario"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input type="search" id="query" placeholder="Cerca nome o comunicazione" aria-label="Cerca nel registro"></div><div class="metrics" id="metrics"></div><div class="scroll"><table><thead><tr><th>Destinatario</th><th>Comunicazione</th><th>Stato</th><th>Ultimo evento</th><th>Dettaglio</th></tr></thead><tbody id="log"></tbody></table></div><div id="timeline"></div></section>
+<section id="registro"><h2>Registro invii</h2><div class="tools"><button type="button" id="refreshDelivery">Aggiorna esiti</button><label><input type="checkbox" id="showSimulations"> Includi simulazioni</label></div><p id="deliveryNotice" role="status"></p><details id="deliveryConnection"><summary>Collegamento degli esiti WhatsApp</summary><p>Il provider deve inoltrare gli eventi del numero a questo indirizzo. Gli esiti diventano disponibili dopo il collegamento.</p><button type="button" id="loadDeliverySetup">Mostra parametri di collegamento</button><div id="deliverySetup" hidden><label>URL callback<input readonly id="deliveryUrl"></label><button type="button" id="copyDeliveryUrl">Copia URL</button><label>Token di verifica<input readonly type="password" id="deliveryVerify"></label><button type="button" id="copyDeliveryVerify">Copia token di verifica</button><p>Conserva questi parametri nel pannello del provider.</p></div><p id="deliverySetupNotice" role="status"></p></details><div class="tools"><select id="group" aria-label="Tipo destinatario"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input type="search" id="query" placeholder="Cerca nome o comunicazione" aria-label="Cerca nel registro"></div><div class="metrics" id="metrics"></div><div class="scroll"><table><thead><tr><th>Destinatario</th><th>Comunicazione</th><th>Stato</th><th>Ultimo evento</th><th>Dettaglio</th></tr></thead><tbody id="log"></tbody></table></div><div id="timeline"></div></section>
 <section id="rubrica" hidden><h2>Rubrica</h2><div class="tools"><select id="rg" aria-label="Tipo contatto"><option>Tutti</option><option>Clienti</option><option>PT</option></select><input id="rq" type="search" aria-label="Cerca contatto" placeholder="Cerca un contatto"></div><div class="split"><div id="contacts"></div><div id="card" class="paper"></div></div></section>
 <section id="bozze" hidden><h2>Bozze salvate</h2><div id="libraryDrafts"></div></section>
 <section id="editor" hidden><h2>Crea messaggio</h2><button id="newDraft" type="button">Nuova comunicazione</button><div class="split"><form id="compose"><label>Nome della comunicazione<input id="subject" required maxlength="90"></label><label>Parti da un testo<select id="model"><option>Personalizzato</option><option>Ultime 2 sedute</option><option>Agenda PT</option><option>Promemoria appuntamento</option></select></label><fieldset id="agendaRules" hidden><legend>Matrice Agenda PT</legend><label>Matrici salvate<select id="ruleSaved"><option value="">Nuova matrice</option></select></label><div class="cols"><label>Cadenza<select id="frequency"><option value="weekly">Ogni settimana</option><option value="daily">Ogni giorno</option></select></label><label id="weekdayBox">Giorno di invio<select id="weekday"><option value="0">Domenica</option><option value="1" selected>Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option></select></label><label>Ora di Roma<input id="ruleTime" type="time" value="08:00"></label><label>Dati da leggere<select id="period"><option value="week">Sedute della settimana</option><option value="day">Sedute del giorno</option></select></label><label>Periodo rispetto alla data di invio<select id="offset"><option value="-1">Precedente</option><option value="0" selected>Corrente</option><option value="1">Successivo</option></select></label><label>Calcola l’anteprima come se partisse<select id="previewAt"><option value="today">Oggi</option><option value="next">Alla prossima scadenza</option></select></label></div><p>L’agenda include le sedute PT 1:1 e 1:2 prenotate. La matrice in anteprima prepara i messaggi. L’invio automatico è disattivato.</p><p id="agendaInfo" role="status"></p><div class="tools"><button type="button" id="saveRule">Salva matrice</button><button type="button" id="reloadAgenda">Aggiorna dal calendario</button></div><p id="ruleNotice" role="status"></p></fieldset><fieldset><legend>Destinatari</legend><div class="tools"><button type="button" data-group="Clienti">Seleziona clienti</button><button type="button" data-group="PT">Seleziona PT</button><button type="button" data-group="">Azzera selezione</button></div><div id="recipients">Caricamento contatti del calendario…</div></fieldset><label>Testo<textarea id="bodyText" required></textarea></label><button type="button" id="variable">Inserisci {nome}</button><label>Link facoltativo<input type="url" id="link" placeholder="https://"></label><label>Allegato facoltativo · PDF o immagine<input type="file" id="file" accept="application/pdf,image/jpeg,image/png"></label><span id="fileName"></span> <a id="download" hidden>Scarica allegato</a> <button type="button" id="removeFile" hidden>Rimuovi allegato</button><div class="cols"><label>Quando<select id="mode"><option>Subito</option><option>Programma</option></select></label><label id="whenBox" hidden>Data e ora locale<input id="when" type="datetime-local"></label></div><label id="repeatBox" hidden>Ricorrenza<select id="repeat"><option>Una volta</option><option>Ogni giorno</option><option>Ogni settimana</option><option>Ogni mese</option></select></label><div class="tools"><button type="button" id="draft">Salva bozza</button><button type="submit">Simula comunicazione</button><button class="primary" id="sendNow" type="button">Invia ora su WhatsApp</button></div></form><aside><h3>Anteprima per il destinatario</h3><label id="recipientChoice" hidden>Visualizza come<select id="previewRecipient"></select></label><div class="bubble" id="preview"></div><p class="muted" id="schedule"></p><h3>Bozze salvate</h3><div id="draftList"></div></aside></div></section>
@@ -22,6 +22,7 @@ const fmt=t=>new Date(t).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',h
 function node(tag,txt){const n=document.createElement(tag);n.textContent=txt;return n}
 function button(txt,fn){const b=node('button',txt);b.type='button';b.onclick=fn;return b}
 function latest(r){return r.events[r.events.length-1]}
+function statusMatches(row,status){return status==='Tutti'||latest(row).s===status||(status==='Errore'&&latest(row).s.startsWith('Rifiutato da Meta'))}
 function seed(){return {drafts:[],rows:[]}}
 let data=seed(),selected=0,filter='Tutti',detail='',draftId='',attachment='';
 try{data=JSON.parse(localStorage.getItem(key))||data}catch{}
@@ -29,12 +30,15 @@ function save(){try{localStorage.setItem(key,JSON.stringify(data))}catch{$('noti
 function view(name){for(const b of document.querySelectorAll('[data-view]')){const on=b.dataset.view===name;b.setAttribute('aria-pressed',on);$(b.dataset.view).hidden=!on}draw()}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>view(b.dataset.view));
 function draw(){
- const base=data.rows.filter(r=>people[r.p]&&($('group').value==='Tutti'||people[r.p][1]===$('group').value)&&(people[r.p][0]+' '+r.title).toLowerCase().includes($('query').value.toLowerCase()));
- $('metrics').replaceChildren();for(const s of ['Tutti',...stages]){const b=button(s,()=>{filter=s;detail='';draw()});b.prepend(node('strong',base.filter(r=>s==='Tutti'||latest(r).s===s).length));b.setAttribute('aria-pressed',s===filter);$('metrics').append(b)}
- const rows=base.filter(r=>filter==='Tutti'||latest(r).s===filter).sort((a,b)=>latest(b).t.localeCompare(latest(a).t));$('log').replaceChildren();
+ const base=data.rows.filter(r=>(r.real||$('showSimulations').checked)&&people[r.p]&&($('group').value==='Tutti'||people[r.p][1]===$('group').value)&&(people[r.p][0]+' '+r.title).toLowerCase().includes($('query').value.toLowerCase()));
+ $('metrics').replaceChildren();for(const s of ['Tutti',...stages]){const b=button(s,()=>{filter=s;detail='';draw()});b.prepend(node('strong',base.filter(r=>statusMatches(r,s)).length));b.setAttribute('aria-pressed',s===filter);$('metrics').append(b)}
+ const rows=base.filter(r=>statusMatches(r,filter)).sort((a,b)=>latest(b).t.localeCompare(latest(a).t));$('log').replaceChildren();
  for(const r of rows){const tr=document.createElement('tr');for(const value of [people[r.p][0]+' · '+people[r.p][1],r.title,(r.real?'':'Simulazione · ')+latest(r).s,fmt(latest(r).t)])tr.append(node('td',value));const td=document.createElement('td');td.append(button('Apri',()=>{detail=r.id;draw()}));tr.append(td);$('log').append(tr)}
  if(!rows.length){const tr=document.createElement('tr'),td=node('td','Nessun invio per questi filtri.');td.colSpan=5;tr.append(td);$('log').append(tr)}
- const r=rows.find(r=>r.id===detail);$('timeline').replaceChildren();if(r){const area=$('timeline');area.append(node('h3',r.title+' · '+people[r.p][0]));if(r.message)area.append(node('p',r.message));if(r.schedule)area.append(node('p',r.schedule));for(const e of r.events)area.append(node('div',fmt(e.t)+' · '+e.s));const s=latest(r).s;const next={Programmato:'Inviato',Inviato:'Consegnato',Consegnato:'Letto'}[s];if(next&&!r.real)area.append(button({Inviato:'Simula invio',Consegnato:'Simula consegna',Letto:'Simula lettura'}[next],()=>event(r,next)));if(s==='Inviato'&&!r.real)area.append(button('Simula errore',()=>event(r,'Errore')))}
+ const r=rows.find(r=>r.id===detail);$('timeline').replaceChildren();if(r){const area=$('timeline');area.append(node('h3',r.title+' · '+people[r.p][0]));if(r.real&&!r.messageId)area.append(node('p','Esito finale non disponibile per questo invio precedente. Il messaggio era stato registrato senza identificativo Meta.'));
+if(r.messageId)area.append(node('p','ID messaggio · '+r.messageId));
+if(r.errorCodes?.length)area.append(node('p','Codici Meta · '+r.errorCodes.join(', ')+(r.errorCodes.includes(131047)?' · Invio fuori dalla finestra di 24 ore. Serve un modello approvato.':'')));
+if(r.message)area.append(node('p',r.message));if(r.schedule)area.append(node('p',r.schedule));for(const e of r.events)area.append(node('div',fmt(e.t)+' · '+e.s));const s=latest(r).s;const next={Programmato:'Inviato',Inviato:'Consegnato',Consegnato:'Letto'}[s];if(next&&!r.real)area.append(button({Inviato:'Simula invio',Consegnato:'Simula consegna',Letto:'Simula lettura'}[next],()=>event(r,next)));if(s==='Inviato'&&!r.real)area.append(button('Simula errore',()=>event(r,'Errore')))}
  const ids=Object.keys(people).filter(i=>($('rg').value==='Tutti'||people[i][1]===$('rg').value)&&people[i][0].toLowerCase().includes($('rq').value.toLowerCase()));if(!ids.includes(selected))selected=ids[0];$('contacts').replaceChildren();for(const i of ids){const b=button(people[i][0]+' · '+people[i][1],()=>{selected=i;draw()});b.setAttribute('aria-pressed',i===selected);$('contacts').append(b,document.createElement('br'))}
  const card=$('card');card.replaceChildren();if(selected===undefined){card.textContent='Nessun contatto trovato.';return}const person=people[selected];card.append(node('h3',person[0]),node('p',person[2]?'Numero WhatsApp disponibile':'Numero mancante'),node('h4','Storico messaggi'));const history=data.rows.filter(r=>r.p===selected).sort((a,b)=>latest(b).t.localeCompare(latest(a).t));if(!history.length)card.append(node('p','Nessuna comunicazione'));for(const r of history)card.append(button(r.title+' · '+(r.real?'':'Simulazione · ')+latest(r).s,()=>{filter='Tutti';$('group').value='Tutti';$('query').value='';detail=r.id;view('registro')}));if(person[2])card.append(button('Scrivi a '+person[0],()=>{setForm({ids:[selected]});view('editor')}));
 }
@@ -289,14 +293,15 @@ $('sendNow').onclick=async()=>{
   const media=file?{name:file.name,type:file.type,base64:await asBase64(file)}:null;
   for(const [index,item] of items.entries()){
    notice.textContent='Invio '+(index+1)+' di '+items.length+' · '+item.name;
-   let status='Esito da verificare';
+   let status='Esito da verificare', messageId=null;
    try{
     const res=await fetch('/.netlify/functions/whatsapp-agenda-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'composer-send',accessToken:token,batch,contact:item.id,body:item.body,file:media})});
     const result=await res.json();
     if(typeof result.status==='string')status=result.status;
+    if(typeof result.messageId==='string')messageId=result.messageId;
    }catch{}
    const rowId=batch+'_'+item.id;
-   const row={id:rowId,p:item.id,real:true,title:v.subject,message:item.body,schedule:file?'Allegato · '+file.name:'',events:[{s:status,t:stamp()}]};
+   const row={id:rowId,p:item.id,real:true,messageId,title:v.subject,message:item.body,schedule:file?'Allegato · '+file.name:'',events:[{s:status,t:stamp()}]};
    data.rows=data.rows.filter(r=>r.id!==rowId);
    data.rows.unshift(row);save();
   }
@@ -307,7 +312,60 @@ $('sendNow').onclick=async()=>{
  finally{form.inert=false;sending=false;preview()}
 };
 
-$('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||!v.bodyText.trim()){$('notice').textContent='Indica titolo, testo e almeno un destinatario con numero disponibile.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';setForm();view('registro')};setForm();view('editor');readRules();loadStaff().then(loadDrafts).catch(()=>{$('notice').textContent='Archivio bozze non disponibile in questo browser.'});
+
+let refreshingDelivery=false;
+$('showSimulations').onchange=()=>{filter='Tutti';draw()};
+async function refreshDelivery(){
+ if(refreshingDelivery)return;
+ refreshingDelivery=true;$('refreshDelivery').disabled=true;
+ try{
+  const rows=data.rows.filter(r=>r.real&&r.messageId);
+  const results=[];
+  let receivedAt=null, configured=false;
+  for(let i=0;i<Math.max(rows.length,1);i+=100){
+   const response=await agendaRequest('whatsapp-agenda-test',{action:'composer-status',messageIds:rows.slice(i,i+100).map(r=>r.messageId)});
+   if(!Array.isArray(response.results))throw Error();
+   results.push(...response.results);receivedAt=response.receivedAt;configured=response.configured;
+  }
+  for(const result of results){
+   for(const row of rows.filter(r=>r.messageId===result.messageId)){
+    if(!result.events?.length)continue;
+    row.errorCodes=result.codes||[];
+    const accepted=row.events.find(e=>e.s==='Accettato da Meta');
+    const events=[...(accepted?[accepted]:[]),...result.events];
+    // Use the highest confirmed delivery state, even if callbacks arrived out of order.
+    const finalEvent=events.filter(e=>e.s===result.status).at(-1);
+    row.events=events.filter(e=>e!==finalEvent);
+    if(finalEvent)row.events.push(finalEvent);
+   }
+  }
+  const old=data.rows.filter(r=>r.real&&!r.messageId).length;
+  $('deliveryNotice').textContent=(receivedAt?'Ultima notifica WhatsApp ricevuta · '+fmt(receivedAt)+'.':
+   configured?'Endpoint pronto. In attesa del primo evento dal provider.':'Collegamento esiti da configurare.')+
+   (old?' '+old+' invii precedenti hanno l’esito finale non disponibile.':'');
+  save();draw();
+ }catch{$('deliveryNotice').textContent='Aggiornamento degli esiti non disponibile. Riprova più tardi.'}
+ finally{refreshingDelivery=false;$('refreshDelivery').disabled=false}
+}
+$('refreshDelivery').onclick=refreshDelivery;
+$('loadDeliverySetup').onclick=async()=>{
+ const out=$('deliverySetupNotice');
+ try{
+  const cfg=await agendaRequest('whatsapp-agenda-test',{action:'composer-setup'});
+  if(!cfg.configured){out.textContent='Parametri di collegamento ancora da configurare.';return}
+  $('deliveryUrl').value=cfg.url;$('deliveryVerify').value=cfg.verifyToken;$('deliverySetup').hidden=false;
+  out.textContent=cfg.receivedAt?'Ultimo evento ricevuto · '+fmt(cfg.receivedAt):'In attesa del primo evento dal provider.';
+ }catch{out.textContent='Parametri non disponibili.'}
+};
+for(const [buttonId,inputId]of [['copyDeliveryUrl','deliveryUrl'],['copyDeliveryVerify','deliveryVerify']]){
+ $(buttonId).onclick=async()=>{
+  try{await navigator.clipboard.writeText($(inputId).value);$('deliverySetupNotice').textContent='Copiato negli appunti.'}
+  catch{$('deliverySetupNotice').textContent='Copia automatica indisponibile. Usa il campo URL o token.'}
+ };
+}
+setInterval(()=>{if(!document.hidden&&!$('registro').hidden)refreshDelivery()},30000);
+
+$('compose').onsubmit=e=>{e.preventDefault();const v=values();if(!v.ids.length||!v.subject.trim()||!v.bodyText.trim()){$('notice').textContent='Indica titolo, testo e almeno un destinatario con numero disponibile.';return}if(v.mode==='Programma'&&new Date(v.when)<=new Date()){$('notice').textContent='Scegli una data futura.';return}const entries=v.ids.map(p=>({id:crypto.randomUUID(),p,title:v.subject,message:message(v,p),schedule:timing(v),events:[{s:v.mode==='Programma'?'Programmato':'Inviato',t:stamp()}]}));data.rows.unshift(...entries);save();detail=entries[0].id;filter='Tutti';$('group').value='Tutti';$('query').value='';$('notice').textContent='Simulazione registrata per '+entries.length+' destinatari.';setForm();view('registro')};setForm();view('editor');readRules();loadStaff().then(()=>{refreshDelivery();return loadDrafts()}).catch(()=>{$('notice').textContent='Archivio bozze non disponibile in questo browser.'});
 })();
 </script></body></html>
 
