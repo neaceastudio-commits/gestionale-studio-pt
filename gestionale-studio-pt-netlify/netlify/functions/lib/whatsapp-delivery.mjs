@@ -39,6 +39,7 @@ export async function receiveEvents(request,{env,store,now=Date.now}) {
         if(!Number.isFinite(timestamp)||timestamp<=0||timestamp>now()+86400000)continue;
         const codes=[...new Set((s.errors||[]).map(e=>e.code).filter(Number.isInteger))];
         const event={messageId:s.id,status:s.status,timestamp,codes};
+        console.info('whatsapp_delivery_event',JSON.stringify({messageRef:digest(s.id).slice(0,16),status:s.status,codes}));
         await store.setJSON('delivery/'+digest(s.id)+'/'+s.timestamp+'-'+s.status+'-'+digest(JSON.stringify(codes)),event,{onlyIfNew:true});
       }
     }
@@ -56,6 +57,7 @@ export async function deliveryStatuses(input,{store,env}){
     if(!last)return {messageId,status:'Accettato da Meta',events:[]};
     return {messageId,status:labels[last.status],codes:last.codes,events:events.sort((a,b)=>a.timestamp-b.timestamp).map(e=>({s:labels[e.status],t:new Date(e.timestamp).toISOString(),codes:e.codes}))};
   }));
+  console.info('whatsapp_delivery_status',JSON.stringify(results.map(r=>({messageRef:digest(r.messageId).slice(0,16),status:r.status,codes:r.codes||[]}))));
   const health=await store.get('delivery-health',{type:'json'});
   return json({results,receivedAt:health?.receivedAt||null,configured:Boolean(env.WHATSAPP_WEBHOOK_PATH_SECRET&&env.WHATSAPP_WEBHOOK_VERIFY_TOKEN)});
 }
