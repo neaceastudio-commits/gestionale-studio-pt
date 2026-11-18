@@ -72,6 +72,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/lib/whatsapp-agenda-rules-store.mjs
     netlify/functions/lib/whatsapp-messages-handler.mjs
     tests/whatsapp-matrix-scheduling.test.mjs
+    tests/helpers/calendar-private-route.cjs
     tests/calendar-renewal-cancelled-history.test.cjs
     supabase/migrations/20261116181624_calendar_preserve_cancelled_renewal_history.sql
     tests/calendar-expected-renewals.test.cjs

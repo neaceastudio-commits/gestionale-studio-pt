@@ -23,7 +23,8 @@ async function run(pair){
   let fail=false,lost=false,saveCount=0;
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());if(u.hostname.startsWith('fonts.'))return route.fulfill({body:''});
-   if(u.pathname.endsWith('calendar-runtime'))return route.fulfill({json:{CALENDAR_FLEX_MODE:true}});
+   if(u.pathname.endsWith('calendar-private-data'))return require('./helpers/calendar-private-route.cjs').fulfill(route,f);
+  if(u.pathname.endsWith('calendar-runtime'))return route.fulfill({json:{CALENDAR_FLEX_MODE:true}});
    if(u.pathname.endsWith('whatsapp-agenda'))return route.fulfill({status:403,json:{error:'disabled'}});
    if(u.pathname.endsWith('apple-caldav-link'))return route.fulfill({json:{eligible:false}});
    if(u.pathname.endsWith('calendar-activity')){

@@ -25,3 +25,5 @@ Node 24.14.1 e dipendenze dichiarate nei lockfile. Test automatici con storage/M
 La suite di confezionamento verifica tutte le 21 funzioni, incluse le 19 della baseline. L’attesa del vecchio test elencava ancora 17 funzioni e non includeva le due già aggiunte dalla baseline di produzione; ora è allineata all’inventario reale, senza rimuovere funzioni. Le pianificazioni precedenti vengono preservate.
 
 Suite completa del calendario e verifica candidato/produzione: esiti da registrare a completamento. Il collaudo dei servizi esterni non comprende invii reali né l’attivazione di matrici di produzione.
+
+La prima regressione completa ha rilevato quattro fixture browser non aggiornate al servizio calendar-private-data già online: una richiesta intercettata è stata rifiutata dal test perché rivolta al nuovo host. Le fixture ora eseguono il vero handler protetto contro lo stesso SQL locale; nessun cambiamento al trasporto o alle autorizzazioni di produzione. Il rifiuto e la successiva verifica restano documentati; nessun controllo viene saltato.
