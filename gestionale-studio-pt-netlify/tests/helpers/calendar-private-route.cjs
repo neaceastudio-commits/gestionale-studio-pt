@@ -2,9 +2,9 @@
 // fixture used by Calendar browser tests. No production request is continued.
 const assert=require('node:assert/strict');
 const {createHandler}=require('../../netlify/functions/lib/studio-private-endpoint.cjs');
-exports.fulfill=async(route,fixture)=>{
+exports.fulfill=async(route,fixture,accessToken='OWNER')=>{
  const request=route.request();assert.equal(request.method(),'POST');
- const handler=createHandler({authenticate:async token=>token==='OWNER'?{id:'owner',role:'owner'}:null,db:async(table,{query})=>{
+ const handler=createHandler({authenticate:async token=>token===accessToken?{id:'owner',role:'owner'}:null,db:async(table,{query})=>{
   if(!['clients','operators','appointments'].includes(table))return [];
   let rows=await fixture.all(table);const params=new URLSearchParams(query);
   for(const [key,value]of params){
