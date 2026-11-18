@@ -5,7 +5,7 @@ import {agendaRules} from './whatsapp-agenda-rules-store.mjs';
 import {listTemplates} from './whatsapp-templates.mjs';
 import {receiveEvents,deliveryStatuses,deliverySetup,json} from './whatsapp-delivery.mjs';
 const siteId='28855faa-de52-4e4c-b1c2-e2db4965670f';
-const allowed=new Set(['composer-status','composer-setup','composer-templates','composer-send','agenda-rules','agenda-save-rule']);
+const allowed=new Set(['composer-status','composer-setup','composer-templates','composer-send','agenda-rules','agenda-save-rule','agenda-toggle-rule','agenda-run-status']);
 export function createHandler({authenticate=auth.authenticate,db=auth.db,env=process.env,store,provider=agenda.createService({db,env}),send=sendSelected,templates=listTemplates}={}){
  return async(request,context)=>{
   if(context.site?.id!==siteId||env.WHATSAPP_AGENDA_SITE_ID!==siteId||!['production','deploy-preview'].includes(context.deploy?.context))return json({status:'unavailable'},404);
@@ -20,7 +20,7 @@ export function createHandler({authenticate=auth.authenticate,db=auth.db,env=pro
    if(input.action==='composer-templates')return json(await templates(env));
    if(input.action==='composer-status')return await deliveryStatuses(input,{store:store(),env});
    if(input.action==='composer-setup')return await deliverySetup({store:store(),env});
-   return await agendaRules(input,store());
+   return await agendaRules(input,store(),{actor,env,context,templates,provider});
   }catch{return json({status:input.action==='composer-send'?'Esito da verificare':'Servizio non disponibile.'},503)}
  };
 }

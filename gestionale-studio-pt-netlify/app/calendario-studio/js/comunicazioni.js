@@ -126,9 +126,9 @@ function showRules(){
 async function readRules(){
  try{
   const {rules:rows}=await agendaRequest('whatsapp-messages',{action:'agenda-rules'});
-  for(const row of rows)rules.set(row.id,row);
+  rules.clear();for(const row of rows)rules.set(row.id,row);
   showRules();drawAutomations();
- }catch{$('ruleNotice').textContent='Elenco delle matrici salvate indisponibile.'}
+ }catch{$('ruleNotice').textContent=$('automationNotice').textContent='Elenco delle matrici salvate indisponibile. Riprova con Aggiorna matrici ed esiti.'}
 }
 for(const id of ['frequency','weekday','ruleTime','period','offset','previewAt'])$(id).onchange=refreshAgenda;
 $('reloadAgenda').onclick=refreshAgenda;
@@ -527,21 +527,45 @@ function drawAutomations(){
  if(!pt){const empty=node('div','');empty.className='empty-state';empty.append(node('h3','Le regole clienti non sono ancora operative'),node('p','Puoi già preparare messaggi e bozze con allegati dedicati. Le regole legate alle sedute residue e alle scadenze dei pacchetti richiedono il collegamento al motore automatico.'),button('Prepara un messaggio',()=>{setForm();view('editor')}));list.append(empty);return}
  if(!rules.size){const empty=node('div','');empty.className='empty-state';empty.append(node('h3','La stessa logica, per ogni PT'),node('p','Definisci quando preparare l’agenda e quale periodo leggere. Il calendario determina destinatari e sedute: ogni PT vede soltanto la propria agenda.'),button('Crea la prima matrice',()=>editAutomation()));list.append(empty);return}
  for(const r of rules.values()){
-  const card=node('article','');card.className='automation-card';const state=node('span','Bozza · invio ricorrente non attivo');state.className='badge';
+  const card=node('article','');card.className='automation-card';const state=node('span',r.enabled?'Attiva · invio programmato':'Disattivata · nessun invio programmato');state.className='badge';
   card.append(state,node('h3',r.title),node('p',automationDescription(r)),node('p','Calendario → PT con sedute → testo WhatsApp'));
-  const actions=node('div','');actions.className='tools';actions.append(button('Modifica matrice',()=>editAutomation(r)),button('Verifica destinatari e testo',()=>previewRule(r)));card.append(actions);list.append(card);
+  if(r.enabled&&r.nextRunAt)card.append(node('p','Prossimo invio: '+scheduleLabel(r.nextRunAt)+' · Europe/Rome'));
+  if(r.lastRun)card.append(node('p','Ultima scadenza: '+scheduleLabel(r.lastRun.scheduledAt)+' · '+r.lastRun.status+(Number.isInteger(r.lastRun.accepted)?' '+r.lastRun.accepted+'/'+r.lastRun.total+' messaggi accettati.':'')+(r.lastRun.excluded?' PT esclusi per numero mancante o dati incompleti: '+r.lastRun.excluded+'.':'')));
+  const actions=node('div','');actions.className='tools';const toggle=button(r.enabled?'Disattiva matrice':'Attiva matrice',()=>toggleAutomation(r));toggle.disabled=pendingAutomations.has(r.id);
+  if(r.lastRun?.id)actions.append(button('Controlla consegna',async()=>{
+   const out=node('p','Lettura esiti…');card.append(out);
+   try{const result=await agendaRequest('whatsapp-messages',{action:'agenda-run-status',id:r.lastRun.id});out.textContent=result.notice||result.messages.map(m=>(people[m.contact]?.[0]||'PT')+' · parte '+(m.part+1)+'/'+m.parts+' · '+m.status+(m.codes?.length?' ('+m.codes.join(', ')+')':'')).join(' · ')}catch{out.textContent='Esiti non disponibili. Riprova.'}
+  }));
+  actions.append(toggle,button('Modifica matrice',()=>editAutomation(r)),button('Verifica destinatari e testo',()=>previewRule(r)));card.append(actions);list.append(card);
  }
 }
+const pendingAutomations=new Set(),toggleRequests=new Map();
+function scheduleLabel(value){return new Intl.DateTimeFormat('it-IT',{timeZone:'Europe/Rome',dateStyle:'full',timeStyle:'short'}).format(new Date(value))}
+async function toggleAutomation(r){
+ const enabled=!r.enabled;
+ if(enabled&&!confirm('Attivare solo «'+r.title+'»?\n'+automationDescription(r)+' · Europe/Rome.\nIl primo invio sarà alla prossima scadenza futura. Ogni PT riceverà soltanto la propria agenda, anche in più messaggi testuali.'))return;
+ pendingAutomations.add(r.id);drawAutomations();$('automationNotice').textContent=enabled?'Attivazione in corso…':'Disattivazione in corso…';
+ const retry=toggleRequests.get(r.id),requestId=retry?.enabled===enabled?retry.id:crypto.randomUUID();toggleRequests.set(r.id,{id:requestId,enabled});
+ try{
+  const {rule}=await agendaRequest('whatsapp-messages',{action:'agenda-toggle-rule',id:r.id,revision:r.revision,enabled,requestId});
+  if(!rule?.id)throw Error();rules.set(rule.id,rule);toggleRequests.delete(r.id);showRules();
+  $('automationNotice').textContent=rule.enabled?'Attiva: '+rule.title+'. Primo invio: '+scheduleLabel(rule.nextRunAt)+' · Europe/Rome.':'Matrice disattivata. Un messaggio già in trasmissione può completarsi.';
+ }catch(e){
+  if(e.message==='409'){toggleRequests.delete(r.id);await readRules()}
+  $('automationNotice').textContent=e.message==='409'?'Stato o configurazione cambiati. Elenco aggiornato: verifica il modello approvato e riprova.':'Operazione non confermata. Premi Aggiorna matrici ed esiti per verificare lo stato salvato prima di riprovare.';
+ }finally{pendingAutomations.delete(r.id);drawAutomations()}
+}
+$('refreshAutomations').onclick=async()=>{$('automationNotice').textContent='';await readRules()};
 function autoValues(){return {title:$('autoTitle').value.trim(),intro:$('autoIntro').value,link:$('autoLink').value.trim(),frequency:$('autoFrequency').value,weekday:Number($('autoWeekday').value),time:$('autoTime').value,period:$('autoPeriod').value,offset:Number($('autoOffset').value)}}
-function updateAutoSummary(){const r=autoValues();$('autoWeekdayBox').hidden=r.frequency==='daily';$('autoSummary').textContent=automationDescription(r)+'. Destinatari: PT con almeno una seduta prenotata. Ogni agenda sarà calcolata dai dati del calendario.'}
+function updateAutoSummary(){const r=autoValues();$('autoWeekdayBox').hidden=r.frequency==='daily';$('autoSummary').textContent=automationDescription(r)+'. Destinatari: PT con almeno una seduta prenotata. Ogni agenda sarà calcolata dai dati del calendario. Fuso Europe/Rome. Nessun invio fino all’attivazione esplicita.'}
 function editAutomation(r={}){
  editingAutomation=r.id||'';$('automationHeading').textContent=r.id?'Modifica matrice':'Nuova matrice PT';
  for(const [id,value] of Object.entries({autoTitle:r.title||'',autoIntro:r.intro||'Ciao {nome}, ecco la tua agenda NEACEA.',autoLink:r.link||'',autoFrequency:r.frequency||'weekly',autoWeekday:r.weekday??1,autoTime:r.time||'08:00',autoPeriod:r.period||'week',autoOffset:r.offset??0}))$(id).value=value;
- $('autoNotice').textContent='';$('automationForm').hidden=false;updateAutoSummary();$('autoTitle').focus();
+ $('autoNotice').textContent=r.enabled?'Questa matrice è attiva. Salvare le modifiche la disattiverà. Dovrai riattivarla dalla scheda.':'';$('automationForm').hidden=false;updateAutoSummary();$('autoTitle').focus();
 }
 function previewRule(r){
  setForm({audience:'PT',subject:r.title||'Agenda PT',model:'Agenda PT',bodyText:r.intro||'Ciao {nome}, ecco la tua agenda NEACEA.',link:r.link||'',rule:{...r,previewAt:'next'}});
- view('editor');$('notice').textContent='Anteprima della prossima scadenza. Nessun invio è stato programmato.';
+ view('editor');$('notice').textContent='Anteprima della prossima scadenza. Questa verifica non modifica lo stato della matrice e non invia messaggi.';
 }
 $('newAutomation').onclick=()=>editAutomation();$('closeAutomation').onclick=()=>{$('automationForm').hidden=true};
 $('automationForm').oninput=updateAutoSummary;
@@ -551,7 +575,7 @@ $('automationForm').onsubmit=async e=>{
  $('saveAutomation').disabled=true;const id=editingAutomation||crypto.randomUUID();
  try{
   const {rule}=await agendaRequest('whatsapp-messages',{action:'agenda-save-rule',rule:{...r,id,revision:rules.get(id)?.revision}});
-  if(!rule?.id)throw Error();rules.set(rule.id,rule);editingAutomation=rule.id;showRules();drawAutomations();$('autoNotice').textContent='Matrice salvata in bozza. Nessun invio automatico è stato attivato.';
+  if(!rule?.id)throw Error();rules.set(rule.id,rule);editingAutomation=rule.id;showRules();drawAutomations();$('autoNotice').textContent='Matrice salvata disattivata. Per programmare gli invii premi Attiva matrice sulla sua scheda.';
  }catch(e){$('autoNotice').textContent=e.message==='409'?'Questa matrice è stata modificata altrove. Ricarica l’elenco prima di salvarla.':'Salvataggio non riuscito. I dati restano nel modulo.'}
  finally{$('saveAutomation').disabled=false}
 };
