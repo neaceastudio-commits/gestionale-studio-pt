@@ -24,6 +24,24 @@ Node 24.14.1 e dipendenze dichiarate nei lockfile. Test automatici con storage/M
 
 La suite di confezionamento verifica tutte le 21 funzioni, incluse le 19 della baseline. L’attesa del vecchio test elencava ancora 17 funzioni e non includeva le due già aggiunte dalla baseline di produzione; ora è allineata all’inventario reale, senza rimuovere funzioni. Le pianificazioni precedenti vengono preservate.
 
-Suite completa del calendario e verifica candidato/produzione: esiti da registrare a completamento. Il collaudo dei servizi esterni non comprende invii reali né l’attivazione di matrici di produzione.
+Suite completa `bash scripts/check-calendar-release.sh` sul candidato finale: PASS, conclusa con “OK: pacchetto Calendario completo e verificato.”. Ventuno controlli mirati WhatsApp/build passati. Browser locale e browser sugli asset effettivi del candidato Netlify e del dominio reale: PASS, tutte le API intercettate. Il collaudo dei servizi esterni non comprende invii reali né l’attivazione di matrici di produzione.
 
 La prima regressione completa ha rilevato le fixture browser SQL e del controllo clienti non aggiornate al servizio calendar-private-data già online: una richiesta intercettata è stata rifiutata dal test perché rivolta al nuovo host. Le fixture ora eseguono il vero handler protetto contro lo SQL locale o agli stessi record sintetici preesistenti; nessun cambiamento al trasporto o alle autorizzazioni di produzione. Il rifiuto e la successiva verifica restano documentati; nessun controllo viene saltato.
+
+
+## Pubblicazione e verifica reale
+
+- Codice pubblicato: `4d9bf78271c80d4a6d0bf1ebf918a874d8d1a017`; implementazione `6cb4f7609ca5116fce691d6fb5aead222f3f8897`, seguita dagli aggiornamenti delle fixture.
+- Candidato Netlify verificato senza pubblicazione: `6afdef368090af7a13ff5dc8`.
+- Deploy pubblicato: `6afdeff71f1dfa5c28805ef0`, produzione su https://calendario.neacea.com, bloccato nuovamente dopo il rilascio. Nessun ripristino di deploy precedenti; nuovo build Git dell’esatto candidato.
+- PR [#20](https://github.com/neaceastudio-commits/gestionale-studio-pt/pull/20), pronta per revisione, base `codex/private-studio-tables-calendar-20261117`. La precedente PR #19 rimane separata.
+- Manifesto completo di 53 file uguale alla baseline eccetto `comunicazioni.html`, `js/comunicazioni.js` e il `netlify.toml` del candidato. Tutti gli asset del calendario e della protezione dati conservati.
+- Ventuno funzioni presenti: le 19 precedenti più coordinatore e worker delle matrici. Cron precedenti invariati; nuovo `whatsapp-matrix-scheduled` ogni minuto. Scheduler WhatsApp legacy ancora disabilitato.
+- HTML e JS serviti dal dominio reale corrispondono al candidato. Accessi senza sessione alle azioni matrici/esiti rifiutati con 403; callback con percorso errato rifiutato con 404.
+- Browser reale, sessione Direzione: Clienti e PT separati; nuova sezione Automazioni visualizzata; matrice preesistente aperta e salvata disattivata senza cambiare nome o pianificazione. Conferma server osservata; dopo ricaricamento completo e riapertura la matrice resta disattivata.
+- Lettura indipendente e forte dello storage reale Netlify: una matrice, zero abilitate; record versione 2 disattivato con `activation` e `nextRunAt` null. Nome “Lista lezioni Pt settimanali”, ogni lunedì 08:00 Europe/Rome, settimana corrente conservati. Zero occorrenze del nuovo motore e zero claim di invio programmato. Nessun record sintetico creato in produzione.
+- Modello `neacea_agenda_pt_testo_v1` verificato APPROVED, UTILITY, italiano. Provider connected, qualità GREEN, tier 250; segnala ancora LIMITED senza codice di blocco. Webhook indirizzato al dominio reale. Non si deduce la consegna di nuovi messaggi da queste verifiche.
+
+Nessun messaggio reale inviato, nessuna matrice abilitata, nessun PDF agenda generato. Nessuna migrazione o modifica di segreti, variabili provider o dati del calendario. Le prove di invio automatico, pausa durante le parti e consegna sono esclusivamente locali con servizi simulati; il salvataggio disattivato e la rilettura sono verificati anche nello storage reale.
+
+Checkout temporaneo pulito al candidato verificato prima della registrazione documentale finale; checkout originari con lavorazioni preesistenti lasciati intatti. L’aggiornamento finale di questo rapporto non modifica il codice pubblicato. Prossimo passo dell’utente: scegliere le impostazioni desiderate e premere Attiva matrice soltanto sulle singole matrici da avviare; il primo invio sarà alla scadenza futura mostrata dal pannello.
