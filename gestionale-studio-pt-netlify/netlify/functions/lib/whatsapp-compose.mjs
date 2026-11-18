@@ -24,11 +24,11 @@ async function lookup(db, group, id) {
   return op && agenda.isPt({...op,...roles}) ? normalize(op.whatsapp_phone) : '';
 }
 
-export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch}) {
+export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch, scheduledAt, beforeDispatch, onClaimed}) {
   const reply = (status, code = 200, messageId = null) => Response.json({status, ...(messageId ? {messageId} : {})}, {status:code,headers:{'Cache-Control':'no-store'}});
   let agendaPart=null;
   if(input.agenda){
-    try{input=await prepareAgendaDocument(input,provider);agendaPart=input.agendaPart}
+    try{input=await prepareAgendaDocument(input,provider,scheduledAt?new Date(scheduledAt):new Date());agendaPart=input.agendaPart}
     catch(e){const allowed=['Agenda o destinatario non valido.','Regola agenda non valida.','Nessuna agenda completa disponibile per questo PT.','Il calendario è cambiato: aggiorna l’anteprima prima di inviare.','Agenda troppo lunga: scegli un giorno. Nessuna seduta è stata tagliata.','Testo agenda non valido.','Formato agenda non valido. Riapri il pannello aggiornato.','Le parti dell’agenda sono cambiate. Aggiorna l’anteprima.','Una seduta supera il limite del modello WhatsApp. Nessuna riga è stata tagliata.','Agenda incompleta. Rileggi il calendario.'];return reply(allowed.includes(e.message)?e.message:'Agenda non disponibile. Aggiorna l’anteprima prima di inviare.',409)}
   }
   const contact = /^(cliente|pt):([a-zA-Z0-9_-]{1,128})$/.exec(input.contact);
@@ -49,16 +49,20 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
     try{template=await prepareTemplate(input.template,file,env,fetchImpl)}
     catch(error){return reply(error.message==='templates_unavailable'?'Elenco modelli Meta non disponibile.':error.message,400)}
   }
-  const key = 'manual/' + input.batch + '/' + createHash('sha256').update(phone).digest('hex')+(Number.isInteger(agendaPart)?'/agenda-part-'+agendaPart:'');
+  // Scheduled retries retain the same claim even if a PT's phone is edited.
+  // These options are server-only; request JSON cannot select this namespace.
+  const key = (scheduledAt?'scheduled/':'manual/') + input.batch + '/' + createHash('sha256').update(scheduledAt?input.contact:phone).digest('hex')+(Number.isInteger(agendaPart)?'/agenda-part-'+agendaPart:'');
   const claims = store();
   const prior = await claims.getWithMetadata(key);
   if (prior) return reply(prior.data,200,prior.metadata?.messageId);
   await provider.verifySender();
+  if(beforeDispatch&&!await beforeDispatch())return reply('Programmazione disattivata.',409);
   const pending = 'Esito da verificare';
   if (!(await claims.set(key,pending,{onlyIfNew:true})).modified) {
     const current=await claims.getWithMetadata(key);
     return reply(current?.data||pending,200,current?.metadata?.messageId);
   }
+  onClaimed?.();
   const root = 'https://graph.facebook.com/' + env.WHATSAPP_API_VERSION + '/' + env.WHATSAPP_PHONE_NUMBER_ID;
   const headers = {Authorization:'Bearer ' + env.WHATSAPP_ACCESS_TOKEN};
   async function post(path, options) {
@@ -73,6 +77,10 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
   }
   let result, messageId = null;
   try {
+    if(beforeDispatch&&!await beforeDispatch()){
+      await claims.set(key,'Programmazione disattivata.');
+      return reply('Programmazione disattivata.',409);
+    }
     const payload = {messaging_product:'whatsapp',recipient_type:'individual',to:phone.slice(1)};
     if (file) {
       const filename = file.name.replace(/[\\/\x00-\x1f]/g,'_').slice(-150);

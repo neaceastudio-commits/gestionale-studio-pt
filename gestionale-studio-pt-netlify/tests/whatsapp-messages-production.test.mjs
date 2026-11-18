@@ -6,7 +6,7 @@ let calls=0,role='owner';const records=new Map();
 const store=()=>({list:async()=>({blobs:[]}),get:async()=>null,getWithMetadata:async()=>null,setJSON:async(k,v)=>{records.set(k,v);return {modified:true,etag:'revision-1'}}});
 const handler=createHandler({env:{WHATSAPP_AGENDA_SITE_ID:site},authenticate:async()=>role?{role}:null,store,provider:{},send:async()=>{calls++;return Response.json({status:'Accettato da Meta',messageId:'wamid.fake'})},templates:async()=>({templates:[]})});
 const request=(action,extra={})=>new Request('https://calendario.neacea.com/.netlify/functions/whatsapp-messages',{method:'POST',body:JSON.stringify({action,accessToken:'mock',...extra})});
-for(const invalidRole of [null,'pt','secretary']){role=invalidRole;assert.equal((await handler(request('composer-send'),context)).status,403)}
+for(const invalidRole of [null,'pt','secretary']){role=invalidRole;for(const action of ['composer-send','agenda-save-rule','agenda-toggle-rule','agenda-run-status','agenda-rules'])assert.equal((await handler(request(action),context)).status,403)}
 assert.equal(calls,0);role='owner';
 assert.equal((await handler(request('composer-send'),{...context,site:{id:'other'}})).status,404);
 assert.equal((await handler(request('composer-send'),{...context,deploy:{context:'branch-deploy'}})).status,404);

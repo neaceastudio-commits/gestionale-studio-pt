@@ -28,6 +28,7 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--)?new-calendar-neacea\.netlify\.app$/.test
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());let fail=true,lost=true;
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());
   if(u.hostname.startsWith('fonts.'))return route.fulfill({body:''});
+  if(u.pathname.endsWith('calendar-private-data'))return require('./helpers/calendar-private-route.cjs').fulfill(route,f);
   if(u.pathname.endsWith('calendar-runtime'))return route.fulfill({json:{CALENDAR_FLEX_MODE:true}});
   if(u.pathname.endsWith('apple-caldav-link'))return route.fulfill({json:{eligible:false}});
   if(u.pathname.endsWith('whatsapp-agenda')||u.pathname.endsWith('calendar-client-finance'))return route.fulfill({status:403,json:{error:'disabled'}});

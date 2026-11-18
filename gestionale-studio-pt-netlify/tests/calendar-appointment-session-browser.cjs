@@ -26,6 +26,7 @@ const M = require('../app/calendario-studio/js/pt-session-model');
     page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', async route => {
       const req = route.request(), u = new URL(req.url());
+      if(u.pathname.endsWith('calendar-private-data'))return require('./helpers/calendar-private-route.cjs').fulfill(route,{all:async table=>table==='clients'?[client]:table==='operators'?operators:table==='appointments'?[appointment]:[]},'SIM');
       if (u.hostname.startsWith('fonts.')) return route.fulfill({ body: '' });
       if (u.pathname.endsWith('calendar-runtime')) return route.fulfill({ json: { CALENDAR_FLEX_MODE: true } });
       if (u.pathname.endsWith('whatsapp-agenda')) return route.fulfill({ status: 403, json: { error: 'disabled' } });

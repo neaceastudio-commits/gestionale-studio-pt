@@ -18,6 +18,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', async route => {
       const r = route.request(), u = new URL(r.url());
+      if(u.pathname.endsWith('calendar-private-data'))return require('./helpers/calendar-private-route.cjs').fulfill(route,{all:async table=>table==='clients'?clients:table==='appointments'?appointments:table==='operators'?[{id:'pt',nome:'PT',cognome:'TEST',roles:['PT'],active:true}]:[]},'SIM');
       if (u.hostname.startsWith('fonts.')) return route.fulfill({ body: '' });
       if(u.pathname.endsWith('whatsapp-agenda')) return route.fulfill({status:403,json:{error:'direction_only'}});
       if (u.pathname.endsWith('calendar-runtime')) return route.fulfill({ json: { CALENDAR_FLEX_MODE: true } });

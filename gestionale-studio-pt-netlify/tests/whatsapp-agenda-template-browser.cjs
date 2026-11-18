@@ -8,7 +8,7 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendar
   const entries=Array.from({length:count},(_,i)=>({day:'2026-11-23',text:'09:00 · CLIENTE_'+operatorId+'_'+i+' · PT 1:1 · 0/8'}));
   return {operatorId,name,count,entries,incomplete:false,revision:'synthetic-'+operatorId,text:'lunedì 23 novembre\n'+entries.map(e=>e.text).join('\n')+'\n\nTotale sedute: '+count};
  })};
- let status='PENDING',accept=false,failPart=false;const sent=[],dialogs=[],errors=[],rules=[];
+ let status='PENDING',accept=false,failPart=false,failSave=false,conflictToggle=false,revision=0;const sent=[],dialogs=[],errors=[],rules=[];
  browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1180,height:900},timezoneId:'Europe/Rome'});
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{dialogs.push(d.message());await (accept?d.accept():d.dismiss())});
  await page.addInitScript(()=>sessionStorage.setItem('neacea-calendar-audit-session','OWNER'));
@@ -23,6 +23,17 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendar
    const data=req.postDataJSON();assert.equal(data.accessToken,'OWNER');
    if(data.action==='composer-templates')return route.fulfill({json:{templates:[{name:model.name,language:model.language,status,supported:true,header:null,body:model.body,footer:model.footer,parameterCount:10}]}});
    if(data.action==='agenda-rules')return route.fulfill({json:{rules}});
+   if(data.action==='agenda-save-rule'){
+    if(failSave)return route.fulfill({status:503,json:{error:'mock unavailable'}});
+    const r={...data.rule,enabled:false,activation:null,nextRunAt:null,revision:'r'+(++revision)},index=rules.findIndex(x=>x.id===r.id);
+    if(index<0)rules.push(r);else rules[index]=r;return route.fulfill({json:{rule:r}});
+   }
+   if(data.action==='agenda-toggle-rule'){
+    if(conflictToggle)return route.fulfill({status:409,json:{error:'version_conflict'}});
+    const i=rules.findIndex(x=>x.id===data.id);assert.ok(i>=0);assert.equal(data.revision,rules[i].revision);assert.match(data.requestId,/^[a-f0-9-]{36}$/);
+    rules[i]={...rules[i],enabled:data.enabled,nextRunAt:data.enabled?'2026-11-23T07:00:00.000Z':null,revision:'r'+(++revision)};
+    return route.fulfill({json:{rule:rules[i]}});
+   }
    if(data.action==='composer-status')return route.fulfill({json:{results:[],configured:true,receivedAt:null}});
    assert.equal(data.action,'composer-send','No automatic matrix write may be called');sent.push(data);
    if(failPart&&data.agenda.part===1)return route.fulfill({status:409,json:{status:'Il calendario è cambiato: aggiorna l’anteprima prima di inviare.'}});
@@ -49,8 +60,24 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendar
  assert.equal(await frame.locator('#log tr').count(),4);
  await frame.locator('[data-view="editor"]').click();await frame.locator('#subject').fill('Seconda comunicazione sintetica');failPart=true;
  await frame.locator('#sendNow').click();await frame.locator('#notice').filter({hasText:'Invio agenda interrotto'}).waitFor();assert.equal(sent.length,6,'only two parts attempted in interrupted dispatch');
- await frame.locator('[data-view="automazioni"]').click();assert.match(await frame.locator('#automazioni').innerText(),/motore di invio ricorrente non è attivo/);
+ await frame.locator('[data-view="automazioni"]').click();assert.match(await frame.locator('#automazioni').innerText(),/Tutte le matrici restano disattivate/);
+ const beforeMatrices=sent.length;
+ await frame.locator('#newAutomation').click();await frame.locator('#autoTitle').fill('Agenda lunedì');await frame.locator('#autoWeekday').selectOption('1');await frame.locator('#autoTime').fill('18:45');
+ await frame.locator('#saveAutomation').click();await frame.locator('#autoNotice').filter({hasText:'salvata disattivata'}).waitFor();assert.equal(rules[0].enabled,false);assert.equal(rules[0].time,'18:45');assert.equal(sent.length,beforeMatrices);
+ await frame.locator('#newAutomation').click();await frame.locator('#autoTitle').fill('Agenda giornaliera');await frame.locator('#autoFrequency').selectOption('daily');await frame.locator('#autoPeriod').selectOption('day');
+ failSave=true;await frame.locator('#saveAutomation').click();await frame.locator('#autoNotice').filter({hasText:'Salvataggio non riuscito'}).waitFor();assert.equal(await frame.locator('#autoTitle').inputValue(),'Agenda giornaliera');assert.equal(rules.length,1);
+ failSave=false;await frame.locator('#saveAutomation').click();await frame.locator('#autoNotice').filter({hasText:'salvata disattivata'}).waitFor();assert.equal(rules.length,2);assert.ok(rules.every(r=>!r.enabled));
+ const card=title=>frame.locator('.automation-card').filter({has:frame.getByRole('heading',{name:title,exact:true})});
+ accept=false;await card('Agenda lunedì').getByRole('button',{name:'Attiva matrice',exact:true}).click();assert.ok(rules.every(r=>!r.enabled));
+ accept=true;await card('Agenda lunedì').getByRole('button',{name:'Attiva matrice',exact:true}).click();await frame.locator('#automationNotice').filter({hasText:'Primo invio'}).waitFor();assert.equal(rules[0].enabled,true);assert.equal(rules[1].enabled,false);assert.match(await card('Agenda lunedì').innerText(),/Prossimo invio.*08:00/);
+ await page.reload();await frame.locator('[data-audience="PT"]').click();await frame.locator('[data-view="automazioni"]').click();await card('Agenda lunedì').getByRole('button',{name:'Disattiva matrice',exact:true}).waitFor();assert.match(await card('Agenda giornaliera').innerText(),/Disattivata/);
+ await card('Agenda lunedì').getByRole('button',{name:'Disattiva matrice',exact:true}).click();await frame.locator('#automationNotice').filter({hasText:'Matrice disattivata'}).waitFor();assert.ok(rules.every(r=>!r.enabled));
+ conflictToggle=true;await card('Agenda lunedì').getByRole('button',{name:'Attiva matrice',exact:true}).click();await frame.locator('#automationNotice').filter({hasText:'Elenco aggiornato'}).waitFor();assert.ok(rules.every(r=>!r.enabled));conflictToggle=false;
+ await card('Agenda lunedì').getByRole('button',{name:'Attiva matrice',exact:true}).click();await frame.locator('#automationNotice').filter({hasText:'Primo invio'}).waitFor();
+ await card('Agenda lunedì').getByRole('button',{name:'Modifica matrice'}).click();assert.match(await frame.locator('#autoNotice').innerText(),/la disattiverà/);await frame.locator('#autoTime').fill('19:15');await frame.locator('#saveAutomation').click();await frame.locator('#autoNotice').filter({hasText:'salvata disattivata'}).waitFor();assert.ok(rules.every(r=>!r.enabled));assert.equal(sent.length,beforeMatrices,'matrix operations must not invoke composer-send');
+ await page.reload();await frame.locator('[data-audience="PT"]').click();await frame.locator('[data-view="automazioni"]').click();await card('Agenda lunedì').getByRole('button',{name:'Attiva matrice',exact:true}).waitFor();assert.match(await card('Agenda lunedì').innerText(),/19:15/);
+ await frame.locator('[data-view="editor"]').click();await frame.locator('#prepareAgenda').click();await frame.locator('#agendaInfo').filter({hasText:'23/11/2026'}).waitFor();
  await page.setViewportSize({width:390,height:844});await frame.locator('[data-view="editor"]').click();assert.ok(await frame.locator('#sendFormat').isVisible());
  await frame.locator('#sendFormat').selectOption('free');assert.ok(await frame.locator('#bodyText').isVisible());assert.match(await frame.locator('#agendaTemplateNotice').innerText(),/ultime 24 ore/);
- assert.deepEqual(errors,[]);console.log('PASS browser agenda: pending/approval gate, complete parts and exact confirmation, separate PT, cancel/no automatic send, mocked dispatch, independent log, interruption, free mode and mobile. Assets: '+(origin||'local candidate'));
+ assert.deepEqual(errors,[]);console.log('PASS browser agenda: pending/approval gate, complete parts and exact confirmation, separate PT, cancel/no automatic send, mocked dispatch, independent log, interruption, free mode, matrix save/activation/pause/reload/conflicts, failed-save recovery and mobile. Assets: '+(origin||'local candidate'));
 }finally{await browser?.close()}})().catch(e=>{console.error(e);process.exitCode=1});

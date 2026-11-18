@@ -18,7 +18,7 @@ node --check netlify/functions/pt-access-email.js
 node --check netlify/functions/lib/pt-auth.js
 node --check netlify/functions/pt-data.js
 node --check netlify/functions/apple-calendar.js
-node --test tests/calendar-function-build.test.cjs tests/whatsapp-agenda-template.test.mjs
+node --test tests/calendar-function-build.test.cjs tests/whatsapp-agenda-template.test.mjs tests/whatsapp-matrix-scheduling.test.mjs tests/whatsapp-messages-production.test.mjs tests/whatsapp-delivery-production.test.mjs
 node tests/whatsapp-agenda-template-browser.cjs
 node --test tests/calendar-expected-renewals.test.cjs tests/calendar-cycle-sequence.test.cjs tests/calendar-cycle-sequence-concurrency.test.cjs
 node tests/calendar-cycle-sequence-browser.cjs
@@ -65,6 +65,14 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     netlify/functions/lib/whatsapp-templates.mjs
     tests/whatsapp-agenda-template.test.mjs
     tests/whatsapp-agenda-template-browser.cjs
+    netlify/functions/whatsapp-matrix-scheduled.mjs
+    netlify/functions/whatsapp-matrix-worker-background.mjs
+    netlify/functions/lib/whatsapp-matrix-engine.mjs
+    netlify/functions/lib/whatsapp-matrix-time.mjs
+    netlify/functions/lib/whatsapp-agenda-rules-store.mjs
+    netlify/functions/lib/whatsapp-messages-handler.mjs
+    tests/whatsapp-matrix-scheduling.test.mjs
+    tests/helpers/calendar-private-route.cjs
     tests/calendar-renewal-cancelled-history.test.cjs
     supabase/migrations/20261116181624_calendar_preserve_cancelled_renewal_history.sql
     tests/calendar-expected-renewals.test.cjs

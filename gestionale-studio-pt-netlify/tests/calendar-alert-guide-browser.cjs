@@ -27,6 +27,7 @@ const { chromium } = require(require.resolve('playwright', { paths: [path.resolv
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
+      if(url.pathname.endsWith('calendar-private-data'))return require('./helpers/calendar-private-route.cjs').fulfill(route,{all:async table=>table==='clients'?clients:table==='appointments'?appointments:table==='operators'?[{id:'pt',nome:'Trainer',cognome:'Test',active:true,roles:['PT']}]:[]},'SIM');
       if (url.pathname.includes('/.netlify/functions/')) {
         const body = request.postData() ? request.postDataJSON() : {};
         if (url.pathname.endsWith('calendar-runtime')) return route.fulfill({ json: { CALENDAR_FLEX_MODE: true } });

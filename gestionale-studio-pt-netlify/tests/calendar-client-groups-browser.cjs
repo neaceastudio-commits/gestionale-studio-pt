@@ -11,6 +11,7 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  await page.route('**/*',async route=>{
   const request=route.request(),u=new URL(request.url());
+  if(u.pathname.endsWith('calendar-private-data'))return require('./helpers/calendar-private-route.cjs').fulfill(route,{all:async table=>table==='clients'?clients:table==='operators'?operators:[]},'SIM');
   if(u.pathname.includes('/.netlify/functions/')){
    const b=request.postDataJSON() || {};
    if(b.operation==='session')return route.fulfill({json:{actor:{id:'owner',role:'owner'}}});

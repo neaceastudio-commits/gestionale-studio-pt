@@ -4,9 +4,9 @@ import agendaModel from './whatsapp-agenda-text.js';
 export const agendaTemplate=agendaModel.name;
 const dayLabel=s=>s.split('-').reverse().join('/');
 export function agendaRevision(report,row){return createHash('sha256').update(JSON.stringify([report.start,report.end,row.operatorId,row.name,row.count,row.text,row.entries,row.incomplete])).digest('hex')}
-export async function prepareAgendaDocument(input,provider){
+export async function prepareAgendaDocument(input,provider,referenceTime=new Date()){
  if(!/^pt:[a-zA-Z0-9_-]{1,128}$/.test(input.contact)||!input.agenda||typeof input.agenda.revision!=='string')throw Error('Agenda o destinatario non valido.');
- let plan;try{plan=ruleTools.projection(input.agenda.rule,input.agenda.previewAt)}catch{throw Error('Regola agenda non valida.')}
+ let plan;try{plan=ruleTools.projection(input.agenda.rule,input.agenda.previewAt,referenceTime)}catch{throw Error('Regola agenda non valida.')}
  const report=await provider.weeklyAgenda(plan.day,plan.period);
  const row=report.agendas.find(r=>r.operatorId===input.contact.slice(3));
  if(!row||!row.count||row.incomplete)throw Error('Nessuna agenda completa disponibile per questo PT.');
