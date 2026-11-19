@@ -1,5 +1,8 @@
 import ruleTools from './whatsapp-agenda-rule.js';
 import agenda from './whatsapp-agenda.js';
+import clientModels from './whatsapp-client-models.js';
+export const isClientRule=r=>r?.audience==='clients';
+export const validateMatrixRule=r=>{if(isClientRule(r))return clientModels.validateRule(r);if(r?.audience&&!['assigned_trainer'].includes(r.audience)||r?.source==='client_events')throw Error('invalid_rule');return ruleTools.validateRule(r)};
 export const rulePrefix='agenda-rules-v1/';
 export const runPrefix='agenda-runs-v1/';
 export const siteId='28855faa-de52-4e4c-b1c2-e2db4965670f';
@@ -14,7 +17,7 @@ export function instant(day,time){
  return [120,60].map(m=>new Date(local-m*60000)).find(d=>{const r=agenda.romeTime(d);return r.day===day&&r.time===time})||null;
 }
 export function nextRun(rule,after=new Date()){
- const r=ruleTools.validateRule(rule),first=agenda.romeTime(after).day;
+ const r=validateMatrixRule(rule),first=agenda.romeTime(after).day;
  for(let i=0;i<370;i++){
   const day=shift(first,i);
   if(r.frequency==='weekly'&&new Date(day+'T12:00:00Z').getUTCDay()!==r.weekday)continue;

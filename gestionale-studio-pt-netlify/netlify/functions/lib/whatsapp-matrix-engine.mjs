@@ -1,5 +1,5 @@
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
-import {active,production,rulePrefix,runPrefix,runId,nextRun,agendaDay} from './whatsapp-matrix-time.mjs';
+import {active,production,rulePrefix,runPrefix,runId,nextRun,agendaDay,isClientRule} from './whatsapp-matrix-time.mjs';
 import {agendaRevision} from './whatsapp-agenda-document.mjs';
 import agendaModel from './whatsapp-agenda-text.js';
 import {sendSelected} from './whatsapp-compose.mjs';
@@ -50,12 +50,13 @@ export async function tick({store,env,context,fetchImpl=fetch,now=()=>new Date()
  }
  return {status:'ready',dispatched};
 }
-export async function execute(id,{store,env,context,db,provider,send=sendSelected,fetchImpl=fetch,now=()=>new Date()}){
+export async function execute(id,{store,env,context,db,provider,clientProvider,send=sendSelected,fetchImpl=fetch,now=()=>new Date()}){
  if(!production(context,env)||await read(store,runKey(id)+'/outcome'))return;
  const run=(await read(store,runKey(id)))?.data;
  if(!run)return;
  const check=()=>authorized(run,{store,db,context,env,now});
  if(!await check()){await finish(store,id,'Interrotta: matrice disattivata, autorizzazione revocata o scadenza superata.');return}
+ if(isClientRule(run.rule))return executeClients(id,run,{store,env,context,db,provider,clientProvider,send,fetchImpl,now},check);
  let plan=(await read(store,runKey(id)+'/plan'))?.data;
  if(!plan){
   const [report,settings]=await Promise.all([provider.weeklyAgenda(agendaDay(run.rule,run.scheduledAt),run.rule.period),provider.settings()]);
@@ -90,6 +91,40 @@ export async function execute(id,{store,env,context,db,provider,send=sendSelecte
   accepted++;
  }
  await finish(store,id,plan.items.length?'Invii accettati da Meta.':'Nessun PT con agenda e numero disponibile.',{accepted,total:plan.items.length,excluded:plan.excluded});
+}
+
+async function executeClients(id,run,{store,env,db,provider,clientProvider,send,fetchImpl,now},check){
+ let plan=(await read(store,runKey(id)+'/plan'))?.data;
+ if(!plan){
+  const computed=await clientProvider.plan(run.rule,run.scheduledAt);
+  const items=computed.items.map(({contact,eventKey,revision,part,parts})=>({contact,eventKey,revision,part,parts}));
+  await store.setJSON(runKey(id)+'/plan',{items,excluded:computed.excluded},{onlyIfNew:true});
+  plan=(await read(store,runKey(id)+'/plan')).data;
+ }
+ let accepted=0,alreadyNotified=0,skipped=0;
+ for(const [index,item]of plan.items.entries()){
+  let receipt=(await read(store,runKey(id)+'/part-'+index))?.data;
+  if(!receipt){
+   if(!await check()){await finish(store,id,'Interrotta: matrice disattivata, autorizzazione revocata o scadenza superata.',{accepted,total:plan.items.length,excluded:plan.excluded,alreadyNotified,skipped});return}
+   const current=async()=>{const r=await clientProvider.plan(run.rule,run.scheduledAt,{clientId:item.contact.slice(8)});return r.items.find(r=>r.eventKey===item.eventKey&&r.revision===item.revision)};
+   const fresh=await current();
+   if(!fresh)receipt={status:'Non inviato · dati cambiati o condizione cessata.'};
+   else{
+    let claimed=false;
+    const response=await send({batch:run.batch,contact:item.contact,body:fresh.body,template:fresh.template,file:null},{db,env,provider,store:()=>store,fetchImpl,scheduledAt:run.scheduledAt,clientEventKey:item.eventKey,onClaimed:()=>{claimed=true},beforeDispatch:async()=>await check()&&Boolean(await current())});
+    receipt=await response.json();
+    if(receipt.status==='Esito da verificare'&&!claimed)return;
+    if(receipt.status==='Accettato da Meta'&&!claimed)receipt.status='Già notificato';
+   }
+   await store.setJSON(runKey(id)+'/part-'+index,{...receipt,contact:item.contact,part:0,at:now().toISOString()},{onlyIfNew:true});
+   receipt=(await read(store,runKey(id)+'/part-'+index)).data;
+  }
+  if(receipt.status==='Accettato da Meta')accepted++;
+  else if(receipt.status==='Già notificato')alreadyNotified++;
+  else if(receipt.status.startsWith('Non inviato'))skipped++;
+  else{await finish(store,id,'Invio interrotto · '+receipt.status,{accepted,total:plan.items.length,excluded:plan.excluded,alreadyNotified,skipped});return}
+ }
+ await finish(store,id,plan.items.length?'Controllo clienti completato.':'Nessun cliente corrisponde alla condizione.',{accepted,total:plan.items.length,excluded:plan.excluded,alreadyNotified,skipped});
 }
 export function workerHandler(deps){return async(request,context)=>{
  if(!production(context,deps.env)||request.method!=='POST')return new Response(null,{status:404});

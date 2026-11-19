@@ -4,6 +4,9 @@ if(window.parent === window){location.replace('./?view=messaggi');return;}
 
 const $=id=>document.getElementById(id);
 const agendaModel=window.WhatsAppAgendaText;
+const clientModels=window.WhatsAppClientModels;
+const clientRule=r=>r?.audience==='clients';
+const audienceRules=()=>[...rules.values()].filter(r=>clientRule(r)===(audience==='Clienti'));
 const agendaPages=(id)=>agendaModel.pages(report,agendas.get(id));
 const people=Object.create(null);
 let audience='Clienti',directoryLoaded=false;
@@ -120,7 +123,7 @@ async function refreshAgenda(){
 }
 function showRules(){
  const select=$('ruleSaved');select.replaceChildren(new Option('Nuova matrice',''));
- for(const r of rules.values())select.add(new Option(r.title,r.id));
+ for(const r of rules.values())if(!clientRule(r))select.add(new Option(r.title,r.id));
  select.value=chosenRule;
 }
 async function readRules(){
@@ -350,7 +353,7 @@ async function readTemplates(){
   $('templateName').replaceChildren(new Option('Scegli un modello',''));
   for(const t of templateCatalogue){const option=new Option(t.name+' · '+t.language+' · '+t.status+(t.supported?'':' · formato non supportato'),templateKey(t));option.disabled=t.status!=='APPROVED'||!t.supported;$('templateName').append(option)}
   if(templateCatalogue.some(t=>templateKey(t)===prior.key))$('templateName').value=prior.key;
-  showTemplateFields(prior.parameters);pendingTemplateDraft=null;if(isAgenda())configureAgendaFormat();preview();
+  showTemplateFields(prior.parameters);pendingTemplateDraft=null;if(isAgenda())configureAgendaFormat();preview();drawAutomations();
  }catch{$('templateNotice').textContent='Modelli non disponibili. Riprova con Aggiorna modelli da Meta.'}
  finally{$('reloadTemplates').disabled=false}
 }
@@ -486,14 +489,14 @@ setInterval(()=>{if(!document.hidden&&!$('registro').hidden)refreshDelivery()},3
 
 function updateAudienceUI(){
  for(const b of document.querySelectorAll('[data-audience]'))b.setAttribute('aria-pressed',b.dataset.audience===audience);
- const pt=audience==='PT';$('prepareAgenda').hidden=!pt;$('archiveToggle').hidden=pt;$('newAutomation').hidden=!pt;
+ const pt=audience==='PT';$('prepareAgenda').hidden=!pt;$('archiveToggle').hidden=pt;$('newAutomation').hidden=false;$('newAutomation').textContent=pt?'Nuova matrice PT':'Nuova matrice Clienti';
  $('directoryHeading').textContent=pt?'Rubrica Personal Trainer':'Rubrica clienti';
  $('audienceInfo').textContent=pt?'Solo Personal Trainer · dati e comunicazioni dedicati':'Solo clienti attivi · ibernati esclusi';
  drawAutomations();
 }
 function setAudience(next,redraw=true){
  audience=next==='PT'?'PT':'Clienti';$('group').value=audience;$('rg').value=audience;$('showArchived').checked=false;
- selected=undefined;detail='';filter='Tutti';$('recipientSearch').value='';$('automationForm').hidden=true;
+ selected=undefined;detail='';filter='Tutti';$('recipientSearch').value='';$('automationForm').hidden=true;$('automationPreview').hidden=true;
  if(audience==='Clienti'&&isAgenda()){$('model').value='Personalizzato';generation++;agendas.clear();report=null;$('agendaRules').hidden=true}
  updateAudienceUI();applyAudience(false);
  if(redraw){setForm({audience});view('editor')}
@@ -521,20 +524,27 @@ $('prepareAgenda').onclick=()=>{setForm({audience:'PT',model:'Agenda PT',subject
 $('compose').onsubmit=e=>e.preventDefault();
 let editingAutomation='';
 const weekdays=['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
-function automationDescription(r){return (r.frequency==='daily'?'Ogni giorno':'Ogni '+weekdays[r.weekday])+' alle '+r.time+' · '+(r.period==='day'?'giorno':'settimana')+' '+({'-1':'precedente','0':'corrente','1':r.period==='day'?'successivo':'successiva'}[r.offset])}
+function automationDescription(r){
+ const when=(r.frequency==='daily'?'Ogni giorno':'Ogni '+weekdays[r.weekday])+' alle '+r.time;
+ if(clientRule(r))return when+' · '+(r.kind==='appointment'?'appuntamenti fra '+r.daysBefore+' giorni':r.kind==='remaining'?'sedute residue ≤ '+r.remainingThreshold:'fine prevista entro '+r.daysBefore+' giorni');
+ return when+' · '+(r.period==='day'?'giorno':'settimana')+' '+({'-1':'precedente','0':'corrente','1':r.period==='day'?'successivo':'successiva'}[r.offset]);
+}
 function drawAutomations(){
- const list=$('automationList');list.replaceChildren();const pt=audience==='PT';$('ruleCount').textContent=pt?rules.size:0;
- if(!pt){const empty=node('div','');empty.className='empty-state';empty.append(node('h3','Le regole clienti non sono ancora operative'),node('p','Puoi già preparare messaggi e bozze con allegati dedicati. Le regole legate alle sedute residue e alle scadenze dei pacchetti richiedono il collegamento al motore automatico.'),button('Prepara un messaggio',()=>{setForm();view('editor')}));list.append(empty);return}
- if(!rules.size){const empty=node('div','');empty.className='empty-state';empty.append(node('h3','La stessa logica, per ogni PT'),node('p','Definisci quando preparare l’agenda e quale periodo leggere. Il calendario determina destinatari e sedute: ogni PT vede soltanto la propria agenda.'),button('Crea la prima matrice',()=>editAutomation()));list.append(empty);return}
- for(const r of rules.values()){
+ const list=$('automationList');list.replaceChildren();const pt=audience==='PT',rows=audienceRules();$('ruleCount').textContent=rows.length;
+ if(!rows.length){const empty=node('div','');empty.className='empty-state';empty.append(node('h3',pt?'La stessa logica, per ogni PT':'Avvisi personali per i clienti'),node('p',pt?'Definisci quando preparare l’agenda e quale periodo leggere. Ogni PT vede soltanto la propria agenda.':'Crea promemoria appuntamenti, avvisi sul residuo e sulla fine prevista del pacchetto. Solo clienti attivi con numero disponibile; ogni destinatario riceve esclusivamente i propri dati.'),button('Crea la prima matrice',()=>editAutomation()));list.append(empty);return}
+ for(const r of rows){
   const card=node('article','');card.className='automation-card';const state=node('span',r.enabled?'Attiva · invio programmato':'Disattivata · nessun invio programmato');state.className='badge';
-  card.append(state,node('h3',r.title),node('p',automationDescription(r)),node('p','Calendario → PT con sedute → testo WhatsApp'));
+  card.append(state,node('h3',r.title),node('p',automationDescription(r)),node('p',clientRule(r)?'Dati personali → cliente interessato → modello di servizio':'Calendario → PT con sedute → testo WhatsApp'));
+  const modelIssue=clientRule(r)?clientModels.templateIssue(r.kind,templateCatalogue):'';
+  if(modelIssue)card.append(node('p',modelIssue));
   if(r.enabled&&r.nextRunAt)card.append(node('p','Prossimo invio: '+scheduleLabel(r.nextRunAt)+' · Europe/Rome'));
-  if(r.lastRun)card.append(node('p','Ultima scadenza: '+scheduleLabel(r.lastRun.scheduledAt)+' · '+r.lastRun.status+(Number.isInteger(r.lastRun.accepted)?' '+r.lastRun.accepted+'/'+r.lastRun.total+' messaggi accettati.':'')+(r.lastRun.excluded?' PT esclusi per numero mancante o dati incompleti: '+r.lastRun.excluded+'.':'')));
-  const actions=node('div','');actions.className='tools';const toggle=button(r.enabled?'Disattiva matrice':'Attiva matrice',()=>toggleAutomation(r));toggle.disabled=pendingAutomations.has(r.id);
+  if(r.lastRun)card.append(node('p','Ultima scadenza: '+scheduleLabel(r.lastRun.scheduledAt)+' · '+r.lastRun.status+(Number.isInteger(r.lastRun.accepted)?' '+r.lastRun.accepted+'/'+r.lastRun.total+' messaggi accettati.':'')+(r.lastRun.excluded?' Destinatari esclusi per numero mancante o dati incompleti: '+r.lastRun.excluded+'.':'')));
+  if(r.lastRun?.alreadyNotified)card.append(node('p','Già notificati: '+r.lastRun.alreadyNotified+'. Nessun reinvio.'));
+  if(r.lastRun?.skipped)card.append(node('p','Non inviati per dati cambiati: '+r.lastRun.skipped+'.'));
+  const actions=node('div','');actions.className='tools';const toggle=button(r.enabled?'Disattiva matrice':'Attiva matrice',()=>toggleAutomation(r));toggle.disabled=pendingAutomations.has(r.id)||!r.enabled&&Boolean(modelIssue);
   if(r.lastRun?.id)actions.append(button('Controlla consegna',async()=>{
    const out=node('p','Lettura esiti…');card.append(out);
-   try{const result=await agendaRequest('whatsapp-messages',{action:'agenda-run-status',id:r.lastRun.id});out.textContent=result.notice||result.messages.map(m=>(people[m.contact]?.[0]||'PT')+' · parte '+(m.part+1)+'/'+m.parts+' · '+m.status+(m.codes?.length?' ('+m.codes.join(', ')+')':'')).join(' · ')}catch{out.textContent='Esiti non disponibili. Riprova.'}
+   try{const result=await agendaRequest('whatsapp-messages',{action:'agenda-run-status',id:r.lastRun.id});out.textContent=result.notice||result.messages.map(m=>(people[m.contact]?.[0]||(clientRule(r)?'Cliente':'PT'))+' · parte '+(m.part+1)+'/'+m.parts+' · '+m.status+(m.codes?.length?' ('+m.codes.join(', ')+')':'')).join(' · ')}catch{out.textContent='Esiti non disponibili. Riprova.'}
   }));
   actions.append(toggle,button('Modifica matrice',()=>editAutomation(r)),button('Verifica destinatari e testo',()=>previewRule(r)));card.append(actions);list.append(card);
  }
@@ -543,7 +553,7 @@ const pendingAutomations=new Set(),toggleRequests=new Map();
 function scheduleLabel(value){return new Intl.DateTimeFormat('it-IT',{timeZone:'Europe/Rome',dateStyle:'full',timeStyle:'short'}).format(new Date(value))}
 async function toggleAutomation(r){
  const enabled=!r.enabled;
- if(enabled&&!confirm('Attivare solo «'+r.title+'»?\n'+automationDescription(r)+' · Europe/Rome.\nIl primo invio sarà alla prossima scadenza futura. Ogni PT riceverà soltanto la propria agenda, anche in più messaggi testuali.'))return;
+ if(enabled&&!confirm('Attivare solo «'+r.title+'»?\n'+automationDescription(r)+' · Europe/Rome.\nIl primo invio sarà alla prossima scadenza futura. '+(clientRule(r)?'Ogni cliente riceverà solo il proprio avviso. La stessa condizione non verrà notificata nuovamente.':'Ogni PT riceverà soltanto la propria agenda, anche in più messaggi testuali.')))return;
  pendingAutomations.add(r.id);drawAutomations();$('automationNotice').textContent=enabled?'Attivazione in corso…':'Disattivazione in corso…';
  const retry=toggleRequests.get(r.id),requestId=retry?.enabled===enabled?retry.id:crypto.randomUUID();toggleRequests.set(r.id,{id:requestId,enabled});
  try{
@@ -555,15 +565,40 @@ async function toggleAutomation(r){
   $('automationNotice').textContent=e.message==='409'?'Stato o configurazione cambiati. Elenco aggiornato: verifica il modello approvato e riprova.':'Operazione non confermata. Premi Aggiorna matrici ed esiti per verificare lo stato salvato prima di riprovare.';
  }finally{pendingAutomations.delete(r.id);drawAutomations()}
 }
-$('refreshAutomations').onclick=async()=>{$('automationNotice').textContent='';await readRules()};
-function autoValues(){return {title:$('autoTitle').value.trim(),intro:$('autoIntro').value,link:$('autoLink').value.trim(),frequency:$('autoFrequency').value,weekday:Number($('autoWeekday').value),time:$('autoTime').value,period:$('autoPeriod').value,offset:Number($('autoOffset').value)}}
-function updateAutoSummary(){const r=autoValues();$('autoWeekdayBox').hidden=r.frequency==='daily';$('autoSummary').textContent=automationDescription(r)+'. Destinatari: PT con almeno una seduta prenotata. Ogni agenda sarà calcolata dai dati del calendario. Fuso Europe/Rome. Nessun invio fino all’attivazione esplicita.'}
+$('refreshAutomations').onclick=async()=>{$('automationNotice').textContent='';await Promise.all([readRules(),readTemplates()])};
+function autoValues(){
+ const common={title:$('autoTitle').value.trim(),frequency:$('autoFrequency').value,weekday:Number($('autoWeekday').value),time:$('autoTime').value};
+ if(audience==='Clienti'){const kind=$('autoClientKind').value;return {...common,audience:'clients',kind,intro:'',link:'',...(kind==='remaining'?{remainingThreshold:Number($('autoRemainingThreshold').value)}:{daysBefore:Number($('autoDaysBefore').value)})}}
+ return {...common,audience:'assigned_trainer',intro:$('autoIntro').value,link:$('autoLink').value.trim(),period:$('autoPeriod').value,offset:Number($('autoOffset').value)};
+}
+function updateAutoSummary(){
+ const r=autoValues(),client=clientRule(r);$('autoWeekdayBox').hidden=r.frequency==='daily';
+ $('autoPeriodBox').hidden=client;$('autoOffsetBox').hidden=client;$('autoClientControls').hidden=!client;
+ $('autoPeriod').disabled=client;$('autoOffset').disabled=client;
+ $('autoRemainingBox').hidden=r.kind!=='remaining';$('autoRemainingThreshold').disabled=!client||r.kind!=='remaining';
+ $('autoDaysBeforeBox').hidden=r.kind==='remaining';$('autoDaysBefore').disabled=!client||r.kind==='remaining';$('autoDaysBefore').max=r.kind==='appointment'?'30':'90';
+ $('autoDaysBeforeLabel').textContent=r.kind==='expiry'?'Fine prevista entro quanti giorni':'Appuntamenti fra quanti giorni';
+ $('autoDataSource').textContent=client?'Appuntamenti e pacchetti':'Calendario NEACEA';$('autoDataNote').textContent=client?'Dati salvati nel gestionale.':'Solo sedute prenotate.';$('autoAudience').textContent=client?'Clienti interessati':'PT con sedute';$('autoContent').textContent=client?'Avviso personale':'Agenda personale';
+ $('autoClientExplain').textContent=r.kind==='appointment'?'Un promemoria per appuntamento e anticipo scelto. Esclusi appuntamenti annullati, già iniziati, provvisori e rinnovi non confermati.':r.kind==='remaining'?'Residuo salvato dal gestionale, senza scalare le prenotazioni future. Una notifica per ciclo e soglia. La soglia 0 segnala il pacchetto esaurito.':'La fine prevista corrisponde all’ultima seduta del ciclo corrente, solo quando tutte le sedute residue sono programmate. Non è una scadenza contrattuale. Una notifica per ciclo, data prevista e anticipo scelto.';
+ $('autoSummary').textContent=automationDescription(r)+'. '+(client?'Destinatari: solo clienti attivi con dati completi e numero disponibile.':'Destinatari: PT con almeno una seduta prenotata. Ogni agenda sarà calcolata dai dati del calendario.')+' Fuso Europe/Rome. Nessun invio fino all’attivazione esplicita.';
+}
 function editAutomation(r={}){
- editingAutomation=r.id||'';$('automationHeading').textContent=r.id?'Modifica matrice':'Nuova matrice PT';
- for(const [id,value] of Object.entries({autoTitle:r.title||'',autoIntro:r.intro||'Ciao {nome}, ecco la tua agenda NEACEA.',autoLink:r.link||'',autoFrequency:r.frequency||'weekly',autoWeekday:r.weekday??1,autoTime:r.time||'08:00',autoPeriod:r.period||'week',autoOffset:r.offset??0}))$(id).value=value;
- $('autoNotice').textContent=r.enabled?'Questa matrice è attiva. Salvare le modifiche la disattiverà. Dovrai riattivarla dalla scheda.':'';$('automationForm').hidden=false;updateAutoSummary();$('autoTitle').focus();
+ editingAutomation=r.id||'';$('automationHeading').textContent=r.id?'Modifica matrice':audience==='Clienti'?'Nuova matrice Clienti':'Nuova matrice PT';
+ for(const [id,value] of Object.entries({autoTitle:r.title||'',autoIntro:r.intro||'Ciao {nome}, ecco la tua agenda NEACEA.',autoLink:r.link||'',autoFrequency:r.frequency||(audience==='Clienti'?'daily':'weekly'),autoWeekday:r.weekday??1,autoTime:r.time||'08:00',autoPeriod:r.period||'week',autoOffset:r.offset??0,autoClientKind:r.kind||'appointment',autoDaysBefore:r.daysBefore??1,autoRemainingThreshold:r.remainingThreshold??2}))$(id).value=value;
+ $('automationPreview').hidden=true;$('autoNotice').textContent=r.enabled?'Questa matrice è attiva. Salvare le modifiche la disattiverà. Dovrai riattivarla dalla scheda.':'';$('automationForm').hidden=false;updateAutoSummary();$('autoTitle').focus();
+}
+async function previewClients(r){
+ const out=$('automationPreview');out.hidden=false;out.replaceChildren(node('p','Lettura dei dati dal gestionale…'));
+ try{
+  const result=await agendaRequest('whatsapp-messages',{action:'agenda-preview-rule',rule:r});
+  out.replaceChildren(node('h3','Anteprima clienti'),node('p','Prossimo controllo: '+scheduleLabel(result.scheduledAt)+' · Europe/Rome'),node('p',result.notice),node('p',result.recipients.length+' messaggi previsti · '+result.excluded+' esclusi per dati o numero non disponibili.'));
+  if(result.templateIssue)out.append(node('p',result.templateIssue));
+  if(!result.recipients.length)out.append(node('p','Nessun cliente corrisponde alla condizione nei dati attuali.'));
+  for(const row of result.recipients){const card=node('article','');card.append(node('h4',row.name),node('p',row.text));out.append(card)}
+ }catch{out.replaceChildren(node('p','Anteprima non disponibile. Controlla le impostazioni e riprova.'))}
 }
 function previewRule(r){
+ if(clientRule(r)){previewClients(r);return}
  setForm({audience:'PT',subject:r.title||'Agenda PT',model:'Agenda PT',bodyText:r.intro||'Ciao {nome}, ecco la tua agenda NEACEA.',link:r.link||'',rule:{...r,previewAt:'next'}});
  view('editor');$('notice').textContent='Anteprima della prossima scadenza. Questa verifica non modifica lo stato della matrice e non invia messaggi.';
 }
@@ -571,7 +606,7 @@ $('newAutomation').onclick=()=>editAutomation();$('closeAutomation').onclick=()=
 $('automationForm').oninput=updateAutoSummary;
 $('automationForm').onsubmit=async e=>{
  e.preventDefault();if(!$('automationForm').reportValidity())return;
- const r=autoValues();if(!r.title||!r.intro.trim()){$('autoNotice').textContent='Completa nome e introduzione.';return}
+ const r=autoValues();if(!r.title||!clientRule(r)&&!r.intro.trim()){$('autoNotice').textContent='Completa nome e introduzione.';return}
  $('saveAutomation').disabled=true;const id=editingAutomation||crypto.randomUUID();
  try{
   const {rule}=await agendaRequest('whatsapp-messages',{action:'agenda-save-rule',rule:{...r,id,revision:rules.get(id)?.revision}});

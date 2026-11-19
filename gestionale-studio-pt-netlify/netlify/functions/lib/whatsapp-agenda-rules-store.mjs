@@ -1,8 +1,8 @@
-import rules from './whatsapp-agenda-rule.js';
 import agendaModel from './whatsapp-agenda-text.js';
+import clientModels from './whatsapp-client-models.js';
 import {deliveryStatuses} from './whatsapp-delivery.mjs';
-import {active,nextRun,production,rulePrefix as prefix,runPrefix,runId,uuid} from './whatsapp-matrix-time.mjs';
-export async function agendaRules(input, store, {actor,env={},context,templates,provider,now=()=>new Date()}={}) {
+import {active,nextRun,production,rulePrefix as prefix,runPrefix,runId,uuid,isClientRule,validateMatrixRule} from './whatsapp-matrix-time.mjs';
+export async function agendaRules(input, store, {actor,env={},context,templates,provider,clientProvider,now=()=>new Date()}={}) {
   const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
   async function latest(record){
     let last=record.lastRun||null;
@@ -12,6 +12,13 @@ export async function agendaRules(input, store, {actor,env={},context,templates,
     }
     if(last){const outcome=await store.getWithMetadata(runPrefix+last.id+'/outcome',{type:'json'});if(outcome)last={...last,...outcome.data}}
     return last;
+  }
+  if(input.action==='agenda-preview-rule'){
+    let spec;try{spec=validateMatrixRule(input.rule)}catch{return reply({error:'invalid_rule'},400)}
+    if(!isClientRule(spec))return reply({error:'invalid_client_rule'},400);
+    const scheduledAt=nextRun(spec,now()),plan=await clientProvider.plan(spec,scheduledAt);
+    const catalogue=(await templates(env)).templates;
+    return reply({scheduledAt,excluded:plan.excluded,templateIssue:clientModels.templateIssue(spec.kind,catalogue),recipients:plan.items.map(({contact,name,text,eventKey})=>({contact,name,text,eventKey})),notice:'Anteprima dei dati attuali alla prossima scadenza. Nessun messaggio inviato o attivazione eseguita.'});
   }
   if(input.action==='agenda-run-status'){
     if(typeof input.id!=='string'||!/^([a-f0-9-]{36})\/\d{4}-\d{2}-\d{2}T\d{4}$/.test(input.id))return reply({error:'invalid_run'},400);
@@ -37,10 +44,11 @@ export async function agendaRules(input, store, {actor,env={},context,templates,
     if(input.enabled){
       if(!production(context,env))return reply({error:'Attivazione disponibile solo sul dominio di produzione.'},409);
       if(!actor?.id||!(env.PT_ACCESS_SECRET||env.RESEND_API_KEY)||!env.WHATSAPP_ACCESS_TOKEN||env.WHATSAPP_SENDER_PHONE!=='+393520525230'||env.WHATSAPP_PHONE_NUMBER_ID!=='1153168214557448'||!/^v\d+\.\d+$/.test(env.WHATSAPP_API_VERSION||''))return reply({error:'Configurazione della programmazione non disponibile.'},409);
-      const issue=agendaModel.templateIssue((await templates(env)).templates);
+      const spec=validateMatrixRule(old.data),catalogue=(await templates(env)).templates;
+      const issue=isClientRule(spec)?clientModels.templateIssue(spec.kind,catalogue):agendaModel.templateIssue(catalogue);
       if(issue)return reply({error:issue},409);
       await provider.verifySender();
-      rules.validateRule(old.data);
+      if(isClientRule(spec))await clientProvider.plan(spec,nextRun(spec,now()));
       record={...record,schemaVersion:2,enabled:true,activation:{id:input.requestId,ownerId:actor.id,at:now().toISOString()},nextRunAt:nextRun(old.data,now())};
     }
     const saved=await store.setJSON(prefix+input.id,record,{onlyIfMatch:old.etag});
@@ -52,8 +60,9 @@ export async function agendaRules(input, store, {actor,env={},context,templates,
      typeof r.intro!=='string'||r.intro.length>2000||typeof r.link!=='string'||
      r.link.length>2000||(r.link&&!/^https?:\/\//i.test(r.link))) return reply({error:'invalid_rule'},400);
   let spec;
-  try{spec=rules.validateRule(r)}catch{return reply({error:'invalid_rule'},400)}
+  try{spec=validateMatrixRule(r)}catch{return reply({error:'invalid_rule'},400)}
   const previous=r.revision?await store.getWithMetadata(prefix+r.id,{type:'json'}):null;
+  if(previous?.data&&isClientRule(previous.data)!==isClientRule(spec))return reply({error:'audience_conflict'},409);
   // Editing always pauses. Neither enabled nor activation supplied by clients is trusted.
   const record={...spec,id:r.id,title:r.title.trim(),intro:r.intro,link:r.link,schemaVersion:2,enabled:false,activation:null,nextRunAt:null,updatedAt:now().toISOString(),lastRun:previous?.data?await latest(previous.data):null};
   const options=r.revision?{onlyIfMatch:r.revision}:{onlyIfNew:true};

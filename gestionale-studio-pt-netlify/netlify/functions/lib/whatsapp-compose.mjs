@@ -3,7 +3,7 @@ import { prepareAgendaDocument } from './whatsapp-agenda-document.mjs';
 import { createHash } from 'node:crypto';
 import agenda from './whatsapp-agenda.js';
 
-function normalize(value) {
+export function normalize(value) {
   let phone = String(value || '').replace(/[\s().-]/g, '');
   if (phone.startsWith('00')) phone = '+' + phone.slice(2);
   else if (/^3\d{9}$/.test(phone)) phone = '+39' + phone;
@@ -24,7 +24,7 @@ async function lookup(db, group, id) {
   return op && agenda.isPt({...op,...roles}) ? normalize(op.whatsapp_phone) : '';
 }
 
-export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch, scheduledAt, beforeDispatch, onClaimed}) {
+export async function sendSelected(input, {db, env, provider, store, fetchImpl = fetch, scheduledAt, beforeDispatch, onClaimed, clientEventKey}) {
   const reply = (status, code = 200, messageId = null) => Response.json({status, ...(messageId ? {messageId} : {})}, {status:code,headers:{'Cache-Control':'no-store'}});
   let agendaPart=null;
   if(input.agenda){
@@ -51,7 +51,8 @@ export async function sendSelected(input, {db, env, provider, store, fetchImpl =
   }
   // Scheduled retries retain the same claim even if a PT's phone is edited.
   // These options are server-only; request JSON cannot select this namespace.
-  const key = (scheduledAt?'scheduled/':'manual/') + input.batch + '/' + createHash('sha256').update(scheduledAt?input.contact:phone).digest('hex')+(Number.isInteger(agendaPart)?'/agenda-part-'+agendaPart:'');
+  if(clientEventKey&&(!scheduledAt||!/^client:(appointment|remaining|expiry):[a-f0-9]{64}$/.test(clientEventKey)||contact[1]!=='cliente'))return reply('Evento clienti non valido.',400);
+  const key = clientEventKey?'scheduled-client/'+clientEventKey:(scheduledAt?'scheduled/':'manual/') + input.batch + '/' + createHash('sha256').update(scheduledAt?input.contact:phone).digest('hex')+(Number.isInteger(agendaPart)?'/agenda-part-'+agendaPart:'');
   const claims = store();
   const prior = await claims.getWithMetadata(key);
   if (prior) return reply(prior.data,200,prior.metadata?.messageId);

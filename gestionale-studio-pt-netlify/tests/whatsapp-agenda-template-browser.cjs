@@ -1,6 +1,7 @@
 // Browser flow with synthetic calendar and endpoints; no real messages or services.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),{chromium}=require(require.resolve('playwright',{paths:[path.join(root,'tools/coaching-editor')]}));
+const clientModels=require('../app/calendario-studio/js/whatsapp-client-models.js');
 const model=require('../app/calendario-studio/js/whatsapp-agenda-text.js'),origin=process.env.WHATSAPP_ASSET_ORIGIN||'';
 if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendario\.neacea\.com)$/.test(origin))throw Error('Unexpected asset origin');
 (async()=>{let browser;try{
@@ -8,7 +9,7 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendar
   const entries=Array.from({length:count},(_,i)=>({day:'2026-11-23',text:'09:00 · CLIENTE_'+operatorId+'_'+i+' · PT 1:1 · 0/8'}));
   return {operatorId,name,count,entries,incomplete:false,revision:'synthetic-'+operatorId,text:'lunedì 23 novembre\n'+entries.map(e=>e.text).join('\n')+'\n\nTotale sedute: '+count};
  })};
- let status='PENDING',accept=false,failPart=false,failSave=false,conflictToggle=false,revision=0;const sent=[],dialogs=[],errors=[],rules=[];
+ let clientStatus='PENDING',status='PENDING',accept=false,failPart=false,failSave=false,conflictToggle=false,revision=0;const sent=[],dialogs=[],errors=[],rules=[];
  browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1180,height:900},timezoneId:'Europe/Rome'});
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{dialogs.push(d.message());await (accept?d.accept():d.dismiss())});
  await page.addInitScript(()=>sessionStorage.setItem('neacea-calendar-audit-session','OWNER'));
@@ -21,8 +22,12 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendar
   }
   if(u.pathname==='/.netlify/functions/whatsapp-messages'){
    const data=req.postDataJSON();assert.equal(data.accessToken,'OWNER');
-   if(data.action==='composer-templates')return route.fulfill({json:{templates:[{name:model.name,language:model.language,status,supported:true,header:null,body:model.body,footer:model.footer,parameterCount:10}]}});
+   if(data.action==='composer-templates')return route.fulfill({json:{templates:[{name:model.name,language:model.language,status,supported:true,header:null,body:model.body,footer:model.footer,parameterCount:10},...clientModels.kinds.map(k=>({...clientModels.byKind[k],status:clientStatus,header:null,supported:true}))]}});
    if(data.action==='agenda-rules')return route.fulfill({json:{rules}});
+   if(data.action==='agenda-preview-rule'){
+    assert.equal(data.rule.audience,'clients');const parameters=data.rule.kind==='appointment'?['Cliente separato','20/11/2026','09:00','PT 1:1']:data.rule.kind==='remaining'?['Cliente separato','02/11/2026','2','8']:['Cliente separato','02/11/2026','23/11/2026'];
+    return route.fulfill({json:{scheduledAt:'2026-11-23T07:00:00.000Z',excluded:0,templateIssue:clientStatus==='APPROVED'?'':'Modello clienti PENDING',notice:'Anteprima. Nessun messaggio inviato.',recipients:[{contact:'cliente:client',name:'Cliente separato',text:clientModels.render(data.rule.kind,parameters).text}]}});
+   }
    if(data.action==='agenda-save-rule'){
     if(failSave)return route.fulfill({status:503,json:{error:'mock unavailable'}});
     const r={...data.rule,enabled:false,activation:null,nextRunAt:null,revision:'r'+(++revision)},index=rules.findIndex(x=>x.id===r.id);
@@ -79,5 +84,21 @@ if(origin&&!/^https:\/\/(?:[a-f0-9]+--new-calendar-neacea\.netlify\.app|calendar
  await frame.locator('[data-view="editor"]').click();await frame.locator('#prepareAgenda').click();await frame.locator('#agendaInfo').filter({hasText:'23/11/2026'}).waitFor();
  await page.setViewportSize({width:390,height:844});await frame.locator('[data-view="editor"]').click();assert.ok(await frame.locator('#sendFormat').isVisible());
  await frame.locator('#sendFormat').selectOption('free');assert.ok(await frame.locator('#bodyText').isVisible());assert.match(await frame.locator('#agendaTemplateNotice').innerText(),/ultime 24 ore/);
- assert.deepEqual(errors,[]);console.log('PASS browser agenda: pending/approval gate, complete parts and exact confirmation, separate PT, cancel/no automatic send, mocked dispatch, independent log, interruption, free mode, matrix save/activation/pause/reload/conflicts, failed-save recovery and mobile. Assets: '+(origin||'local candidate'));
+ await frame.locator('[data-audience="Clienti"]').click();await frame.locator('[data-view="automazioni"]').click();assert.equal(await frame.locator('.automation-card').count(),0);assert.ok(!(await frame.locator('#automazioni').innerText()).includes('Agenda lunedì'));
+ const beforeClientMatrices=sent.length;
+ for(const [kind,title] of [['appointment','Promemoria clienti'],['remaining','Residuo clienti'],['expiry','Fine pacchetto clienti']]){
+  await frame.locator('#newAutomation').click();await frame.locator('#autoTitle').fill(title);await frame.locator('#autoClientKind').selectOption(kind);await frame.locator('#autoFrequency').selectOption('weekly');await frame.locator('#autoWeekday').selectOption('5');await frame.locator('#autoTime').fill('09:45');
+  assert.ok(await frame.locator('#autoPeriod').isHidden());assert.ok(await frame.locator('#autoOffset').isHidden());
+  if(kind==='remaining'){await frame.locator('#autoRemainingThreshold').fill('2');assert.ok(await frame.locator('#autoDaysBefore').isHidden())}else{await frame.locator('#autoDaysBefore').fill(kind==='appointment'?'1':'3');assert.ok(await frame.locator('#autoRemainingThreshold').isHidden())}
+  await frame.locator('#previewAutomation').click();await frame.locator('#automationPreview').getByRole('heading',{name:'Anteprima clienti'}).waitFor();assert.match(await frame.locator('#automationPreview').innerText(),/Cliente separato/);assert.ok(!(await frame.locator('#automationPreview').innerText()).includes('Trainer Alfa'));
+  await frame.locator('#saveAutomation').click();await frame.locator('#autoNotice').filter({hasText:'salvata disattivata'}).waitFor();const saved=rules.find(r=>r.title===title);assert.equal(saved.audience,'clients');assert.equal(saved.enabled,false);assert.equal(saved.weekday,5);assert.equal(saved.time,'09:45');assert.ok(await card(title).getByRole('button',{name:'Attiva matrice',exact:true}).isDisabled());
+ }
+ assert.equal(await frame.locator('.automation-card').count(),3);assert.equal(sent.length,beforeClientMatrices);assert.ok(rules.every(r=>!r.enabled));
+ clientStatus='APPROVED';await frame.locator('#refreshAutomations').click();await card('Promemoria clienti').locator('button:not([disabled])').filter({hasText:'Attiva matrice'}).waitFor();
+ accept=false;await card('Promemoria clienti').getByRole('button',{name:'Attiva matrice',exact:true}).click();assert.ok(rules.every(r=>!r.enabled));
+ accept=true;await card('Promemoria clienti').getByRole('button',{name:'Attiva matrice',exact:true}).click();await frame.locator('#automationNotice').filter({hasText:'Primo invio'}).waitFor();assert.equal(rules.filter(r=>r.enabled).length,1);assert.equal(rules.find(r=>r.enabled).title,'Promemoria clienti');
+ await card('Promemoria clienti').getByRole('button',{name:'Modifica matrice'}).click();await frame.locator('#autoTime').fill('10:15');await frame.locator('#saveAutomation').click();await frame.locator('#autoNotice').filter({hasText:'salvata disattivata'}).waitFor();assert.ok(rules.every(r=>!r.enabled));
+ await page.reload();await frame.locator('[data-view="automazioni"]').click();await card('Promemoria clienti').getByRole('button',{name:'Attiva matrice',exact:true}).waitFor();assert.match(await card('Promemoria clienti').innerText(),/10:15/);assert.equal(await frame.locator('.automation-card').count(),3);assert.ok(await frame.locator('html').evaluate(n=>n.scrollWidth<=n.ownerDocument.defaultView.innerWidth+1),'automation cards fit mobile width');
+ await frame.locator('[data-audience="PT"]').click();await frame.locator('[data-view="automazioni"]').click();assert.equal(await frame.locator('.automation-card').count(),2);assert.ok(!(await frame.locator('#automazioni').innerText()).includes('Promemoria clienti'));assert.equal(sent.length,beforeClientMatrices);
+ assert.deepEqual(errors,[]);console.log('PASS browser agenda: pending/approval gate, complete parts and exact confirmation, separate PT, cancel/no automatic send, mocked dispatch, independent log, interruption, free mode, matrix save/activation/pause/reload/conflicts, failed-save recovery, three client matrix types, preview/approval gate, audience isolation and mobile. Assets: '+(origin||'local candidate'));
 }finally{await browser?.close()}})().catch(e=>{console.error(e);process.exitCode=1});

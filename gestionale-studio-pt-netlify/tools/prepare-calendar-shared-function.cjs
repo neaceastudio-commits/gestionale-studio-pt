@@ -7,7 +7,7 @@ fs.writeFileSync(target,'exports.handler = require("../../gestionale-studio-pt-n
 
 // The copied renewal function uses the same schedule module as the browser.
 const lib=path.join(path.dirname(target),'lib');
-fs.copyFileSync(path.resolve(__dirname,'../app/calendario-studio/js/whatsapp-agenda-text.js'),path.join(lib,'whatsapp-agenda-text.js'));
+for(const name of ['whatsapp-agenda-text.js','whatsapp-client-models.js'])fs.copyFileSync(path.resolve(__dirname,'../app/calendario-studio/js/'+name),path.join(lib,name));
 fs.copyFileSync(path.resolve(__dirname,'../app/calendario-studio/js/package-schedule.js'),path.join(lib,'package-schedule.js'));
 const renewals=path.join(lib,'expected-renewals.js');
 const source=fs.readFileSync(renewals,'utf8');
