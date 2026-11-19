@@ -8,7 +8,7 @@ Baseline verificata realmente online: commit `4d9bf78271c80d4a6d0bf1ebf918a874d8
 
 Ramo: `codex/whatsapp-client-matrices-20261119`. Principali sorgenti: `comunicazioni.html`, `js/comunicazioni.js`, modello condiviso `js/whatsapp-client-models.js`, `whatsapp-client-service.mjs`, store delle matrici e worker persistente esistenti.
 
-Lo storage reale iniziale contiene due matrici PT, una già attivata dall’utente, e nessuna Clienti. È stato chiesto se mantenere la PT attiva o disattivare anche le PT; in assenza di diversa indicazione si preserva la configurazione PT preesistente e si lasciano disattivate le nuove Clienti. Questo rilascio non attiva alcuna matrice.
+Lo storage reale iniziale contiene due matrici PT, una già attivata dall’utente, e nessuna Clienti. L’utente ha confermato esplicitamente di mantenere la PT già attiva e lasciare disattivate le nuove Clienti. La configurazione PT preesistente è preservata. Questo rilascio non attiva alcuna matrice.
 
 ## Regole e dati
 
@@ -66,8 +66,10 @@ Rilettura indipendente dello storage reale da un nuovo processo: tre Clienti, ze
 
 ## Limite della verifica autenticata e stato finale
 
-La sessione Direzione aperta in Chrome il giorno precedente è scaduta. È stato aperto il modulo Accedi al Calendario e richiesto all’utente di rientrare con email/codice Portale PT, senza condividerli in chat. La verifica con sessione Direzione rinnovata e anteprima dei dati reali nel browser resta in attesa di questo accesso. Non viene riportata come superata: i test browser con backend simulato, il controllo del dominio e la rilettura dello storage sono prove distinte.
+La sessione Direzione aperta in Chrome il giorno precedente è scaduta. L’utente ha scelto esplicitamente “Procedi con le verifiche senza accesso utente”. La verifica autenticata e l’anteprima dei dati reali nel browser non sono state eseguite e non restano richieste per la chiusura di questo intervento. Restano distinte dalle verifiche completate: browser con API simulate, dominio reale, schema SQL, storage persistente e rifiuto di sessioni non valide.
+
+Dopo la scelta dell’utente sono stati ripetuti i soli controlli live pertinenti, senza scritture alle matrici: deploy atteso ancora pubblicato e bloccato; manifesto completo di 54 file, 21 funzioni e cron invariati; tre asset pubblici coerenti con Git; 403 per matrici, anteprime, attivazione ed esiti senza sessione valida; 404 sul callback errato. Rilettura indipendente dello storage: due PT, una attiva; tre Clienti disattivate con activation/nextRunAt null; zero occorrenze e zero claim di invio Clienti. Nessun endpoint di invio invocato.
 
 Nessun messaggio reale inviato, nessun PDF generato, nessuna nuova matrice attivata, nessuna modifica a credenziali/provider/webhook o al calendario. Checkout del candidato pulito prima della registrazione documentale finale; checkout originari con lavorazioni preesistenti preservati. Questo aggiornamento documentale non sostituisce il codice pubblicato e bloccato.
 
-Prossimo passo utente: rientrare in Calendario per la verifica autenticata; poi in Messaggi → Clienti → Automazioni modificare le impostazioni desiderate, salvare disattivate e scegliere singolarmente Attiva matrice quando si vuole iniziare.
+Prossimo passo utente, quando desiderato: in Messaggi → Clienti → Automazioni modificare le impostazioni, salvare disattivate e scegliere singolarmente Attiva matrice per iniziare. La PT già attiva resta attiva per espressa scelta dell’utente. Non è richiesto un accesso utente per ulteriori verifiche di questo rilascio.
