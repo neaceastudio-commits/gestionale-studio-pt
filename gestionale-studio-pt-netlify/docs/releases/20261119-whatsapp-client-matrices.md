@@ -40,4 +40,34 @@ Integrazione con vero SQL locale: servizio di pianificazione letto tramite adapt
 
 Browser con tutte le API intercettate: tre tipi Clienti, giorno/orario/anticipo/soglia, anteprima, modelli pending/approved, salvataggio e riapertura, annullamento conferma, attivazione singola, modifica con disattivazione, separazione Clienti/PT e layout mobile. Regressione PT e confezionamento delle 21 funzioni inclusi.
 
-Suite completa, candidato Netlify, produzione e matrici iniziali disattivate: esiti da completare dopo la pubblicazione autorizzata. I test di invio sono esclusivamente simulati; non verrà attivata alcuna matrice in produzione per collaudare gli invii.
+Suite completa `bash scripts/check-calendar-release.sh`: PASS sul candidato salvato, terminata con “OK: pacchetto Calendario completo e verificato.”. Trentuno test mirati passati. I test di invio sono esclusivamente simulati; nessuna matrice è stata attivata per collaudare gli invii.
+
+
+## Pubblicazione e dati persistenti
+
+- Commit di codice pubblicato: `98784c2cba49474298e74ca804733ee9b7edf7ce`.
+- Candidato verificato senza pubblicazione: `6afebb26df4c4ddd09b9cdb3`.
+- Nuovo build Git pubblicato: `6afebc5827d255ea319418aa`, produzione https://calendario.neacea.com, nuovamente bloccato. Ramo produzione `codex/whatsapp-client-matrices-20261119`; nessun main o deploy precedente ripristinato.
+- [PR #21](https://github.com/neaceastudio-commits/gestionale-studio-pt/pull/21), pronta per revisione, base del rilascio delle matrici PT.
+- Manifesto completo di 54 file confrontato con la baseline: soltanto `comunicazioni.html`, `js/comunicazioni.js` e il nuovo `js/whatsapp-client-models.js` costituiscono il cambiamento pubblico previsto. Tutte le 21 funzioni e tutte le pianificazioni preesistenti presenti, senza nuove funzioni o cron.
+- Test browser passati anche sugli asset realmente serviti dal candidato Netlify e dal dominio reale, con ogni API di invio/configurazione intercettata. Contenuti live confrontati byte per byte con Git. Sessioni non valide rifiutate con 403 su matrici, anteprima, attivazione ed esiti; callback con percorso errato rifiutato con 404 nel candidato.
+- Verifica read-only Supabase sul progetto Studio corretto `cdywqyqqmjhgkzwrrixc`: proiezioni esatte del lettore Clienti/Appuntamenti valide; 23 clienti attivi, 19 con recapito non vuoto. Nessuna migrazione, grant o modifica a dati gestionali.
+- Tre modelli verificati APPROVED, UTILITY, italiano: promemoria appuntamenti, sedute residue e fine prevista. Nessun messaggio inviato per ottenerne l’approvazione.
+
+Sono state preparate le tre matrici effettivamente richieste, non record sintetici di collaudo. Salvataggio mediante la validazione del servizio `agendaRules` e scritture condizionali nello store Netlify di produzione, dopo verifica del deploy bloccato. Impostazioni iniziali, tutte modificabili dall’utente:
+
+| Matrice | ID | Controllo iniziale | Condizione | Stato |
+|---|---|---|---|---|
+| Promemoria appuntamenti | `cff109ea-78ad-40e5-8862-835206992c8c` | Ogni giorno, 08:00 Europe/Rome | Appuntamenti fra 1 giorno | Disattivata |
+| Avviso sedute residue | `bbc94618-e8e4-4025-ac94-965faadbf2f6` | Ogni giorno, 08:00 Europe/Rome | Residuo ≤ 2 | Disattivata |
+| Fine prevista pacchetto | `e10ad958-ec5d-48aa-ac36-64b25382e09c` | Ogni giorno, 08:00 Europe/Rome | Fine prevista entro 3 giorni | Disattivata |
+
+Rilettura indipendente dello storage reale da un nuovo processo: tre Clienti, zero abilitate, `activation` e `nextRunAt` null, zero occorrenze Clienti e zero claim di invio Clienti. Le due matrici PT sono state confrontate prima/dopo e risultano invariate, inclusa quella già attivata dall’utente. Nessun record scritto nelle altre applicazioni.
+
+## Limite della verifica autenticata e stato finale
+
+La sessione Direzione aperta in Chrome il giorno precedente è scaduta. È stato aperto il modulo Accedi al Calendario e richiesto all’utente di rientrare con email/codice Portale PT, senza condividerli in chat. La verifica con sessione Direzione rinnovata e anteprima dei dati reali nel browser resta in attesa di questo accesso. Non viene riportata come superata: i test browser con backend simulato, il controllo del dominio e la rilettura dello storage sono prove distinte.
+
+Nessun messaggio reale inviato, nessun PDF generato, nessuna nuova matrice attivata, nessuna modifica a credenziali/provider/webhook o al calendario. Checkout del candidato pulito prima della registrazione documentale finale; checkout originari con lavorazioni preesistenti preservati. Questo aggiornamento documentale non sostituisce il codice pubblicato e bloccato.
+
+Prossimo passo utente: rientrare in Calendario per la verifica autenticata; poi in Messaggi → Clienti → Automazioni modificare le impostazioni desiderate, salvare disattivate e scegliere singolarmente Attiva matrice quando si vuole iniziare.
