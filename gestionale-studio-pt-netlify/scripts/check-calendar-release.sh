@@ -46,7 +46,7 @@ node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
 node tests/package-payment-persistence.test.cjs
 node --test tests/package-service-allocation.test.cjs tests/calendar-shared-finance.test.cjs tests/calendar-shared-finance-sql.test.cjs
-node --test tests/studio-calendar-protocol.test.cjs tests/calendar-complete-read.test.cjs tests/calendar-refresh.test.cjs
+node --test tests/studio-calendar-protocol.test.cjs tests/calendar-complete-read.test.cjs tests/calendar-refresh.test.cjs tests/calendar-client-startup.test.cjs
 node tests/acquisition-existing-client.test.cjs
 node tests/acquisition-nutrition-section.test.cjs
 node tests/acquisition-links.test.cjs

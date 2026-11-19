@@ -309,12 +309,31 @@ const SupabaseSync = (() => {
     }
   }
 
-  async function pullAll() {
-    const [clients, operators, appointments] = await Promise.all([
-      readAll('clients', '?select=*&order=active.desc,cognome.asc,nome.asc,id.asc'),
-      readAll('operators', '?select=*&active=eq.true&order=cognome.asc,nome.asc,id.asc'),
-      readAll('appointments', '?select=*&order=date.asc,start_time.asc,id.asc'),
-    ]);
+  async function pullAll({ dashboardDate, onDashboard, requireComplete = false } = {}) {
+    const clientsRead = readAll('clients', '?select=*&order=active.desc,cognome.asc,nome.asc,id.asc');
+    const operatorsRead = readAll('operators', '?select=*&active=eq.true&order=cognome.asc,nome.asc,id.asc');
+    const appointmentQuery = '?select=*&order=date.asc,start_time.asc,id.asc';
+    const appointmentsRead = readAll('appointments', appointmentQuery);
+    let loading = true;
+    if (onDashboard && /^\d{4}-\d{2}-\d{2}$/.test(dashboardDate)) {
+      // The day is for display only. Keep the complete history as the source for actions and package totals.
+      const todayRead = readAll('appointments', appointmentQuery + '&date=eq.' + dashboardDate);
+      void Promise.all([clientsRead, operatorsRead, todayRead]).then(([clients, operators, appointments]) => {
+        if (!loading || ![clients, operators, appointments].every(Array.isArray)) return;
+        onDashboard({
+          date: dashboardDate,
+          clients: clients.map(clientFromDb),
+          operators: operators.map(operatorFromDb),
+          appointments: appointments.map(appointmentFromDb),
+        });
+      }).catch(error => console.warn('[Supabase] agenda iniziale non disponibile:', error));
+    }
+    const [clients, operators, appointments] = await Promise.all([clientsRead, operatorsRead, appointmentsRead])
+      .finally(() => { loading = false; });
+    if (requireComplete) {
+      const incomplete = [clients, operators, appointments].find(rows => !Array.isArray(rows));
+      if (incomplete) throw Error(incomplete.error || 'Lettura iniziale non completata.');
+    }
     let changed = false;
     function apply(rows, convert, get, save) {
       if (rows?.error || !Array.isArray(rows)) return;

@@ -3952,10 +3952,28 @@ const App = {
 
   // ── INIT ─────────────────────────────────────────────
   async init() {
-    await window.CalendarFlex?.ready;
+    const params = new URLSearchParams(window.location.search);
+    const ptMode = params.get('pt') === '1' || params.get('mode') === 'pt';
+    const showDashboard = !params.get('view') || params.get('view') === 'dashboard';
+    const panel = document.getElementById('view-dashboard');
     State.init();
-    await App.refreshFromSupabase({ silent: true, force: true });
-    await App._initPortalPtMode();
+    try {
+      const options = { requireComplete: true };
+      if (!ptMode && showDashboard) {
+        options.dashboardDate = Calendar.getCurrentDateStr();
+        options.onDashboard = data => Calendar.renderDashboard(data);
+      }
+      await Promise.all([SupabaseSync.pullAll(options), window.CalendarFlex?.ready]);
+      if (!await App._initPortalPtMode()) throw Error('Sessione PT non valida');
+    } catch (error) {
+      console.warn('[Supabase] avvio Calendario non riuscito:', error);
+      if (panel) {
+        panel.innerHTML = '<p role="alert">Impossibile completare il caricamento del Calendario.</p><button class="btn" data-calendar-retry>Riprova</button> <button class="btn" data-calendar-login>Accedi al Calendario</button>';
+        panel.querySelector('[data-calendar-retry]').onclick = () => window.location.reload();
+        panel.querySelector('[data-calendar-login]').onclick = () => window.CalendarAudit?.login();
+      }
+      return;
+    }
 
     document.querySelectorAll('[data-view]').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
@@ -3965,7 +3983,6 @@ const App = {
       if (e.target === e.currentTarget) UI.closeModal();
     });
 
-    const params = new URLSearchParams(window.location.search);
     const allowedViews = App.isPortalPtMode()
       ? ['dashboard', 'day', 'week', 'room', 'clients', 'situation']
       : ['dashboard', 'day', 'week', 'room', 'availability', 'clients', 'situation', 'operators', 'messaggi'];
@@ -3973,6 +3990,8 @@ const App = {
       ? params.get('view')
       : 'dashboard';
     Calendar.switchView(initialView);
+    document.querySelector('.topbar-tabs')?.removeAttribute('inert');
+    document.querySelector('.topbar-right')?.removeAttribute('inert');
 
     window.addEventListener('focus', () => App.refreshFromSupabase({ silent: true }));
     document.addEventListener('visibilitychange', () => {

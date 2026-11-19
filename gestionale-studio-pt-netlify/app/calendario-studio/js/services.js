@@ -43,39 +43,40 @@ const Services = (() => {
     return State.getOperators().find(o => o.id === id) || null;
   }
 
-  function getActiveClientIds(appt) {
+  function getActiveClientIds(appt, findClient = getClient) {
     if (!Array.isArray(appt?.clientIds)) return [];
     return appt.clientIds.filter(id => {
-      const client = getClient(id);
+      const client = findClient(id);
       return !!client && client.active !== false;
     });
   }
 
-  function isAppointmentVisible(appt) {
+  function isAppointmentVisible(appt, findClient = getClient) {
     if (!appt) return false;
     const svc = getService(appt.serviceId);
     if (svc?.isBlock) return true;
     // Closed work and charged absences belong to the history, even after archiving.
     if (['fatto','noshow'].includes(appt.status)) return true;
-    return getActiveClientIds(appt).length > 0;
+    return getActiveClientIds(appt, findClient).length > 0;
   }
 
-  function getVisibleAppointment(appt) {
-    if (!isAppointmentVisible(appt)) return null;
+  function getVisibleAppointment(appt, findClient = getClient) {
+    if (!isAppointmentVisible(appt, findClient)) return null;
     const svc = getService(appt.serviceId);
     if (svc?.isBlock || ['fatto','noshow'].includes(appt.status)) return appt;
-    const activeClientIds = getActiveClientIds(appt);
+    const activeClientIds = getActiveClientIds(appt, findClient);
     return activeClientIds.length === (appt.clientIds || []).length
       ? appt
       : { ...appt, clientIds: activeClientIds };
   }
 
-  function appointmentRoomLoad(appt) {
+  function appointmentRoomLoad(appt, findClient = getClient) {
     const svc = getService(appt?.serviceId);
     if (!svc?.room) return 0;
     const configuredLoad = Number(svc.roomLoad || 0);
     if (svc.isGroup || Number(svc.maxClients || 1) > 1) {
-      return Math.min(configuredLoad || getActiveClientIds(appt).length, getActiveClientIds(appt).length);
+      const count = getActiveClientIds(appt, findClient).length;
+      return Math.min(configuredLoad || count, count);
     }
     return configuredLoad;
   }
@@ -148,12 +149,25 @@ const Services = (() => {
       : (String(appt?.notes || '').match(/\[CICLO-PACCHETTO-ID\s+([a-zA-Z0-9_-]+)\]/i)?.[1] || '');
   }
 
-  function getPackageCycleContext(client) {
+  function indexPackageAppointments(appointments) {
+    const byClient = new Map();
+    for (const appointment of appointments) {
+      if (!Array.isArray(appointment.clientIds) || !serviceUsesPackageSessions(appointment.serviceId)) continue;
+      for (const id of new Set(appointment.clientIds)) {
+        const entries = byClient.get(id);
+        if (entries) entries.push(appointment);
+        else byClient.set(id, [appointment]);
+      }
+    }
+    return byClient;
+  }
+
+  function getPackageCycleContext(client, appointments) {
     if (!client?.id) return { start: '', id: '', legacy: true, persisted: false, inferredFromAppointment: false };
     const ledger = typeof PackageLedger !== 'undefined' ? PackageLedger.parse(client) : null;
     const currentLedgerCycle = ledger && !ledger.parseError ? PackageLedger.currentCycle(ledger) : null;
     const persistedStart = String(client.packageCycleStart || client.package_cycle_start || '').slice(0, 10);
-    const appointmentStarts = State.getAppointments()
+    const appointmentStarts = (appointments ?? State.getAppointments())
       .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
       .filter(a => serviceUsesPackageSessions(a.serviceId))
       .filter(a => !String(a.notes||'').includes('[RINNOVO-PREVISTO '))
@@ -175,10 +189,10 @@ const Services = (() => {
     };
   }
 
-  function appointmentInCurrentPackageCycle(appt, client) {
+  function appointmentInCurrentPackageCycle(appt, client, cycleContext) {
     if (!appt || !client) return false;
     if(String(appt.notes||'').includes('[RINNOVO-PREVISTO ')) return false;
-    const context = getPackageCycleContext(client);
+    const context = cycleContext ?? getPackageCycleContext(client);
     const participant = globalThis.PTSessionModel?.cycle(appt, client.id);
     if (participant) {
       if (context.id && participant.cycleId) return participant.cycleId === context.id;
@@ -199,11 +213,11 @@ const Services = (() => {
     return !context.start || String(appt.date || '') >= context.start;
   }
 
-  function getClientPackageAppointments(client, options = {}) {
+  function getClientPackageAppointments(client, options = {}, appointments) {
     if (!client?.id) return [];
     const excludeAppointmentId = options.excludeAppointmentId || null;
     const includeCancelled = options.includeCancelled === true;
-    return State.getAppointments().filter(a =>
+    return (appointments ?? State.getAppointments()).filter(a =>
       a.id !== excludeAppointmentId &&
       (includeCancelled || a.status !== 'annullato') &&
       Array.isArray(a.clientIds) &&
@@ -212,7 +226,7 @@ const Services = (() => {
     );
   }
 
-  function getClientSessionMetrics(client, excludeAppointmentId = null) {
+  function getClientSessionMetrics(client, excludeAppointmentId = null, appointments, existingCycleContext) {
     if (!client) {
       return { total: 0, rawTotal: 0, completed: 0, lifetimeCompleted: 0, previousCompleted: 0, scheduled: 0, remaining: 0, toSchedule: 0 };
     }
@@ -220,9 +234,10 @@ const Services = (() => {
     const today = localDateStr(new Date());
     const rawTotal = Number(client.sessionsTotal ?? client.sessions_total ?? 0);
     const storedRemaining = Number(client.sessionsRemaining ?? client.sessions_remaining ?? 0);
-    const packageAppts = getClientPackageAppointments(client, { excludeAppointmentId });
-    const cycleContext = getPackageCycleContext(client);
-    const currentAppts = packageAppts.filter(a => appointmentInCurrentPackageCycle(a, client));
+    const history = appointments ?? State.getAppointments();
+    const packageAppts = getClientPackageAppointments(client, { excludeAppointmentId }, history);
+    const cycleContext = existingCycleContext ?? getPackageCycleContext(client, history);
+    const currentAppts = packageAppts.filter(a => appointmentInCurrentPackageCycle(a, client, cycleContext));
     const participantStatus = a => globalThis.PTSessionModel?.status(a, client.id) || a.status;
     const completed = currentAppts.filter(a => participantStatus(a) === 'fatto').length;
     const chargedAbsences = currentAppts.filter(a => globalThis.PTSessionModel?.chargedAbsence(a, client.id)).length;
@@ -304,11 +319,11 @@ const Services = (() => {
     return best ? best.id : null;
   }
 
-  function getAppointmentsForDate(date) {
-    return State.getAppointments()
-      .filter(a => a.date === date && isAppointmentVisible(a))
-      .filter(a => typeof App === 'undefined' || !App.isPortalPtMode?.() || App.canViewAppointment(a))
-      .map(getVisibleAppointment);
+  function getAppointmentsForDate(date, appointments = State.getAppointments(), findClient = getClient) {
+    return appointments
+      .filter(a => a.date === date && (typeof App === 'undefined' || !App.isPortalPtMode?.() || App.canViewAppointment(a)))
+      .map(a => getVisibleAppointment(a, findClient))
+      .filter(Boolean);
   }
 
   function weekdayName(dateStr) {
@@ -509,8 +524,8 @@ const Services = (() => {
     return rows;
   }
 
-  function getKPIForDate(date) {
-    const appts = getAppointmentsForDate(date).filter(a => a.status !== 'annullato');
+  function getKPIForDate(date, appointments = getAppointmentsForDate(date), findClient = getClient) {
+    const appts = appointments.filter(a => a.status !== 'annullato');
     const now = new Date();
     const nowMin = localDateStr(now) === date ? now.getHours() * 60 + now.getMinutes() : -1;
     return {
@@ -518,7 +533,7 @@ const Services = (() => {
       inSalaNow: nowMin < 0 ? 0 : appts.reduce((sum, a) => {
         const svc = getService(a.serviceId);
         const inNow = timeToMin(a.startTime) <= nowMin && nowMin < timeToMin(a.startTime) + Number(a.durationMin || svc?.durationMin || 60);
-        return inNow && svc?.room === 'pt' ? sum + appointmentRoomLoad(a) : sum;
+        return inNow && svc?.room === 'pt' ? sum + appointmentRoomLoad(a, findClient) : sum;
       }, 0),
       nutriAppts: appts.filter(a => getService(a.serviceId)?.isNutri).length,
       valAppts: appts.filter(a => getService(a.serviceId)?.isValuation).length,
@@ -549,6 +564,7 @@ const Services = (() => {
     serviceUsesPackageSessions,
     extractAppointmentPackageCycle,
     extractAppointmentPackageCycleId,
+    indexPackageAppointments,
     getPackageCycleContext,
     appointmentInCurrentPackageCycle,
     getClientPackageAppointments,

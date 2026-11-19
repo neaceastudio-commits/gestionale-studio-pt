@@ -22,10 +22,10 @@ const Calendar = (() => {
     return `<span class="forced-overlap-badge${compact ? ' is-compact' : ''}" title="Doppio PT 1:1 autorizzato e tracciato">⚠ ${compact ? '2x PT' : 'Doppio PT'}</span>`;
   }
 
-  function renewalBadge(appt) {
+  function renewalBadge(appt, allowEdit = true) {
     const label = PTSessionModel.renewal(appt);
     if (!label) return '';
-    const edit = App.canEditAppointment(appt)
+    const edit = allowEdit && App.canEditAppointment(appt)
       ? `<button type="button" class="btn-icon-sm" title="Modifica questa seduta" aria-label="Modifica seduta del rinnovo" onclick="event.stopPropagation();App._renderAppointmentModal('${appt.id}','${appt.date}')">✎</button>`
       : '';
     return `<span class="status-pill">${label}</span>${edit}`;
@@ -77,16 +77,19 @@ const Calendar = (() => {
   // DASHBOARD
   // ─────────────────────────────────────────────────────
 
-  function renderDashboard() {
-    const today = todayStr();
-    dashboardDate = today;
-    const kpi = Services.getKPIForDate(today);
-    const appts = Services.getAppointmentsForDate(today)
-      .filter(a => a.status !== 'annullato')
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
+  function renderDashboard(preview = null) {
     const panel = document.getElementById('view-dashboard');
     if (!panel) return;
+    const today = preview?.date ?? todayStr();
+    dashboardDate = today;
+    const clients = new Map((preview?.clients ?? State.getClients()).map(client => [client.id, client]));
+    const operators = new Map((preview?.operators ?? State.getOperators()).map(operator => [operator.id, operator]));
+    const findClient = id => clients.get(id);
+    const fullName = (person, fallback) => person ? `${person.nome} ${person.cognome}`.trim() : fallback;
+    const appts = Services.getAppointmentsForDate(today, preview?.appointments, findClient)
+      .filter(a => a.status !== 'annullato')
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const kpi = Services.getKPIForDate(today, appts, findClient);
 
     const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
@@ -97,7 +100,7 @@ const Calendar = (() => {
           <div class="page-title">Buongiorno, <em>Gianluca</em></div>
           <div class="page-sub">${italianDate(new Date())}</div>
         </div>
-        <button class="btn-primary" onclick="App.openNewAppointment()">+ Appuntamento</button>
+        <button class="btn-primary" ${preview ? 'disabled' : 'onclick="App.openNewAppointment()"'}>+ Appuntamento</button>
       </div>
 
       <div class="kpi-grid">
@@ -146,7 +149,7 @@ const Calendar = (() => {
               const isNow = startMin <= nowMin && nowMin < startMin + a.durationMin;
               return `
                 <div data-start-min="${startMin}" data-duration-min="${Number(a.durationMin)}" class="appt-row ${isPast ? 'appt-past' : ''} ${isNow ? 'appt-now' : ''}"
-                     onclick="App.openDetail('${a.id}')">
+                     ${preview ? '' : `onclick="App.openDetail('${a.id}')"`}>
                   <div class="appt-color-bar" style="background:${svc?.color}"></div>
                   <div class="appt-time">
                     <span class="appt-start">${a.startTime}</span>
@@ -154,11 +157,11 @@ const Calendar = (() => {
                   </div>
                   <div class="appt-info">
                     <div class="appt-service" style="color:${svc?.color}">${svc?.label}</div>
-                    <div class="appt-clients">${a.clientIds.map(id => Services.clientFullName(id)).join(', ')}</div>
+                    <div class="appt-clients">${a.clientIds.map(id => fullName(findClient(id), id || '-')).join(', ')}</div>
                   </div>
-                  <div class="appt-op">${Services.operatorFullName(a.operatorId)}</div>
+                  <div class="appt-op">${fullName(operators.get(a.operatorId), '-')}</div>
                   <div class="appt-status">
-                    ${renewalBadge(a)}${PTSessionModel.provisional(a)?'<span class="status-pill">Orario da confermare</span>':forcedOverlapBadge(a)}
+                    ${renewalBadge(a, !preview)}${PTSessionModel.provisional(a)?'<span class="status-pill">Orario da confermare</span>':forcedOverlapBadge(a)}
                     <span class="status-pill status-${a.status}">${PTSessionModel.statusLabel(a,CONFIG.STATUS)}</span>
                     ${svc?.isGroup ? `<span class="circuit-badge">${a.clientIds.length}/${svc.maxClients}</span>` : ''}
                   </div>
@@ -172,7 +175,9 @@ const Calendar = (() => {
           <span class="card-title">Gestione pacchetti clienti</span>
         </div>
         <div class="package-alert-list">
-          ${Clients.renderDashboardAlerts ? Clients.renderDashboardAlerts() : '<p class="empty-state">Indicatori clienti non disponibili</p>'}
+          ${preview
+            ? '<p role="status" class="empty-state">Caricamento dello storico e dei pacchetti…</p>'
+            : Clients.renderDashboardAlerts ? Clients.renderDashboardAlerts() : '<p class="empty-state">Indicatori clienti non disponibili</p>'}
         </div>
       </div>
     `;
@@ -495,5 +500,5 @@ const Calendar = (() => {
 
   function getCurrentDateStr() { return fmt(currentDate); }
 
-  return { switchView, render, refreshClock, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
+  return { renderDashboard, switchView, render, refreshClock, prevDay, nextDay, prevWeek, nextWeek, goToday, getCurrentDateStr, fmt, setAvailabilityService };
 })();

@@ -39,18 +39,18 @@ const Clients = (() => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
-  function getPackageMetrics(client) {
-    const allAppts = State.getAppointments();
+  function getPackageMetrics(client, appointments = State.getAppointments()) {
     const today = todayStr();
-    const clientAppts = allAppts
+    const clientAppts = appointments
       .filter(a => Array.isArray(a.clientIds) && a.clientIds.includes(client.id))
       .filter(a => Services.serviceUsesPackageSessions(a.serviceId))
       .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
 
-    const serviceMetrics = Services.getClientSessionMetrics(client);
+    const cycleContext = Services.getPackageCycleContext(client, clientAppts);
+    const serviceMetrics = Services.getClientSessionMetrics(client, null, clientAppts, cycleContext);
     const activeAppts = clientAppts
       .filter(a => a.status !== 'annullato')
-      .filter(a => Services.appointmentInCurrentPackageCycle(a, client));
+      .filter(a => Services.appointmentInCurrentPackageCycle(a, client, cycleContext));
     const completed = serviceMetrics.completed;
     const scheduled = serviceMetrics.scheduled;
     const noShow = serviceMetrics.noShow;
@@ -167,8 +167,13 @@ const Clients = (() => {
     return clients.filter(client => client.active !== false);
   }
 
+  function collectPackageMetrics(clients) {
+    const appointmentsByClient = Services.indexPackageAppointments(State.getAppointments());
+    return clients.map(client => ({ client, metrics: getPackageMetrics(client, appointmentsByClient.get(client.id) ?? []) }));
+  }
+
   function openAlertSummary() {
-    const items = visibleAlertClients().map(client => ({ client, metrics: getPackageMetrics(client) })).filter(item => item.metrics.alerts.length);
+    const items = collectPackageMetrics(visibleAlertClients()).filter(item => item.metrics.alerts.length);
     UI.openModal(`<div class="modal-header"><h3>Alert gestione</h3><button class="modal-close" aria-label="Chiudi" onclick="UI.closeModal()">×</button></div>
       <div class="modal-body package-alert-guide"><p>${items.length} clienti con avvisi. Seleziona un alert per leggerne il significato e le possibili azioni.</p>
       ${items.map(({ client, metrics }) => `<section><h4>${escapeHtml(`${client.nome} ${client.cognome}`)}</h4><div class="package-alert-tags">${metrics.alertDetails.map(alert => alertButton(client, alert)).join('')}</div></section>`).join('') || '<p>Nessun pacchetto richiede attenzione.</p>'}</div>`);
@@ -217,14 +222,13 @@ const Clients = (() => {
     render();
   }
 
-  function renderManagementSummary(clients) {
-    const metrics = clients.map(client => ({ client, metrics: getPackageMetrics(client) }));
-    const activePackages = metrics.filter(x => x.metrics.hasPackage);
+  function renderManagementSummary(entries) {
+    const activePackages = entries.filter(x => x.metrics.hasPackage);
     const sessionsLeft = activePackages.reduce((sum, x) => sum + x.metrics.remaining, 0);
     const toSchedule = activePackages.reduce((sum, x) => sum + x.metrics.toSchedule, 0);
-    const alerts = metrics.filter(x => x.metrics.alerts.length);
+    const alerts = entries.filter(x => x.metrics.alerts.length);
     const finance = typeof PackageLedger !== 'undefined'
-      ? PackageLedger.summary(clients)
+      ? PackageLedger.summary(entries.map(({ client }) => client))
       : { expected: 0, collected: 0, outstanding: 0 };
     const money = value => new Intl.NumberFormat('it-IT', {
       style: 'currency',
@@ -345,14 +349,13 @@ const Clients = (() => {
     UI.showToast(`${rows.length} righe esportate`, 'success');
   }
 
-  function renderHistorySummary(clients) {
-    const metrics = clients.map(client => ({ client, metrics: getPackageMetrics(client) }));
-    const notRenewed = clients.filter(client => historyStatus(client) === 'Non rinnova').length;
-    const otherArchived = clients.length - notRenewed;
-    const completed = metrics.reduce((sum, item) => sum + item.metrics.lifetimeCompleted, 0);
+  function renderHistorySummary(entries) {
+    const notRenewed = entries.filter(({ client }) => historyStatus(client) === 'Non rinnova').length;
+    const otherArchived = entries.length - notRenewed;
+    const completed = entries.reduce((sum, item) => sum + item.metrics.lifetimeCompleted, 0);
     return `
       <div class="client-management-grid client-history-summary">
-        <div class="client-kpi"><span>Clienti nello storico</span><strong>${clients.length}</strong></div>
+        <div class="client-kpi"><span>Clienti nello storico</span><strong>${entries.length}</strong></div>
         <div class="client-kpi"><span>Non rinnovano</span><strong>${notRenewed}</strong></div>
         <div class="client-kpi"><span>Altri archiviati</span><strong>${otherArchived}</strong></div>
         <div class="client-kpi"><span>Lezioni conservate</span><strong>${completed}</strong></div>
@@ -360,12 +363,7 @@ const Clients = (() => {
   }
 
   function renderDashboardAlerts(limit = 6) {
-    const visibleClients = typeof App !== 'undefined' && App.visibleClients
-      ? App.visibleClients(State.getClients())
-      : State.getClients();
-    const items = visibleClients
-      .filter(c => c.active !== false)
-      .map(client => ({ client, metrics: getPackageMetrics(client) }))
+    const items = collectPackageMetrics(visibleAlertClients())
       .filter(x => x.metrics.alerts.length)
       .sort((a, b) => b.metrics.alerts.length - a.metrics.alerts.length || a.metrics.remaining - b.metrics.remaining)
       .slice(0, limit);
@@ -400,7 +398,7 @@ const Clients = (() => {
     const activeClients = allClients.filter(c => c.active !== false);
     const historyClients = allClients.filter(c => c.active === false);
     const showingHistory = viewMode === 'history';
-    const clients = showingHistory ? historyClients : activeClients;
+    const clients = collectPackageMetrics(showingHistory ? historyClients : activeClients);
 
     panel.innerHTML = `
       <div class="view-header">
@@ -431,13 +429,12 @@ const Clients = (() => {
             </tr>
           </thead>
           <tbody>
-            ${clients.map(c => {
+            ${clients.map(({ client: c, metrics }) => {
               const pkgs = Array.isArray(c.packageTypes) ? c.packageTypes : (c.packageType ? [c.packageType] : []);
               const services = [...new Set(pkgs.flatMap(p => CONFIG.PACKAGE_SERVICE_MAP[p]||[]))]
                 .map(id => CONFIG.SERVICES[id])
                 .filter(Boolean);
               const svcColor = services[0]?.color || '#94A3B8';
-              const metrics = getPackageMetrics(c);
               const remainingPct = metrics.total ? Math.round((metrics.remaining / metrics.total) * 100) : 0;
               return `
               <tr class="${showingHistory ? 'row-inactive row-history' : ''}" onclick="${showingHistory || ptMode ? `App.openPackageOverview('${c.id}')` : `App.openEditClient('${c.id}')`}">
