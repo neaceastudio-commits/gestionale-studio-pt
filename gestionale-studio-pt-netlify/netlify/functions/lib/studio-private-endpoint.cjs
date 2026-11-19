@@ -1,7 +1,7 @@
 'use strict';
 const {read}=require('./studio-private-read.cjs');
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
-exports.createHandler=({authenticate,db})=>async event=>{
+exports.createHandler=({authenticate,db,readCalendarPackage})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
  if(event.httpMethod!=='POST')return reply(405,{error:'Metodo non consentito'});
  if(Buffer.byteLength(event.body||'')>180000)return reply(413,{error:'Richiesta troppo grande'});
@@ -9,6 +9,10 @@ exports.createHandler=({authenticate,db})=>async event=>{
   const input=JSON.parse(event.body||'{}'),actor=await authenticate(input.accessToken);
   if(!actor)return reply(401,{error:'Accedi con una sessione Portale PT verificata'});
   if(input.operation==='session')return reply(200,{success:true,actor});
+  if(readCalendarPackage){
+   const result=await readCalendarPackage(actor,input,db);
+   if(result!==null)return reply(200,result);
+  }
   if(!input.method||input.method==='GET')return reply(200,await read(actor,input,db));
   if(input.table!=='acquisizioni'||!['POST','PATCH','DELETE'].includes(input.method))return reply(403,{error:'Usa il servizio autorizzato per questa modifica'});
   const params=new URLSearchParams(input.query||''),id=input.method==='POST'?input.body?.id:params.get('id')?.replace(/^eq\./,'');

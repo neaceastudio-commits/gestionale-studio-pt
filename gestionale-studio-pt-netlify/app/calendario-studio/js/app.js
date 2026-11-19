@@ -217,6 +217,7 @@ const App = {
   // ── APERTURA MODALI ──────────────────────────────────
 
   openNewAppointment(dateStr = null, clientId = null, startTime = null, serviceId = null) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App.openNewAppointment(dateStr, clientId, startTime, serviceId));
     if (App.isPortalPtMode() && clientId && !App.canEditClient(clientId)) {
       UI.showToast('Modalità PT: puoi creare appuntamenti solo per i tuoi clienti assegnati', 'error');
       return;
@@ -224,6 +225,7 @@ const App = {
     App._renderAppointmentModal(null, dateStr || Calendar.getCurrentDateStr(), clientId ? [clientId] : [], startTime || '09:00', serviceId || 'pt11');
   },
   openDetail(apptId) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App.openDetail(apptId));
     const rawAppt = State.getAppointments().find(a => a.id === apptId);
     if (App.isPortalPtMode() && !App.canViewAppointment(rawAppt)) {
       UI.showToast('Questo appuntamento non è collegato al tuo profilo PT', 'error');
@@ -236,6 +238,7 @@ const App = {
   // ── MODAL APPUNTAMENTO ───────────────────────────────
 
   _renderAppointmentModal(apptId, defaultDate, preselectedClientIds = [], defaultStartTime = '09:00', defaultServiceId = 'pt11') {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App._renderAppointmentModal(apptId, defaultDate, preselectedClientIds, defaultStartTime, defaultServiceId));
     const appt   = apptId ? State.getAppointments().find(a => a.id === apptId) : null;
     const isEdit = !!appt;
     if (isEdit && !App.guardPortalEdit('appointment', appt)) {
@@ -1227,6 +1230,7 @@ const App = {
     App._renderClientModal(null);
   },
   openEditClient(cid) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App.openEditClient(cid));
     if (!App.guardStudioManagement()) return;
     if (!App.guardPortalEdit('client', cid)) {
       App.openPackageOverview(cid);
@@ -1235,6 +1239,7 @@ const App = {
     App._renderClientModal(cid);
   },
   openEditPackage(cid) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App.openEditPackage(cid));
     if (!App.guardPackageManagement(cid)) {
       App.openPackageOverview(cid);
       return;
@@ -1560,6 +1565,7 @@ const App = {
   },
 
   openTransferClient(clientId) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App.openTransferClient(clientId));
     if (!App.guardStudioManagement()) return;
     const client = State.getClients().find(item => item.id === clientId);
     if (!client || client.active === false) {
@@ -2128,6 +2134,7 @@ const App = {
   },
 
   _openPackageFinance(clientId) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App._openPackageFinance(clientId));
     App.openPackageOverview(clientId);
     if (!App.isPortalPtMode()) App._setPackageWorkspace('finance');
   },
@@ -2136,6 +2143,7 @@ const App = {
     if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
     if (!client) return;
+    if (App.isSummaryCalendar()) return App._openClientHistory(client);
 
     const isArchived = client.active === false;
     const storedArchivedStatus = String(client.statoAbbonamento || client.stato_abbonamento || '').trim();
@@ -2631,6 +2639,7 @@ const App = {
   },
 
   async _confirmCurrentPackageCycle(clientId) {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App._confirmCurrentPackageCycle(clientId));
     if (!App.guardPackageManagement(clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);
@@ -3842,6 +3851,7 @@ const App = {
 
   // ── GESTIONE DATI ────────────────────────────────────
   openDataManager() {
+    if (App.isSummaryCalendar()) return App.withCalendarHistory(() => App.openDataManager());
     const hasBackup = !!localStorage.getItem('neacea_backup');
     const lastSync  = localStorage.getItem('neacea_last_sync');
     const bkRaw     = localStorage.getItem('neacea_backup');
@@ -3928,13 +3938,134 @@ const App = {
     UI.showToast('Reset completo eseguito', 'success');
   },
 
+  isSummaryCalendar() {
+    return typeof SupabaseSync !== 'undefined' && !!SupabaseSync.dashboardSnapshot?.();
+  },
+
+  withCalendarHistory(action) {
+    if (!App.isSummaryCalendar()) return action();
+    const intent = App._calendarIntent = (App._calendarIntent || 0) + 1;
+    if (!App._calendarHistoryInFlight) {
+      App._calendarHistoryInFlight = (async () => {
+        try {
+          await App._supabaseRefreshInFlight;
+          await SupabaseSync.pullAll({ requireComplete: true });
+          return true;
+        } catch (error) {
+          console.warn('[Supabase] storico operativo non disponibile:', error);
+          UI.showToast('Storico non disponibile. Riprova prima di modificare.', 'error');
+          return false;
+        } finally {
+          App._calendarHistoryInFlight = null;
+        }
+      })();
+    }
+    return App._calendarHistoryInFlight.then(ready => {
+      if (ready && App._calendarIntent === intent) return action();
+    });
+  },
+
+  async openCalendarView(view) {
+    const intent = App._calendarIntent = (App._calendarIntent || 0) + 1;
+    if (App._calendarHistoryInFlight) await App._calendarHistoryInFlight;
+    if (App._calendarIntent !== intent) return;
+    if (App._summaryCalendarAvailable !== false && ['dashboard', 'clients'].includes(view) && !App.isSummaryCalendar()) {
+      try {
+        await App._supabaseRefreshInFlight;
+        if (!App._supabaseRefreshInFlight) {
+          App._supabaseRefreshInFlight = SupabaseSync.pullDashboard(App._dateStr(new Date()))
+            .finally(() => { App._supabaseRefreshInFlight = null; });
+        }
+        const summary = await App._supabaseRefreshInFlight;
+        if (!summary && App._summaryCalendarAvailable) throw Error('Riepilogo non disponibile');
+        App._summaryCalendarAvailable = !!summary;
+      } catch (error) {
+        console.warn('[Supabase] riepilogo non disponibile:', error);
+        UI.showToast('Riepilogo non disponibile. Riprova.', 'error');
+        return;
+      }
+    }
+    if (App._calendarIntent === intent) return Calendar.switchView(view);
+  },
+
+  async _openClientHistory(client) {
+    const snapshot = SupabaseSync.dashboardSnapshot();
+    const totals = snapshot.packages[client.id]?.metrics;
+    if (!totals) return;
+    UI.openModal(`<div class="modal-header">
+      <div><h3>Quadro pacchetto</h3><p class="modal-subtitle">${App._escapeHtml(App._operatorLabel(client))}</p></div>
+      <button type="button" class="modal-close" aria-label="Chiudi" onclick="UI.closeModal()">✕</button>
+    </div>
+    <div class="modal-body package-overview" id="calendar-client-history">
+      <div class="package-overview-kpis">
+        <div><span>Acquistate nel ciclo</span><strong>${totals.total || 'Da impostare'}</strong></div>
+        <div><span>Fatte nel ciclo</span><strong>${totals.completed}</strong></div>
+        <div><span>Assenze scalate</span><strong>${totals.chargedAbsences}</strong></div>
+        <div><span>Residue</span><strong>${totals.remaining}</strong></div>
+        <div><span>Fatte complessive</span><strong>${totals.lifetimeCompleted}</strong></div>
+      </div>
+      <h4>Storico sedute</h4>
+      <p role="status" data-history-status></p>
+      <table class="data-table" aria-label="Storico sedute">
+        <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn" data-history-more hidden>Carica altre sedute</button>
+    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="UI.closeModal()">Chiudi</button>
+      <button class="btn-primary" id="calendar-manage-package">${client.active === false ? 'Apri quadro completo' : 'Gestisci pacchetto'}</button></div>`);
+    const panel = document.getElementById('calendar-client-history');
+    const status = panel.querySelector('[data-history-status]');
+    const more = panel.querySelector('[data-history-more]');
+    const manage = document.getElementById('calendar-manage-package');
+    let offset = 0;
+    const shown = new Set();
+    const stillOpen = () => panel.isConnected && document.getElementById('modal-overlay').classList.contains('open');
+    if (manage) manage.onclick = () => App.withCalendarHistory(() => {
+      if (stillOpen()) App.openPackageOverview(client.id);
+    });
+    const load = async () => {
+      more.disabled = true;
+      status.textContent = 'Caricamento sedute…';
+      try {
+        const page = await SupabaseSync.pullClientHistory(client.id, offset);
+        if (!stillOpen()) return;
+        const newRows = page.appointments.filter(appointment => !shown.has(appointment.id));
+        panel.querySelector('tbody').insertAdjacentHTML('beforeend', newRows.map(appointment => {
+          const label = Services.getService(appointment.serviceId)?.label || appointment.serviceId;
+          const ownStatus = appointment.status === 'annullato' ? 'annullato' : PTSessionModel.status(appointment, client.id);
+          const shownStatus = PTSessionModel.chargedAbsence(appointment, client.id)
+            ? 'Non svolta · seduta scalata' : CONFIG.STATUS[ownStatus]?.label || ownStatus;
+          return `<tr><td>${App._escapeHtml(App._fmtLongDate(appointment.date))}</td><td>${App._escapeHtml(appointment.startTime)}</td>
+            <td>${App._escapeHtml(label)}</td><td>${App._escapeHtml(Services.operatorFullName(appointment.operatorId))}</td>
+            <td>${App._escapeHtml(shownStatus)}</td></tr>`;
+        }).join(''));
+        newRows.forEach(appointment => shown.add(appointment.id));
+        offset += page.appointments.length;
+        status.textContent = offset ? '' : 'Nessuna seduta collegata.';
+        more.hidden = !page.more;
+        more.textContent = 'Carica altre sedute';
+      } catch (error) {
+        if (!stillOpen()) return;
+        status.textContent = 'Storico sedute non disponibile.';
+        more.hidden = false;
+        more.textContent = 'Riprova';
+      } finally { more.disabled = false; }
+    };
+    more.onclick = load;
+    await load();
+  },
+
   async refreshFromSupabase({ silent = true, force = false } = {}) {
+    if (App._calendarHistoryInFlight) return App._calendarHistoryInFlight;
     if (!force && window.PTAvailabilityOverview?.shouldPauseAutoRefresh?.()) return;
     // Focus, visibility and the timer may arrive together: share a single read.
     if (App._supabaseRefreshInFlight) return App._supabaseRefreshInFlight;
     App._supabaseRefreshInFlight = (async () => {
       try {
-        const result = await SupabaseSync.pullAll();
+        const result = App.isSummaryCalendar()
+          ? await SupabaseSync.pullDashboard(App._dateStr(new Date()))
+          : await SupabaseSync.pullAll();
         // Keep existing DOM, filters and scroll when the remote data are identical.
         if (force || result?.changed !== false) Calendar.render();
         else Calendar.refreshClock?.();
@@ -3963,7 +4094,13 @@ const App = {
         options.dashboardDate = Calendar.getCurrentDateStr();
         options.onDashboard = data => Calendar.renderDashboard(data);
       }
-      await Promise.all([SupabaseSync.pullAll(options), window.CalendarFlex?.ready]);
+      const compactView = showDashboard || params.get('view') === 'clients';
+      const [summary] = await Promise.all([
+        compactView && SupabaseSync.pullDashboard?.(Calendar.getCurrentDateStr()),
+        window.CalendarFlex?.ready,
+      ]);
+      if (compactView) App._summaryCalendarAvailable = !!summary;
+      if (!summary) await SupabaseSync.pullAll(options);
       if (!await App._initPortalPtMode()) throw Error('Sessione PT non valida');
     } catch (error) {
       console.warn('[Supabase] avvio Calendario non riuscito:', error);
@@ -3976,7 +4113,7 @@ const App = {
     }
 
     document.querySelectorAll('[data-view]').forEach(el => {
-      el.addEventListener('click', e => { e.preventDefault(); Calendar.switchView(el.dataset.view); });
+      el.addEventListener('click', e => { e.preventDefault(); void App.openCalendarView(el.dataset.view); });
     });
 
     document.getElementById('modal-overlay')?.addEventListener('click', e => {

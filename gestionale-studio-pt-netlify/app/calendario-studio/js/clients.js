@@ -51,6 +51,15 @@ const Clients = (() => {
     const activeAppts = clientAppts
       .filter(a => a.status !== 'annullato')
       .filter(a => Services.appointmentInCurrentPackageCycle(a, client, cycleContext));
+    return formatPackageMetrics(client, serviceMetrics, {
+      next: activeAppts.find(a => a.date >= today && a.status === 'prenotato'),
+      lastDone: [...activeAppts].reverse().find(a => a.status === 'fatto'),
+      lastDoneLifetime: [...clientAppts].reverse().find(a => a.status === 'fatto'),
+      lastPlanned: activeAppts.at(-1)?.date,
+    });
+  }
+
+  function formatPackageMetrics(client, serviceMetrics, dates) {
     const completed = serviceMetrics.completed;
     const scheduled = serviceMetrics.scheduled;
     const noShow = serviceMetrics.noShow;
@@ -74,13 +83,13 @@ const Clients = (() => {
         })
       : { total: Number(client.importo || 0), paid: 0, balance: Number(client.importo || 0), status: client.statoPagamento || 'Da pagare' };
     const pctDone = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-    const next = activeAppts.find(a => a.date >= today && a.status === 'prenotato');
-    const lastDone = [...activeAppts].reverse().find(a => a.status === 'fatto');
-    const lastDoneLifetime = [...clientAppts].reverse().find(a => a.status === 'fatto');
-    const lastPlanned = [...activeAppts].reverse().find(a => a.status !== 'annullato');
+    const asDate = value => typeof value === 'string' ? { date: value } : value ?? undefined;
+    const next = asDate(dates.next);
+    const lastDone = asDate(dates.lastDone);
+    const lastDoneLifetime = asDate(dates.lastDoneLifetime);
     const freq = frequencyPerWeek(client.packageFrequency);
 
-    let projectedEnd = lastPlanned?.date || '';
+    let projectedEnd = dates.lastPlanned || '';
     if (!projectedEnd && remaining > 0 && freq) {
       const start = parseDate(client.packageStart) || new Date();
       const weeks = Math.ceil(remaining / freq);
@@ -167,7 +176,17 @@ const Clients = (() => {
     return clients.filter(client => client.active !== false);
   }
 
+  function packageSummary(client) {
+    const summaries = typeof SupabaseSync === 'undefined' ? null : SupabaseSync.dashboardSnapshot?.()?.packages;
+    if (!summaries || !Object.hasOwn(summaries, client.id)) return null;
+    const entry = summaries[client.id];
+    return formatPackageMetrics(client, entry.metrics, entry.dates);
+  }
+
   function collectPackageMetrics(clients) {
+    if (typeof SupabaseSync !== 'undefined' && SupabaseSync.dashboardSnapshot?.()) {
+      return clients.map(client => ({ client, metrics: packageSummary(client) }));
+    }
     const appointmentsByClient = Services.indexPackageAppointments(State.getAppointments());
     return clients.map(client => ({ client, metrics: getPackageMetrics(client, appointmentsByClient.get(client.id) ?? []) }));
   }
@@ -182,7 +201,7 @@ const Clients = (() => {
   function openAlerts(clientId, alertId = '') {
     const client = visibleAlertClients().find(client => client.id === clientId);
     if (!client || !App.guardPackageManagement(clientId)) return;
-    const details = getPackageMetrics(client).alertDetails.filter(alert => !alertId || alert.id === alertId);
+    const details = (packageSummary(client) ?? getPackageMetrics(client)).alertDetails.filter(alert => !alertId || alert.id === alertId);
     const ptMode = App.isPortalPtMode();
     UI.openModal(`<div class="modal-header"><div><h3>Spiegazioni e soluzioni</h3><p class="modal-subtitle">${escapeHtml(`${client.nome} ${client.cognome}`)}</p></div><button class="modal-close" aria-label="Chiudi" onclick="UI.closeModal()">×</button></div>
       <div class="modal-body package-alert-guide"><p>Gli avvisi si aggiornano in base ai dati registrati. Alcuni sono promemoria e non richiedono una correzione.</p>
@@ -197,7 +216,7 @@ const Clients = (() => {
   function openAlertAction(clientId, alertId) {
     const client = visibleAlertClients().find(client => client.id === clientId);
     if (!client || !App.guardPackageManagement(clientId)) return;
-    const alert = getPackageMetrics(client).alertDetails.find(alert => alert.id === alertId);
+    const alert = (packageSummary(client) ?? getPackageMetrics(client)).alertDetails.find(alert => alert.id === alertId);
     if (!alert) return openAlerts(clientId);
     if (alert.action === 'finance' && !App.guardStudioManagement()) return;
     if (alert.action === 'edit') App.openEditPackage(clientId);
@@ -437,7 +456,7 @@ const Clients = (() => {
               const svcColor = services[0]?.color || '#94A3B8';
               const remainingPct = metrics.total ? Math.round((metrics.remaining / metrics.total) * 100) : 0;
               return `
-              <tr class="${showingHistory ? 'row-inactive row-history' : ''}" onclick="${showingHistory || ptMode ? `App.openPackageOverview('${c.id}')` : `App.openEditClient('${c.id}')`}">
+              <tr class="${showingHistory ? 'row-inactive row-history' : ''}" onclick="${showingHistory || ptMode || (typeof App !== 'undefined' && App.isSummaryCalendar?.()) ? `App.openPackageOverview('${c.id}')` : `App.openEditClient('${c.id}')`}">
                 <td>
                   <div class="op-name-cell">
                     <span class="op-avatar" style="background:${svcColor}">${c.nome[0]}${c.cognome[0]}</span>
@@ -527,6 +546,7 @@ const Clients = (() => {
   }
 
   async function moveToHistory(clientId, options) {
+    if (typeof App !== 'undefined' && App.isSummaryCalendar?.()) return App.withCalendarHistory(() => moveToHistory(clientId, options));
     if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
     if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
@@ -581,6 +601,7 @@ const Clients = (() => {
   }
 
   async function reactivate(clientId) {
+    if (typeof App !== 'undefined' && App.isSummaryCalendar?.()) return App.withCalendarHistory(() => reactivate(clientId));
     if (typeof App !== 'undefined' && App.guardStudioManagement && !App.guardStudioManagement()) return;
     if (typeof App !== 'undefined' && App.guardPortalEdit && !App.guardPortalEdit('client', clientId)) return;
     const clients = State.getClients();
@@ -622,6 +643,7 @@ const Clients = (() => {
   }
 
   function alignResidual(clientId) {
+    if (typeof App !== 'undefined' && App.isSummaryCalendar?.()) return App.withCalendarHistory(() => alignResidual(clientId));
     if (typeof App !== 'undefined' && App.guardPackageManagement && !App.guardPackageManagement(clientId)) return;
     const clients = State.getClients();
     const idx = clients.findIndex(c => c.id === clientId);

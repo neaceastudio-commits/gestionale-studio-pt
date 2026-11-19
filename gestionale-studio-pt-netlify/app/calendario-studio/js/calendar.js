@@ -47,6 +47,10 @@ const Calendar = (() => {
   }
 
   function switchView(view, dateStr = null) {
+    if (typeof App !== 'undefined' && App.isSummaryCalendar?.() &&
+        !['dashboard', 'clients', 'messaggi'].includes(view)) {
+      return App.withCalendarHistory(() => switchView(view, dateStr));
+    }
     currentView = view;
     if (dateStr) currentDate = parseDate(dateStr);
     document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));

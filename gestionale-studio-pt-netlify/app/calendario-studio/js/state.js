@@ -5,6 +5,7 @@
 
 const State = (() => {
   const DATA_VERSION = '3.2-empty';
+  let agendaAppointments = null;
 
   const KEYS = {
     operators:    'neacea_operators',
@@ -142,7 +143,8 @@ const State = (() => {
 
   function getOperators()    { return JSON.parse(localStorage.getItem(KEYS.operators)    || '[]'); }
   function getClients()      { return JSON.parse(localStorage.getItem(KEYS.clients)      || '[]'); }
-  function getAppointments() { return JSON.parse(localStorage.getItem(KEYS.appointments) || '[]'); }
+  function getAppointments() { return agendaAppointments ?? JSON.parse(localStorage.getItem(KEYS.appointments) || '[]'); }
+  function showAgenda(appointments) { agendaAppointments = appointments; }
 
   function saveOperators(data)    { localStorage.setItem(KEYS.operators,    JSON.stringify(data)); }
   function saveClients(data)      { localStorage.setItem(KEYS.clients,      JSON.stringify(data)); }
@@ -150,5 +152,5 @@ const State = (() => {
 
   function genId(prefix) { return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
 
-  return { init, reset, resetHard, restoreBackup, exportData, importData, getOperators, getClients, getAppointments, saveOperators, saveClients, saveAppointments, genId, KEYS };
+  return { init, reset, resetHard, restoreBackup, exportData, importData, getOperators, getClients, getAppointments, showAgenda, saveOperators, saveClients, saveAppointments, genId, KEYS };
 })();

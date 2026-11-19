@@ -4,6 +4,7 @@ const SUPABASE_URL = 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x55VTWLsaSYprArqVIluDQ_oUg3RO24';
 
 const SupabaseSync = (() => {
+  let dashboard = null;
   function url(table, query = '') {
     return SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/' + table + query;
   }
@@ -309,6 +310,80 @@ const SupabaseSync = (() => {
     }
   }
 
+  function applyRows(rows, convert, get, save) {
+    if (!Array.isArray(rows)) return false;
+    const next = rows.map(convert);
+    if (get && JSON.stringify(get()) === JSON.stringify(next)) return false;
+    save(next);
+    return true;
+  }
+
+  async function packagePage(table, filter, limit, offset) {
+    const query = new URLSearchParams({ ...filter, limit, offset });
+    const result = await window.NeaceaPrivateData.read(table, '?' + query);
+    if (Array.isArray(result)) return null;
+    if (result?.version !== 1 || !Array.isArray(result.rows)) throw Error('Risposta pacchetti non valida.');
+    return result.rows;
+  }
+
+  async function pullDashboard(day) {
+    if (typeof window === 'undefined' || !window.NeaceaPrivateData?.read) return null;
+    const packagesRead = (async () => {
+      let firstPage;
+      try {
+        firstPage = await packagePage('calendar_package_summaries', { day }, 500, 0);
+      } catch (error) {
+        if (!dashboard && error.message === 'read_not_supported') return null;
+        throw error;
+      }
+      if (firstPage === null && !dashboard) return null;
+      if (!firstPage) throw Error('Riepilogo pacchetti non disponibile.');
+      const rows = [...firstPage];
+      for (let offset = 500, previous = firstPage; previous.length === 500; offset += 500) {
+        previous = await packagePage('calendar_package_summaries', { day }, 500, offset);
+        if (!previous) throw Error('Riepilogo pacchetti incompleto.');
+        rows.push(...previous);
+      }
+      return rows;
+    })();
+    const [allPackages, operators, appointments] = await Promise.all([
+      packagesRead,
+      readAll('operators', '?select=*&active=eq.true&order=cognome.asc,nome.asc,id.asc'),
+      readAll('appointments', '?select=*&order=date.asc,start_time.asc,id.asc&date=eq.' + day),
+    ]);
+    if (allPackages === null) return null;
+    if (![operators, appointments].every(Array.isArray)) throw Error('Agenda non disponibile.');
+    if (allPackages.some(entry => !entry.client?.id || !Number.isFinite(entry.metrics?.total) || !entry.dates)) {
+      throw Error('Riepilogo pacchetti non valido.');
+    }
+    const clients = allPackages.map(entry => entry.client)
+      .sort((a,b) => Number(b.active !== false) - Number(a.active !== false) ||
+        String(a.cognome || '').localeCompare(String(b.cognome || ''), 'it') ||
+        String(a.nome || '').localeCompare(String(b.nome || ''), 'it') || a.id.localeCompare(b.id));
+    const next = {
+      date: day,
+      clients: clients.map(clientFromDb),
+      operators: operators.map(operatorFromDb),
+      appointments: appointments.map(appointmentFromDb),
+      packages: Object.fromEntries(allPackages.map(({client, metrics, dates}) => [client.id, {metrics, dates}])),
+    };
+    const changed = JSON.stringify(next) !== JSON.stringify(dashboard);
+    if (changed) {
+      applyRows(clients, clientFromDb, State.getClients, State.saveClients);
+      applyRows(operators, operatorFromDb, State.getOperators, State.saveOperators);
+      State.showAgenda(next.appointments);
+      dashboard = next;
+    }
+    return { changed };
+  }
+
+  async function pullClientHistory(clientId, offset = 0) {
+    const pageSize = 50;
+    const rows = await packagePage('calendar_client_history', { client: clientId }, pageSize + 1, offset);
+    if (!rows) throw Error('Storico cliente non disponibile.');
+    return { appointments: rows.slice(0, pageSize).map(appointmentFromDb), more: rows.length > pageSize };
+  }
+
   async function pullAll({ dashboardDate, onDashboard, requireComplete = false } = {}) {
     const clientsRead = readAll('clients', '?select=*&order=active.desc,cognome.asc,nome.asc,id.asc');
     const operatorsRead = readAll('operators', '?select=*&active=eq.true&order=cognome.asc,nome.asc,id.asc');
@@ -330,21 +405,21 @@ const SupabaseSync = (() => {
     }
     const [clients, operators, appointments] = await Promise.all([clientsRead, operatorsRead, appointmentsRead])
       .finally(() => { loading = false; });
-    if (requireComplete) {
+    if (requireComplete || dashboard) {
       const incomplete = [clients, operators, appointments].find(rows => !Array.isArray(rows));
       if (incomplete) throw Error(incomplete.error || 'Lettura iniziale non completata.');
     }
-    let changed = false;
-    function apply(rows, convert, get, save) {
-      if (rows?.error || !Array.isArray(rows)) return;
-      const next = rows.map(convert);
-      if (get && JSON.stringify(get()) === JSON.stringify(next)) return;
-      save(next);
-      changed = true;
+    const wasDashboard = dashboard !== null;
+    if (wasDashboard) {
+      State.showAgenda(null);
+      dashboard = null;
     }
-    apply(clients, clientFromDb, State.getClients, State.saveClients);
-    apply(operators, operatorFromDb, State.getOperators, State.saveOperators);
-    apply(appointments, appointmentFromDb, State.getAppointments, State.saveAppointments);
+    const results = [
+      applyRows(clients, clientFromDb, State.getClients, State.saveClients),
+      applyRows(operators, operatorFromDb, State.getOperators, State.saveOperators),
+      applyRows(appointments, appointmentFromDb, State.getAppointments, State.saveAppointments),
+    ];
+    const changed = wasDashboard || results.some(Boolean);
     localStorage.setItem('neacea_last_sync', new Date().toISOString());
     return { changed };
   }
@@ -772,5 +847,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { joinPairSessions, reactivatePair, savePackageSchedule, clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { joinPairSessions, reactivatePair, savePackageSchedule, clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullDashboard, pullClientHistory, dashboardSnapshot: () => dashboard, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();
