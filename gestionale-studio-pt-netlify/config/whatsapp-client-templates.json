@@ -1,0 +1,76 @@
+[
+  {
+    "name": "neacea_promemoria_appuntamento_v1",
+    "language": "it",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Ciao {{1}}, ti ricordiamo il tuo appuntamento NEACEA del {{2}} alle {{3}} per {{4}}. Per eventuali variazioni contatta lo studio.",
+        "example": {
+          "body_text": [
+            [
+              "Mario",
+              "24/11/2026",
+              "09:00",
+              "PT 1:1"
+            ]
+          ]
+        }
+      },
+      {
+        "type": "FOOTER",
+        "text": "NEACEA Studio · Servizi clienti"
+      }
+    ]
+  },
+  {
+    "name": "neacea_sedute_residue_v1",
+    "language": "it",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Ciao {{1}}, aggiornamento sul tuo pacchetto NEACEA iniziato il {{2}}: risultano {{3}} sedute residue su {{4}}. Il riepilogo considera le sedute registrate dallo studio.",
+        "example": {
+          "body_text": [
+            [
+              "Mario",
+              "02/11/2026",
+              "2",
+              "8"
+            ]
+          ]
+        }
+      },
+      {
+        "type": "FOOTER",
+        "text": "NEACEA Studio · Servizi clienti"
+      }
+    ]
+  },
+  {
+    "name": "neacea_fine_pacchetto_v1",
+    "language": "it",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Ciao {{1}}, per il tuo pacchetto NEACEA iniziato il {{2}} la fine del ciclo è prevista il {{3}}, in base alle sedute attualmente prenotate. Eventuali variazioni del calendario possono modificare questa data.",
+        "example": {
+          "body_text": [
+            [
+              "Mario",
+              "02/11/2026",
+              "30/11/2026"
+            ]
+          ]
+        }
+      },
+      {
+        "type": "FOOTER",
+        "text": "NEACEA Studio · Servizi clienti"
+      }
+    ]
+  }
+]

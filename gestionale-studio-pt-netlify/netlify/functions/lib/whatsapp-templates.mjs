@@ -1,4 +1,5 @@
 import agendaText from './whatsapp-agenda-text.js';
+import clientModels from './whatsapp-client-models.js';
 const waba='4508719189457199';
 export async function listTemplates(env,fetchImpl=fetch){
   const root='https://graph.facebook.com/'+env.WHATSAPP_API_VERSION+'/'+waba+'/message_templates';
@@ -6,7 +7,7 @@ export async function listTemplates(env,fetchImpl=fetch){
   let after='';
   do {
     const url=new URL(root);
-    url.searchParams.set('fields','name,status,language,components');
+    url.searchParams.set('fields','name,status,language,components,category');
     url.searchParams.set('limit','100');
     if(after)url.searchParams.set('after',after);
     const res=await fetchImpl(url,{headers:{Authorization:'Bearer '+env.WHATSAPP_ACCESS_TOKEN},redirect:'error',signal:AbortSignal.timeout(9000)});
@@ -22,7 +23,7 @@ export async function listTemplates(env,fetchImpl=fetch){
         !text.replace(/\{\{\d+\}\}/g,'').includes('{{')&&
         (!header||['DOCUMENT','IMAGE','TEXT'].includes(header.format))&&
         !header?.text?.includes('{{')&&row.components.every(c=>['BODY','HEADER','FOOTER'].includes(c.type));
-      templates.push({name:row.name,language:row.language,status:row.status,body:text,
+      templates.push({name:row.name,language:row.language,status:row.status,category:row.category,body:text,
         header:header?.format||null,headerText:header?.text||'',footer:footer?.text||'',
         parameterCount:variables.length,supported});
     }
@@ -35,6 +36,8 @@ export async function prepareTemplate(input,file,env,fetchImpl=fetch){
   const {templates}=await listTemplates(env,fetchImpl);
   const t=templates.find(t=>t.name===input.name&&t.language===input.language);
   if(input.name===agendaText.name){const issue=agendaText.templateIssue(templates);if(issue)throw Error(issue)}
+  const clientKind=clientModels.kinds.find(kind=>clientModels.byKind[kind].name===input.name);
+  if(clientKind){const issue=clientModels.templateIssue(clientKind,templates);if(issue)throw Error(issue)}
   if(!t||t.status!=='APPROVED'||!t.supported)throw Error('Il modello deve essere approvato e supportato dal pannello.');
   if(input.parameters.length!==t.parameterCount||input.parameters.some(p=>typeof p!=='string'||!p.trim()||p.length>1024||/[\n\r\t]/.test(p)))throw Error('Completa i campi del modello con testo su una sola riga.');
   const rendered=t.body.replace(/\{\{(\d+)\}\}/g,(_,n)=>input.parameters[Number(n)-1]);
