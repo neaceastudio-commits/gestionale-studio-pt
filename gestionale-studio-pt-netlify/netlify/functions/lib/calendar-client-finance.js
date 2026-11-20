@@ -59,7 +59,7 @@ function createService({db,upstream}){
  async function handle(actor,input){
   let row=await load(input.clientId);let state=current(row);
   if(input.action==='split'){
-   if(input.cycleId&&input.cycleId!==state.cycle.id)fail('La decorrenza del ciclo non coincide con i dati salvati: verifica il pacchetto prima di dividere le quote');
+   if(Object.hasOwn(input,'cycleId')&&input.cycleId!==state.cycle.id)fail('La decorrenza del ciclo non coincide con i dati salvati: verifica il pacchetto prima di dividere le quote');
    if(state.cycle.sharedPending)fail('Completa prima la conferma dell’incasso in corso');
    if(input.expectedNotes!==row.notes)fail('Dati cambiati: aggiorna prima di salvare');
    return {client:await save(actor,row,L.setServiceAmounts(state.client,{},input).client)};

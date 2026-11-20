@@ -45,7 +45,7 @@ node tests/package-cycle-confirmation.test.cjs
 node tests/package-renewal-ledger.test.cjs
 node tests/package-payment-prefill.test.cjs
 node tests/package-payment-persistence.test.cjs
-node --test tests/package-service-allocation.test.cjs tests/calendar-shared-finance.test.cjs tests/calendar-shared-finance-sql.test.cjs
+node --test tests/package-service-allocation.test.cjs tests/calendar-shared-finance.test.cjs tests/calendar-shared-finance-sql.test.cjs tests/calendar-payment-open-renewal.test.cjs
 node --test tests/studio-calendar-protocol.test.cjs tests/calendar-complete-read.test.cjs tests/calendar-refresh.test.cjs tests/calendar-client-startup.test.cjs tests/calendar-package-read.test.cjs
 node tests/acquisition-existing-client.test.cjs
 node tests/acquisition-nutrition-section.test.cjs
@@ -171,6 +171,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     tests/package-service-allocation.test.cjs
     tests/calendar-shared-finance.test.cjs
     tests/calendar-shared-finance-sql.test.cjs
+    tests/calendar-payment-open-renewal.test.cjs
     tests/calendar-shared-finance-browser.cjs
     tests/calendar-invoice-browser.cjs
     tests/calendar-ui-census-browser.cjs

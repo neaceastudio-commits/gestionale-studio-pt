@@ -118,7 +118,8 @@ const PackageLedger = (() => {
     const rawStatus = String(client?.statoPagamento || client?.stato_pagamento || 'Da pagare').trim();
     const isPaid = rawStatus.toLowerCase() === 'pagato';
     return {
-      id: `legacy_${String(client?.id || 'client').replace(/[^a-zA-Z0-9_-]/g, '_')}_${startDate || 'unknown'}`,
+      // Initializing the financial ledger must preserve the existing date-based cycle link.
+      id: '',
       source: 'legacy',
       legacy: true,
       startDate,
