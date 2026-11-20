@@ -2139,6 +2139,52 @@ const App = {
     if (!App.isPortalPtMode()) App._setPackageWorkspace('finance');
   },
 
+  _groupPackageLessons(client, appointments, ledger, currentCycle, context) {
+    const groups = { current: [], renewal: [], outside: [], extras: [], history: [] };
+    const closedById = new Map();
+    const closedByStart = new Map();
+    for (const cycle of ledger.cycles) {
+      if (cycle === currentCycle || (!cycle.closedAt && !cycle.voidedAt)) continue;
+      const group = { start: cycle.startDate || '', voided: !!cycle.voidedAt, rows: [] };
+      groups.history.push(group);
+      if (cycle.id) closedById.set(cycle.id, group);
+      if (group.start) closedByStart.set(group.start, closedByStart.has(group.start) ? null : group);
+    }
+
+    const unregistered = new Map();
+    for (const appointment of appointments) {
+      if (!Services.serviceUsesPackageSessions(appointment.serviceId)) {
+        groups.extras.push(appointment);
+        continue;
+      }
+      if (PTSessionModel.renewal(appointment)) {
+        groups.renewal.push(appointment);
+        continue;
+      }
+      const participant = PTSessionModel.cycle(appointment, client.id);
+      const id = participant ? participant.cycleId : Services.extractAppointmentPackageCycleId(appointment);
+      const start = (participant ? participant.start : Services.extractAppointmentPackageCycle(appointment)) || '';
+      const closed = id ? closedById.get(id) : start !== context.start && closedByStart.get(start);
+      const explicitlyEarlier = context.start && start && start < context.start && (!context.id || id !== context.id);
+      if (!closed && !explicitlyEarlier && Services.appointmentInCurrentPackageCycle(appointment, client, context)) {
+        groups.current.push(appointment);
+      } else if (appointment.status === 'prenotato') {
+        groups.outside.push(appointment);
+      } else if (closed) {
+        closed.rows.push(appointment);
+      } else {
+        const key = id ? 'id:' + id : 'start:' + start;
+        if (!unregistered.has(key)) unregistered.set(key, { start, rows: [] });
+        const group = unregistered.get(key);
+        group.start ||= start;
+        group.rows.push(appointment);
+      }
+    }
+    groups.history.push(...unregistered.values());
+    groups.history.sort((a, b) => (b.start || b.rows[0]?.date || '').localeCompare(a.start || a.rows[0]?.date || ''));
+    return groups;
+  },
+
   openPackageOverview(clientId) {
     if (!App.guardPackageManagement(clientId)) return;
     const client = State.getClients().find(c => c.id === clientId);
@@ -2172,9 +2218,8 @@ const App = {
     const serviceId = App._packageServiceId(client);
     const service = serviceId ? Services.getService(serviceId) : null;
     const appointments = App._packageAppointments(client, true);
-    const displayAppointments = [...appointments].sort((a, b) =>
-      `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`)
-    );
+    const cycleContext = Services.getPackageCycleContext(client);
+    const lessonGroups = App._groupPackageLessons(client, [...appointments].reverse(), packageLedger, currentPackageCycle, cycleContext);
     const operators = State.getOperators()
       .filter(o => o.active !== false)
       .filter(o => !App.isPortalPtMode() || App._operatorKeys(o).some(key => App._operatorKeys(App.currentPortalOperator()).includes(key)));
@@ -2208,15 +2253,15 @@ const App = {
         <span>${day.slice(0, 3)}</span>
       </label>`).join('');
 
-    const rows = displayAppointments.length ? displayAppointments.map(a => {
+    const lessonRow = (a, section) => {
       const svc = Services.getService(a.serviceId);
-      const usesPackage = Services.serviceUsesPackageSessions(a.serviceId);
-      const isCurrentCycle = usesPackage && Services.appointmentInCurrentPackageCycle(a, client);
-      const renewalLabel = globalThis.PTSessionModel?.renewal(a) || '';
-      const cycleLabel = renewalLabel || (usesPackage ? (isCurrentCycle ? 'Ciclo corrente' : 'Storico') : 'Servizio extra');
+      const isCurrentCycle = section === 'current';
+      const cycleLabel = section === 'renewal' ? PTSessionModel.renewal(a) :
+        { current: 'Ciclo corrente', outside: 'Fuori ciclo', history: 'Storico', extras: 'Servizio extra' }[section];
       const canEditRow = !isArchived && App.canEditAppointment(a);
       const rowReadOnlyAttr = canEditRow ? '' : 'disabled';
-      const canInclude = canEditRow && !renewalLabel && !isCurrentCycle && usesPackage && a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && metrics.toSchedule > 0;
+      const canInclude = canEditRow && section === 'outside' && a.date >= today && a.clientIds?.length === 1 &&
+        metrics.toSchedule > 0 && !Services.appointmentInCurrentPackageCycle(a, client, cycleContext);
       const operatorOptions = operators
         .map(op => `<option value="${op.id}" ${a.operatorId === op.id ? 'selected' : ''}>${op.nome} ${op.cognome}</option>`)
         .join('');
@@ -2246,7 +2291,7 @@ const App = {
               ${statusOptions}
             </select>` : `<span class="status-pill status-${a.status}">${PTSessionModel.statusLabel(a,CONFIG.STATUS)}</span>`}
           </td>
-          <td><span class="role-tag">${cycleLabel}</span>${a.status==='prenotato'&&a.date<today?'<p role="alert">Esito da verificare · nessuna presenza attribuita</p>':''}${canInclude ? `<button class="btn" onclick="App._includeAppointmentInPackage('${a.id}','${client.id}')">Includi nel ciclo</button>` : ''}</td>
+          <td><span class="role-tag package-lesson-cycle">${cycleLabel}</span>${a.status==='prenotato'&&a.date<today?'<p role="alert">Esito da verificare · nessuna presenza attribuita</p>':''}${canInclude ? `<button class="btn" onclick="App._includeAppointmentInPackage('${a.id}','${client.id}')">Includi nel ciclo</button>` : ''}</td>
           <td>
             ${!canEditRow ? '<span class="client-history-readonly">Solo lettura</span>' : `<div class="package-row-actions">
               <button class="btn" title="Salva soltanto questa seduta" onclick="App._updatePackageAppointmentRow('${a.id}')">Salva seduta</button>
@@ -2255,8 +2300,27 @@ const App = {
             </div>`}
           </td>
         </tr>`;
-    }).join('') : `
-        <tr><td colspan="7" class="text-muted">Nessun appuntamento collegato al pacchetto.</td></tr>`;
+    };
+    const lessonTable = (rows, section, label) => rows.length ? `
+      <div class="package-lesson-table">
+        <table class="package-timeline-table" aria-label="${App._escapeHtml(label)}">
+          <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Ciclo</th><th>Azioni</th></tr></thead>
+          <tbody>${rows.map(a => lessonRow(a, section)).join('')}</tbody>
+        </table>
+      </div>` : '<p class="package-lesson-empty">Nessuna seduta registrata.</p>';
+    const lessonGroup = (key, label) => `
+      <section class="package-lesson-group package-lesson-group--${key}" aria-label="${label}">
+        <h5 class="package-lesson-title">${label}</h5>
+        ${lessonTable(lessonGroups[key], key, label)}
+      </section>`;
+    const dateLabel = date => App._parseDate(date).toLocaleDateString('it-IT', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+    const lessonCount = count => count === 1 ? '1 seduta' : count + ' sedute';
+    const historyLabels = lessonGroups.history.map(group => {
+      if (group.start) return `${group.voided ? 'Pacchetto annullato' : 'Pacchetto dal'} ${dateLabel(group.start)}`;
+      return group.rows[0] ? `Sedute senza decorrenza · ultima il ${dateLabel(group.rows[0].date)}` : 'Pacchetto senza decorrenza';
+    });
 
     const html = `
       <div class="modal-header">
@@ -2338,7 +2402,7 @@ const App = {
 
           ${isArchived || !metrics.toSchedule ? '' : `<section class="package-panel">
             <h4>Prossime date suggerite</h4>
-            ${appointments.some(a => a.status === 'prenotato' && a.date >= today && a.clientIds?.length === 1 && Services.serviceUsesPackageSessions(a.serviceId) && !Services.appointmentInCurrentPackageCycle(a, client)) && metrics.toSchedule > 0 ? `<p>Ci sono sedute già in agenda fuori dal ciclo. Prima di generarne altre, controlla l’elenco: puoi usare “Includi nel ciclo” per una lezione anticipata.</p><button class="btn" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Controlla le sedute</button>` : ''}
+            ${lessonGroups.outside.some(a => a.date >= today && a.clientIds?.length === 1 && !Services.appointmentInCurrentPackageCycle(a, client, cycleContext)) && metrics.toSchedule > 0 ? `<p>Ci sono sedute già in agenda fuori dal ciclo. Prima di generarne altre, controlla l’elenco: puoi usare “Includi nel ciclo” per una lezione anticipata.</p><button class="btn" onclick="document.getElementById('pkg-single-sessions').scrollIntoView({behavior:'smooth', block:'start'})">Controlla le sedute</button>` : ''}
             <div class="suggested-date-row">
               ${hasTotal
                 ? (suggested.length ? suggested.map(date => { const slot = App._packageSlotForDate(client, date); const pt = operators.find(o => o.id === slot?.operatorId); return `<span>${App._fmtLongDate(date)} · ${slot?.startTime || 'orario da indicare'}${pt ? ' · ' + App._escapeHtml(App._operatorLabel(pt)) : ''}</span>`; }).join('') : '<em>Nessuna data da generare</em>')
@@ -2575,10 +2639,21 @@ const App = {
             <p>Scegli il giorno, scrivi il nuovo orario e premi Applica nuovo orario. Puoi togliere la spunta alle sedute da escludere; prima del salvataggio vedrai il riepilogo.</p>
             <p id="pkg-batch-result" role="status" aria-live="polite"></p>
           </div>` : ''}
-          <table class="package-timeline-table">
-            <thead><tr><th>Data</th><th>Ora</th><th>Servizio</th><th>PT</th><th>Stato</th><th>Ciclo</th><th>Azioni</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
+          ${lessonGroup('current', 'Ciclo corrente')}
+          ${lessonGroups.renewal.length ? lessonGroup('renewal', 'Prossimo rinnovo') : ''}
+          ${lessonGroups.outside.length ? lessonGroup('outside', 'Sedute da verificare fuori ciclo') : ''}
+          ${historyLabels.length ? `<div class="package-lesson-history">
+            <label for="pkg-lesson-history">Pacchetti conclusi</label>
+            <select class="form-input" id="pkg-lesson-history" aria-controls="pkg-lesson-history-tables">
+              <option value="">Scegli un pacchetto</option>
+              ${historyLabels.map((label, i) => `<option value="${i}">${App._escapeHtml(label)} · ${lessonCount(lessonGroups.history[i].rows.length)}</option>`).join('')}
+            </select>
+            <div id="pkg-lesson-history-tables"></div>
+          </div>` : ''}
+          ${lessonGroups.extras.length ? `<details class="package-lesson-group package-lesson-group--extras">
+            <summary class="package-lesson-title">Altri servizi · ${lessonCount(lessonGroups.extras.length)}</summary>
+            ${lessonTable(lessonGroups.extras, 'extras', 'Altri servizi')}
+          </details>` : ''}
         </section>
       </div>
       <div class="modal-footer">
@@ -2595,6 +2670,21 @@ const App = {
       </div>
     `;
     UI.openModal(html);
+    const historySelect = document.getElementById('pkg-lesson-history');
+    if (historySelect) {
+      const host = document.getElementById('pkg-lesson-history-tables');
+      const tables = new Map();
+      historySelect.addEventListener('change', () => {
+        const key = historySelect.value;
+        if (key !== '' && !tables.has(key)) {
+          const panel = document.createElement('div');
+          panel.innerHTML = lessonTable(lessonGroups.history[key].rows, 'history', historyLabels[key]);
+          tables.set(key, panel);
+          host.append(panel);
+        }
+        for (const [value, panel] of tables) panel.hidden = value !== key;
+      });
+    }
     if (!isArchived && typeof PackageSchedule !== 'undefined') PackageSchedule.mount(client.id, document.getElementById('pkg-weekly-schedule'));
     if (!isArchived && !App.isPortalPtMode() && typeof SharedFinance !== 'undefined') SharedFinance.mount(client.id);
     if (!isArchived && !App.isPortalPtMode()) App._updateRenewalPlanPreview();

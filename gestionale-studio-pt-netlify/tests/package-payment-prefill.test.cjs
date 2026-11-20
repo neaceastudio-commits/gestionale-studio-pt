@@ -137,6 +137,7 @@ const State = {
 };
 const Services = {
   getClientSessionMetrics: () => metrics,
+  getPackageCycleContext: () => ({ start: metrics.cycleStart, id: '', legacy: true }),
   getService: id => ({ id, label: 'PT 1:1' }),
   serviceUsesPackageSessions: () => true,
   appointmentInCurrentPackageCycle: () => true,

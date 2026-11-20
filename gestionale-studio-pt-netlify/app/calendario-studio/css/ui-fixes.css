@@ -1056,6 +1056,70 @@
   gap: 9px;
   margin-top: 12px;
 }
+.package-lesson-group,
+.package-lesson-history {
+  margin-top: 16px;
+  border: 1px solid var(--lesson-border, var(--border));
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+.package-lesson-group--current {
+  --lesson-bg: #e8f2ff;
+  --lesson-ink: #154581;
+  --lesson-border: #a8c7ee;
+}
+.package-lesson-group--renewal {
+  --lesson-bg: #fff1d9;
+  --lesson-ink: #7b3d09;
+  --lesson-border: #deb87a;
+}
+.package-lesson-title {
+  margin: 0;
+  padding: 10px 14px;
+  color: var(--lesson-ink, var(--text));
+  background: var(--lesson-bg, var(--bg2));
+  border-radius: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+summary.package-lesson-title {
+  cursor: pointer;
+}
+.package-lesson-cycle {
+  color: var(--lesson-ink, var(--text));
+  background: var(--lesson-bg, var(--bg2));
+  border-color: var(--lesson-border, var(--border));
+}
+.package-lesson-table {
+  overflow-x: auto;
+}
+.package-lesson-table .package-timeline-table {
+  min-width: 830px;
+}
+.package-lesson-table .package-row-actions {
+  flex-wrap: wrap;
+}
+.package-lesson-table .package-time-input {
+  width: 100%;
+}
+.package-lesson-history {
+  padding: 12px 14px;
+}
+.package-lesson-history label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+.package-lesson-history select {
+  width: min(100%, 420px);
+}
+.package-lesson-history .package-lesson-table {
+  margin-top: 10px;
+}
+.package-panel p.package-lesson-empty {
+  margin: 0;
+  padding: 10px 14px;
+}
 .package-timeline-table {
   width: 100%;
   border-collapse: collapse;

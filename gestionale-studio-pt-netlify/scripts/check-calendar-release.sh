@@ -31,6 +31,7 @@ node tests/client-journey.test.cjs
 node tests/client-journey-scoring.test.cjs
 node --test tests/calendar-package-schedule.test.cjs tests/calendar-pair-reactivation.test.cjs tests/calendar-package-schedule-concurrency.test.cjs
 node tests/calendar-schedule-workflows-browser.cjs
+node --test tests/calendar-package-lessons-browser.cjs
 node --test tests/calendar-join-pair.test.cjs tests/calendar-join-pair-concurrency.test.cjs
 node tests/calendar-join-pair-browser.cjs
 node --test tests/calendar-charged-absence.test.cjs
@@ -100,6 +101,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     tests/calendar-pair-reactivation.test.cjs
     tests/calendar-package-schedule-concurrency.test.cjs
     tests/calendar-schedule-workflows-browser.cjs
+    tests/calendar-package-lessons-browser.cjs
     supabase/migrations/20261112103135_calendar_package_schedule.sql
     supabase/migrations/20261112104008_calendar_reactivate_historical_pair.sql
     netlify/functions/lib/expected-renewals.js
