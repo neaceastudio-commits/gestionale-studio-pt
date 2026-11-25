@@ -72,7 +72,7 @@ const App = {
       const keys = App._operatorKeys(op);
       return wanted.some(value => keys.includes(value));
     }) || null;
-    return { operator, opParam, emailParam, accessParam: params.get('access') || '' };
+    return { operator, opParam, emailParam, accessParam: params.get('access') || window.sessionStorage?.getItem('neacea-calendar-audit-session') || '' };
   },
 
   async _initPortalPtMode() {
@@ -4173,6 +4173,7 @@ const App = {
 
   // ── INIT ─────────────────────────────────────────────
   async init() {
+    if (window.NeaceaStudioSession?.requested) await window.NeaceaStudioSession.ready;
     const params = new URLSearchParams(window.location.search);
     const ptMode = params.get('pt') === '1' || params.get('mode') === 'pt';
     const showDashboard = !params.get('view') || params.get('view') === 'dashboard';

@@ -83,6 +83,10 @@ window.CalendarAudit = (() => {
     };
   }
   async function init(){
+    if(window.NeaceaStudioSession?.requested){
+      const session=await window.NeaceaStudioSession.ready;
+      if(session)accessToken=session.token;
+    }
     const result=await call('session');if(result.error){
       const button=element('button','Accedi al Calendario');button.className='topbar-btn';button.id='calendar-audit-login-button';button.onclick=login;(document.querySelector('.topbar-right')||document.body).append(button);return;
     }actor=result.actor;sessionStorage.setItem(key,token());
