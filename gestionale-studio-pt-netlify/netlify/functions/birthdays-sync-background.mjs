@@ -14,6 +14,7 @@ export default async (request, context) => {
   const env = process.env;
   const cal = new transport.CalDAV({ APPLE_CALDAV_URL: env.APPLE_BIRTHDAYS_URL, APPLE_CALDAV_USER: env.APPLE_BIRTHDAYS_USER, APPLE_CALDAV_PASSWORD: env.APPLE_BIRTHDAYS_PASSWORD });
   const result = await worker.syncBirthdays({ env, cal, store: getStore({ name: 'calendar-birthdays-v1', consistency: 'strong' }), load: () => birthdays.loadBirthdays(auth.db) });
+  console.info('birthday-sync-result', JSON.stringify(result));
   if (result.errors) throw Error('Birthday sync incomplete; consult private last-run counts');
 };
 export const config = { background: true };
