@@ -4157,7 +4157,8 @@ const App = {
           ? await SupabaseSync.pullDashboard(App._dateStr(new Date()))
           : await SupabaseSync.pullAll();
         // Keep existing DOM, filters and scroll when the remote data are identical.
-        if (force || result?.changed !== false) Calendar.render();
+        const birthdaysChanged = typeof Birthdays !== 'undefined' ? await Birthdays.refresh(force) : false;
+        if (force || birthdaysChanged || result?.changed !== false) Calendar.render();
         else Calendar.refreshClock?.();
         if (!silent) UI.showToast('Calendario aggiornato da Supabase', 'success');
       } catch (err) {
@@ -4193,6 +4194,7 @@ const App = {
       if (compactView) App._summaryCalendarAvailable = !!summary;
       if (!summary) await SupabaseSync.pullAll(options);
       if (!await App._initPortalPtMode()) throw Error('Sessione PT non valida');
+      if (typeof Birthdays !== 'undefined') await Birthdays.refresh(true);
     } catch (error) {
       console.warn('[Supabase] avvio Calendario non riuscito:', error);
       if (panel) {

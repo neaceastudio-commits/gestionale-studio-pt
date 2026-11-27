@@ -102,6 +102,11 @@ const Operators = (() => {
           <input type="email" id="op-email" class="form-input" value="${op?.email || ''}">
         </div>
         <div class="form-group">
+          <label for="op-nascita">Data di nascita</label>
+          <input type="date" id="op-nascita" class="form-input" min="1900-01-01" value="${op?.nascita || ''}">
+          <div class="form-hint">Il compleanno appare ogni anno nel calendario NEACEA e su Apple.</div>
+        </div>
+        <div class="form-group">
           <label>Ruoli</label>
           <div class="checkbox-grid">${rolesHtml}</div>
         </div>
@@ -121,28 +126,39 @@ const Operators = (() => {
     UI.openModal(html);
   }
 
-  function save(opId) {
+  let saving = false;
+  async function save(opId) {
+    if (saving) return;
     const nome = document.getElementById('op-nome').value.trim();
     const cognome = document.getElementById('op-cognome').value.trim();
     const email = document.getElementById('op-email').value.trim();
     const color = document.getElementById('op-color').value;
+    const nascita = document.getElementById('op-nascita').value || null;
     const roles = [...document.querySelectorAll('input[name="role"]:checked')].map(el => el.value);
 
     if (!nome || !cognome) { UI.showToast('Nome e cognome obbligatori', 'error'); return; }
+    if (nascita && (nascita < '1900-01-01' || nascita > new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Rome'}).format(new Date()))) { UI.showToast('Inserisci una data di nascita valida', 'error'); return; }
 
     const ops = State.getOperators();
     if (opId) {
       const idx = ops.findIndex(o => o.id === opId);
-      if (idx !== -1) ops[idx] = { ...ops[idx], nome, cognome, email, roles, color };
+      if (idx !== -1) ops[idx] = { ...ops[idx], nome, cognome, email, roles, color, nascita };
     } else {
-      ops.push({ id: State.genId('op'), nome, cognome, email, roles, color, active: true });
+      ops.push({ id: State.genId('op'), nome, cognome, email, roles, color, nascita, active: true });
     }
+    const savedOp = ops.find(o => o.id === (opId || ops[ops.length-1].id));
+    saving = true;
+    try {
+      const result = await SupabaseSync.pushOperator(savedOp);
+      if (!Array.isArray(result) || !result.some(row => row.id === savedOp.id && (row.nascita || null) === nascita)) throw Error(result?.error || 'Salvataggio non confermato');
+    } catch (error) {
+      UI.showToast(error.message || 'Professionista non salvato', 'error'); return;
+    } finally { saving = false; }
     State.saveOperators(ops);
+    await Birthdays.refresh(true);
     UI.closeModal();
     render();
     Calendar.render();
-    const savedOp = ops.find(o => o.id === (opId || ops[ops.length-1].id));
-    SupabaseSync.pushOperator(savedOp);
     if (CONFIG.SHEETS.enabled) Sheets.pushOperator(savedOp);
     UI.showToast(opId ? 'Professionista aggiornato' : 'Professionista aggiunto', 'success');
   }

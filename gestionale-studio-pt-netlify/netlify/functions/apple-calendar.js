@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { resolveBirthdays, eventLines } = require('./lib/calendar-birthdays.cjs');
 const { PT, packageInfo, operationalNote } = require('./lib/apple-calendar-package');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cdywqyqqmjhgkzwrrixc.supabase.co';
@@ -117,7 +118,7 @@ function sequenceFor(row) {
   return Number.isFinite(timestamp) ? Math.max(0, Math.floor(timestamp / 1000)) : 0;
 }
 
-function buildCalendar(appointments, clients, operators, { operatorId = '', now = new Date() } = {}) {
+function buildCalendar(appointments, clients, operators, { operatorId = '', now = new Date(), birthdays = [] } = {}) {
   const clientMap = new Map((clients || []).filter(client => client.active !== false).map(client => [String(client.id), client]));
   const operatorMap = new Map((operators || []).map(operator => [String(operator.id), operator]));
   const selectedOperator = operatorId ? operatorMap.get(String(operatorId)) : null;
@@ -198,10 +199,12 @@ function buildCalendar(appointments, clients, operators, { operatorId = '', now 
     );
   });
 
+  const visibleBirthdays = birthdays.filter(b => !operatorId || (b.kind === 'operator' ? b.id === operatorId : b.operatorId === operatorId));
+  visibleBirthdays.forEach(b => lines.push(...eventLines(b)));
   lines.push('END:VCALENDAR');
   return {
     body: lines.map(foldLine).join('\r\n') + '\r\n',
-    count: visible.length,
+    count: visible.length + visibleBirthdays.length,
     name: calendarName,
   };
 }
@@ -223,13 +226,15 @@ exports.handler = async event => {
   if (!SUPABASE_KEY) return response(503, 'Chiave server calendario non configurata');
 
   try {
-    const [appointments, clients, operators] = await Promise.all([
+    const [appointments, clients, operators, acquisitions] = await Promise.all([
       supabaseRows('appointments', 'id,service_id,client_ids,operator_id,date,start_time,duration_min,status,notes,updated_at', { order: 'date.asc,start_time.asc,id.asc' }),
-      supabaseRows('clients', 'id,nome,cognome,active,sessions_total,sessions_remaining,data_inizio,data_conferma,package_start,notes'),
-      supabaseRows('operators', 'id,nome,cognome,active'),
+      supabaseRows('clients', 'id,nome,cognome,email,nascita,pt_assegnato,active,sessions_total,sessions_remaining,data_inizio,data_conferma,package_start,notes'),
+      supabaseRows('operators', 'id,nome,cognome,nascita,active'),
+      supabaseRows('acquisizioni', 'id,nome,cognome,email,nascita'),
     ]);
     const operatorId = String(event.queryStringParameters?.operatorId || '').trim();
-    const calendar = buildCalendar(appointments, clients, operators, { operatorId });
+    const birthdays = resolveBirthdays(clients, operators, acquisitions);
+    const calendar = buildCalendar(appointments, clients, operators, { operatorId, birthdays });
     const headers = {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'inline; filename="neacea-calendar.ics"',

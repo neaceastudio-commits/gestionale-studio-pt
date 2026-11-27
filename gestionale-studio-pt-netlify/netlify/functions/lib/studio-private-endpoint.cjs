@@ -9,6 +9,10 @@ exports.createHandler=({authenticate,db,readCalendarPackage})=>async event=>{
   const input=JSON.parse(event.body||'{}'),actor=await authenticate(input.accessToken);
   if(!actor)return reply(401,{error:'Accedi con una sessione Portale PT verificata'});
   if(input.operation==='session')return reply(200,{success:true,actor});
+  if(input.table==='calendar_birthdays'){
+   if(input.method && input.method!=='GET')return reply(403,{error:'Compleanni in sola lettura'});
+   return reply(200,await require('./calendar-birthdays.cjs').loadBirthdays(db,actor));
+  }
   if(readCalendarPackage){
    const result=await readCalendarPackage(actor,input,db);
    if(result!==null)return reply(200,result);

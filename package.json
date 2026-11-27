@@ -2,6 +2,11 @@
   "name": "neacea-calendar-production",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=22 <25" },
-  "dependencies": { "@netlify/blobs": "11.0.3" }
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "dependencies": {
+    "@netlify/blobs": "11.0.3",
+    "fast-xml-parser": "5.11.1"
+  }
 }
