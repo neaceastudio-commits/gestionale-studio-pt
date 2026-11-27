@@ -25,3 +25,13 @@ test('autosave keeps a session draft through reload; explicit completion confirm
 test('offline draft survives reload; readback retry does not duplicate a confirmed write',async()=>{const f=fixture({},undefined,{offline:true});f.input('Carico','45');await f.flush();assert.equal(f.backend.record,null);const g=fixture(f.snapshot(),f.backend,{readFail:true});await g.flush();assert.equal(g.stats().writes,1);assert.equal(g.app.sessionRecords.length,0);g.mode.readFail=false;await g.flush();assert.equal(g.stats().writes,1);assert.equal(g.app.sessionRecords[0].data.rows[0].load,'45');assert.equal(g.app.sessionRecords[0].data.status,'draft');f.dom.window.close();g.dom.window.close();});
 test('completing during an in flight autosave serializes the final values',async()=>{let resume;const f=fixture({},undefined,{wait:()=>new Promise(r=>{resume=r})});f.input('Carico','40');const pending=f.flush();await new Promise(setImmediate);f.input('Carico','50');const completion=f.complete();f.mode.wait=null;resume();await Promise.all([pending,completion]);assert.equal(f.sent.length,2);assert.equal(f.sent[0].data.status,'draft');assert.equal(f.sent[1].data.status,'completed');assert.equal(f.backend.record.data.rows[0].load,'50');f.dom.window.close();});
 test('completion is not locally confirmed when final read fails',async()=>{const f=fixture();f.input('Carico','40');await f.flush();f.mode.readFail=true;await f.complete();assert.equal(f.backend.record.data.status,'completed');assert.equal(f.app.sessionRecords[0].data.status,'draft');const n=f.stats().writes;f.mode.readFail=false;await f.flush();assert.equal(f.stats().writes,n);assert.equal(f.app.sessionRecords[0].data.status,'completed');f.dom.window.close();});
+test('a pending session only blocks refresh of its own client, while its draft remains recoverable',async()=>{
+ const f=fixture({},undefined,{offline:true});f.input('Carico','55');await f.flush();
+ assert.equal(f.w.PTSessionLog.hasPending('c'),true);
+ assert.equal(f.w.PTSessionLog.hasPending('other'),false);
+ assert.equal(f.w.PTSessionLog.hasPending(),true);
+ f.app.selectedClientId='other';assert.equal(f.w.PTSessionLog.hasPending(f.app.selectedClientId),false);
+ const g=fixture(f.snapshot(),f.backend);assert.equal(g.w.PTSessionLog.hasPending('c'),true);await g.flush();
+ assert.equal(g.backend.record.data.rows[0].load,'55');assert.equal(g.w.PTSessionLog.hasPending('c'),false);
+ f.dom.window.close();g.dom.window.close();
+});

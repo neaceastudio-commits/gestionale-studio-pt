@@ -1208,6 +1208,10 @@
       </div>
       <p class="login-help">Se non hai il codice, inserisci la tua email e richiedilo qui.</p>
       <div id="loginError" class="notice hidden" role="status" aria-live="polite"></div>
+      <div id="startupError" class="notice hidden" role="alert">
+        <p>Il portale non è stato caricato completamente. Ricarica la pagina; le bozze sul dispositivo vengono conservate.</p>
+        <button class="btn" type="button" onclick="location.reload()">Ricarica il portale</button>
+      </div>
     </div>
   </section>
 
@@ -1904,6 +1908,24 @@
     </form>
   </dialog>
 
+  <script>
+    // This small guard remains usable even when a later script fails to load/parse.
+    window.PTStartup = (() => {
+      let complete = false;
+      function unavailable() {
+        document.getElementById('startupError').classList.remove('hidden');
+        document.getElementById('loginButton').disabled = true;
+        document.getElementById('sendCodeButton').disabled = true;
+      }
+      document.addEventListener('DOMContentLoaded', () => { if (!complete) unavailable(); });
+      return { ready() {
+        const required = ['PTEssentials', 'PTSaveIntegrity', 'PTSaveTransaction', 'PTDataReader', 'PTSessionContext', 'PTSessionLog', 'PTWorkoutHandoff'];
+        complete = required.every(name => !!window[name]);
+        if (!complete) unavailable();
+        return complete;
+      } };
+    })();
+  </script>
   <script src="js/coaching-editor.js?v=20261111-add-series"></script>
   <script src="pt-essentials.js?v=20261019-anamnesis"></script>
   <script src="js/exercise-timer.js?v=20261017-default"></script>
@@ -1911,7 +1933,7 @@
   <link rel="stylesheet" href="js/monitor.css?v=20261028-monitor-choice">
   <script src="js/save-monitor.js?v=20261027-monitor"></script>
   <script src="js/save-transaction.js?v=20261027-monitor"></script>
-  <script src="js/data-reader.js?v=20261127-explicit"></script>
+  <script src="js/data-reader.js?v=20261128-reliability"></script>
   <script>
     const STORAGE_PREFIX = "neacea_pt_studio_sheet_v3";
     const SCHEMA_VERSION = 8;
@@ -2233,7 +2255,7 @@
     const presetPreview = document.getElementById("presetPreview");
 
     async function ptData(action, payload = {}) {
-      return PTDataReader.read(action, payload, request => ptDataRequest(action, request));
+      return PTDataReader.read(action, payload, request => ptDataRequest(action, request), appState.accessToken);
     }
 
     async function ptDataRequest(action, payload = {}) {
@@ -2786,34 +2808,31 @@
       appState.sessionHandoffs = Object.fromEntries(Object.entries(appState.sessionHandoffs || {}).filter(([id]) => ids.has(id)));
     }
 
+    async function requestPtAccess(payload, fallbackMessage) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload), signal: controller.signal
+        });
+        const text = await response.text();
+        let result;
+        try { result = JSON.parse(text); } catch (_) { throw new Error("Il servizio di accesso non è disponibile. Riprova tra poco."); }
+        if (!response.ok || result.success === false) throw new Error(result.error?.message || result.error || fallbackMessage);
+        return result;
+      } catch (error) {
+        if (controller.signal.aborted) throw new Error("Il servizio di accesso non ha risposto in tempo. Puoi riprovare.");
+        throw error;
+      } finally { clearTimeout(timer); }
+    }
+
     async function verifyAccess(email, code, operatorId = "") {
-      const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", email, code, operatorId })
-      });
-      const text = await response.text();
-      let result = {};
-      try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
-      if (!response.ok || result.success === false) {
-        throw new Error(result.error || result.raw || "Codice accesso non valido.");
-      }
-      return result;
+      return requestPtAccess({ action: "verify", email, code, operatorId }, "Codice accesso non valido.");
     }
 
     async function verifyAccessToken(token) {
-      const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify_token", token })
-      });
-      const text = await response.text();
-      let result = {};
-      try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
-      if (!response.ok || result.success === false) {
-        throw new Error(result.error || result.raw || "Sessione PT non valida o scaduta.");
-      }
-      return result;
+      return requestPtAccess({ action: "verify_token", token }, "Sessione PT non valida o scaduta.");
     }
 
     async function activatePtSession(pt, token) {
@@ -2858,17 +2877,7 @@
       try {
         button.disabled = true;
         button.textContent = "Invio codice...";
-        const response = await fetch(`${accessFunctionBase()}/.netlify/functions/pt-access-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email })
-        });
-        const text = await response.text();
-        let result = {};
-        try { result = JSON.parse(text); } catch (_) { result = { raw: text }; }
-        if (!response.ok || result.success === false) {
-          throw new Error(result.error?.message || result.error || result.raw || "Invio codice non riuscito.");
-        }
+        await requestPtAccess({ email }, "Invio codice non riuscito.");
         setLoginMessage("Codice inviato via e-mail. Controlla la casella e poi entra nel portale.", "ok");
         document.getElementById("loginCode").focus();
       } catch (error) {
@@ -3019,7 +3028,7 @@
     }
 
     function queueCloudSave(exerciseId = "") {
-      if (!canEditClient()) return;
+      if (!canEditClient() || state.saveRetryBlocked) return;
       if (exerciseId) {
         pendingExerciseIds.add(String(exerciseId));
         markExerciseSaveState(exerciseId, "saving", "Salvataggio...");
@@ -3039,6 +3048,7 @@
         cloudSaveQueued = true;
         return false;
       }
+      delete state.saveRetryBlocked;
       cloudSaveRunning = true;
       cloudSaveQueued = false;
       const targetState = state;
@@ -3053,14 +3063,14 @@
           markExerciseSaveState(exerciseIds, "saved", "Salvato");
         } else if (!saved) {
           const conflict = appState.saveMode === "conflict";
-          cloudSaveQueued = !conflict;
+          cloudSaveQueued = !conflict && !targetState.saveRetryBlocked;
           cloudSaveRetryDelay = 5000;
-          markExerciseSaveState(exerciseIds, "error", conflict ? "Conflitto da risolvere" : "Locale · riprovo");
+          markExerciseSaveState(exerciseIds, "error", conflict ? "Conflitto da risolvere" : targetState.saveRetryBlocked ? "Verifica accesso o dati" : "Locale · riprovo");
         }
         return saved;
       } finally {
         cloudSaveRunning = false;
-        if (appState.saveMode !== "conflict" && (cloudSaveQueued || stateVersion(targetState) > targetVersion)) {
+        if (state === targetState && !targetState.saveRetryBlocked && appState.saveMode !== "conflict" && (cloudSaveQueued || stateVersion(targetState) > targetVersion)) {
           clearTimeout(cloudSaveTimer);
           cloudSaveTimer = setTimeout(flushCloudSave, cloudSaveRetryDelay);
         }
@@ -3077,6 +3087,7 @@
         renderSaveState("conflict");
         return true;
       }
+      if (state.saveRetryBlocked) { renderSaveState("error"); return true; }
       renderSaveState("autosave");
       queueCloudSave(exerciseId);
       return true;
@@ -3276,7 +3287,6 @@
     }
 
     function setEditorAvailability() {
-      coachingProgramEditor?.sync();
       const hasClient = !!selectedClient();
       const hasPt = !!appState.currentPt;
       const canEdit = canEditClient();
@@ -3561,6 +3571,7 @@
     }
 
     function renderProgramManager() {
+      if (appState.activeView !== "programsView") return;
       const container = document.getElementById("programCards");
       if (!container) return;
       if (!selectedClient()) {
@@ -3759,6 +3770,7 @@
     }
 
     function renderGripView() {
+      if (appState.activeView !== "gripView") return;
       const summary = document.getElementById("gripSummary");
       const history = document.getElementById("gripHistory");
       const dateInput = document.getElementById("gripDate");
@@ -4019,7 +4031,7 @@
       if (workoutStatus) workoutStatus.textContent = ({
         saving: "Salvataggio sul server in corso…",
         autosave: "Modifiche da sincronizzare…",
-        error: appState.localStorageWarning ? "Salvataggio non confermato: lascia aperta la pagina e riprova." : "Modifiche sul dispositivo: nuovo tentativo automatico.",
+        error: state.saveRetryBlocked || (appState.localStorageWarning ? "Salvataggio non confermato: lascia aperta la pagina e riprova." : "Modifiche sul dispositivo: nuovo tentativo automatico."),
         conflict: "Conflitto: risolvi la versione da conservare prima di continuare.",
         supabase: "Note e dati sincronizzati sul server.",
         local: "Bozza sul dispositivo, da sincronizzare."
@@ -4068,6 +4080,10 @@
         el.innerHTML = appState.localStorageWarning
           ? "Cache locale limitata · <strong>sincronizzazione sicura sul server...</strong>"
           : "Modifica salvata sul dispositivo · <strong>sincronizzazione...</strong>";
+        return;
+      }
+      if (effectivePrefix === "error" && state.saveRetryBlocked) {
+        el.textContent = state.saveRetryBlocked + (appState.localStorageWarning ? " Non chiudere: la copia locale non è garantita." : "");
         return;
       }
       if (effectivePrefix === "error") {
@@ -4261,6 +4277,7 @@
       delete studioState.pendingCloudSave;
       delete studioState.localRevision;
       delete studioState.serverUpdatedAt;
+      delete studioState.saveRetryBlocked;
       studioState.lastSavedAt = savedAt;
       studioState.draftProgramId = programId;
       studioState.localDirty = false;
@@ -4385,6 +4402,15 @@
       } catch (error) {
         console.error(error);
         sourceState.localDirty = true;
+        const status = Number(error.status || 0);
+        if (status >= 400 && status < 500 && ![408, 429].includes(status) && error.code !== "PROGRAM_CONFLICT") {
+          // A definitive validation rejection may be corrected. A write receipt,
+          // in contrast, must retain its identity and only retry verification.
+          if ([400, 413, 422].includes(status) && !sourceState.pendingCloudSave?.receipt) delete sourceState.pendingCloudSave;
+          sourceState.saveRetryBlocked = [401, 403].includes(status)
+            ? "Accesso da verificare. La bozza è conservata: riaccedi al portale e riprova il salvataggio."
+            : "Il server ha rifiutato il salvataggio. La bozza è conservata: verifica i dati e premi Salva per riprovare.";
+        }
         writeLocalValue(sourceStorageKey, JSON.stringify(sourceState));
         if (error.code === "PROGRAM_CONFLICT" && error.current) {
           appState.saveConflict = { current: error.current, programId: sourceProgramId };
@@ -4412,6 +4438,7 @@
     }
 
     function renderLibrary() {
+      if (appState.activeView !== "libraryView") return;
       const query = document.getElementById("exerciseSearch").value.trim().toLowerCase();
       const filtered = exerciseLibrary
         .filter(item => !query || [
@@ -4450,6 +4477,7 @@
     }
 
     function renderInlineBuilder() {
+      if (appState.activeView !== "builderView" || window.NeaceaPTEditor) return;
       const sheetName = document.getElementById("inlineSheetName");
       const lineSelect = document.getElementById("inlineLine");
       const groupSelect = document.getElementById("inlineGroup");
@@ -4751,76 +4779,15 @@
     }
 
     function renderExercises() {
-      if (renderCoachingProgramEditor()) {
-        renderMetrics();
-        renderSheetPreview();
-        return;
+      if (appState.activeView !== "builderView") return;
+      if (!renderCoachingProgramEditor()) {
+        document.getElementById("coachingProgramEditor").innerHTML = '<p role="alert">Editor non disponibile. Ricarica il portale; le bozze già salvate sul dispositivo vengono conservate.</p>';
+        document.getElementById("builderView").classList.add("coaching-ready");
       }
-      title.textContent = `Allenamento ${state.currentSheet}`;
-      const exercises = state.sheets[state.currentSheet];
-      if (!exercises.length) {
-        stack.innerHTML = `<div class="panel" style="padding:18px;color:var(--muted)">Nessun esercizio in questo allenamento. Usa “Aggiungi esercizio”; dopo l'inserimento potrai sostituire esercizio, progressione e intensità direttamente qui.</div>`;
-        renderMetrics();
-        renderCreationPreview();
-        renderSheetPreview();
-        return;
-      }
-      stack.innerHTML = exercises.map((exercise, index) => `
-        <article class="exercise ${exercise.id === lastAddedExerciseId ? "fresh" : ""}">
-          <div class="exercise-head">
-            <span class="badge">${escapeHtml(exercise.type)}</span>
-            <div class="exercise-name">${escapeHtml(exercise.name)}</div>
-            <div class="mini-actions">
-              <span class="exercise-save-badge ${state.localDirty ? "saving" : "saved"}" data-exercise-save="${escapeAttr(exercise.id)}">${state.localDirty ? "Salvataggio..." : "Salvato"}</span>
-              <button class="mini-btn" title="Sposta su" aria-label="Sposta ${escapeAttr(exercise.name)} verso l'alto" onclick="moveExercise(${index}, -1)">↑</button>
-              <button class="mini-btn" title="Sposta giu" aria-label="Sposta ${escapeAttr(exercise.name)} verso il basso" onclick="moveExercise(${index}, 1)">↓</button>
-              <button class="mini-btn" title="Duplica" onclick="duplicateExercise(${index})">#</button>
-              <button class="mini-btn" title="Elimina" onclick="removeExercise(${index})">x</button>
-            </div>
-          </div>
-          <div class="exercise-body">
-            <div class="exercise-info">
-              <div>
-                <strong>${escapeHtml(exercise.group)}</strong>
-                ${exercise.progressionName ? `<span class="progression-pill">${escapeHtml(exercise.progressionName)}</span>` : ""}
-                <span>${escapeHtml(exercise.notes)}</span>
-                ${exercise.previousPeriod ? `<span class="previous-load">Riferimento carichi: ${escapeHtml(periodLabel(exercise.previousPeriod))}</span>` : ""}
-              </div>
-              <span>${escapeHtml(exercise.recovery)} · ${escapeHtml(exercise.effort)}</span>
-            </div>
-            <div class="exercise-editor-grid">
-              <div class="field">
-                <label for="exercise-choice-${index}">Esercizio</label>
-                <select id="exercise-choice-${index}" onchange="replaceExerciseFromLibrary(${index}, this.value)">${exerciseLibraryOptions(exercise)}</select>
-              </div>
-              <div class="field">
-                <label for="exercise-progression-${index}">Progressione</label>
-                <select id="exercise-progression-${index}" onchange="applyExerciseProgression(${index}, this.value)">${Object.entries(presets).map(([key, preset]) => `<option value="${escapeAttr(key)}" ${key === (exercise.progressionKey || "manual") ? "selected" : ""}>${escapeHtml(preset.title)}</option>`).join("")}</select>
-              </div>
-              <div class="field">
-                <label for="exercise-effort-${index}">Intensità</label>
-                <select id="exercise-effort-${index}" onchange="updateExercise(${index}, 'effort', this.value)">${["Facile 2/5", "Media 3/5", "Impegnativa 4/5", "Alta 5/5"].map(value => `<option ${value === exercise.effort ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
-              </div>
-              <div class="field">
-                <label for="exercise-group-${index}">Gruppo</label>
-                <select id="exercise-group-${index}" onchange="updateExercise(${index}, 'group', this.value)">${groups.map(group => `<option ${group === exercise.group ? "selected" : ""}>${escapeHtml(group)}</option>`).join("")}</select>
-              </div>
-              <div class="field">
-                <label for="exercise-recovery-${index}">Recupero</label>
-                <input id="exercise-recovery-${index}" value="${escapeAttr(exercise.recovery)}" oninput="updateExercise(${index}, 'recovery', this.value)">
-              </div>
-            </div>
-            <textarea oninput="updateExercise(${index}, 'notes', this.value)" aria-label="Note trainer">${escapeHtml(exercise.notes)}</textarea>
-            ${state.compact ? renderCompact(exercise, index) : renderTable(exercise, index)}
-          </div>
-        </article>
-      `).join("");
-      renderMetrics();
-      renderCreationPreview();
-      renderSheetPreview();
     }
 
     function renderCreationPreview() {
+      if (appState.activeView !== "builderView" || window.NeaceaPTEditor) return;
       const container = document.getElementById("creationPreview");
       if (!container) return;
       const exercises = state.sheets[state.currentSheet] || [];
@@ -5063,6 +5030,7 @@
     }
 
     function renderSheetPreview() {
+      if (appState.activeView !== "sheetView") return;
       captureWorkoutFields();
       const client = selectedClient();
       const exercises = state.sheets[state.currentSheet] || [];
@@ -5886,19 +5854,19 @@
       document.getElementById("clientSyncStatus").textContent = message;
     }
     async function refreshSelectedClient(manual = false) {
-      if (!appState.accessToken || !selectedClient() || clientRefreshPromise || selectionTransitionRunning || programMutationRunning) return;
+      if (!appState.accessToken || !selectedClient() || clientRefreshPromise || sharedProgramRefreshRunning || selectionTransitionRunning || programMutationRunning) return;
       window.PTSessionLog?.capture(); captureWorkoutFields(); captureWorkoutSessionNote();
       if (manual && !await ensureCurrentProgramSaved()) return;
-      if (state.localDirty || cloudSaveRunning || appState.saveConflict || appState.gripSaveMode === "saving" || window.PTSessionLog?.hasPending()) return;
+      if (state.localDirty || cloudSaveRunning || appState.saveConflict || appState.gripSaveMode === "saving" || window.PTSessionLog?.hasPending(appState.selectedClientId)) return;
       // Do not rebuild a form underneath the PT's cursor or an open editor.
-      if (!manual && (Date.now() - lastClientRefresh < 30000 || document.hidden || document.querySelector("dialog[open]") || document.activeElement?.matches("input,textarea,select,[contenteditable=true]"))) return;
+      if (!manual && (!["programsView", "builderView", "sheetView", "gripView"].includes(appState.activeView) || Date.now() - lastClientRefresh < 30000 || document.hidden || document.querySelector("dialog[open]") || document.activeElement?.matches("input,textarea,select,[contenteditable=true]"))) return;
       const original = state, version = stateVersion(state), clientId = appState.selectedClientId, programId = appState.selectedProgramId;
       clientSyncStatus("Lettura dati dal server…");
       clientRefreshPromise = (async () => {
         try {
           // Avoid applying a response to a different client or a form edited while reading.
           const result = await ptData("client_snapshot", {clientId});
-          if (selectionTransitionRunning || programMutationRunning || original !== state || version !== stateVersion(state) || state.localDirty || cloudSaveRunning || clientId !== appState.selectedClientId || programId !== appState.selectedProgramId || window.PTSessionLog?.hasPending()) return;
+          if (selectionTransitionRunning || programMutationRunning || original !== state || version !== stateVersion(state) || state.localDirty || cloudSaveRunning || clientId !== appState.selectedClientId || programId !== appState.selectedProgramId || window.PTSessionLog?.hasPending(appState.selectedClientId)) return;
           await loadPortalData(true, clientId, result);
           renderClientList();
           const program = appState.programs.find(p => p.id === programId && p.client_id === clientId);
@@ -5929,12 +5897,15 @@
       captureWorkoutSessionNote();
       if (viewId === "sheetView" && appState.activeView !== "sheetView" && selectedClient()) {
         if (sharedProgramRefreshRunning || !await ensureCurrentProgramSaved()) return;
-        const original = state, originalRevision = stateVersion(state);
-        const sheet = state.currentSheet, week = state.activeWeekIndex;
         const clientId = appState.selectedClientId, programId = appState.selectedProgramId, previousView = appState.activeView;
         sharedProgramRefreshRunning = true;
         try {
-          await loadPortalData(true, clientId);
+          const precedingRefresh = clientRefreshPromise;
+          if (precedingRefresh) await precedingRefresh;
+          if (clientId !== appState.selectedClientId || programId !== appState.selectedProgramId || previousView !== appState.activeView) return;
+          const original = state, originalRevision = stateVersion(state);
+          const sheet = state.currentSheet, week = state.activeWeekIndex;
+          if (!precedingRefresh || Date.now() - lastClientRefresh >= 1000) await loadPortalData(true, clientId);
           if (clientId !== appState.selectedClientId || programId !== appState.selectedProgramId || previousView !== appState.activeView) return;
           if (original !== state || originalRevision !== stateVersion(state) || state.localDirty) { showToast("Attendi il salvataggio delle ultime modifiche e riapri Usa scheda."); return; }
           const program = appState.programs.find(item => item.id === programId && item.client_id === clientId && !item.archived);
@@ -5957,7 +5928,11 @@
       });
       if (viewId === "programsView") renderProgramManager();
       if (viewId === "monitorView") window.PTMonitorView?.enter();
-      if (viewId === "builderView") renderCreationPreview();
+      if (viewId === "builderView") {
+        renderMeta(); renderTabs(); renderSessions(); renderInlineBuilder();
+        renderExercises(); renderCreationPreview();
+      }
+      if (viewId === "libraryView") renderLibrary();
       if (viewId === "sheetView") renderSheetPreview();
       if (viewId === "gripView") renderGripView();
       if (viewId === "templatesView") window.PTTemplates?.show();
@@ -6202,14 +6177,14 @@
       },
       onWorkoutSelected:(sheet,week)=>{state.currentSheet=sheet;state.activeWeekIndex=week;renderAll();},
       programData: program => program.data || {} };
-    init();
   </script>
   <script src="js/program-templates.js?v=20261026-uniform"></script>
   <script src="js/program-workflow.js?v=20261019-progressive"></script>
   <script src="js/workout-handoff.js?v=20261127-explicit"></script>
-  <script src="js/session-log.js?v=20261127-explicit"></script>
+  <script src="js/session-log.js?v=20261128-reliability"></script>
   <script src="js/monitor-view.js?v=20261028-monitor-choice"></script>
   <script>
+    if (window.PTStartup.ready()) init();
     document.getElementById('openSupplements').addEventListener('click', () => {
       if (!appState.accessToken) { showToast('Accedi al Portale PT per consultare gli integratori.'); return; }
       location.href = 'integratori/#access=' + encodeURIComponent(appState.accessToken);

@@ -2,6 +2,17 @@
   "name": "neacea-calendar-production",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=22 <25" },
-  "dependencies": { "@netlify/blobs": "11.0.3" }
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "dependencies": {
+    "@netlify/blobs": "11.0.3"
+  },
+  "scripts": {
+    "test:pt": "node gestionale-studio-pt-netlify/scripts/check-pt-reliability.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "jsdom": "26.1.0"
+  }
 }

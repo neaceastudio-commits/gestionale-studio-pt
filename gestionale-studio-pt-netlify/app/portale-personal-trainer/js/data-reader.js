@@ -4,8 +4,23 @@
   else root.PTDataReader = api;
 })(typeof window === 'object' ? window : globalThis, function () {
   const reads = new Set(['bootstrap', 'client_snapshot', 'program_snapshot', 'session_record_snapshot', 'list_templates', 'list_template_trash']);
-  async function read(action, payload, send) {
+  const inFlight = new Map();
+  async function read(action, payload, send, scope = '') {
     if (!reads.has(action)) return send(payload);
+    const key = JSON.stringify([scope, action, payload]);
+    let pending = inFlight.get(key);
+    if (!pending) {
+      pending = readFresh(action, payload, send);
+      inFlight.set(key, pending);
+    }
+    try {
+      // Concurrent callers share transport, never mutable application state.
+      return JSON.parse(JSON.stringify(await pending));
+    } finally {
+      if (inFlight.get(key) === pending) inFlight.delete(key);
+    }
+  }
+  async function readFresh(action, payload, send) {
     // A concurrent edit invalidates the entire read, never just one page.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {

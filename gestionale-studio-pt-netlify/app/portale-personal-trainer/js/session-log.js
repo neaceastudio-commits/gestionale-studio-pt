@@ -5,7 +5,10 @@ window.PTSessionLog = (() => {
   const inFlight=new Map(), retryTimers=new Map();
   let notifyCurrent=null, captureCurrent=null, selectCurrentWorkout=null;
   const capture=()=>captureCurrent?.();
-  const hasPending=()=>[...drafts.entries()].some(([key,draft])=>key.endsWith("|"+ctx()?.getApp()?.currentPt?.id)&&(draft.dirty||draft.pending));
+  const hasPending=(clientId)=>[...drafts.entries()].some(([key,draft])=>{
+    const [client,,actor]=key.split('|');
+    return actor===ctx()?.getApp()?.currentPt?.id&&(!clientId||client===clientId)&&(draft.dirty||draft.pending);
+  });
   const canonical=data=>JSON.stringify({rows:(data?.rows||[]).map(row=>Object.fromEntries(['exercise','load','reps','rir','notes'].map(k=>[k,String(row[k]||'').trim()]))),notes:String(data?.notes||'').trim(),status:data?.status||'completed',...(data?.workout?{workout:{sheet:data.workout.sheet,week:data.workout.week}}:{})});
   function persist(key,draft){
     draft.savedLocallyAt=Date.now();
