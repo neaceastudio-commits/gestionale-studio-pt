@@ -19,12 +19,20 @@ La release parte dal commit di produzione Calendario `8271c8a62087f6ef6fce4713d0
 - `scripts/check-calendar-release.sh` eseguito integralmente con esito zero e messaggio finale «OK: pacchetto Calendario completo e verificato». Comprende test funzionali, browser desktop/mobile isolati, concorrenza SQL, Apple, cicli/rinnovi, storico, doppio PT e filtro firmato. I test browser usano dati simulati e database locali, senza scrivere dati reali.
 - Test compleanni 10/10 e perimetro/paginazione privati 7/7. Il database PostgreSQL locale dei test usa solo TCP loopback, evitando la creazione di socket Unix non consentita nell'ambiente. Installati nell'ambiente di prova Chromium Playwright e libicu60; non sono dipendenze di produzione.
 
-## Collegamento Apple ancora da attivare
+## Apple iCloud attivo — verifica reale del 27 novembre 2026
 
-Il feed Apple include i compleanni con questa release. Il worker diretto per iCloud rimane DISATTIVATO: non è ancora stato verificato su eventi reali Apple.
+La password specifica Apple è stata inserita dall'utente direttamente su Netlify. Tutte le variabili APPLE_BIRTHDAYS_* sono configurate soltanto per Functions/production; APPLE_BIRTHDAYS_ENABLED=true. Nessun segreto nel repository o nei log.
 
-Sul solo sito Calendario, Functions/production, sono stati preparati `APPLE_BIRTHDAYS_URL`, `APPLE_BIRTHDAYS_USER`, una chiave casuale segreta `BIRTHDAYS_WORKER_SECRET` e `APPLE_BIRTHDAYS_ENABLED=false`. `APPLE_BIRTHDAYS_PASSWORD` è vuota: Netlify non permette di recuperare la password segreta già salvata sul vecchio servizio CalDAV. Occorre inserirla direttamente nel pannello protetto. Non pubblicare credenziali nel repository o nei log.
+Il primo avvio ha individuato un difetto di packaging Netlify v2: fast-xml-parser mancava nell'artefatto, anche se la compilazione esbuild passava. Corretto con included_files limitato alla funzione birthdays-sync-background, includendo package.json e il bundle CJS della libreria. Il test calendar-birthday-package.test.cjs usa il packager Netlify reale e carica l'artefatto in un processo isolato, senza dipendere dai node_modules della sorgente. Passati packaging reale, 10 test compleanni e packaging generale; dopo l'aggiunta del log di soli conteggi ripetuti e superati packaging reale e 10 test compleanni.
 
-Dopo l'inserimento: verificare account e destinazione `NEACEA — Operativo`, attivare il flag, ricostruire via Git, verificare l'esatto deploy, eseguire il worker autorizzato e controllare `calendar-birthdays-v1/last-run` e gli eventi Apple effettivi. Ripetere senza variazioni per controllare zero duplicati. Il worker è orario (minuto 17); l'app aggiorna i compleanni ogni cinque minuti.
+Produzione verificata: commit 3a683db96e46ce3ef0c831ae05b9016c273ce92a, deploy 6b09bf0be72a8be6bd8eb0fa, pubblicato e bloccato. Alle 18:36:07 Europe/Rome il worker ha riletto gli eventi reali iCloud nel calendario NEACEA — Operativo e registrato:
 
-Il servizio CalDAV delle sedute non è stato modificato o ridistribuito. Nessun appuntamento, contatore, compenso, messaggio o evento Apple è stato modificato durante questi test. La pubblicazione dell'app e l'attivazione iCloud sono verifiche distinte: non dichiarare iCloud attivo prima del controllo reale.
+```json
+{"checked":22,"created":0,"updated":0,"removed":0,"errors":0,"complete":true}
+```
+
+Questo controllo è successivo al primo trasferimento: conferma 22 risorse proprie già presenti, con UID e marker validi, e nessun duplicato o ulteriore PUT/DELETE al riesame. Nessuna modifica a sedute, pacchetti, compensi o messaggi. Il vecchio servizio CalDAV delle sedute rimane invariato.
+
+La sincronizzazione è oraria, al minuto 17, anche con app chiusa. L'app aggiorna i compleanni ogni cinque minuti. Le date staff possono essere inserite da Staff; le persone senza una data valida restano escluse. Il worker aggiorna e ritira esclusivamente le proprie risorse.
+
+Per controlli successivi: Functions > birthdays-scheduled > Run now; leggere birthdays-sync-background per il riepilogo di soli conteggi. Stato persistente privato in calendar-birthdays-v1/last-run. Non sono stati introdotti endpoint pubblici di diagnostica o dati personali nei log.
