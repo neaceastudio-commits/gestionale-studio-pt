@@ -32,15 +32,40 @@ function fixture() {
       calls.push({ action, payload });
       return new Promise((resolve, fail) => {
         finish = override => {savedRow={ id: payload.programId, updated_at: '2026-09-18T12:00:00Z', data: payload.data };resolve(override || {row:savedRow});};
-        reject = () => fail(new Error('Response lost'));
+        reject = error => fail(error || new Error('Response lost'));
       });
     },
   });
   vm.runInContext(body('function writeLocalState(', 'function saveState(') +
     body('async function flushCloudSave(', 'function autosave(') +
     body('async function saveProgramToSupabase(', 'function renderSessions('), context);
-  return { context, state, appState, calls, finish: override => finish(override), reject: () => reject(), timers };
+  return { context, state, appState, calls, finish: override => finish(override), reject: error => reject(error), timers };
 }
+
+test('expired access stops automatic program retries without losing the draft; manual retry resumes', async () => {
+  const f=fixture(), pending=f.context.saveProgramToSupabase();
+  f.reject(Object.assign(Error('Session expired'),{status:401}));
+  assert.equal(await pending,false);assert.equal(f.state.localDirty,true);
+  assert.match(f.state.saveRetryBlocked,/Accesso/);assert.equal(f.timers.size,0);
+  const retry=f.context.saveProgramToSupabase();f.finish();assert.equal(await retry,true);
+  assert.equal(f.state.saveRetryBlocked,undefined);assert.equal(f.state.localDirty,false);
+});
+
+test('validation rejection stops retries and the next save includes the corrected draft',async()=>{
+  const f=fixture(), pending=f.context.saveProgramToSupabase();
+  f.reject(Object.assign(Error('Invalid program'),{status:422}));await pending;
+  assert.equal(f.timers.size,0);assert.equal(f.state.pendingCloudSave,undefined);
+  f.state.meta.name='Corrected program';
+  const retry=f.context.saveProgramToSupabase();
+  assert.equal(f.calls[1].payload.data.name,'Corrected program');f.finish();assert.equal(await retry,true);
+});
+
+test('temporary server failures keep automatic retries',async()=>{
+  for(const status of [408,429,500,503]){
+    const f=fixture(),pending=f.context.saveProgramToSupabase();f.reject(Object.assign(Error('Temporary'),{status}));await pending;
+    assert.equal(f.state.localDirty,true);assert.equal(f.state.saveRetryBlocked,undefined);assert.equal(f.timers.size,1);
+  }
+});
 
 test('slow first insert is serialized with manual saves and autosave', async () => {
   const f = fixture();

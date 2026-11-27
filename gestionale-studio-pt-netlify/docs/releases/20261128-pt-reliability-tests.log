@@ -1,0 +1,174 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> neacea-calendar-production@1.0.0 test:pt
+> node gestionale-studio-pt-netlify/scripts/check-pt-reliability.cjs
+
+Syntax: 15 frontend scripts passed.
+✔ client scope includes referents and pending sessions while excluding hibernated clients (10.837998ms)
+✔ new-program entry points are visible in clients and builder, with permission guards and an editor-loading fallback (4.979307ms)
+✔ every PT can consult clients by referent while session access stays explicitly assigned (19.711015ms)
+✔ referent selector is always present and changing PT clears stale client searches (4.474257ms)
+✔ every PT defaults to active own clients; hibernated clients stay hidden even for the owner (4.72028ms)
+✔ metadata starts collapsed; program and workout buttons retain their separate save pipelines (1.162333ms)
+✔ editor restores scroll across render and sync, focuses additions without jumping to the top (1.365622ms)
+✔ older programs stay available for archive, edit and trash; archived flag remains respected (19.67501ms)
+✔ autosave keeps a session draft through reload; explicit completion confirms it (205.59934ms)
+✔ offline draft survives reload; readback retry does not duplicate a confirmed write (74.505963ms)
+✔ completing during an in flight autosave serializes the final values (39.163227ms)
+✔ completion is not locally confirmed when final read fails (26.156896ms)
+✔ a pending session only blocks refresh of its own client, while its draft remains recoverable (48.763006ms)
+PASS Voce Hand Grip disponibile nella navigazione
+PASS Test separato per mano e protocollo
+PASS Storico confrontato con la misurazione iniziale
+PASS Salvataggio passa dalla API autenticata
+PASS Correzione storica senza cancellazione definitiva
+PASS Storico Hand Grip dedicato, indicizzato e chiuso al browser
+PASS Funzione SQL usa i privilegi del chiamante
+PASS Funzioni Hand Grip individuate
+PASS Storico isolato per cliente e ordinato dalla prima misurazione
+PASS Valori con virgola normalizzati e progresso calcolato
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Bootstrap carica lo storico Hand Grip autorizzato
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Endpoint Hand Grip corretto e idempotente
+PASS Misurazione Hand Grip salvata
+PASS Payload conserva valori numerici, protocollo e autore
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Retry dopo risposta persa non duplica Hand Grip
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Stesso identificativo non sovrascrive una misurazione diversa
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Endpoint Hand Grip corretto e idempotente
+PASS Controlli successivi creano righe storiche distinte
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Misurazione errata annullata senza cancellare la riga
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Misurazione vuota rifiutata
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Data impossibile rifiutata
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS PT non salva Hand Grip su clienti altrui
+✔ /workspace/scratch/97a857504826/gestionale-studio-pt/gestionale-studio-pt-netlify/tests/pt-hand-grip.test.cjs (172.492353ms)
+✔ prepared mesocycles preserve current program and history until valid explicit activation (1339.23365ms)
+✔ next mesocycle resets date/week and actual results while keeping original history and references (3.580404ms)
+✔ owner control, immediate session revocation and fresh login after reactivation (25.541179ms)
+✔ essential notes preserve recorded clinical facts and hide administrative noise by default (2.816777ms)
+PASS Portale senza chiave Supabase nel browser
+PASS Portale usa API autenticata
+PASS Anteprima locale gestisce API non ancora pubblicata
+PASS Schema scheda aggiornato
+PASS Data seduta registrata
+PASS Nota serie modificabile
+PASS Campi scheda salvati durante la digitazione
+PASS Errore localStorage non blocca il cloud
+PASS Conflitto esplicito e risolvibile
+PASS Revisioni automatiche e ripristino rimossi dal portale
+PASS Migrazione con transazione atomica
+PASS Nuove tabelle PT chiuse al browser senza interrompere Scheda Cliente
+PASS Cliente senza programmi apre una nuova bozza senza errore
+PASS Convertitore legacy individuato
+PASS Vecchia scheda giorni/esercizi convertita
+PASS Progressione legacy conservata
+PASS Ogni serie della seduta produce una riga storica
+PASS Carico, reps, RIR, note e data conservati
+PASS Identificatore carico deterministico
+PASS Indicazione programmata non crea una falsa seduta
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Salvataggio API completato
+PASS Concorrenza inoltrata alla transazione
+PASS Autore imposto dal server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Risposta persa: retry riconosce il salvataggio già eseguito
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Conflitto restituito senza sovrascrittura silenziosa
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS PT non modifica clienti altrui
+✔ /workspace/scratch/97a857504826/gestionale-studio-pt/gestionale-studio-pt-netlify/tests/pt-program-persistence.test.cjs (273.52179ms)
+✔ concurrent identical reads share requests but not mutable results; fresh reads are not cached (1.44616ms)
+✔ reads are isolated by access token and client; writes are never deduplicated (0.463811ms)
+✔ failed shared reads can retry and chunk integrity remains enforced (2.185645ms)
+✔ complete frontend boots; a missing critical asset produces a recoverable message (562.673578ms)
+✔ client navigation does not build hidden editor, workout, library or measurement screens (252.263448ms)
+✔ opening each view renders its contents on demand without legacy editor fallback (309.039559ms)
+✔ access timeout is bounded, retryable and always clears its timer (1.669745ms)
+✔ expired access stops automatic program retries without losing the draft; manual retry resumes (11.744793ms)
+✔ validation rejection stops retries and the next save includes the corrected draft (2.704031ms)
+✔ temporary server failures keep automatic retries (9.450755ms)
+✔ slow first insert is serialized with manual saves and autosave (6.569562ms)
+✔ a lost first response does not allocate a second program identity (2.282518ms)
+✔ missing or unrelated server acknowledgement leaves the draft dirty and retries (9.251688ms)
+✔ a stalled API request aborts and releases its timeout; HTTP conflicts remain explicit (4.113014ms)
+✔ shared templates: sanitization, authorization, idempotence, withdrawal and pagination (7.950551ms)
+✔ prescribed RIR in a new template does not create fake session history (30.349971ms)
+✔ client transition waits for an in-flight save and refuses offline or conflicting drafts (3.892176ms)
+✔ delete/restore waits for autosave, uses its fresh revision and always releases the UI lock (2.824249ms)
+✔ full saved state never resurrects cleared loads from cached historical rows (2.190638ms)
+✔ removing an intermediate week keeps prescriptions, groups and actual measurements aligned (3.579791ms)
+✔ Usa scheda compiles results without adding or removing prescribed series (3.79789ms)
+✔ monitoring belongs only to the named owner; shared use does not grant structural editing (2.265904ms)
+✔ last saved owner workout determines red next and load reference, not unsaved fields (5.080058ms)
+✔ substitute completion advances sequence and preserves date, author and latest loads (12.118192ms)
+✔ legacy record with no workout never invents next workout; other program ignored (0.89805ms)
+✔ saved reference merge does not lose previous trainer loads (0.904299ms)
+✔ autosaved owner and substitute drafts do not advance a workout (0.468114ms)
+✔ out of order completion and stale summary cannot skip unfinished slots (0.578197ms)
+✔ historical load reference excludes future and undated entries across mesocycles (0.346222ms)
+✔ saved A/week1 becomes complete independently of B/week1 and A/week2 (3.332037ms)
+✔ failed save never marks a week complete and read-only PT cannot confirm completion (1.127379ms)
+✔ notes and completion survive normalization; old programs start without false completions (1.626869ms)
+✔ successful assignment opens client folder, failed assignment retains the editable draft (1.335694ms)
+✔ visible note capture stays bound to its client, workout and entry after structural changes (2.63554ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1835.886095
