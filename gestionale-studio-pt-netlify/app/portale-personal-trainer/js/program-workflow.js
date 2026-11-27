@@ -15,11 +15,30 @@
     $('newProgramSourceId').disabled = busy || loading;
     const destination = $('newProgramDestination')?.value || 'client';
     $('newProgramClientSelect').closest('.field')?.classList.toggle('hidden', destination !== 'client');
-    $('createNewProgramBtn').disabled = busy || loading || (destination === 'client' && !canEditClient(targetClient())) || (copied && !entries.some(e => e.id === $('newProgramSourceId').value));
+    $('createNewProgramBtn').disabled = busy || loading || (destination === 'client' && !canEditClient(targetClient())) || (copied && !entries.some(e => e.id === $('newProgramSourceId').value && (!e.summaryOnly || e.state || e.snapshot)));
     $('createNewProgramBtn').textContent = busy ? 'Creazione in corso…' : copied ? 'Crea programma dalla copia' : 'Crea programma';
   }
-  function selectionChanged() {
+  async function selectionChanged() {
     const entry = entries.find(e => e.id === $('newProgramSourceId').value);
+    if (entry?.summaryOnly) {
+      const ticket = request;
+      loading = true; sync(); $('newProgramSourceHelp').textContent = 'Caricamento scheda selezionata…';
+      try {
+        const result = await ptData('program_snapshot', { programId: entry.rowId || entry.programId });
+        if (ticket !== request || !context || $('newProgramSourceId').value !== entry.id) return;
+        const program = normalizeProgram(result.row);
+        if (program.id !== entry.programId || program.client_id !== entry.clientId) throw Error('Programma sorgente non disponibile.');
+        const value = stateFromProgram(program);
+        if (!value) throw Error('La scheda selezionata non è leggibile. Scegline un’altra.');
+        entry.state = value; entry.summaryOnly = false;
+      } catch (error) {
+        if (ticket === request) {
+          $('newProgramError').textContent = error.message || 'Non riesco a leggere la scheda. Riprova.';
+          $('retryProgramSourcesBtn').classList.remove('hidden');
+        }
+        return;
+      } finally { if (ticket === request) { loading = false; sync(); } }
+    }
     const nextName = entry ? `${entry.name} · copia` : `Programma ${periodLabel($('newProgramPeriod').value)}`;
     if (!$('newProgramName').value.trim() || $('newProgramName').value === autoName) $('newProgramName').value = nextName.slice(0, 120);
     autoName = nextName.slice(0, 120);
@@ -57,9 +76,10 @@
       if (kind === 'program') {
         available = [...(canEditClient() && (appState.selectedProgramId || stateExerciseCount(state)) ? [currentEntry()] : []), ...appState.programs.filter(p => p.id !== appState.selectedProgramId &&
           canEditClient(appState.clients.find(c => c.client_id === p.client_id))).map(p => {
-          const value = stateFromProgram(p);
-          return value && { id: p.id, programId: p.id, state: value, name: nameFor(value),
-            label: `${nameFor(value)} · ${periodLabel(p.period)} · ${fullName(appState.clients.find(c => c.client_id === p.client_id))}${p.archived ? ' · archiviato' : ''}` };
+          const value = p.summaryOnly ? null : stateFromProgram(p);
+          const name = p.summaryOnly ? p.name || `Programma ${periodLabel(p.period)}` : nameFor(value);
+          return (p.summaryOnly || value) && { id: p.id, rowId: p.rowId, programId: p.id, clientId: p.client_id, summaryOnly: p.summaryOnly, state: value, name,
+            label: `${name} · ${periodLabel(p.period)} · ${fullName(appState.clients.find(c => c.client_id === p.client_id))}${p.archived ? ' · archiviato' : ''}` };
         }).filter(Boolean)];
       } else if (kind === 'template') {
         const models = await window.PTTemplates.list();
@@ -134,7 +154,10 @@
         else {
           const program = appState.programs.find(p => p.id === sourceId);
           if (!program || !canEditClient(appState.clients.find(c => c.client_id === program.client_id))) throw Error('Programma sorgente non disponibile.');
-          entry = { state: stateFromProgram(program), programId: program.id };
+          const fresh = await ptData('program_snapshot', { programId: program.rowId || program.id });
+          const sourceProgram = normalizeProgram(fresh.row);
+          if (sourceProgram.client_id !== program.client_id) throw Error('Programma sorgente non disponibile.');
+          entry = { state: stateFromProgram(sourceProgram), programId: sourceProgram.id };
         }
         if (!entry || (!entry.state && !entry.snapshot)) throw Error('Seleziona una scheda da duplicare.');
         const snapshot = window.NeaceaPTEditor.copyProgramSnapshot(entry.snapshot || window.NeaceaPTEditor.toSnapshot(entry.state), name, id);

@@ -42,7 +42,7 @@ test('notes and completion survive normalization; old programs start without fal
  assert.equal(c.normalizeState({sheets:{A:[]}}).workoutSessions.A[0].completedAt,'');
 });
 test('successful assignment opens client folder, failed assignment retains the editable draft',async()=>{
- const c=vm.createContext({appState:{selectedClientId:'c'},storageKeyFor:()=>'',normalizeState:s=>s,renderAll(){},autosave(){},showToast(){},showView:v=>c.view=v,saveProgramToSupabase:async()=>true});
+ const c=vm.createContext({appState:{selectedClientId:'c'},storageKeyFor:()=>'',normalizeState:s=>({meta:{},...s}),renderAll(){},autosave(){},showToast(){},showView:v=>c.view=v,saveProgramToSupabase:async()=>true});
  vm.runInContext(extract('async function createAndPersistProgram(','async function duplicateProgram('),c);
  assert.equal(await c.createAndPersistProgram({},'ok','programsView'),true);assert.equal(c.view,'programsView');
  c.saveProgramToSupabase=async()=>false;
@@ -55,7 +55,7 @@ test('visible note capture stays bound to its client, workout and entry after st
  const entry={notes:'',completedAt:''},input={value:'Nota visibile'};
  const state={sheetOrder:['A','B'],sessions:['S1','S2'],workoutSessions:{A:[entry,{notes:'Seconda settimana'}],B:[{notes:'Altra seduta'}]}};
  let saves=0;
- const c=vm.createContext({state,appState:{selectedClientId:'a'},document:{getElementById:()=>input},canEditClient:()=>true,autosave(){saves++;}});
+ const c=vm.createContext({currentLocalDate:()=>"2026-11-27",updateWorkoutDate(){},state,appState:{selectedClientId:'a'},document:{getElementById:()=>input},canEditClient:()=>true,autosave(){saves++;}});
  input.ptNoteContext={state,clientId:'a',sheet:'A',week:0,entry};
  vm.runInContext(extract('function captureWorkoutSessionNote(','function renderWorkoutSessionNotes('),c);
  assert.equal(c.captureWorkoutSessionNote(),true);assert.equal(entry.notes,'Nota visibile');assert.equal(saves,1);

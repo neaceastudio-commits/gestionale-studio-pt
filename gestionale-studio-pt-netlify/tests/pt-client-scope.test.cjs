@@ -57,7 +57,7 @@ test('frontend lists and counts update only from confirmed records, keep the ref
   const html = fs.readFileSync(path.join(__dirname, '../app/portale-personal-trainer/index.html'), 'utf8');
   const c = { ...client(), client_id: 'c', trainer_id: 'owner', session_access: true, pending_session_pt_ids: ['temp'] };
   const context = vm.createContext({
-    appState: { currentPt: { id: 'temp' }, trainerFilter: '', clients: [c,
+    appState: {selectedClientId:"c", currentPt: { id: 'temp' }, trainerFilter: '', clients: [c,
       { id: 'grant-only', trainer_id: 'owner', session_access: true },
       { id: 'hidden', trainer_id: 'temp', active: false },
       { id: 'hidden-status', trainer_id: 'temp', stato_abbonamento: 'Ibernato' }],

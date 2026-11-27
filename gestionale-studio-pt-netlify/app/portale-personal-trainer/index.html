@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Scheda PT NEACEA Studio</title>
+  <meta name="theme-color" content="#0d4c59">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="NEACEA PT">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/neacea-pt-48.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/neacea-pt-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <style>
     :root {
       --ink: #1f2933;
@@ -588,9 +594,23 @@
       gap: 10px;
       border-bottom: 1px solid var(--line);
     }
-    .presentation-meta div { padding: 10px 12px; border-radius: 7px; background: #f4f7fa; }
-    .presentation-meta span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
-    .presentation-meta strong { display: block; margin-top: 4px; color: var(--brand); }
+    .presentation-meta > div { padding: 10px 12px; border-radius: 7px; background: #f4f7fa; }
+    .presentation-meta > div > span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .presentation-meta > div > strong { display: block; margin-top: 4px; color: var(--brand); }
+    .preview-preparation { grid-column: 1 / -1; min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 7px; }
+    .preview-preparation h3 { margin: 0 0 8px; font-size: 14px; color: var(--brand); }
+    .preview-preparation ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 6px 24px; padding-left: 18px; margin: 0; }
+    .preview-preparation li { font-size: 14px; font-weight: 400; line-height: 1.45; overflow-wrap: anywhere; }
+    .preview-preparation details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .preview-preparation summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .preview-preparation details ul { margin-top: 8px; }
+    .exercise-timer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 10px 12px; border: 1px solid #c9dce8; border-radius: 8px; background: #f5f9fc; }
+    .exercise-timer-recovery, .exercise-timer-clock { display: grid; gap: 3px; }
+    .exercise-timer span { color: var(--muted); font-size: 11px; }
+    .exercise-timer strong { font-size: 14px; overflow-wrap: anywhere; }
+    .exercise-timer-clock { margin-left: auto; }
+    .exercise-timer output { font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; color: var(--brand); min-width: 5ch; }
+    .exercise-timer .btn { min-height: 36px; padding: 7px 11px; font-size: 13px; }
     .readonly-exercise-stack { padding: 18px; display: grid; gap: 14px; }
     .readonly-exercise {
       border: 1px solid var(--line);
@@ -1131,7 +1151,15 @@
       #builderView .sheet-meta { padding: 12px; }
       #builderView .field input, #builderView .field select { font-size: 16px; }
     }
-    .pt-essentials{max-width:850px;margin:12px 0;font-size:13px}.pt-fact{margin:6px 0;line-height:1.45}.pt-fact strong{display:block}.pt-original{margin-top:10px}.pt-original pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font:inherit}
+    .pt-essentials{max-width:1000px;margin:18px 0 0;font-size:14px;min-width:0;overflow-wrap:anywhere}
+    .pt-essentials h3{font-size:16px;margin:0 0 12px;color:#fff}
+    .pt-anamnesis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .pt-anamnesis-section{min-width:0;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:14px}
+    .pt-anamnesis-section h4{margin:0 0 10px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#bcd8ef}
+    .pt-anamnesis-section dl{margin:0}.pt-fact{margin:10px 0 0;line-height:1.5}.pt-fact:first-child{margin-top:0}
+    .pt-fact dt{font-weight:650;color:#fff}.pt-fact dd{margin:2px 0 0;color:#e0edf8;white-space:pre-wrap}
+    .client-focus .pt-anamnesis-empty{font-size:13px;color:#c6d9eb;line-height:1.5}
+    @media(max-width:700px){.pt-anamnesis-grid{grid-template-columns:minmax(0,1fr)}.pt-anamnesis-section{padding:12px}}
     #clientList{max-height:65vh;overflow:auto}.client-card span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .pt-workout-handoff { margin:16px 20px 0; padding:16px; }
     .pt-last-workout { border-left:5px solid #20704a;padding:12px;background:#edf7f0;font-weight:700; }
@@ -1155,6 +1183,7 @@
   </style>
   <link rel="stylesheet" href="js/program-templates.css?v=20261007-archive-moves">
   <link rel="stylesheet" href="js/pt-mobile.css?v=20260928-fix-20260921">
+  <link rel="stylesheet" href="js/pt-appearance.css?v=20261026-uniform">
 </head>
 <body>
   <section id="loginScreen" class="login-screen">
@@ -1190,6 +1219,7 @@
       </div>
       <nav class="side-nav" aria-label="Sezioni">
         <button class="nav-btn active" data-view="clientsView">Clienti</button>
+        <button class="nav-btn hidden" data-view="monitorView" data-monitor-access>Monitoraggio</button>
         <button class="nav-btn" data-view="templatesView">Archivio Programmi</button>
         <button class="nav-btn" data-view="builderView">Crea programma</button>
         <button class="nav-btn" data-view="gripView">Hand Grip</button>
@@ -1251,6 +1281,7 @@
               <p class="subtitle" id="clientsSubtitle">Seleziona un cliente. Da qui potrai poi aprire la sua scheda o gestire tutti i programmi.</p>
             </div>
             <div class="actions">
+              <button class="btn hidden" type="button" data-go-view="monitorView" data-monitor-access>Monitoraggio schede e salvataggi</button>
               <button class="btn primary" type="button" data-new-program>Nuovo programma</button>
               <button class="btn primary" id="openSelectedSheetBtn" type="button">Apri programma</button>
               <button class="btn" id="openSelectedProgramsBtn" type="button">Schede e storico</button>
@@ -1273,6 +1304,23 @@
             </div>
             <div class="client-list" id="clientList"></div>
           </div>
+        </section>
+
+        <section class="app-view" id="monitorView" aria-labelledby="monitorTitle">
+          <div class="hero"><div><p class="view-kicker">Direzione · Gianluca</p><h1 id="monitorTitle">Monitoraggio Direzione</h1></div><button class="btn" id="monitorRefresh" type="button" hidden>Aggiorna</button></div>
+          <div class="panel pt-monitor-controls">
+            <label class="pt-monitor-choice">Cosa vuoi consultare?<select id="monitorMode">
+              <option value="">Seleziona una vista…</option>
+              <optgroup label="Sedute"><option value="saved">Ultimi salvataggi delle sedute</option><option value="attention">Sedute da controllare</option><option value="sessions">Tutte le sedute</option></optgroup>
+              <optgroup label="Piani"><option value="oldest">Piani più vecchi</option><option value="program-saves">Ultimi salvataggi dei piani</option><option value="without">Clienti senza piano</option></optgroup>
+              <optgroup label="Salvataggi dell’app"><option value="issues">Problemi di salvataggio</option><option value="recovered">Problemi risolti</option></optgroup>
+            </select></label>
+            <label id="monitorPeriodField" hidden><span id="monitorPeriodLabel">Periodo</span><select id="monitorPeriod"><option value="">Seleziona periodo…</option><option value="today">Oggi</option><option value="yesterday">Ieri</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option></select></label>
+            <label id="monitorTrainerField" hidden>Personal Trainer<select id="monitorTrainer"><option value="">Tutti i PT</option></select></label>
+            <label id="monitorSearchField" hidden>Cerca cliente<input type="search" id="monitorSearch" placeholder="Nome del cliente" autocomplete="off"></label>
+          </div>
+          <p id="monitorStatus" role="status" aria-live="polite"></p>
+          <div id="monitorResults" hidden></div>
         </section>
 
         <section class="app-view" id="programsView" aria-labelledby="programsTitle">
@@ -1461,12 +1509,13 @@
               </div>
               <div class="tabs" id="previewSheetTabs" aria-label="Allenamenti da usare"></div>
             </div>
+            <div id="previewSessionChoice" class="readonly-banner" hidden></div>
             <div class="presentation-meta" id="previewMeta"></div>
             <div id="operationalWeekNavigator"></div>
             <div id="workoutHandoff"></div>
             <div class="readonly-exercise-stack" id="sheetPreviewStack"></div>
             <div id="workoutSessionNotes"></div>
-            <div class="program-save-footer"><span id="workoutSaveStatus" role="status" aria-live="polite"></span><span>Conferma il salvataggio della seduta per segnare questa settimana come completata.</span><button class="btn good" id="saveSheetBottomBtn" type="button">Salva allenamento</button></div>
+            <div class="program-save-footer"><span id="workoutSaveStatus" role="status" aria-live="polite"></span><span>Basta una casella compilata e salvata: il suggerimento passa alla seduta successiva. Puoi continuare a compilare questa.</span><button class="btn good" id="saveSheetBottomBtn" type="button">Salva allenamento</button></div>
           </section>
         </section>
 
@@ -1855,8 +1904,14 @@
     </form>
   </dialog>
 
-  <script src="js/coaching-editor.js?v=20261007-simple-creation"></script>
-  <script src="pt-essentials.js"></script>
+  <script src="js/coaching-editor.js?v=20261111-add-series"></script>
+  <script src="pt-essentials.js?v=20261019-anamnesis"></script>
+  <script src="js/exercise-timer.js?v=20261017-default"></script>
+  <script src="js/save-integrity.js?v=20261024-defaults"></script>
+  <link rel="stylesheet" href="js/monitor.css?v=20261028-monitor-choice">
+  <script src="js/save-monitor.js?v=20261027-monitor"></script>
+  <script src="js/save-transaction.js?v=20261027-monitor"></script>
+  <script src="js/data-reader.js?v=20261127-explicit"></script>
   <script>
     const STORAGE_PREFIX = "neacea_pt_studio_sheet_v3";
     const SCHEMA_VERSION = 8;
@@ -2113,7 +2168,10 @@
     }
 
     async function pushCustomExerciseToSupabase(item) {
-      return ptData("upsert_exercise", { exercise: archiveExerciseToRow(item) });
+      const sent = archiveExerciseToRow(item);
+      const result = await ptData("upsert_exercise", { exercise: sent });
+      if (!result.exercise?.id || ["id","name","group_name","line","recovery","notes"].some(key => result.exercise[key] !== sent[key]) || PTSaveIntegrity.canonical(result.exercise.tags) !== PTSaveIntegrity.canonical(sent.tags)) throw Error("Conferma archivio esercizi incompleta. Riprova il salvataggio.");
+      return result;
     }
 
     const defaultState = {
@@ -2159,7 +2217,7 @@
     let cloudSaveTimer = null;
     let cloudSaveRunning = false;
     let cloudSaveQueued = false;
-    let cloudSaveRetryDelay = 350;
+    let cloudSaveRetryDelay = 0;
     let programMutationRunning = false;
     let selectionTransitionRunning = false;
     const gripDrafts = new Map();
@@ -2175,6 +2233,10 @@
     const presetPreview = document.getElementById("presetPreview");
 
     async function ptData(action, payload = {}) {
+      return PTDataReader.read(action, payload, request => ptDataRequest(action, request));
+    }
+
+    async function ptDataRequest(action, payload = {}) {
       if (!appState.accessToken) throw new Error("Sessione PT mancante o scaduta.");
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
@@ -2196,7 +2258,7 @@
           const endpointMissing = response.status === 404 && !contentType.includes("application/json");
           const error = new Error(endpointMissing
             ? "Accesso verificato, ma l'aggiornamento server del Portale PT non è ancora pubblicato."
-            : result.error || result.raw || response.statusText || "Richiesta non riuscita.");
+            : result.error || (response.status >= 500 ? "Il server non riesce a completare la richiesta. Riprova tra poco: le modifiche da salvare restano sul dispositivo." : result.raw || response.statusText || "Richiesta non riuscita."));
           error.status = response.status;
           error.code = endpointMissing ? "PT_DATA_NOT_DEPLOYED" : (result.code || "");
           error.current = result.current || null;
@@ -2359,11 +2421,11 @@
 
     function refreshClientScopeAfterSessionSave() {
       const ptId = appState.currentPt.id;
-      for (const client of appState.clients) {
+      for (const client of appState.clients.filter(client => client.id === appState.selectedClientId)) {
         const pending = (appState.assignedSessions || []).some(session =>
           session.operator_id === ptId && session.client_ids?.includes(client.id) &&
           !(appState.sessionRecords || []).some(record => record.appointment_id === session.id &&
-            record.cliente_id === client.id && record.operator_id === ptId));
+            record.cliente_id === client.id && record.operator_id === ptId && record.data?.status !== 'draft'));
         client.pending_session_pt_ids = [...(client.pending_session_pt_ids || []).filter(id => id !== ptId), ...(pending ? [ptId] : [])];
       }
       renderAccessScope();
@@ -2397,6 +2459,7 @@
         rowId: row.id,
         client_id: row.cliente_id || data.client_id || data.cliente_id || "",
         data,
+        summaryOnly: row.summaryOnly === true,
         archived: data.archived === true,
         period: normalizePeriodKey(data.period || savedState.meta?.period, row.updated_at || row.created_at),
         assignmentDate: String(savedState.meta?.assignedAt || data.assigned_at || row.created_at || "").slice(0, 10),
@@ -2417,10 +2480,14 @@
       return [name, periodLabel(program?.period || state.meta.period)].filter(Boolean).join(" · ");
     }
 
+    function isPreparedProgram(program) {
+      return (program?.data?.pt_studio_state?.meta?.lifecycle || program?.data?.lifecycle) === "preparation";
+    }
+
     function latestClientProgram(clientId) {
       const programs = programsForClient(clientId);
       return programs.find(p => p.id === appState.currentPrograms?.[clientId]) ||
-        [...programs].sort((a,b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || b.id.localeCompare(a.id))[0] || null;
+        programs.filter(p => !isPreparedProgram(p)).sort((a,b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || b.id.localeCompare(a.id))[0] || null;
     }
 
     function accessFunctionBase() {
@@ -2659,9 +2726,11 @@
       return normalizeState(next);
     }
 
-    async function loadPortalData() {
-      if (appState.dataLoaded) return;
-      const result = await ptData("bootstrap");
+    async function loadPortalData(force = false, clientId = "", snapshot = null) {
+      if (appState.dataLoaded && !force) return;
+      const result = snapshot || await ptData(clientId ? "client_snapshot" : "bootstrap", clientId ? { clientId } : { mode: "navigation" });
+      if (!clientId) appState.progressiveData = result.navigationOnly === true;
+      const mergeRows = (oldRows, rows, belongs) => clientId ? [...(oldRows || []).filter(row => !belongs(row)), ...rows] : rows;
       const clients = result.clients || [];
       const acquisitions = result.acquisitions || [];
       const programs = result.programs || [];
@@ -2672,33 +2741,49 @@
         roles: operatorRoles(op),
         active: op.active !== false
       }));
-      appState.clients = (clients || []).filter(isVisibleClient).map(client => {
+      const mappedClients = (clients || []).filter(isVisibleClient).map(client => {
         const acq = (acquisitions || []).find(item => {
           const email = client.email && item.email && client.email.toLowerCase() === item.email.toLowerCase();
           const phone = client.telefono && item.telefono && client.telefono === item.telefono;
           return email || phone;
         });
+        const anamnesisFacts = PTEssentials.facts(client, acq);
         return {
           ...client,
           client_id: client.id,
           trainer_id: operatorIdFromAny(client.pt_assegnato || client.trainer_id || client.operator_id),
-          obiettivo: client.obiettivo || acq?.obiettivo || "",
+          obiettivo: anamnesisFacts.find(([label]) => label === 'Obiettivo')?.[1] || "",
           anamnesisSource: acq || null,
-          note_operative: PTEssentials.facts(client,acq).map(([label,value])=>`${label}: ${PTEssentials.short(value,160)}`).join("\n")
+          note_operative: anamnesisFacts.map(([label,value])=>`${label}: ${PTEssentials.short(value,160)}`).join("\n")
         };
       });
-      appState.programs = (programs || []).map(normalizeProgram);
-      appState.currentPrograms = Object.fromEntries((result.currentPrograms || []).map(row => [row.cliente_id,row.program_id]));
+      appState.clients = mergeRows(appState.clients, mappedClients, row => row.id === clientId);
+      appState.programs = mergeRows(appState.programs, (programs || []).map(normalizeProgram), row => row.client_id === clientId);
+      const pointers = Object.fromEntries((result.currentPrograms || []).map(row => [row.cliente_id,row.program_id]));
+      if (clientId) { delete appState.currentPrograms?.[clientId]; appState.currentPrograms = {...appState.currentPrograms, ...pointers}; }
+      else appState.currentPrograms = pointers;
       appState.sessionLogEnabled = result.sessionLogEnabled === true;
       appState.sessionHistoryVisible = result.sessionHistoryVisible === true;
-      appState.assignedSessions = result.assignedSessions || [];
-      appState.sessionRecords = result.sessionRecords || [];
-      appState.sessionHandoffs = result.sessionHandoffs || {};
+      appState.assignedSessions = mergeRows(appState.assignedSessions, result.assignedSessions || [], row => row.client_ids?.includes(clientId));
+      appState.sessionRecords = mergeRows(appState.sessionRecords, result.sessionRecords || [], row => row.cliente_id === clientId);
+      appState.sessionHandoffs = clientId ? {...appState.sessionHandoffs, ...result.sessionHandoffs} : (result.sessionHandoffs || {});
       appState.sessionOperators = result.sessionOperators || [];
-      appState.loadHistory = Array.isArray(result.loadHistory) ? result.loadHistory : [];
-      appState.physicalMeasurements = Array.isArray(result.physicalMeasurements) ? result.physicalMeasurements : [];
-      loadExerciseArchive(result.exerciseArchive || []);
+      appState.loadHistory = mergeRows(appState.loadHistory, result.loadHistory || [], row => row.cliente_id === clientId);
+      appState.physicalMeasurements = mergeRows(appState.physicalMeasurements, result.physicalMeasurements || [], row => row.cliente_id === clientId);
+      if (!clientId) loadExerciseArchive(result.exerciseArchive || []);
       appState.dataLoaded = true;
+      if (clientId && clientId === appState.selectedClientId) releaseOtherClientData(clientId);
+    }
+
+    function releaseOtherClientData(clientId) {
+      if (!appState.progressiveData) return;
+      appState.clients = appState.clients.map(client => client.id === clientId ? client : PTDataReader.compactClient(client));
+      appState.programs = appState.programs.map(program => program.client_id === clientId ? program : PTDataReader.compactProgram(program));
+      for (const key of ["sessionRecords", "loadHistory", "physicalMeasurements"]) {
+        appState[key] = (appState[key] || []).filter(row => row.cliente_id === clientId);
+      }
+      const ids = new Set(appState.programs.filter(p => p.client_id === clientId).flatMap(p => [p.id, p.rowId]));
+      appState.sessionHandoffs = Object.fromEntries(Object.entries(appState.sessionHandoffs || {}).filter(([id]) => ids.has(id)));
     }
 
     async function verifyAccess(email, code, operatorId = "") {
@@ -2758,7 +2843,7 @@
       renderAccessScope();
       renderClientList();
       const firstClient = clientsInScope()[0];
-      await selectClient(firstClient?.client_id || "");
+      await selectClient(appState.progressiveData ? "" : firstClient?.client_id || "");
       showView("clientsView");
     }
 
@@ -2845,11 +2930,12 @@
     }
 
     function readLocalState(key = STORAGE_KEY) {
-      let raw = "";
-      try { raw = localStorage.getItem(key) || ""; } catch (error) { appState.localStorageWarning = true; }
-      if (!raw) {
-        try { raw = sessionStorage.getItem(key) || ""; } catch (error) {}
+      const copies = [];
+      for (const storage of [() => sessionStorage, () => localStorage]) {
+        try { const saved = JSON.parse(storage().getItem(key)); if (saved) copies.push(saved); } catch (_) {}
       }
+      copies.sort((a,b) => Number(b.localDirty) - Number(a.localDirty) || timestampOf(b.lastSavedAt) - timestampOf(a.lastSavedAt));
+      const raw = JSON.stringify(copies[0] || null);
       try {
         const saved = JSON.parse(raw);
         if (saved && saved.sheets && saved.sessions) {
@@ -2864,6 +2950,7 @@
     function writeLocalValue(key, value) {
       try {
         localStorage.setItem(key, value);
+        try { sessionStorage.removeItem(key); } catch (_) {}
         appState.localStorageWarning = false;
         return true;
       } catch (error) {
@@ -2896,7 +2983,7 @@
     function localIsNewer(localState, program) {
       if (!localState) return false;
       if (!program) return true;
-      return localState.localDirty === true || timestampOf(localState.lastSavedAt) > timestampOf(program.updated_at);
+      return localState.localDirty === true || !!localState.pendingCloudSave;
     }
 
     function writeLocalState(savedAt = new Date().toISOString()) {
@@ -2917,7 +3004,7 @@
     }
 
     function stateVersion(targetState = state) {
-      return stateVersions.get(targetState) ?? Number(targetState.pendingCloudSave?.version || 0);
+      return stateVersions.get(targetState) ?? Number(targetState.localRevision ?? targetState.pendingCloudSave?.version ?? 0);
     }
 
     function markExerciseSaveState(exerciseIds, mode, label) {
@@ -2939,10 +3026,11 @@
       }
       if (!appState.currentPt || !selectedClient()) return;
       clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = setTimeout(flushCloudSave, 650);
+      cloudSaveTimer = setTimeout(flushCloudSave, 600);
     }
 
     async function flushCloudSave(options = {}) {
+      captureWorkoutFields();
       captureWorkoutSessionNote();
       clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
@@ -2959,8 +3047,8 @@
       markExerciseSaveState(exerciseIds, "saving", "Salvataggio...");
       try {
         const saved = await saveProgramToSupabase(null, { ...options, silent: options.silent !== false, queuedSave: true, saveVersion: targetVersion });
-        if (saved && stateVersion(targetState) === targetVersion) {
-          cloudSaveRetryDelay = 350;
+        if (saved && !targetState.localDirty && stateVersion(targetState) === targetVersion) {
+          cloudSaveRetryDelay = 0;
           exerciseIds.forEach(exerciseId => pendingExerciseIds.delete(exerciseId));
           markExerciseSaveState(exerciseIds, "saved", "Salvato");
         } else if (!saved) {
@@ -2982,7 +3070,8 @@
     function autosave(exerciseId = "") {
       if (!canEditClient()) return false;
       state.localDirty = true;
-      stateVersions.set(state, stateVersion(state) + 1);
+      state.localRevision = stateVersion(state) + 1;
+      stateVersions.set(state, state.localRevision);
       writeLocalState();
       if (appState.saveConflict) {
         renderSaveState("conflict");
@@ -3041,13 +3130,23 @@
         // Modern full snapshots are authoritative, including intentionally cleared
         // values. Merging cached history would resurrect removed sets or loads.
         const next = normalizeState(saved);
+        next.serverUpdatedAt = program.updated_at;
+        next.lastSavedAt = program.updated_at || next.lastSavedAt;
+        next.localRevision = 0;
+        delete next.pendingCloudSave;
         if (!next.coachingEditorSnapshot && window.NeaceaPTEditor) next.coachingEditorSnapshot = window.NeaceaPTEditor.toSnapshot(next);
         window.NeaceaPTEditor?.inheritLegacyWeeks?.(next);
+        const handoff = window.PTWorkoutHandoff?.merge(appState.sessionHandoffs?.[program.rowId || program.id],
+          window.PTWorkoutHandoff?.build(next, appState.sessionRecords || [], program.rowId || program.id));
+        if (handoff?.next && next.sheets[handoff.next.sheet] && handoff.next.week < next.sessions.length) {
+          next.currentSheet = handoff.next.sheet;
+          next.activeWeekIndex = handoff.next.week;
+        }
         return next;
       }
       const legacy = stateFromLegacyProgram(program?.data);
       if (legacy && window.NeaceaPTEditor) legacy.coachingEditorSnapshot = window.NeaceaPTEditor.toSnapshot(legacy);
-      if (legacy) window.NeaceaPTEditor?.inheritLegacyWeeks?.(legacy);
+      if (legacy) { legacy.serverUpdatedAt = program.updated_at; window.NeaceaPTEditor?.inheritLegacyWeeks?.(legacy); }
       return mergeLoadHistoryIntoState(program, legacy);
     }
 
@@ -3152,6 +3251,9 @@
     }
 
     function renderAccessScope() {
+      document.querySelectorAll('[data-monitor-access]').forEach(el=>el.classList.toggle('hidden',!canMonitorActivity()));
+      if(!canMonitorActivity())window.PTMonitorView?.reset();
+      window.PTSaveMonitor?.flush();
       const owner = isAdministrator(appState.currentPt);
       const trainerFilterField = document.getElementById("trainerFilterField");
       const trainerFilter = document.getElementById("trainerFilter");
@@ -3205,7 +3307,7 @@
         if (field) field.disabled = !hasPt;
       });
       document.querySelectorAll("#exerciseStack input, #exerciseStack select, #exerciseStack textarea, #exerciseStack button, #sheetPreviewStack input, #sheetPreviewStack select, #sheetPreviewStack textarea, #sheetPreviewStack button, #sessionRow button").forEach(field => {
-        field.disabled = !canEdit;
+        field.disabled = field.hasAttribute("data-pt-timer-action") ? false : !canEdit;
       });
       document.querySelectorAll("#handGripForm input, #handGripForm select, #handGripForm textarea").forEach(field => {
         field.disabled = !canEdit;
@@ -3240,6 +3342,8 @@
     }
 
     async function ensureCurrentProgramSaved() {
+      window.PTSessionLog?.capture();
+      captureWorkoutFields();
       captureWorkoutSessionNote();
       if (appState.gripSaveMode === "saving") { showToast("Attendi il salvataggio Hand Grip"); return false; }
       if (!selectedClient() || !canEditClient()) return true;
@@ -3248,28 +3352,49 @@
       while (cloudSaveRunning && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 80));
       if (original !== state || clientId !== appState.selectedClientId) return false;
       if (cloudSaveRunning || appState.saveConflict) { showToast("Completa il salvataggio o risolvi il conflitto prima di continuare"); return false; }
-      if (state.localDirty && !await flushCloudSave()) { showToast("Modifiche conservate sul dispositivo: completa il salvataggio prima di cambiare scheda"); return false; }
+      while (state.localDirty && Date.now() < deadline) {
+        if (!await flushCloudSave()) { showToast("Modifiche conservate sul dispositivo: completa il salvataggio prima di cambiare scheda"); return false; }
+      }
       return original === state && clientId === appState.selectedClientId && !state.localDirty;
     }
 
-    function switchGripDraft(clientId) {
-      const fields = ["gripDate", "gripRight", "gripLeft", "gripDominant", "gripAttempts", "gripPosition", "gripNotes"];
-      if (appState.selectedClientId) gripDrafts.set(appState.selectedClientId, Object.fromEntries(fields.map(key => [key, document.getElementById(key).value])));
-      const draft = gripDrafts.get(clientId) || { gripDate: localDateValue(), gripAttempts: "3", gripPosition: "seduto" };
-      fields.forEach(key => { document.getElementById(key).value = draft[key] || ""; });
+    const gripFields = ["gripDate", "gripRight", "gripLeft", "gripDominant", "gripAttempts", "gripPosition", "gripNotes"];
+    const gripDraftKey = clientId => `neacea_pt_grip_draft:${appState.currentPt?.id}:${clientId}`;
+    function persistGripDraft() {
+      const clientId = appState.selectedClientId;
+      if (!clientId || !canEditClient()) return;
+      const fields = Object.fromEntries(gripFields.map(key => [key, document.getElementById(key).value]));
+      gripDrafts.set(clientId, fields);
+      if (!PTSaveIntegrity.writeDraft(gripDraftKey(clientId), {fields,pending:pendingGripSaves.get(clientId)})) showToast("Bozza Hand Grip non protetta: lascia aperta la pagina fino al salvataggio.");
     }
+    function switchGripDraft(clientId) {
+      persistGripDraft();
+      const saved = PTSaveIntegrity.readDraft(gripDraftKey(clientId));
+      const draft = gripDrafts.get(clientId) || saved?.fields || {gripDate:localDateValue(),gripAttempts:"3",gripPosition:"seduto"};
+      if (saved?.pending) pendingGripSaves.set(clientId, saved.pending);
+      appState.gripSaveMode = pendingGripSaves.has(clientId) ? "error" : (draft.gripRight || draft.gripLeft || draft.gripNotes) ? "draft" : "saved";
+      gripFields.forEach(key => {document.getElementById(key).value = draft[key] || "";});
+    }
+    gripFields.forEach(key => document.getElementById(key).addEventListener("input", () => {
+      appState.gripSaveMode = ["gripRight","gripLeft","gripNotes"].some(id => document.getElementById(id).value) ? "draft" : "saved";
+      persistGripDraft(); renderSaveState();
+    }));
 
     async function selectClient(clientId) {
       if (selectionTransitionRunning || programMutationRunning) return false;
       if (clientId && clientId === appState.selectedClientId) return true;
       selectionTransitionRunning = true;
-      try { if (!await ensureCurrentProgramSaved()) return false; }
+      try {
+        if (!await ensureCurrentProgramSaved()) return false;
+        if (clientId) await loadPortalData(true, clientId);
+        if (state.localDirty && canEditClient()) { showToast("Attendi il salvataggio delle ultime modifiche e riprova."); return false; }
+      } catch (error) { showToast("Non riesco a leggere i dati aggiornati del cliente. Controlla la connessione e riprova."); return false; }
       finally { selectionTransitionRunning = false; }
       clearTimeout(cloudSaveTimer); cloudSaveTimer = null;
       switchGripDraft(clientId);
       appState.selectedClientId = clientId || "";
+      releaseOtherClientData(clientId);
       appState.saveConflict = null;
-      appState.gripSaveMode = "saved";
       const client = selectedClient();
       const program = latestClientProgram(clientId);
       const savedFromProgram = stateFromProgram(program);
@@ -3308,6 +3433,12 @@
       }
       renderClientList();
       renderAll();
+      clientSyncStatus("Dati letti dal server alle " + new Date().toLocaleTimeString("it-IT"));
+      if (state.localDirty && canEditClient()) {
+        if (program && !state.serverUpdatedAt && !state.pendingCloudSave?.payload) {
+          appState.saveConflict = {current:program,programId:program.id}; renderSaveState("conflict");
+        } else queueCloudSave();
+      }
       return true;
     }
 
@@ -3315,7 +3446,11 @@
       if (selectionTransitionRunning || programMutationRunning) return false;
       if (programId && programId === appState.selectedProgramId) return true;
       selectionTransitionRunning = true;
-      try { if (!await ensureCurrentProgramSaved()) return false; }
+      try {
+        if (!await ensureCurrentProgramSaved()) return false;
+        await loadPortalData(true, appState.selectedClientId);
+        if (state.localDirty && canEditClient()) { showToast("Attendi il salvataggio delle ultime modifiche e riprova."); return false; }
+      } catch (error) { showToast("Non riesco a leggere la scheda aggiornata. Controlla la connessione e riprova."); return false; }
       finally { selectionTransitionRunning = false; }
       clearTimeout(cloudSaveTimer); cloudSaveTimer = null;
       appState.saveConflict = null;
@@ -3340,6 +3475,11 @@
         }
       }
       renderAll();
+      if (state.localDirty && canEditClient()) {
+        if (program && !state.serverUpdatedAt && !state.pendingCloudSave?.payload) {
+          appState.saveConflict = {current:program,programId:program.id}; renderSaveState("conflict");
+        } else queueCloudSave();
+      }
       return true;
     }
 
@@ -3365,6 +3505,8 @@
     }
 
     function renderAll() {
+      captureWorkoutFields();
+      window.PTSessionLog?.capture();
       if (state.sheetOrder.length && !state.sheets[state.currentSheet]) {
         state.currentSheet = state.sheetOrder[0] || "A";
         state.sheets[state.currentSheet] = state.sheets[state.currentSheet] || [];
@@ -3455,7 +3597,7 @@
           ${program.id === currentId ? '<h2 class="program-section-heading">Scheda attuale</h2>' : (index === 1 || index === 0 ? '<h2 class="program-section-heading">Storico schede</h2>' : '')}
           <article class="program-card ${isActive ? "active" : ""}">
             <div>
-              <p><strong>${program.id === currentId ? 'Scheda attuale' : 'Scheda precedente · storico'}${isActive ? ' · aperta' : ''}</strong></p>
+              <p><strong>${program.id === currentId ? 'Mesociclo attivo' : isPreparedProgram(program) ? 'Mesociclo in preparazione' : 'Scheda precedente · storico'}${isActive ? ' · aperta' : ''}</strong></p>
               <span class="program-state ${hasLocalChanges ? "local" : ""}">${editable ? (hasLocalChanges ? "Sincronizzazione..." : "Salvato automaticamente") : "Sola lettura"}</span>
               <h3>${escapeHtml(programLabel(program))}</h3>
               <p>PT: ${escapeHtml(fullName(trainer) || "Non identificato")} · ${sheetCount} allenamenti · ${exercises} esercizi · aggiornato ${escapeHtml(updated)}${lastAudit ? ` · ultimo intervento ${escapeHtml(lastAudit.email || fullName(operatorFromAny(lastAudit.by)) || "PT")}` : ""}</p>
@@ -3467,7 +3609,7 @@
                 <button class="btn" type="button" data-preview-program="${escapeAttr(program.id)}">Usa scheda</button>
                 ${program.id === currentId ? `<button class="btn" type="button" data-save-program-template="${escapeAttr(program.id)}">Salva in archivio</button>` : ""}
                 <button class="btn" type="button" data-duplicate-program="${escapeAttr(program.id)}">Duplica</button>
-                ${program.id !== currentId ? `<button class="btn" type="button" data-current-program="${escapeAttr(program.id)}">Imposta come attuale</button>` : ''}
+                ${program.id !== currentId ? `<button class="btn" type="button" data-current-program="${escapeAttr(program.id)}">Attiva mesociclo</button>` : ''}
                 <button class="btn danger" type="button" data-delete-program="${escapeAttr(program.id)}">Elimina scheda</button>
               ` : `
                 <button class="btn primary" type="button" data-preview-program="${escapeAttr(program.id)}">${canCompileSharedSession() ? "Usa scheda" : "Visualizza scheda"}</button>
@@ -3505,11 +3647,22 @@
       container.querySelectorAll("[data-current-program]").forEach(button => {
         button.addEventListener("click", async () => {
           const clientId = appState.selectedClientId;
-          if (!await confirmAction('Impostare questa scheda come attuale? La precedente rimarrà nello storico.')) return;
+          if (!await ensureCurrentProgramSaved() || appState.selectedClientId !== clientId) return;
+          const candidate = appState.programs.find(p => p.id === button.dataset.currentProgram);
+          if (isPreparedProgram(candidate) && (!candidate.assignmentDate || candidate.assignmentDate > currentLocalDate())) {
+            showToast("Controlla la data di assegnazione: il mesociclo può essere attivato dal giorno indicato."); return;
+          }
+          if (!await confirmAction('Attivare questo mesociclo? Il precedente rimarrà nello storico.')) return;
           button.disabled = true;
           try {
             const result = await ptData('set_current_program', {programId: button.dataset.currentProgram});
             appState.currentPrograms[clientId] = result.currentProgramId;
+            if (result.row) {
+              const updated = applyProgramMutation(result);
+              if (appState.selectedProgramId === updated.id && !state.localDirty) {
+                state = stateFromProgram(updated); writeLocalState();
+              }
+            }
             renderProgramManager(); renderProgramHistory(); renderClientFocus();
           } catch(error) { showToast(error.message); button.disabled = false; }
         });
@@ -3714,7 +3867,15 @@
           pending = { signature, measurementId: id("grip") };
           pendingGripSaves.set(measurement.clientId, pending);
         }
+        persistGripDraft();
+        gripFields.forEach(key => {document.getElementById(key).disabled = true;});
         const result = await ptData("save_hand_grip", { ...measurement, measurementId: pending.measurementId });
+        const confirmed = result.measurement;
+        const kg = value => value ? Math.round(Number(String(value).replace(",", ".")) * 10) / 10 : null;
+        if (confirmed?.id !== pending.measurementId || confirmed.cliente_id !== measurement.clientId || !confirmed.updated_at ||
+            confirmed.data?.measured_on !== measuredOn || confirmed.data?.hand_grip_dx !== kg(rightKg) || confirmed.data?.hand_grip_sx !== kg(leftKg) ||
+            confirmed.data?.note !== measurement.notes.trim() || confirmed.data?.tentativi !== Number(measurement.attempts || 3) ||
+            confirmed.data?.posizione !== (measurement.position || "seduto") || confirmed.data?.mano_dominante !== measurement.dominantHand) throw Error("Conferma Hand Grip incompleta: i campi e la bozza sono conservati. Riprova.");
         pendingGripSaves.delete(measurement.clientId);
         if (result.measurement) {
           appState.physicalMeasurements = [
@@ -3725,6 +3886,7 @@
         document.getElementById("gripRight").value = "";
         document.getElementById("gripLeft").value = "";
         document.getElementById("gripNotes").value = "";
+        persistGripDraft();
         appState.gripSaveMode = "saved";
         renderGripView();
         renderClientFocus();
@@ -3735,6 +3897,7 @@
         showToast(error.message || "Non riesco a salvare la misurazione");
       } finally {
         button.textContent = "Salva nello storico";
+        gripFields.forEach(key => {document.getElementById(key).disabled = !canEditClient();});
         setEditorAvailability();
         renderSaveState();
       }
@@ -3819,6 +3982,7 @@
       const viewLabels = {
         summaryView: "Riepilogo",
         clientsView: "Clienti",
+        monitorView: "Monitoraggio Direzione",
         programsView: "Schede cliente",
         templatesView: "Archivio Programmi",
         builderView: "Crea programma",
@@ -3826,7 +3990,7 @@
         gripView: "Hand Grip",
         libraryView: "Esercizi e progressioni"
       };
-      document.getElementById("crumbs").textContent = client
+      document.getElementById("crumbs").textContent = appState.activeView === "monitorView" ? "Direzione" : client
         ? `${viewLabels[appState.activeView] || "Portale PT"} / ${fullName(client)}`
         : `${viewLabels[appState.activeView] || "Portale PT"} / Nessun cliente selezionato`;
       document.getElementById("metricSessions").textContent = state.sessions.length;
@@ -3862,12 +4026,14 @@
       })[appState.saveMode] || "";
       document.querySelectorAll('#saveBottomBtn,#saveSheetBottomBtn').forEach(button => {button.disabled=!canEditClient() || appState.saveMode==='saving';});
       const el = document.getElementById("saveState");
+      if(appState.activeView === 'monitorView') { el.textContent='Sedute e piani di allenamento'; return; }
       if (appState.activeView === "gripView") {
         const count = handGripMeasurements().length;
         if (!selectedClient()) el.innerHTML = "Hand Grip · <strong>seleziona un cliente</strong>";
         else if (isReadOnlySelection()) el.innerHTML = `Hand Grip · <strong>sola lettura</strong> · ${count} ${count === 1 ? "misurazione" : "misurazioni"}`;
         else if (appState.gripSaveMode === "saving") el.innerHTML = "Hand Grip · <strong>salvataggio...</strong>";
         else if (appState.gripSaveMode === "error") el.innerHTML = "Hand Grip · <strong>salvataggio da riprovare</strong>";
+        else if (appState.gripSaveMode === "draft") el.innerHTML = "Hand Grip · <strong>bozza sul dispositivo</strong> · premi Salva nello storico per confermare";
         else el.innerHTML = `Hand Grip · <strong>storico sincronizzato</strong> · ${count} ${count === 1 ? "misurazione" : "misurazioni"}`;
         return;
       }
@@ -4093,6 +4259,8 @@
     function programPayload(programId, savedAt = new Date().toISOString(), sourceState = state, client = selectedClient(), trainer = appState.currentPt, clientId = appState.selectedClientId) {
       const studioState = normalizeState(sourceState);
       delete studioState.pendingCloudSave;
+      delete studioState.localRevision;
+      delete studioState.serverUpdatedAt;
       studioState.lastSavedAt = savedAt;
       studioState.draftProgramId = programId;
       studioState.localDirty = false;
@@ -4109,6 +4277,7 @@
         frequency: studioState.meta.frequency || "",
         warmup: studioState.meta.warmup || "",
         status: "bozza",
+        lifecycle: studioState.meta.lifecycle || "active",
         archived: false,
         schema_version: SCHEMA_VERSION,
         pt_studio_state: studioState,
@@ -4152,33 +4321,41 @@
       const sourceStorageKey = STORAGE_KEY;
       const sourceTrainer = appState.currentPt;
       const existingProgram = appState.programs.find(program => program.id === sourceProgramId || program.rowId === sourceProgramId) || null;
-      const saveVersion = Number.isFinite(options.saveVersion) ? options.saveVersion : stateVersion(sourceState);
+      let saveVersion = Number.isFinite(options.saveVersion) ? options.saveVersion : stateVersion(sourceState);
       try {
         const programId = sourceProgramId || sourceState.draftProgramId || id("pt_light");
-        if (sourceState.pendingCloudSave?.version !== saveVersion) sourceState.pendingCloudSave = { version: saveVersion, requestId: id("save") };
-        const savedAt = new Date().toISOString();
-        sourceState.lastSavedAt = savedAt;
+        // Finish an unacknowledged write before sending edits made during it.
+        // The request, its content and its base version survive reloads unchanged.
+        if (options.force === true) delete sourceState.pendingCloudSave;
+        if (!sourceState.pendingCloudSave) sourceState.pendingCloudSave = { version: saveVersion, requestId: id("save") };
+        const pending = sourceState.pendingCloudSave;
+        saveVersion = pending.version;
+        const savedAt = pending.savedAt || new Date().toISOString();
         sourceState.draftProgramId = programId;
         sourceState.localDirty = true;
+        if (!pending.payload) {
+          pending.savedAt = savedAt;
+          pending.expectedUpdatedAt = sourceState.serverUpdatedAt || existingProgram?.updated_at || null;
+          pending.force = options.force === true;
+          pending.payload = programPayload(programId, savedAt, sourceState, client, sourceTrainer, sourceClientId);
+        }
         writeLocalValue(sourceStorageKey, JSON.stringify(sourceState));
-        const payload = programPayload(programId, savedAt, sourceState, client, sourceTrainer, sourceClientId);
-        const result = await ptData("upsert_program", {
-          programId,
-          clientId: sourceClientId,
-          data: payload,
-          expectedUpdatedAt: existingProgram?.updated_at || null,
-          force: options.force === true
+        const payload = pending.payload;
+        const result = await PTSaveTransaction.commit({
+          key: `program|${sourceTrainer.id}|${sourceClientId}|${programId}`,
+          actorId:sourceTrainer.id,
+          pending,
+          request: {programId, clientId:sourceClientId, data:payload, expectedUpdatedAt:pending.expectedUpdatedAt, force:pending.force===true},
+          persist: () => writeLocalValue(sourceStorageKey, JSON.stringify(sourceState)),
+          send: request => ptData("upsert_program", request),
+          read: request => ptData("program_snapshot", {programId:request.programId}),
+          validate: PTSaveTransaction.program,
+          metadata: response => ({currentProgramId:response.currentProgramId})
         });
         const savedRow = result.row;
-        if (!savedRow || savedRow.id !== programId || !savedRow.updated_at ||
-            savedRow.data?.save_meta?.request_id !== payload.save_meta.request_id) {
-          throw new Error("Il server non ha confermato questo salvataggio. La bozza resta da sincronizzare.");
-        }
         const hasNewerChanges = stateVersion(sourceState) > saveVersion;
-        if (!hasNewerChanges) {
-          stateVersions.set(sourceState, saveVersion);
-          delete sourceState.pendingCloudSave;
-        }
+        delete sourceState.pendingCloudSave;
+        sourceState.serverUpdatedAt = savedRow.updated_at;
         sourceState.localDirty = hasNewerChanges;
         sourceState.lastSavedAt = savedRow.updated_at || savedAt;
         const destinationStorageKey = storageKeyFor(sourceClientId, programId);
@@ -4199,6 +4376,7 @@
           renderProgramManager();
           renderClientFocus();
           renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
+          window.PTSessionLog?.renderHandoff();
           renderSaveState(hasNewerChanges ? "autosave" : "supabase");
         }
         if (!silent) showToast(hasNewerChanges ? "Salvataggio in corso: ultime modifiche da sincronizzare" : "Programma salvato");
@@ -4467,15 +4645,15 @@
       customExerciseLibrary = customExerciseLibrary.sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
       persistCustomExercises();
       rebuildExerciseLibrary();
-      if (nameInput) nameInput.value = "";
-      if (tagsInput) tagsInput.value = "";
       applyInlineExerciseChoice(item);
       renderLibrary();
       try {
         await pushCustomExerciseToSupabase(item);
+        if (nameInput) nameInput.value = "";
+        if (tagsInput) tagsInput.value = "";
         showToast(existingIndex >= 0 ? "Esercizio aggiornato in archivio studio" : "Esercizio salvato in archivio studio");
       } catch (error) {
-        showToast("Esercizio salvato in archivio locale. Supabase archivio non configurato.");
+        showToast("Archivio studio non aggiornato: esercizio conservato sul dispositivo. Premi Salva esercizio per riprovare.");
       }
     }
 
@@ -4690,11 +4868,13 @@
       const value = input.value.slice(0, 4000);
       if (entry.notes === value) return false;
       entry.notes = value;
+      if (value.trim() && !state.workoutDates?.[context.sheet]?.[context.week]) updateWorkoutDate(context.sheet, context.week, currentLocalDate(), false);
       autosave();
       return true;
     }
 
     function renderWorkoutSessionNotes() {
+      captureWorkoutFields();
       captureWorkoutSessionNote();
       const host = document.getElementById("workoutSessionNotes");
       if (!host) return;
@@ -4708,7 +4888,7 @@
       const input = host.querySelector("textarea");
       input.ptNoteContext = { state, clientId: appState.selectedClientId, sheet, week, entry };
       for (const event of ["input", "change", "blur"]) input.addEventListener(event, captureWorkoutSessionNote);
-      document.getElementById("saveSheetBottomBtn").textContent = `Salva allenamento ${sheet} · ${state.sessions[week]}`;
+      document.getElementById("saveSheetBottomBtn").textContent = `Completa seduta ${sheet} · ${state.sessions[week]}`;
     }
 
     let operationalSaveRunning = false;
@@ -4728,7 +4908,7 @@
         const saved = await ensureCurrentProgramSaved();
         if (state === source) renderOperationalWeekNavigator(state.sheets[state.currentSheet] || []);
         if (saved) globalThis.window?.PTSessionLog?.renderHandoff?.();
-        if (saved) showToast(`Allenamento ${sheet} · Settimana ${week + 1} salvato`);
+        if (saved) showToast(`Allenamento ${sheet} · Settimana ${week + 1} completato`);
         return saved;
       } finally { operationalSaveRunning = false; button.disabled = !canEditClient(); }
     }
@@ -4750,13 +4930,14 @@
           partial: touchedExercises > 0 && completedExercises < activeExercises.length
         };
       });
-      const currentIndex = progress.findIndex(week => !week.completed);
-      const nextIndex = currentIndex >= 0 && currentIndex + 1 < state.sessions.length ? currentIndex + 1 : -1;
       const selectedIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(state.activeWeekIndex) || 0));
+      const currentIndex = selectedIndex;
+      const nextIndex = selectedIndex + 1 < state.sessions.length ? selectedIndex + 1 : -1;
       return { progress, currentIndex, nextIndex, selectedIndex };
     }
 
     function selectOperationalWeek(index) {
+      if(isReadOnlySelection())return window.PTSessionContext.selectWorkout(state.currentSheet,Math.max(0,Math.min(state.sessions.length-1,Number(index)||0)));
       state.activeWeekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(index) || 0));
       if (canEditClient()) writeLocalValue(STORAGE_KEY, JSON.stringify(state));
       renderExercises();
@@ -4770,10 +4951,10 @@
       const model = operationalWeekModel(exercises);
       const allCompleted = exercises.length > 0 && model.progress.every(week => week.completed);
       const headline = allCompleted
-        ? `Allenamento ${state.currentSheet}: tutte le settimane completate`
-        : `Allenamento ${state.currentSheet} · Settimana in corso: ${model.currentIndex + 1}`;
+        ? `Allenamento ${state.currentSheet}: tutte le settimane registrate`
+        : `Allenamento ${state.currentSheet} · Settimana selezionata: ${model.selectedIndex + 1}`;
       const nextLabel = allCompleted
-        ? "Tutte le sedute di questo allenamento sono state salvate"
+        ? "Tutte le sedute di questo allenamento sono state registrate"
         : model.nextIndex >= 0 ? `Successiva: Settimana ${model.nextIndex + 1}` : "Ultima settimana del programma";
       const navigatorHtml = `
         <div class="week-navigator">
@@ -4808,47 +4989,72 @@
       });
     }
 
+    const resultStateTokens = new WeakMap();
+    function resultStateToken() {
+      if (!resultStateTokens.has(state)) resultStateTokens.set(state, id("fields"));
+      return resultStateTokens.get(state);
+    }
+    function captureWorkoutFields() {
+      const token = resultStateToken();
+      document.querySelectorAll("[data-result-state]").forEach(input => {
+        const d = input.dataset;
+        if (d.resultState !== token || !input.closest(".app-view.active") || input.value === input.defaultValue) return;
+        const exercise = state.sheets[d.resultSheet]?.find(e => String(e.id) === d.resultExercise);
+        if (!exercise || !canEditClient()) return;
+        const week = Number(d.resultWeek), index = Number(d.resultSet), set = exercise.weekSets?.[week]?.[index];
+        if (set && set[d.resultField] !== input.value) {
+          set[d.resultField] = input.value; set.recorded = true;
+          if (input.value.trim() && !state.workoutDates?.[d.resultSheet]?.[week]) updateWorkoutDate(d.resultSheet, week, currentLocalDate(), false);
+          syncExerciseWeekSummary(exercise, week); autosave(exercise.id);
+        }
+        input.defaultValue = input.value;
+      });
+    }
+
     function renderWeekSetEditor(exercise, exerciseIndex, prefix = "builder", compact = false) {
       ensureExerciseWeekSets(exercise, state.sessions.length);
       const weekIndex = Math.max(0, Math.min(state.sessions.length - 1, Number(state.activeWeekIndex) || 0));
       const sets = exercise.weekSets[weekIndex] || [];
+      const disabled = canEditClient() ? "" : "disabled";
+      const resultBinding = (field,index) => `data-result-state="${escapeAttr(resultStateToken())}" data-result-sheet="${escapeAttr(state.currentSheet)}" data-result-exercise="${escapeAttr(exercise.id)}" data-result-week="${weekIndex}" data-result-set="${index}" data-result-field="${field}"`;
       const weekName = state.sessions[weekIndex] || `Settimana ${weekIndex + 1}`;
+      const savedReference = window.PTSessionLog?.reference(exercise.name, {programId:appState.selectedProgramId,sheet:state.currentSheet,week:weekIndex});
       const workoutDate = state.workoutDates?.[state.currentSheet]?.[weekIndex] || "";
       return `
         <div class="set-editor progress-table ${compact ? "compact" : ""}" data-set-editor="${escapeAttr(exercise.id)}" data-week-index="${weekIndex}">
           <div class="set-editor-head">
-            <div><strong>${escapeHtml(weekName)}</strong><span> · ${sets.length} serie${prefix === "use" ? " da compilare" : " modificabili singolarmente"}</span></div>
+            <div><strong>${escapeHtml(weekName)}</strong><span> · ${sets.length} serie${disabled ? " in consultazione" : prefix === "use" ? " da compilare" : " modificabili singolarmente"}</span></div>
             <div class="workout-date-field">
               <label for="${prefix}-date-${escapeAttr(state.currentSheet)}-${exerciseIndex}-${weekIndex}">Data seduta</label>
-              <input id="${prefix}-date-${escapeAttr(state.currentSheet)}-${exerciseIndex}-${weekIndex}" type="date" data-workout-date="${escapeAttr(state.currentSheet)}-${weekIndex}" value="${escapeAttr(workoutDate)}" oninput="updateWorkoutDate('${escapeAttr(state.currentSheet)}', ${weekIndex}, this.value)">
+              <input ${disabled} id="${prefix}-date-${escapeAttr(state.currentSheet)}-${exerciseIndex}-${weekIndex}" type="date" data-workout-date="${escapeAttr(state.currentSheet)}-${weekIndex}" value="${escapeAttr(workoutDate)}" oninput="updateWorkoutDate('${escapeAttr(state.currentSheet)}', ${weekIndex}, this.value)">
             </div>
-            ${prefix !== "use" ? `<button class="btn" type="button" onclick="addExerciseSet(${exerciseIndex}, ${weekIndex})"><span class="icon">+</span>Aggiungi serie</button>` : ""}
+            ${prefix !== "use" ? `<button ${disabled} class="btn" type="button" onclick="addExerciseSet(${exerciseIndex}, ${weekIndex})"><span class="icon">+</span>Aggiungi serie</button>` : ""}
           </div>
           <div class="set-list">
             ${sets.map((set, setIndex) => {
-              const previousSet = weekIndex > 0 ? exercise.weekSets?.[weekIndex - 1]?.[setIndex] : null;
-              const previousLoad = previousSet?.load || (weekIndex === 0 ? set.previousLoad || (setIndex === 0 ? exercise.previousFeedback?.[weekIndex] || "" : "") : "");
-              const previousReps = previousSet?.reps || (weekIndex === 0 ? set.previousReps || "" : "");
-              const previousLabel = weekIndex > 0 ? "Settimana precedente" : "Riferimento precedente";
+              const previousSet = savedReference ? savedReference.rows?.[setIndex] : (weekIndex > 0 ? exercise.weekSets?.slice(0, weekIndex).reverse().find(week => week?.[setIndex]?.load)?.[setIndex] : null);
+              const previousLoad = savedReference ? String(previousSet?.load ?? "") : previousSet?.load || (weekIndex === 0 ? set.previousLoad || (setIndex === 0 ? exercise.previousFeedback?.[weekIndex] || "" : "") : "");
+              const previousReps = savedReference ? String(previousSet?.reps ?? "") : previousSet?.reps || (weekIndex === 0 ? set.previousReps || "" : "");
+              const previousLabel = savedReference?.date ? `Ultima seduta registrata (${savedReference.date})` : "Riferimento precedente";
               return `<div class="set-row">
                 <span class="set-number">Serie ${setIndex + 1}</span>
                 <div class="set-field">
                   <label for="${prefix}-reps-${exerciseIndex}-${weekIndex}-${setIndex}">Ripetizioni</label>
-                  <input id="${prefix}-reps-${exerciseIndex}-${weekIndex}-${setIndex}" class="plan-input" inputmode="numeric" value="${escapeAttr(set.reps)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'reps', this.value)" placeholder="es. 10">
+                  <input ${disabled} id="${prefix}-reps-${exerciseIndex}-${weekIndex}-${setIndex}" ${resultBinding("reps",setIndex)} class="plan-input" inputmode="numeric" value="${escapeAttr(set.reps)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'reps', this.value); this.defaultValue=this.value" placeholder="es. 10">
                 </div>
                 <div class="set-field">
                   <label for="${prefix}-load-${exerciseIndex}-${weekIndex}-${setIndex}">Carico</label>
-                  <input id="${prefix}-load-${exerciseIndex}-${weekIndex}-${setIndex}" class="track-input" value="${escapeAttr(set.load)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'load', this.value)" placeholder="es. 40 kg o BW">
+                  <input ${disabled} id="${prefix}-load-${exerciseIndex}-${weekIndex}-${setIndex}" ${resultBinding("load",setIndex)} class="track-input" value="${escapeAttr(set.load)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'load', this.value); this.defaultValue=this.value" placeholder="es. 40 kg o BW">
                 </div>
                 <div class="set-field">
                   <label for="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}">RIR / RPE</label>
-                  <input id="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}" value="${escapeAttr(set.rir)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'rir', this.value)" placeholder="es. 2 oppure RPE 8">
+                  <input ${disabled} id="${prefix}-rir-${exerciseIndex}-${weekIndex}-${setIndex}" ${resultBinding("rir",setIndex)} value="${escapeAttr(set.rir)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'rir', this.value); this.defaultValue=this.value" placeholder="es. 2 oppure RPE 8">
                 </div>
                 <div class="set-field set-note-field">
                   <label for="${prefix}-note-${exerciseIndex}-${weekIndex}-${setIndex}">Nota della serie</label>
-                  <input id="${prefix}-note-${exerciseIndex}-${weekIndex}-${setIndex}" value="${escapeAttr(set.sessionNote)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'sessionNote', this.value)" placeholder="es. tecnica, dolore, assistenza">
+                  <input ${disabled} id="${prefix}-note-${exerciseIndex}-${weekIndex}-${setIndex}" ${resultBinding("sessionNote",setIndex)} value="${escapeAttr(set.sessionNote)}" oninput="updateExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex}, 'sessionNote', this.value); this.defaultValue=this.value" placeholder="es. tecnica, dolore, assistenza">
                 </div>
-                ${prefix !== "use" ? `<button class="set-remove" type="button" onclick="removeExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex})" ${sets.length <= 1 ? "disabled" : ""} aria-label="Elimina serie ${setIndex + 1}">−</button>` : ""}
+                ${prefix !== "use" ? `<button class="set-remove" type="button" onclick="removeExerciseSet(${exerciseIndex}, ${weekIndex}, ${setIndex})" ${disabled || (sets.length <= 1 ? "disabled" : "")} aria-label="Elimina serie ${setIndex + 1}">−</button>` : ""}
                 ${(set.note || previousLoad || previousReps) ? `<span class="set-previous ${previousLoad || previousReps ? "previous-load" : ""}">${set.note ? `Indicazione: ${escapeHtml(set.note)}` : ""}${set.note && (previousLoad || previousReps) ? " · " : ""}${previousLoad || previousReps ? `${previousLabel}: ${previousReps ? escapeHtml(previousReps) : "—"} rip. · carico ${previousLoad ? escapeHtml(previousLoad) : "—"}` : ""}</span>` : ""}
               </div>`;
             }).join("")}
@@ -4857,6 +5063,7 @@
     }
 
     function renderSheetPreview() {
+      captureWorkoutFields();
       const client = selectedClient();
       const exercises = state.sheets[state.currentSheet] || [];
       const clientName = document.getElementById("previewClientName");
@@ -4881,8 +5088,7 @@
       tabs.innerHTML = state.sheetOrder.map(key => `<button class="tab ${key === state.currentSheet ? "active" : ""}" type="button" data-preview-sheet="${escapeAttr(key)}">Allenamento ${escapeHtml(key)}</button>`).join("");
       tabs.querySelectorAll("[data-preview-sheet]").forEach(button => {
         button.addEventListener("click", () => {
-          state.currentSheet = button.dataset.previewSheet;
-          renderAll();
+          window.PTSessionContext.selectWorkout(button.dataset.previewSheet, Number(state.activeWeekIndex) || 0);
         });
       });
       meta.innerHTML = `
@@ -4903,8 +5109,11 @@
       if (coachingDay) {
         const support = [...coachingDay.generalWarmup,
           ...coachingDay.preparation.map(p => [p.name, p.setsReps, p.cue].filter(Boolean).join(" · ")),
-          ...coachingDay.rampUp.map(p => [p.exercise, ...p.steps].join(" · ")), ...coachingDay.notes];
-        meta.innerHTML += `<div><span>Preparazione e note seduta</span><strong>${support.map(escapeHtml).join("<br>") || "—"}</strong></div>`;
+          ...coachingDay.rampUp.map(p => [p.exercise, ...p.steps].join(" · "))].filter(Boolean);
+        if (support.length || coachingDay.notes.length) meta.innerHTML += `<section class="preview-preparation" aria-label="Preparazione della seduta">
+          ${support.length ? `<h3>Preparazione</h3><ul>${support.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>` : ""}
+          ${coachingDay.notes.length ? `<details><summary>Note e progressione</summary><ul>${coachingDay.notes.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul></details>` : ""}
+        </section>`;
       }
       stackPreview.innerHTML = operationalExercises.length ? operationalExercises.map(({ exercise, exerciseIndex }) => `
         <article class="readonly-exercise">
@@ -4916,12 +5125,17 @@
             </div>
           </div>
           <div class="readonly-exercise-body">
+            ${window.PTExerciseTimer?.markup([
+              appState.selectedClientId, appState.selectedProgramId || state.draftProgramId,
+              state.currentSheet, weekModel.selectedIndex, exercise.id
+            ], coachingWeek.find(e => e.key === exercise.id)?.rest ?? exercise.recovery,
+              (coachingDay?.groupsByWeek[weekModel.selectedIndex + 1] || []).find(g => g.exerciseKeys.includes(exercise.id))?.restBetweenRounds) || ""}
             ${coachingDay ? (() => {
               const prescription = coachingWeek.find(e => e.key === exercise.id);
               const group = (coachingDay.groupsByWeek[weekModel.selectedIndex + 1] || []).find(g => g.exerciseKeys.includes(exercise.id));
-              return `<p>${[prescription?.rest && `Recupero ${prescription.rest}`, prescription?.techniqueName,
+              return `<p>${[prescription?.techniqueName,
                 prescription?.techniqueNote, prescription?.note,
-                group && `${group.type} · ${group.rounds} giri · recupero ${group.restBetweenRounds} · ${group.note}`]
+                group && `${group.type} · ${group.rounds} giri · ${group.note}`]
                 .filter(Boolean).map(escapeHtml).join(" · ")}</p>`;
             })() : ""}
             ${canCompileSharedSession() ? `<p>${escapeHtml(coachingWeek.find(e => e.key === exercise.id)?.sets || String(exercise.weekSets?.[weekModel.selectedIndex]?.length || 0))} serie · ${escapeHtml(coachingWeek.find(e => e.key === exercise.id)?.reps || exercise.plan?.[weekModel.selectedIndex] || "")} ripetizioni. Registra i risultati nel modulo sopra.</p>` : renderWeekSetEditor(exercise, exerciseIndex, "use")}
@@ -5162,7 +5376,7 @@
       const exercise = state.sheets[state.currentSheet][exerciseIndex];
       ensureExerciseWeekSets(exercise, state.sessions.length);
       const set = exercise.weekSets?.[weekIndex]?.[setIndex];
-      if (!set || !["reps", "load", "rir", "sessionNote"].includes(key)) return;
+      if (!set || !["reps", "load", "rir", "sessionNote"].includes(key) || (set[key] === value && (set.recorded || !String(value ?? "").trim()))) return;
       set[key] = value;
       set.recorded = true;
       if (String(value || "").trim() && !state.workoutDates?.[state.currentSheet]?.[weekIndex]) {
@@ -5191,7 +5405,9 @@
       document.querySelectorAll(`[data-workout-date="${sheetKey}-${weekIndex}"]`).forEach(input => {
         if (input.value !== state.workoutDates[sheetKey][weekIndex]) input.value = state.workoutDates[sheetKey][weekIndex];
       });
-      if (save) autosave();
+      if (save) {
+        autosave();
+      }
     }
 
     function addExerciseSet(exerciseIndex, weekIndex) {
@@ -5400,6 +5616,7 @@
       appState.selectedProgramId = "";
       STORAGE_KEY = storageKeyFor(appState.selectedClientId, "");
       state = normalizeState(nextState);
+      state.meta.lifecycle = "preparation";
       state.lastSavedAt = null;
       state.draftProgramId = "";
       appState.saveMode = "draft";
@@ -5523,6 +5740,11 @@
       const sourcePeriod = state.meta.period || currentPeriodKey();
       const next = normalizeState(clone(state));
       next.meta.period = nextPeriodKey(sourcePeriod);
+      next.meta.name = `Mesociclo ${periodLabel(next.meta.period)}`;
+      next.meta.assignedAt = `${next.meta.period}-01`;
+      next.meta.lifecycle = "preparation";
+      next.currentSheet = next.sheetOrder[0] || "A";
+      next.activeWeekIndex = 0;
       next.sourceProgramId = appState.selectedProgramId || state.sourceProgramId || "";
       next.sourcePeriod = sourcePeriod;
       next.lastSavedAt = null;
@@ -5650,7 +5872,82 @@
       return escapeHtml(value).replace(/`/g, "&#96;");
     }
 
-    function showView(viewId) {
+    let clientRefreshPromise = null, lastClientRefresh = 0;
+    function clientSyncStatus(message) {
+      let control = document.getElementById("clientSyncControl");
+      if (!control) {
+        control = document.createElement("div"); control.id = "clientSyncControl";
+        control.style.cssText = "display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0";
+        const button = document.createElement("button"); button.className = "btn"; button.type = "button"; button.textContent = "Aggiorna dati";
+        button.onclick = () => refreshSelectedClient(true);
+        const status = document.createElement("span"); status.id = "clientSyncStatus"; status.setAttribute("role", "status");
+        control.append(button, status); document.getElementById("sheetView").prepend(control);
+      }
+      document.getElementById("clientSyncStatus").textContent = message;
+    }
+    async function refreshSelectedClient(manual = false) {
+      if (!appState.accessToken || !selectedClient() || clientRefreshPromise || selectionTransitionRunning || programMutationRunning) return;
+      window.PTSessionLog?.capture(); captureWorkoutFields(); captureWorkoutSessionNote();
+      if (manual && !await ensureCurrentProgramSaved()) return;
+      if (state.localDirty || cloudSaveRunning || appState.saveConflict || appState.gripSaveMode === "saving" || window.PTSessionLog?.hasPending()) return;
+      // Do not rebuild a form underneath the PT's cursor or an open editor.
+      if (!manual && (Date.now() - lastClientRefresh < 30000 || document.hidden || document.querySelector("dialog[open]") || document.activeElement?.matches("input,textarea,select,[contenteditable=true]"))) return;
+      const original = state, version = stateVersion(state), clientId = appState.selectedClientId, programId = appState.selectedProgramId;
+      clientSyncStatus("Lettura dati dal server…");
+      clientRefreshPromise = (async () => {
+        try {
+          // Avoid applying a response to a different client or a form edited while reading.
+          const result = await ptData("client_snapshot", {clientId});
+          if (selectionTransitionRunning || programMutationRunning || original !== state || version !== stateVersion(state) || state.localDirty || cloudSaveRunning || clientId !== appState.selectedClientId || programId !== appState.selectedProgramId || window.PTSessionLog?.hasPending()) return;
+          await loadPortalData(true, clientId, result);
+          renderClientList();
+          const program = appState.programs.find(p => p.id === programId && p.client_id === clientId);
+          if (program && program.updated_at !== state.serverUpdatedAt) {
+            const sheet = state.currentSheet, week = state.activeWeekIndex;
+            state = stateFromProgram(program);
+            if (state.sheetOrder.includes(sheet)) state.currentSheet = sheet;
+            state.activeWeekIndex = Math.min(week || 0, state.sessions.length - 1);
+            renderAll();
+          } else window.PTSessionLog?.render();
+          if (appState.activeView === "gripView" && appState.gripSaveMode === "saved") { renderGripView(); renderSaveState(); }
+          lastClientRefresh = Date.now();
+          clientSyncStatus("Dati aggiornati dal server alle " + new Date().toLocaleTimeString("it-IT"));
+        } catch (error) { clientSyncStatus("Aggiornamento non riuscito: dati dell’ultima lettura. Premi Aggiorna dati per riprovare."); }
+        finally { clientRefreshPromise = null; }
+      })();
+      return clientRefreshPromise;
+    }
+    setInterval(() => refreshSelectedClient(), 30000);
+    window.addEventListener("focus", () => refreshSelectedClient());
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshSelectedClient(); });
+
+    let sharedProgramRefreshRunning = false;
+    async function showView(viewId) {
+      if(viewId === 'monitorView' && !canMonitorActivity()) return;
+      window.PTSessionLog?.capture();
+      captureWorkoutFields();
+      captureWorkoutSessionNote();
+      if (viewId === "sheetView" && appState.activeView !== "sheetView" && selectedClient()) {
+        if (sharedProgramRefreshRunning || !await ensureCurrentProgramSaved()) return;
+        const original = state, originalRevision = stateVersion(state);
+        const sheet = state.currentSheet, week = state.activeWeekIndex;
+        const clientId = appState.selectedClientId, programId = appState.selectedProgramId, previousView = appState.activeView;
+        sharedProgramRefreshRunning = true;
+        try {
+          await loadPortalData(true, clientId);
+          if (clientId !== appState.selectedClientId || programId !== appState.selectedProgramId || previousView !== appState.activeView) return;
+          if (original !== state || originalRevision !== stateVersion(state) || state.localDirty) { showToast("Attendi il salvataggio delle ultime modifiche e riapri Usa scheda."); return; }
+          const program = appState.programs.find(item => item.id === programId && item.client_id === clientId && !item.archived);
+          if (!selectedClient() || !program) { showToast("La scheda non è più disponibile. Riapri il cliente dall’elenco aggiornato."); renderClientList(); return; }
+          state = stateFromProgram(program) || clientDefaultState(selectedClient());
+          if (state.sheetOrder.includes(sheet)) state.currentSheet = sheet;
+          state.activeWeekIndex = Math.min(week || 0, state.sessions.length - 1);
+          state.localDirty = false;
+        } catch (error) {
+          showToast("Non riesco ad aggiornare la scheda. Controlla la connessione e riapri Usa scheda.");
+          return;
+        } finally { sharedProgramRefreshRunning = false; }
+      }
       const target = document.getElementById(viewId);
       if (!target?.classList.contains("app-view")) return;
       appState.activeView = viewId;
@@ -5659,6 +5956,7 @@
         button.classList.toggle("active", button.dataset.view === viewId);
       });
       if (viewId === "programsView") renderProgramManager();
+      if (viewId === "monitorView") window.PTMonitorView?.enter();
       if (viewId === "builderView") renderCreationPreview();
       if (viewId === "sheetView") renderSheetPreview();
       if (viewId === "gripView") renderGripView();
@@ -5798,7 +6096,9 @@
       if (!await selectProgram(event.target.value)) renderProgramHistory();
     });
     window.addEventListener("beforeunload", event => {
+      captureWorkoutFields();
       captureWorkoutSessionNote();
+      persistGripDraft();
       if (state.localDirty || cloudSaveRunning || programMutationRunning || appState.gripSaveMode === "saving") {
         event.preventDefault(); event.returnValue = "";
       }
@@ -5886,21 +6186,29 @@
     refreshExerciseNameDatalist();
     window.addEventListener("online", () => {
       if (state.localDirty && canEditClient() && !appState.saveConflict) queueCloudSave();
+      else refreshSelectedClient(true);
     });
     window.addEventListener("pagehide", () => {
+      captureWorkoutFields();
       captureWorkoutSessionNote();
       if (state.localDirty && canEditClient()) writeLocalState();
     });
 
     window.PTSessionContext = { getApp: () => appState, getState: () => state, programState: stateFromProgram, selectedClient, ptData, escapeHtml, canMonitorActivity, canCompileSharedSession, onSessionSaved: refreshClientScopeAfterSessionSave,
-      selectWorkout:(sheet,week)=>{state.currentSheet=sheet;state.activeWeekIndex=week;renderAll();},
+      openClient:async clientId=>{if(await selectClient(clientId))await showView('programsView');},
+      selectWorkout:(sheet,week)=>{
+        // Browsing a prescription never replaces a substitute's recorded results.
+        state.currentSheet=sheet;state.activeWeekIndex=week;renderAll();return true;
+      },
+      onWorkoutSelected:(sheet,week)=>{state.currentSheet=sheet;state.activeWeekIndex=week;renderAll();},
       programData: program => program.data || {} };
     init();
   </script>
-  <script src="js/program-templates.js?v=20261007-archive-moves"></script>
-  <script src="js/program-workflow.js?v=20261007-clean-program"></script>
-  <script src="js/workout-handoff.js?v=20261003-workout-handoff"></script>
-  <script src="js/session-log.js?v=20261007-client-scope"></script>
+  <script src="js/program-templates.js?v=20261026-uniform"></script>
+  <script src="js/program-workflow.js?v=20261019-progressive"></script>
+  <script src="js/workout-handoff.js?v=20261127-explicit"></script>
+  <script src="js/session-log.js?v=20261127-explicit"></script>
+  <script src="js/monitor-view.js?v=20261028-monitor-choice"></script>
   <script>
     document.getElementById('openSupplements').addEventListener('click', () => {
       if (!appState.accessToken) { showToast('Accedi al Portale PT per consultare gli integratori.'); return; }

@@ -1,0 +1,184 @@
+✔ new client programs never inherit personal goals or clinical notes (6.84672ms)
+✔ archive studio notes are explicit program settings, not imported client internal notes (0.973494ms)
+✔ last saved workout removes the temporary PT, while another pending session anywhere in the package keeps it (3.945284ms)
+✔ previous packages, cancelled sessions, different PTs and circuit attendance cannot keep a temporary client in the list (0.700112ms)
+✔ PT 1:2 completion is per client and per author; reassignment does not inherit another PT record (0.573686ms)
+✔ legacy package boundaries and a renewal with no new temporary assignment exclude old sessions (0.714924ms)
+✔ hibernated and inactive clients are hidden and reappear on reactivation without changing their records (0.462372ms)
+✔ frontend lists and counts update only from confirmed records, keep the referent, and ignore stale sharing grants (6.049355ms)
+✔ only owner grants/revokes sharing; old appointments grant nothing; revocation blocks writes and audit is atomic (3319.650017ms)
+✔ client scope includes referents and pending sessions while excluding hibernated clients (9.319674ms)
+✔ new-program entry points are visible in clients and builder, with permission guards and an editor-loading fallback (3.927038ms)
+✔ every PT can consult clients by referent while session access stays explicitly assigned (25.424568ms)
+✔ referent selector is always present and changing PT clears stale client searches (5.106405ms)
+✔ autosave keeps one program without revisions; replacement creates real history; conflicts and load rollback remain atomic (2817.423249ms)
+✔ every PT defaults to active own clients; hibernated clients stay hidden even for the owner (12.002683ms)
+✔ metadata starts collapsed; program and workout buttons retain their separate save pipelines (0.891093ms)
+✔ editor restores scroll across render and sync, focuses additions without jumping to the top (1.167922ms)
+✔ older programs stay available for archive, edit and trash; archived flag remains respected (19.072061ms)
+✔ autosave keeps a session draft through reload; explicit completion confirms it (322.173949ms)
+✔ offline draft survives reload; readback retry does not duplicate a confirmed write (75.562784ms)
+✔ completing during an in flight autosave serializes the final values (75.377011ms)
+✔ completion is not locally confirmed when final read fails (56.630725ms)
+PASS Voce Hand Grip disponibile nella navigazione
+PASS Test separato per mano e protocollo
+PASS Storico confrontato con la misurazione iniziale
+PASS Salvataggio passa dalla API autenticata
+PASS Correzione storica senza cancellazione definitiva
+PASS Storico Hand Grip dedicato, indicizzato e chiuso al browser
+PASS Funzione SQL usa i privilegi del chiamante
+PASS Funzioni Hand Grip individuate
+PASS Storico isolato per cliente e ordinato dalla prima misurazione
+PASS Valori con virgola normalizzati e progresso calcolato
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Bootstrap carica lo storico Hand Grip autorizzato
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Endpoint Hand Grip corretto e idempotente
+PASS Misurazione Hand Grip salvata
+PASS Payload conserva valori numerici, protocollo e autore
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Retry dopo risposta persa non duplica Hand Grip
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Stesso identificativo non sovrascrive una misurazione diversa
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Endpoint Hand Grip corretto e idempotente
+PASS Controlli successivi creano righe storiche distinte
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Misurazione errata annullata senza cancellare la riga
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Misurazione vuota rifiutata
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Data impossibile rifiutata
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS Chiamata Supabase Hand Grip usa solo chiave server
+PASS PT non salva Hand Grip su clienti altrui
+✔ tests/pt-hand-grip.test.cjs (158.898424ms)
+✔ daily entries reconcile to monthly hours and fees, shared pairs counted once, closed archived clients included (14.823454ms)
+✔ invalid overlaps are visible with zero hours; saved numbering and unavailable historic numbers are explicit (0.975367ms)
+PASS library SQL: additive migration, stable current/history, rollback, explicit activation, no automatic archive, nested folders, safe reparenting, optimistic versions, server-only access.
+✔ tests/pt-library-postgres.test.cjs (1257.795864ms)
+✔ library API: direct creation, folders, independent duplication, optimistic edits, retries and permissions (18.258838ms)
+✔ client current selector is independent of the opened or recently edited program (16.269416ms)
+✔ moving changes only folder metadata; nested/root moves, retry, stale versions and ownership are enforced (5.467418ms)
+✔ prepared mesocycles preserve current program and history until valid explicit activation (3335.797653ms)
+✔ next mesocycle resets date/week and actual results while keeping original history and references (7.786585ms)
+PASS PostgreSQL: access flag, revocation version, immutable audit, public writes denied, assignments and Staff unchanged.
+✔ tests/pt-portal-access-postgres.test.cjs (1502.786469ms)
+✔ owner control, immediate session revocation and fresh login after reactivation (24.554365ms)
+✔ essential notes preserve recorded clinical facts and hide administrative noise by default (2.396452ms)
+PASS Portale senza chiave Supabase nel browser
+PASS Portale usa API autenticata
+PASS Anteprima locale gestisce API non ancora pubblicata
+PASS Schema scheda aggiornato
+PASS Data seduta registrata
+PASS Nota serie modificabile
+PASS Campi scheda salvati durante la digitazione
+PASS Errore localStorage non blocca il cloud
+PASS Conflitto esplicito e risolvibile
+PASS Revisioni automatiche e ripristino rimossi dal portale
+PASS Migrazione con transazione atomica
+PASS Nuove tabelle PT chiuse al browser senza interrompere Scheda Cliente
+PASS Cliente senza programmi apre una nuova bozza senza errore
+PASS Convertitore legacy individuato
+PASS Vecchia scheda giorni/esercizi convertita
+PASS Progressione legacy conservata
+PASS Ogni serie della seduta produce una riga storica
+PASS Carico, reps, RIR, note e data conservati
+PASS Identificatore carico deterministico
+PASS Indicazione programmata non crea una falsa seduta
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Salvataggio API completato
+PASS Concorrenza inoltrata alla transazione
+PASS Autore imposto dal server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Risposta persa: retry riconosce il salvataggio già eseguito
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Conflitto restituito senza sovrascrittura silenziosa
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS Chiamata Supabase usa solo chiave server
+PASS PT non modifica clienti altrui
+✔ tests/pt-program-persistence.test.cjs (191.088647ms)
+✔ slow first insert is serialized with manual saves and autosave (9.420563ms)
+✔ a lost first response does not allocate a second program identity (2.974734ms)
+✔ missing or unrelated server acknowledgement leaves the draft dirty and retries (6.527649ms)
+✔ a stalled API request aborts and releases its timeout; HTTP conflicts remain explicit (4.49867ms)
+✔ operational payload excludes program changes and rejects invalid series (2.323825ms)
+✔ all clients are readable; assigned appointments allow session entry and never program changes (34.977295ms)
+✔ session log accepts authenticated PT roles and rejects non-PT identities (0.94309ms)
+✔ global session history is owner-only, independent of PT role (0.738809ms)
+✔ transaction enforces assignment, actor ownership, concurrency, immutable audit and retry (2401.806596ms)
+✔ shared session starts from selected workout prescription, never another session performance (7.126602ms)
+PASS template schema: constraints, server-only access, withdrawal, no DELETE grant.
+✔ tests/pt-templates-postgres.test.cjs (983.472326ms)
+✔ shared templates: sanitization, authorization, idempotence, withdrawal and pagination (12.035067ms)
+✔ prescribed RIR in a new template does not create fake session history (26.039093ms)
+✔ client transition waits for an in-flight save and refuses offline or conflicting drafts (9.322798ms)
+✔ delete/restore waits for autosave, uses its fresh revision and always releases the UI lock (1.657743ms)
+✔ full saved state never resurrects cleared loads from cached historical rows (2.912332ms)
+✔ removing an intermediate week keeps prescriptions, groups and actual measurements aligned (2.242836ms)
+✔ Usa scheda compiles results without adding or removing prescribed series (5.782892ms)
+✔ monitoring belongs only to the named owner; shared use does not grant structural editing (1.742077ms)
+✔ last saved owner workout determines red next and load reference, not unsaved fields (3.658171ms)
+✔ substitute completion advances sequence and preserves date, author and latest loads (6.825158ms)
+✔ legacy record with no workout never invents next workout; other program ignored (0.724458ms)
+✔ saved reference merge does not lose previous trainer loads (0.504534ms)
+✔ autosaved owner and substitute drafts do not advance a workout (0.362314ms)
+✔ out of order completion and stale summary cannot skip unfinished slots (0.267454ms)
+✔ historical load reference excludes future and undated entries across mesocycles (0.285882ms)
+✔ saved A/week1 becomes complete independently of B/week1 and A/week2 (6.209852ms)
+✔ failed save never marks a week complete and read-only PT cannot confirm completion (1.30301ms)
+✔ notes and completion survive normalization; old programs start without false completions (1.839891ms)
+✔ successful assignment opens client folder, failed assignment retains the editable draft (4.088845ms)
+✔ visible note capture stays bound to its client, workout and entry after structural changes (1.231515ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3819.264129

@@ -85,7 +85,7 @@
     try {
       const result = await ptData('list_template_trash');
       const templatesTrash = result.templates || [];
-      const clientTrash = (appState.programs || []).filter(program => program.archived);
+      const clientTrash = (result.clientPrograms ? result.clientPrograms.map(normalizeProgram) : appState.programs || []).filter(program => program.archived);
       const cards = [
         ...templatesTrash.map(template => { const allowed = own(template); return `<article class="program-card"><div><span class="program-state">Cestino · Archivio Programmi</span><h3>${escapeHtml(template.title)}</h3><p>Eliminato ${escapeHtml(new Date(template.archived_at || template.updated_at || Date.now()).toLocaleString('it-IT'))}</p></div><div class="actions">${allowed ? `<button class="btn" type="button" data-restore-template="${escapeAttr(template.id)}">Ripristina nell’Archivio</button>` : '<span class="program-state">Sola lettura</span>'}</div></article>`; }),
         ...clientTrash.map(program => { const client = appState.clients.find(item => item.client_id === program.client_id); const allowed = canEditClient(client); return `<article class="program-card"><div><span class="program-state">Cestino · Programma cliente</span><h3>${escapeHtml(program.name || 'Programma cliente')} · ${escapeHtml(periodLabel(program.period))}</h3><p>${escapeHtml(client ? fullName(client) : 'Cliente')} · eliminata ${escapeHtml(new Date(program.data?.archived_at || program.updated_at || Date.now()).toLocaleString('it-IT'))}</p></div><div class="actions">${allowed ? `<button class="btn" type="button" data-restore-program="${escapeAttr(program.id)}" data-restore-client="${escapeAttr(program.client_id)}">Ripristina scheda</button>` : '<span class="program-state">Sola lettura</span>'}</div></article>`; })
@@ -99,7 +99,12 @@
         finally { busy = false; sync(); }
       });
       container.querySelectorAll('[data-restore-program]').forEach(button => button.onclick = async () => {
-        if (button.dataset.restoreClient && button.dataset.restoreClient !== appState.selectedClientId && !await selectClient(button.dataset.restoreClient)) return;
+        if (button.dataset.restoreClient && button.dataset.restoreClient !== appState.selectedClientId) {
+          if (!await selectClient(button.dataset.restoreClient)) return;
+        } else if (button.dataset.restoreClient === appState.selectedClientId) {
+          try { await loadPortalData(true, appState.selectedClientId); }
+          catch (error) { showToast('Non riesco a leggere la scheda da ripristinare. Riprova.'); return; }
+        }
         restoreProgram(button.dataset.restoreProgram);
       });
     } catch (error) { container.innerHTML = `<div class="empty-focus"><strong>Cestino non disponibile</strong>${escapeHtml(error.message || 'Riprova più tardi.')}</div>`; }
@@ -312,7 +317,14 @@
     finally{busy=false;for(const name of ['moveTemplateFolder','confirmMoveTemplateBtn','cancelMoveTemplateBtn'])$(name).disabled=false;render();}
   });
 
-  function markEditDirty(){editDirty=true;editRequest=null;sync();}
+  let editDraftStorageKey='';
+  const libraryDraftKey=record=>`neacea_pt_library_draft:${appState.currentPt?.id}:${record?.updated_at?record.id:'new'}`;
+  function persistLibraryDraft(){
+    if(!editState||!editDirty)return;
+    const fields=Object.fromEntries(['libraryName','libraryDescription','libraryGoal','libraryStudioNotes','libraryLevel','libraryFrequency','libraryWarmup','libraryFolder'].map(key=>[key,$(key).value]));
+    if(!PTSaveIntegrity.writeDraft(editDraftStorageKey,{state:editState,record:editRecord,request:editRequest,fields})) $('librarySaveError').textContent='Bozza non protetta sul dispositivo: salva prima di chiudere.';
+  }
+  function markEditDirty(){editDirty=true;persistLibraryDraft();sync();}
   function openEditor(template = null, draft = null) {
     if(busy || !window.NeaceaPTEditor){showToast('Editor non disponibile: ricarica la pagina');return;}
     editRecord=template?structuredClone(template):{id:id('template'),folder_id:folderId,title:'',description:''};
@@ -326,31 +338,45 @@
     $('libraryName').value=editRecord.title;$('libraryDescription').value=editRecord.description || '';
     for(const key of ['Goal','Level','Frequency','Warmup']) $('library'+key).value=settings[key.toLowerCase()] || '';
     folderOptions($('libraryFolder'),editRecord.folder_id);$('librarySaveError').textContent='';
-    editDirty=false;editRequest=null;
-    if(!libraryEditor)libraryEditor=window.NeaceaPTEditor.mount($('libraryProgramEditor'),{getState:()=>editState,canEdit:()=>!busy,onChange:markEditDirty,confirm:confirmAction});
+    editDraftStorageKey=libraryDraftKey(template);
+    const recovered=PTSaveIntegrity.readDraft(editDraftStorageKey);
+    editDirty=!!recovered;editRequest=recovered?.request||null;
+    if(recovered){editState=recovered.state;editRecord=recovered.record;for(const [key,value] of Object.entries(recovered.fields))$(key).value=value;$('librarySaveError').textContent='Bozza non confermata recuperata. Verifica e salva per sincronizzarla.';}
+    if(!libraryEditor)libraryEditor=window.NeaceaPTEditor.mount($('libraryProgramEditor'),{getState:()=>editState,canEdit:()=>!!editState&&!busy,onChange:markEditDirty,confirm:confirmAction});
     else libraryEditor.sync();
     $('libraryEditorDialog').showModal();sync();$('libraryName').focus();
   }
   async function closeEditor(){
     if(busy)return;libraryEditor?.capture();
     if(editDirty && !await confirmAction('Chiudere senza salvare le modifiche al programma dell’archivio?'))return;
-    $('libraryEditorDialog').close();editDirty=false;editState=null;editRequest=null;
+    PTSaveIntegrity.removeDraft(editDraftStorageKey);$('libraryEditorDialog').close();editDirty=false;editState=null;editRequest=null;
   }
   $('newLibraryProgramBtn').onclick=()=>openEditor();
   $('closeLibraryEditorBtn').onclick=closeEditor;
   $('libraryEditorDialog').addEventListener('cancel',e=>{e.preventDefault();closeEditor();});
   for(const name of ['libraryName','libraryDescription','libraryGoal','libraryStudioNotes','libraryLevel','libraryFrequency','libraryWarmup','libraryFolder']) $(name).addEventListener('input',markEditDirty);
-  window.addEventListener('beforeunload',event=>{if(editDirty){event.preventDefault();event.returnValue='';}});
+  window.addEventListener('beforeunload',event=>{if(editState)libraryEditor?.capture();persistLibraryDraft();if(editDirty){event.preventDefault();event.returnValue='';}});
+  window.addEventListener('pagehide',()=>{if(editState)libraryEditor?.capture();persistLibraryDraft();});
   async function saveEditor(asCopy = false) {
     if(busy || !editState || !$('libraryName').reportValidity())return;
     libraryEditor.capture();
     Object.assign(editState.meta,{name:$('libraryName').value.trim(),studioNotes:$('libraryStudioNotes').value.trim(),...Object.fromEntries(['Goal','Level','Frequency','Warmup'].map(key=>[key.toLowerCase(),$('library'+key).value.trim()]))});
     if(!editState.meta.name){$('libraryName').focus();return;}
-    // Retain the entire immutable request on retry, including a copy's generated ID.
-    if(!editRequest || editRequest.asCopy!==asCopy)editRequest={asCopy,action:editRecord.updated_at&&!asCopy?'update_template':'create_template',body:{templateId:asCopy?id('template'):editRecord.id,requestId:id('edit'),expectedUpdatedAt:editRecord.updated_at,title:editState.meta.name,description:$('libraryDescription').value.trim(),folderId:$('libraryFolder').value,snapshot:window.NeaceaPTEditor.toSnapshot(editState)}};
+    const current={title:editState.meta.name,description:$('libraryDescription').value.trim(),folderId:$('libraryFolder').value,snapshot:window.NeaceaPTEditor.toSnapshot(editState)};
+    const makeRequest=copy=>({asCopy:copy,action:editRecord.updated_at&&!copy?'update_template':'create_template',body:{templateId:copy?id('template'):editRecord.id,requestId:id('edit'),expectedUpdatedAt:editRecord.updated_at,...current}});
+    editRequest ||= makeRequest(asCopy);
+    editDirty=true;persistLibraryDraft();
     busy=true;sync();libraryEditor.sync();$('libraryEditorDialog').querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=true;});$('librarySaveError').textContent='';
     try {
-      const result=await ptData(editRequest.action,editRequest.body);editRecord=result.template;editDirty=false;editRequest=null;
+      while(editRequest){
+        const sent=editRequest.body;
+        const result=await ptData(editRequest.action,sent),row=result.template;
+        if(row?.id!==sent.templateId || !row.updated_at || row.title!==sent.title || row.description!==sent.description || (row.folder_id||'')!==sent.folderId || !PTSaveIntegrity.sameTemplate(row.snapshot,sent.snapshot))throw Error('Conferma archivio incompleta. La bozza è conservata: riprova.');
+        editRecord=row;
+        const isCurrent=row.title===current.title&&row.description===current.description&&(row.folder_id||'')===current.folderId&&PTSaveIntegrity.sameTemplate(row.snapshot,current.snapshot);
+        editRequest=isCurrent?null:makeRequest(false);persistLibraryDraft();
+      }
+      editDirty=false;PTSaveIntegrity.removeDraft(editDraftStorageKey);
       folderId=editRecord.folder_id || '';$('templateSearch').value='';
       showToast('Programma salvato nell’archivio. Le schede cliente non sono cambiate.');
       $('libraryEditorDialog').close();editState=null;await show();

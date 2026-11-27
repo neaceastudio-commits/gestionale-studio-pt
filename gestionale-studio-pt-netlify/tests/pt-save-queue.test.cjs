@@ -10,11 +10,11 @@ function body(name, next) {
   return html.slice(start, html.indexOf(`    ${next}`, start));
 }
 function fixture() {
-  let finish, reject, generated = 0;
+  let finish, reject, savedRow, generated = 0;
   const calls = [], timers = new Map();
   const state = { sheets: {}, meta: { name: 'Copia nominata' }, localDirty: true };
   const appState = { currentPt: { id: 'pt-test' }, selectedClientId: 'client-test', selectedProgramId: '', programs: [], revisions: [] };
-  const context = vm.createContext({ captureWorkoutSessionNote() {},
+  const context = vm.createContext({ captureWorkoutFields() {}, window: {}, structuredClone, PTSaveTransaction: require("../app/portale-personal-trainer/js/save-transaction"), captureWorkoutSessionNote() {},
     state, appState, stateVersions: new WeakMap(), cloudSaveRunning: false, cloudSaveQueued: false, cloudSaveTimer: null,
     cloudSaveRetryDelay: 350, pendingExerciseIds: new Set(), STORAGE_KEY: 'draft',
     document: { getElementById: () => ({ disabled: false }) }, console: { error() {} },
@@ -28,9 +28,10 @@ function fixture() {
     id: () => `program-${++generated}`, programPayload: (id, at, s) => ({ id, name: s.meta.name, save_meta: { request_id: s.pendingCloudSave?.requestId } }),
     queueCloudSave() {},
     ptData(action, payload) {
+      if(action === "program_snapshot")return Promise.resolve({row:savedRow});
       calls.push({ action, payload });
       return new Promise((resolve, fail) => {
-        finish = override => resolve(override || { row: { id: payload.programId, updated_at: '2026-09-18T12:00:00Z', data: payload.data } });
+        finish = override => {savedRow={ id: payload.programId, updated_at: '2026-09-18T12:00:00Z', data: payload.data };resolve(override || {row:savedRow});};
         reject = () => fail(new Error('Response lost'));
       });
     },
@@ -89,7 +90,7 @@ test('missing or unrelated server acknowledgement leaves the draft dirty and ret
 
 test('a stalled API request aborts and releases its timeout; HTTP conflicts remain explicit', async () => {
   let expire, cleared = 0;
-  const c = vm.createContext({ appState: { accessToken: 'synthetic' }, AbortController,
+  const c = vm.createContext({ PTDataReader: require('../app/portale-personal-trainer/js/data-reader'), appState: { accessToken: 'synthetic' }, AbortController,
     accessFunctionBase: () => '', setTimeout(fn, ms) { assert.equal(ms, 15000); expire = fn; return 1; },
     clearTimeout() { cleared++; },
     fetch: async (_url, options) => new Promise((_resolve, reject) => {

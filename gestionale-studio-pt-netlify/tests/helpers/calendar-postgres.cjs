@@ -10,7 +10,7 @@ exports.start = async () => {
   const port = await new Promise(resolve => { const server = net.createServer(); server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => resolve(port)); }); });
   const databaseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neacea-calendar-pg-'));
   const cluster = new EmbeddedPostgres({ databaseDir, port, user: 'postgres', password: 'local-test-only', persistent: false,
-    postgresFlags: ['-h', '127.0.0.1'], onLog() {}, onError() {} });
+    postgresFlags: ['-h', '127.0.0.1', '-k', ''], onLog() {}, onError() {} });
   await cluster.initialise(); await cluster.start();
   const client = cluster.getPgClient(); await client.connect();
   await client.query(`

@@ -1,0 +1,81 @@
+/* Direction monitoring: daily totals, readable visit rows, separate plan age. */
+.pt-monitor-controls{display:flex;gap:16px;flex-wrap:wrap;padding:18px;margin-bottom:12px}
+.pt-monitor-controls label{display:grid;gap:7px;flex:1 1 180px;min-width:0;font-size:13px;font-weight:600}
+.pt-monitor-controls input,.pt-monitor-controls select{width:100%;min-height:44px}
+.pt-monitor-toggle{display:flex;align-items:center;gap:10px;justify-content:flex-start;font-size:13px;white-space:nowrap}
+.pt-monitor-toggle input[type=checkbox]{width:18px;height:18px;min-height:18px;margin:0;flex:0 0 18px}
+#monitorResults{min-width:0}
+#monitorResults .panel{padding:24px;margin:20px 0;min-width:0}
+.pt-monitor-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.pt-monitor-metrics article{border:1px solid var(--line,#dce4e1);border-radius:16px;padding:20px;background:var(--panel,#fff);border-top:3px solid #9baabd}
+.pt-monitor-metrics article.saved{border-top-color:#258059;background:#f4faf6}
+.pt-monitor-metrics article.missing,.pt-monitor-metrics article.issues{border-top-color:#c87956}
+.pt-monitor-metrics article.programs,.pt-monitor-metrics article.age{border-top-color:#c2a24e}
+.pt-monitor-metrics span{font-size:13px;font-weight:650;color:#405166}
+.pt-monitor-metrics strong{display:block;font-size:36px;line-height:1.2;letter-spacing:-1px;margin:10px 0 0;color:#172b42}
+.pt-monitor-metrics small{font-size:12px;color:var(--muted,#50615a);line-height:1.5}
+.pt-monitor-section-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+#monitorResults h2{font-size:20px;letter-spacing:-.3px;margin:0 0 6px}
+.pt-monitor-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#50615a);margin:0 0 8px}
+.pt-monitor-section-head .pt-monitor-help{margin:0}
+.pt-monitor-tabs{display:flex;padding:4px;gap:3px;border-radius:10px;background:#eef2f6;flex-wrap:wrap}
+.pt-monitor-tabs button{border:0;border-radius:7px;padding:9px 12px;font:inherit;font-size:12px;font-weight:650;color:#536578;background:transparent;cursor:pointer}
+.pt-monitor-tabs button[aria-pressed=true]{background:#fff;color:#172b42;box-shadow:0 1px 4px #24364b1a}
+.pt-monitor-session-list{display:grid;gap:10px}
+.pt-monitor-session{display:grid;grid-template-columns:80px minmax(135px,1fr) minmax(180px,1.4fr) minmax(135px,.8fr);gap:18px;align-items:center;padding:16px 18px;border:1px solid var(--line,#dce4e1);border-left:3px solid #d5b260;border-radius:12px;background:#fff}
+.pt-monitor-session.saved{border-left-color:#258059}
+.pt-monitor-session.missing,.pt-monitor-session.app_problem{border-left-color:#c87956}
+.pt-monitor-session-time strong{font-size:20px;line-height:1.3;color:#172b42}
+.pt-monitor-session small,.pt-monitor-program small,.pt-monitor-issue small{display:block;margin-top:5px;font-size:12px;line-height:1.5;color:var(--muted,#50615a)}
+.pt-monitor-client{appearance:none;border:0;background:transparent;padding:0;text-align:left;color:#172b42;font:inherit;font-size:14px;font-weight:700;line-height:1.5;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px;overflow-wrap:anywhere}
+.pt-monitor-client:hover{text-decoration-color:currentColor}
+.pt-monitor-client:focus-visible,.pt-monitor-tabs button:focus-visible,.pt-monitor-recovered summary:focus-visible,.pt-monitor-guide summary:focus-visible{outline:2px solid #216b9a;outline-offset:4px}
+.pt-monitor-session .pt-monitor-author{color:#345b7c}
+.pt-monitor-session-save>small:first-child{margin-top:0}
+.pt-monitor-session-save strong{display:block;font-size:13px;font-weight:600;margin-top:6px;line-height:1.5}
+.pt-monitor-program{display:grid;grid-template-columns:minmax(140px,1fr) minmax(150px,1.2fr) minmax(135px,1fr);gap:18px;padding:18px 0;border-top:1px solid var(--line,#dce4e1);align-items:start}
+.pt-monitor-program strong{font-size:13px;line-height:1.5;display:block;overflow-wrap:anywhere}
+.pt-monitor-program small:first-child{margin-top:0}
+.pt-monitor-program-missing{grid-column:span 2;margin:0}
+.pt-monitor-badge{display:inline-block;font-size:12px;font-weight:650;border-radius:6px;padding:5px 9px;line-height:1.4;background:#edf1ef;color:#33453d}
+.pt-monitor-badge.saved,.pt-monitor-badge.verified{background:#e2f2e9;color:#19563b}
+.pt-monitor-badge.missing,.pt-monitor-badge.app_problem,.pt-monitor-badge.failed,.pt-monitor-badge.problem{background:#ffebe5;color:#8b2d17}
+.pt-monitor-badge.draft,.pt-monitor-badge.review,.pt-monitor-badge.pending,.pt-monitor-badge.unconfirmed{background:#fff3d7;color:#79540a}
+.pt-monitor-help,.pt-monitor-guide{line-height:1.6;color:var(--muted,#50615a);font-size:13px}
+.pt-monitor-empty{margin:10px 0;color:var(--muted,#50615a);font-size:14px}
+.pt-monitor-recovered summary{cursor:pointer;font-weight:650;font-size:15px}
+.pt-monitor-recovered summary strong{display:inline-block;margin-left:12px;background:#edf1f5;padding:3px 9px;border-radius:6px;font-size:12px}
+.pt-monitor-guide summary{cursor:pointer;font-weight:600}
+.pt-monitor-guide p{max-width:850px}
+.pt-monitor-table-scroll{overflow:auto;max-width:100%;margin-top:12px}
+.pt-monitor-table{border-collapse:collapse;width:100%;min-width:620px;text-align:left;font-size:13px}
+.pt-monitor-table th,.pt-monitor-table td{padding:13px 10px;border-bottom:1px solid var(--line,#dce4e1);vertical-align:top;line-height:1.5}
+.pt-monitor-table th{font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.pt-monitor-table small{display:block;color:var(--muted,#50615a)}
+.pt-monitor-sync-warning{padding:12px 18px;background:#fff3d7;color:#79540a;margin:0}
+#monitorStatus{font-size:12px;color:var(--muted,#50615a);margin:12px 0}
+#monitorStatus[data-error=true]{padding:14px;background:#ffebe5;color:#8b2d17;border-radius:10px}
+@media(max-width:1100px){.pt-monitor-session{grid-template-columns:70px minmax(125px,1fr) minmax(160px,1.2fr)}.pt-monitor-session-save{grid-column:2/4}.pt-monitor-program{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){#monitorResults .panel{padding:16px}.pt-monitor-controls{padding:14px}.pt-monitor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pt-monitor-metrics article{padding:14px}.pt-monitor-metrics strong{font-size:30px}.pt-monitor-session{grid-template-columns:60px minmax(0,1fr);gap:12px;padding:14px}.pt-monitor-session-result,.pt-monitor-session-save{grid-column:2}.pt-monitor-session-time strong{font-size:18px}.pt-monitor-session-time small{font-size:10px}.pt-monitor-tabs{width:100%}.pt-monitor-tabs button{flex:1;padding:9px 7px}.pt-monitor-program{gap:14px}.pt-monitor-program-missing{grid-column:1/-1}.pt-monitor-section-head{gap:12px}}
+
+.pt-monitor-program.aged{margin:8px 0;padding:18px 14px;border:1px solid #e5d1a1;border-left:4px solid #b98a28;border-radius:10px;background:#fffbf0}
+.pt-monitor-program .pt-monitor-usage{font-size:17px;line-height:1.4;color:#172b42;margin-bottom:6px}
+.pt-monitor-program .pt-monitor-badge{margin-top:9px}
+.pt-monitor-age-summary{font-size:13px;font-weight:650;color:#79540a;margin:8px 0 0}
+
+.pt-monitor-metrics article.neutral{border-top-color:#dbe3ec}
+#monitorResults .pt-monitor-alerts{border-color:#e6baa8;background:#fffaf7}
+.pt-monitor-recovered summary{cursor:pointer;font-size:14px;font-weight:600}
+@media(min-width:651px) and (max-width:1100px){.pt-monitor-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+@media(max-width:650px){.pt-monitor-metrics article:last-child{grid-column:1/-1}}
+
+.pt-monitor-issue{display:grid;grid-template-columns:1fr 1.2fr .8fr;gap:18px;padding:16px;border:1px solid #e6baa8;border-left:3px solid #c87956;border-radius:10px;background:#fff}
+.pt-monitor-issue strong{display:block;font-size:13px;line-height:1.5;margin-top:5px}
+@media(max-width:650px){.pt-monitor-issue{grid-template-columns:1fr;gap:12px}}
+
+/* No view or period is selected when entering the monitor. */
+#monitorView [hidden]{display:none!important}
+.pt-monitor-controls .pt-monitor-choice{flex:2 1 300px}
+.pt-monitor-count{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:6px;background:#edf1f5;color:#536578;font-size:13px;vertical-align:middle}
+#monitorStatus:empty{display:none}

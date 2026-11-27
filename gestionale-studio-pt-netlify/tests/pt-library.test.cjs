@@ -54,7 +54,7 @@ test('library API: direct creation, folders, independent duplication, optimistic
 });
 test('client current selector is independent of the opened or recently edited program',()=>{
   const html=fs.readFileSync(require.resolve('../app/portale-personal-trainer/index.html'),'utf8');
-  const source=html.slice(html.indexOf('    function latestClientProgram('),html.indexOf('    function accessFunctionBase('));
+  const source=html.slice(html.indexOf('    function isPreparedProgram('),html.indexOf('    function accessFunctionBase('));
   const programs=[{id:'old',created_at:'2026-08-01',updated_at:'2026-12-01'},{id:'new',created_at:'2026-09-01',updated_at:'2026-09-01'}];
   const context={appState:{selectedProgramId:'old',currentPrograms:{c:'new'}},programsForClient:()=>programs};vm.createContext(context);vm.runInContext(source,context);
   assert.equal(context.latestClientProgram('c').id,'new');

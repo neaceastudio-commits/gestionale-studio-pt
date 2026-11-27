@@ -1,0 +1,135 @@
+/* Shared typography and presentation for the operational modules. */
+:root {
+  --pt-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--pt-font-family);
+}
+body, dialog, button, input, select, textarea, legend,
+#coachingProgramEditor, #templatePreviewEditor, #libraryProgramEditor {
+  font-family: var(--pt-font-family);
+}
+dialog { line-height: 1.5; }
+input, select, textarea { font-size: 14px; font-weight: 500; letter-spacing: normal; text-transform: none; }
+.add-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--brand);
+  border-radius: 7px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pt-session-log, .pt-workout-handoff {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.pt-session-log { margin: 16px 0; }
+.pt-session-log > h3, .pt-workout-handoff > h3 {
+  margin: 0 0 8px;
+  color: var(--brand);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.pt-session-log p { margin: 8px 0 14px; color: var(--muted); font-size: 14px; }
+.pt-session-log details { margin: 12px 0; }
+.pt-session-log summary { padding: 8px 0; color: var(--brand); font-size: 14px; font-weight: 600; cursor: pointer; }
+.pt-session-log details select { margin-top: 8px; }
+.pt-selected-session {
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid #9cc2e4;
+  border-left: 4px solid var(--brand-2);
+  border-radius: 8px;
+  background: #edf6ff;
+}
+.pt-selected-session h4 { margin: 0 0 6px; color: var(--brand); font-size: 16px; line-height: 1.4; }
+.pt-selected-session p { margin: 6px 0 0; }
+.pt-selected-session .pt-selected-workout { color: var(--brand); font-weight: 700; }
+.pt-session-program, .pt-session-workout-fields > label, .pt-session-note {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.pt-session-program { margin: 16px 0; }
+.pt-session-workout-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; align-items: end; }
+.pt-session-workout-fields > button { grid-column: 1 / -1; justify-self: start; }
+.pt-session-log input, .pt-session-log select, .pt-session-log textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.pt-session-log input[readonly] { background: var(--soft); }
+.pt-session-exercise-nav { padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.pt-session-exercise-nav > strong { color: var(--brand); font-size: 14px; }
+.pt-session-exercise-nav p { margin: 6px 0 10px; font-size: 13px; }
+.pt-session-exercise-nav > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.pt-session-exercise-nav .btn { white-space: normal; text-align: left; max-width: 100%; }
+.pt-session-exercise-title { margin: 24px 0 12px; color: var(--brand); font-size: 18px; line-height: 1.4; scroll-margin-top: 20px; }
+.pt-session-series {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdff;
+}
+.pt-session-series legend { padding: 0 6px; color: var(--brand); font-size: 13px; font-weight: 700; }
+.pt-session-series > label { display: grid; gap: 6px; min-width: 0; font-size: 11px; line-height: 1.4; letter-spacing: normal; text-transform: none; }
+.pt-session-series > label:first-of-type, .pt-session-series > label:last-of-type,
+.pt-session-series > .pt-load-reference, .pt-session-series > button { grid-column: 1 / -1; }
+.pt-session-series > .btn.danger { justify-self: start; padding: 7px 11px; border-color: #e8c6c6; background: #fff; color: var(--danger); font-size: 13px; }
+.pt-session-series .pt-load-reference { padding: 12px; }
+.pt-session-series .pt-load-reference p { margin: 6px 0 0; }
+.pt-session-note { margin: 16px 0; }
+.pt-session-note textarea { min-height: 110px; }
+.pt-session-add { margin: 6px 0; }
+.pt-session-save { margin-bottom: 8px; }
+.pt-session-status {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  padding: 12px 14px;
+  border: 1px solid #bed0e2;
+  border-radius: 8px;
+  background: #f5f9fd;
+  color: var(--brand);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.pt-session-log .pt-session-status { margin: 0 0 16px; color: var(--brand); font-size: 13px; }
+.pt-session-history { padding-top: 12px; border-top: 1px solid var(--line); }
+.pt-session-history h4 { color: var(--brand); font-size: 15px; line-height: 1.4; }
+#previewSessionChoice p { margin: 0 0 12px; font-size: 14px; }
+@media (max-width: 760px) {
+  input, select, textarea { font-size: 16px; }
+  .add-mini { min-height: 44px; }
+  .pt-session-log { padding: 14px; }
+  .pt-session-log > h3, .pt-workout-handoff > h3 { font-size: 18px; }
+  .pt-session-log .btn { min-height: 44px; }
+  .pt-session-log input, .pt-session-log select, .pt-session-log textarea { min-height: 44px; font-size: 16px; }
+  .pt-session-series { padding: 10px; gap: 10px 8px; }
+  .pt-session-series input { padding: 8px; }
+  .pt-session-save { width: 100%; }
+}
+@media (max-width: 360px) {
+  .pt-session-workout-fields { grid-template-columns: minmax(0, 1fr); }
+  .pt-session-series > label { font-size: 10px; }
+}

@@ -12,7 +12,7 @@ function extract(start, end) {
   return html.slice(from, to);
 }
 test('client transition waits for an in-flight save and refuses offline or conflicting drafts', async () => {
-  const c = vm.createContext({ captureWorkoutSessionNote() {}, state: { localDirty: true }, appState: { selectedClientId: 'a' },
+  const c = vm.createContext({ window:{},captureWorkoutFields() {},currentLocalDate:()=>"2026-11-27",resultStateToken:()=>"fixture", captureWorkoutSessionNote() {}, state: { localDirty: true }, appState: { selectedClientId: 'a' },
     cloudSaveRunning: true, Date, selectedClient: () => ({}), canEditClient: () => true,
     showToast() {}, setTimeout(fn) { c.cloudSaveRunning = false; fn(); },
     async flushCloudSave() { c.state.localDirty = false; return true; } });
@@ -29,7 +29,7 @@ test('client transition waits for an in-flight save and refuses offline or confl
 });
 test('delete/restore waits for autosave, uses its fresh revision and always releases the UI lock', async () => {
   const shell = { inert: false }, calls = [];
-  const c = vm.createContext({ captureWorkoutSessionNote() {}, programMutationRunning: false, selectionTransitionRunning: false,
+  const c = vm.createContext({ window:{},captureWorkoutFields() {},currentLocalDate:()=>"2026-11-27",resultStateToken:()=>"fixture", captureWorkoutSessionNote() {}, programMutationRunning: false, selectionTransitionRunning: false,
     canEditClient: () => true, appState: { selectedClientId: 'a', programs: [{ id: 'p', client_id: 'a', updated_at: 'old' }] },
     document: { getElementById: () => shell },
     async ensureCurrentProgramSaved() { assert.equal(shell.inert, true); c.appState.programs[0].updated_at = 'fresh'; return true; },
@@ -46,7 +46,7 @@ test('delete/restore waits for autosave, uses its fresh revision and always rele
 });
 test('full saved state never resurrects cleared loads from cached historical rows', () => {
   let merges = 0;
-  const c = vm.createContext({ captureWorkoutSessionNote() {}, normalizeState: s => structuredClone(s), window: { NeaceaPTEditor: { toSnapshot: () => ({}) } },
+  const c = vm.createContext({ window:{},captureWorkoutFields() {},currentLocalDate:()=>"2026-11-27",resultStateToken:()=>"fixture", captureWorkoutSessionNote() {}, normalizeState: s => structuredClone(s), window: { NeaceaPTEditor: { toSnapshot: () => ({}) } },
     stateFromLegacyProgram: () => ({ legacy: true }), mergeLoadHistoryIntoState(p, s) { merges++; return s; } });
   vm.runInContext(extract('function stateFromProgram(', 'function previousExerciseHistory('), c);
   const next = c.stateFromProgram({ data: { pt_studio_state: { sessions: ['S1'], sheets: { A: [{ weekSets: [[{ load: '' }]] }] } } } });
@@ -58,7 +58,7 @@ test('full saved state never resurrects cleared loads from cached historical row
 test('removing an intermediate week keeps prescriptions, groups and actual measurements aligned', async () => {
   const exercise = { plan: ['a','b','c'], feedback: ['a','b','c'], previousFeedback: ['a','b','c'], previousPlan: ['a','b','c'], weekSets: [[1],[2],[3]] };
   const day = { exercisesByWeek: { 1: ['a'], 2: ['b'], 3: ['c'] }, groupsByWeek: { 1: ['ga'], 2: ['gb'], 3: ['gc'] } };
-  const c = vm.createContext({ captureWorkoutSessionNote() {}, state: { sessions: ['S1','S2','S3'], sheetOrder: ['A'], sheets: { A: [exercise] }, workoutDates: { A: ['d1','d2','d3'] }, workoutSessions: { A: [{notes:'n1',completedAt:'c1'},{notes:'n2',completedAt:'c2'},{notes:'n3',completedAt:'c3'}] },
+  const c = vm.createContext({ window:{},captureWorkoutFields() {},currentLocalDate:()=>"2026-11-27",resultStateToken:()=>"fixture", captureWorkoutSessionNote() {}, state: { sessions: ['S1','S2','S3'], sheetOrder: ['A'], sheets: { A: [exercise] }, workoutDates: { A: ['d1','d2','d3'] }, workoutSessions: { A: [{notes:'n1',completedAt:'c1'},{notes:'n2',completedAt:'c2'},{notes:'n3',completedAt:'c3'}] },
     coachingEditorSnapshot: { program: { weeks: [1,2,3], days: [day] } } }, confirmAction: async () => true, renderAll() {}, autosave() {}, showToast() {} });
   vm.runInContext(extract('async function removeSession(', 'function nextSheetName('), c);
   await c.removeSession(1);
@@ -73,7 +73,7 @@ test('removing an intermediate week keeps prescriptions, groups and actual measu
 
 test('Usa scheda compiles results without adding or removing prescribed series', () => {
   const exercise = { id: 'e', weekSets: [[{ reps: '8', load: '', rir: '2', sessionNote: '' }, { reps: '8' }]] };
-  const c = vm.createContext({ captureWorkoutSessionNote() {}, state: { sessions: ['S1'], activeWeekIndex: 0, currentSheet: 'A', sheets: { A: [exercise] } },
+  const c = vm.createContext({ window:{},captureWorkoutFields() {},currentLocalDate:()=>"2026-11-27",resultStateToken:()=>"fixture", captureWorkoutSessionNote() {}, state: { sessions: ['S1'], activeWeekIndex: 0, currentSheet: 'A', sheets: { A: [exercise] } },
     appState: { activeView: 'sheetView' }, canEditClient: () => true,
     ensureExerciseWeekSets() {}, escapeAttr: String, escapeHtml: String,
     normalizeSetEntry: value => value, syncExerciseWeekSummary() {}, renderExercises() {}, autosave() {}, showToast() {} });
@@ -94,7 +94,7 @@ test('Usa scheda compiles results without adding or removing prescribed series',
 });
 
 test('monitoring belongs only to the named owner; shared use does not grant structural editing', () => {
-  const c = vm.createContext({ captureWorkoutSessionNote() {}, appState: { currentPt: { id: 'b', email: 'b@test', accessLevel: 'pt' }, sessionLogEnabled: true },
+  const c = vm.createContext({ window:{},captureWorkoutFields() {},currentLocalDate:()=>"2026-11-27",resultStateToken:()=>"fixture", captureWorkoutSessionNote() {}, appState: { currentPt: { id: 'b', email: 'b@test', accessLevel: 'pt' }, sessionLogEnabled: true },
     selectedClient: () => ({ pt_assegnato: 'a', session_access: true }),
     clientTrainerId: client => client.pt_assegnato,
     isAdministrator: operator => operator?.accessLevel === 'owner' });
