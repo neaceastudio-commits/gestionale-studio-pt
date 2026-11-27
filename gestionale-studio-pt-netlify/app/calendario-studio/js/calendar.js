@@ -107,6 +107,7 @@ const Calendar = (() => {
         <button class="btn-primary" ${preview ? 'disabled' : 'onclick="App.openNewAppointment()"'}>+ Appuntamento</button>
       </div>
 
+      ${typeof Birthdays !== 'undefined' ? Birthdays.render(today) : ''}
       <div class="kpi-grid">
         <div class="kpi-card" style="--kpi-color:var(--blue)">
           <div class="kpi-label">Appuntamenti oggi</div>
@@ -292,6 +293,7 @@ const Calendar = (() => {
         </div>
         <button class="btn-primary" onclick="App.openNewAppointment('${dateStr}')">+ Nuovo</button>
       </div>
+      ${typeof Birthdays !== 'undefined' ? Birthdays.render(dateStr) : ''}
       <div class="day-layout">
         <div class="day-timeline-wrap">
           <div class="day-timeline" style="height:${totalMin * pxPerMin}px">
@@ -334,6 +336,7 @@ const Calendar = (() => {
             <span class="week-daynum">${dayNum}</span>
           </div>
           <div class="week-events">
+            ${typeof Birthdays !== 'undefined' ? Birthdays.render(dateStr, true) : ''}
             ${appts.length === 0 ? '<div class="week-empty">—</div>' :
               appts.map(a => {
                 const svc = Services.getService(a.serviceId);

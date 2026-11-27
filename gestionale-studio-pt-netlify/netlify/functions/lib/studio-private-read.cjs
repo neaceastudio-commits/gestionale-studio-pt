@@ -1,7 +1,7 @@
 'use strict';
 // Compatibility API for the legacy Studio readers. Identity is supplied only by the server.
 const TABLES=new Set(['clients','operators','appointments','acquisizioni','client_pt_alerts','trainer_client_assignments','operator_system_roles','operator_effective_roles','operator_availability','consensi_cliente']);
-const OPERATOR_FIELDS=['id','nome','cognome','email','roles','active','color'];
+const OPERATOR_FIELDS=['id','nome','cognome','email','roles','active','color','nascita'];
 const PAGE_SIZE = 500;
 const MAX_SCOPED_QUERY_LENGTH = 7000;
 const fail=(code,status=400)=>Object.assign(Error(code),{status});
@@ -39,7 +39,8 @@ async function read(actor,input,db){
  const columns=params.get('select')||'*';if(columns!=='*'&&!/^[a-z_]+(?:,[a-z_]+)*$/.test(columns))throw fail('invalid_read_query');
  const query=new URLSearchParams();
  const operator=table==='operators'||table==='operator_effective_roles';
- query.set('select',operator?(table==='operators'?OPERATOR_FIELDS.join(','):'operator_id,nome,cognome,email,legacy_roles,system_roles,active'):'*');
+ const operatorFields=actor.role==='owner'?OPERATOR_FIELDS:OPERATOR_FIELDS.filter(field=>field!=='nascita');
+ query.set('select',operator?(table==='operators'?operatorFields.join(','):'operator_id,nome,cognome,email,legacy_roles,system_roles,active'):'*');
  for(const [key,value] of params){
   if(['select','order','limit','offset'].includes(key))continue;
   if(!/^[a-z_]+$/.test(key)||!/^(eq\.[^(),]*|neq\.[^(),]*|(?:gte|lte|gt|lt)\.[0-9T:.Z+ -]+|is\.(?:true|false|null)|in\.\([a-zA-Z0-9_,:-]+\)|ilike\.[a-zA-Z0-9@_.+ -]+)$/.test(value))throw fail('invalid_read_query');
@@ -73,7 +74,7 @@ async function read(actor,input,db){
   : await all(db, table, query);
  if (scope) rows = rows.filter(row => scope.has(row[scopeColumn]));
  if (!pageQuery) rows = rows.slice(offset, offset + limit);
- if(operator){const fields=table==='operators'?OPERATOR_FIELDS:['operator_id','nome','cognome','email','legacy_roles','system_roles','active'];rows=rows.map(r=>Object.fromEntries(fields.filter(k=>Object.hasOwn(r,k)).map(k=>[k,r[k]])));}
+ if(operator){const fields=table==='operators'?operatorFields:['operator_id','nome','cognome','email','legacy_roles','system_roles','active'];rows=rows.map(r=>Object.fromEntries(fields.filter(k=>Object.hasOwn(r,k)).map(k=>[k,r[k]])));}
  return columns==='*'?rows:rows.map(r=>Object.fromEntries(columns.split(',').filter(k=>Object.hasOwn(r,k)).map(k=>[k,r[k]])));
 }
 module.exports={read,all,clientScope,TABLES};
