@@ -1537,31 +1537,41 @@ const App = {
   },
 
   _clientTransferPlan(clientId, fromDate) {
+    const customer = State.getClients().find(client => client.id === clientId);
+    const previousTrainerId = customer?.ptAssegnato || customer?.pt_assegnato || null;
     const appointments = State.getAppointments().filter(appt =>
       appt.date >= fromDate &&
-      !['fatto', 'annullato', 'noshow'].includes(appt.status) &&
-      Array.isArray(appt.clientIds) &&
-      appt.clientIds.includes(clientId) &&
+      appt.status === 'prenotato' &&
+      appt.clientIds?.includes(clientId) &&
       App._isPtAppointment(appt)
     );
-    return {
-      individual: appointments.filter(appt => appt.clientIds.length === 1),
-      shared: appointments.filter(appt => appt.clientIds.length > 1),
-    };
+    const individual = appointments.filter(appt => appt.clientIds.length === 1 && appt.operatorId && appt.operatorId === previousTrainerId);
+    return { individual, preserved: appointments.length - individual.length };
   },
 
   _refreshClientTransferSummary(clientId) {
     const summary = document.getElementById('transfer-client-summary');
-    if (!summary) return;
-    const fromDate = document.getElementById('transfer-effective-date')?.value || App._dateStr(new Date());
+    const fromDate = document.getElementById('transfer-effective-date')?.value;
+    if (!summary || !fromDate) return;
     const plan = App._clientTransferPlan(clientId, fromDate);
-    summary.innerHTML = `
-      <strong>${plan.individual.length}</strong> sedute future individuali saranno assegnate al nuovo PT.
-      ${plan.shared.length
-        ? `<br><strong>${plan.shared.length}</strong> sedute condivise resteranno invariate e andranno verificate manualmente.`
-        : '<br>Nessuna seduta condivisa da verificare.'}
-      <br>Le sedute già svolte e lo storico non verranno modificati.
-    `;
+    summary.textContent = `Anteprima: ${plan.individual.length} sedute del referente da riassegnare. ${plan.preserved} sedute condivise o con altro PT da conservare. Il server ricontrolla le assegnazioni alla decorrenza.`;
+  },
+
+  async _readClientTransferStatus(clientId) {
+    const status = document.getElementById('transfer-client-status');
+    const button = document.getElementById('transfer-client-confirm');
+    if (!status || !button) return;
+    button.disabled = true;
+    const result = await window.CalendarAudit.call('client_transfer', { action: 'status', clientId });
+    if (!status.isConnected) return;
+    const trainer = State.getOperators().find(operator => operator.id === result.trainerId);
+    const label = trainer ? App._operatorLabel(trainer) : result.trainerId;
+    status.textContent = ({
+      pending: `Passaggio a ${label} programmato dal ${result.effectiveDate}. Fino ad allora resta il referente attuale.`,
+      failed: `Ultimo trasferimento non eseguito. ${result.error || 'Controlla il Calendario prima di programmare di nuovo.'}`,
+      applied: `Ultimo trasferimento: ${result.moved} sedute riassegnate, ${result.preserved} conservate.`
+    })[result.status] || result.error || '';
+    button.disabled = result.status === 'pending' || !!result.error && result.status !== 'failed';
   },
 
   openTransferClient(clientId) {
@@ -1583,7 +1593,7 @@ const App = {
       return;
     }
 
-    const today = App._dateStr(new Date());
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const clientName = App._escapeHtml(`${client.nome || ''} ${client.cognome || ''}`.trim());
     const currentTrainerName = currentTrainer
       ? App._escapeHtml(App._operatorLabel(currentTrainer))
@@ -1620,9 +1630,9 @@ const App = {
                  onchange="App._refreshClientTransferSummary('${client.id}')">
         </div>
         <div id="transfer-client-summary" class="computed-field" style="line-height:1.6"></div>
+        <p id="transfer-client-status" role="status"></p>
         <div class="form-hint" style="margin-top:10px">
-          Dopo il trasferimento il cliente sarà visibile al nuovo PT e non più al precedente.
-          L'operazione resta riservata alla Direzione.
+          Dalla data scelta il nuovo PT diventa referente. Le sostituzioni, le sedute condivise e lo storico restano associati ai rispettivi appuntamenti.
         </div>
       </div>
       <div class="modal-footer">
@@ -1632,128 +1642,51 @@ const App = {
     `;
     UI.openModal(html);
     App._refreshClientTransferSummary(client.id);
+    void App._readClientTransferStatus(client.id);
   },
 
   async _transferClient(clientId) {
     if (!App.guardStudioManagement() || App._clientTransferBusy) return;
-    const clients = State.getClients();
-    const clientIndex = clients.findIndex(item => item.id === clientId);
-    const currentClient = clients[clientIndex];
-    if (clientIndex < 0 || !currentClient || currentClient.active === false) {
-      UI.showToast('Cliente non disponibile per il trasferimento', 'error');
+    const customer = State.getClients().find(item => item.id === clientId && item.active !== false);
+    const trainerId = document.getElementById('transfer-new-operator')?.value;
+    const effectiveDate = document.getElementById('transfer-effective-date')?.value;
+    const trainer = State.getOperators().find(operator => operator.id === trainerId && operator.active !== false && operator.roles?.includes('PT'));
+    const previousTrainerId = customer?.ptAssegnato || customer?.pt_assegnato || null;
+    if (!customer || !trainer || trainerId === previousTrainerId || !effectiveDate) {
+      UI.showToast('Seleziona un nuovo PT attivo e la decorrenza', 'error');
       return;
     }
-
-    const newOperatorId = document.getElementById('transfer-new-operator')?.value || '';
-    const fromDate = document.getElementById('transfer-effective-date')?.value || App._dateStr(new Date());
-    const newOperator = State.getOperators().find(operator =>
-      operator.id === newOperatorId &&
-      operator.active !== false &&
-      Array.isArray(operator.roles) &&
-      operator.roles.includes('PT')
-    );
-    if (!newOperator) {
-      UI.showToast('Seleziona un nuovo PT attivo', 'error');
-      return;
+    const newTrainer = App._operatorLabel(trainer);
+    if (!confirm(`Trasferire ${customer.nome} ${customer.cognome} a ${newTrainer} dal ${effectiveDate}?`)) return;
+    const payload = { action: 'schedule', clientId, previousTrainerId, trainerId, effectiveDate };
+    const fingerprint = JSON.stringify(payload);
+    if (App._clientTransferRequest?.fingerprint !== fingerprint) {
+      App._clientTransferRequest = { fingerprint, id: crypto.randomUUID() };
     }
-
-    const currentTrainer = App._assignedTrainer(currentClient);
-    if (currentTrainer?.id === newOperator.id) {
-      UI.showToast('Il cliente è già assegnato a questo PT', 'error');
-      return;
-    }
-
-    const plan = App._clientTransferPlan(clientId, fromDate);
-    const changes = plan.individual.map(appt => ({
-      before: appt,
-      after: { ...appt, operatorId: newOperator.id, updatedAt: Date.now() },
-    }));
-    const conflicts = changes
-      .map(change => ({
-        ...change,
-        validation: Services.canBookAppointment(change.after, { strictPackageDays: false }),
-      }))
-      .filter(change => !change.validation.ok);
-
-    if (conflicts.length) {
-      const detail = conflicts.slice(0, 10).map(change =>
-        `${App._fmtLongDate(change.after.date)} ${change.after.startTime}: ${change.validation.errors.join(' · ')}`
-      ).join('\n');
-      UI.showToast('Trasferimento non eseguito: il nuovo PT ha dei conflitti', 'error');
-      alert(`Risolvi prima questi conflitti:\n\n${detail}`);
-      return;
-    }
-
-    const oldTrainerName = currentTrainer ? App._operatorLabel(currentTrainer) : 'Non assegnato';
-    const newTrainerName = App._operatorLabel(newOperator);
-    const sharedWarning = plan.shared.length
-      ? `\n${plan.shared.length} sedute condivise resteranno con il PT attuale e dovranno essere verificate.`
-      : '';
-    const confirmed = confirm(
-      `Trasferire ${currentClient.nome} ${currentClient.cognome} da ${oldTrainerName} a ${newTrainerName} dal ${fromDate}?\n\n` +
-      `${changes.length} sedute future individuali saranno aggiornate.${sharedWarning}\n` +
-      'Le sedute già svolte e lo storico resteranno invariati.'
-    );
-    if (!confirmed) return;
-
-    const auditLine = `[TRASFERIMENTO PT ${App._dateStr(new Date())}] ${oldTrainerName} → ${newTrainerName} · decorrenza ${fromDate}`;
-    let updatedClient = {
-      ...currentClient,
-      ptAssegnato: newOperator.id,
-      pt_assegnato: newOperator.id,
-      notes: [String(currentClient.notes || '').trim(), auditLine].filter(Boolean).join('\n'),
-    };
-
-    const button = document.getElementById('transfer-client-confirm');
     App._clientTransferBusy = true;
+    const button = document.getElementById('transfer-client-confirm');
     if (button) button.disabled = true;
-    const applied = [];
     try {
-      for (const change of changes) {
-        const result = await SupabaseSync.saveAppointmentAtomic(change.after, change.before);
-        if (result?.error || !result?.appointment) throw new Error(result?.error || 'Salvataggio sedute non confermato');
-        applied.push({ before: change.before, after: result.appointment });
+      const result = await window.CalendarAudit.call('client_transfer', { ...payload, requestId: App._clientTransferRequest.id });
+      if (result.status === 'pending') {
+        App._clientTransferRequest = null;
+        UI.closeModal();
+        UI.showToast(`Trasferimento a ${newTrainer} programmato dal ${result.effectiveDate}`, 'success');
+      } else if (result.status === 'applied') {
+        App._clientTransferRequest = null;
+        await SupabaseSync.pullAll();
+        UI.closeModal();
+        Calendar.render();
+        if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
+        UI.showToast(`Cliente trasferito a ${newTrainer} · ${result.moved} sedute aggiornate, ${result.preserved} conservate`, 'success');
+      } else {
+        UI.showToast(result.error || 'Trasferimento da verificare prima di riprovare', 'error');
       }
-      const clientResult = await SupabaseSync.saveClientAssignment(currentClient, updatedClient);
-      if (clientResult?.error || !clientResult) {
-        const error = new Error(clientResult?.error || 'Salvataggio cliente non confermato');
-        error.mayHaveSaved = clientResult?.mayHaveSaved;
-        throw error;
-      }
-      updatedClient = clientResult;
     } catch (error) {
-      // Only restore confirmed writes, with their server version. Never overwrite
-      // a later edit, or rewrite an entire client after an uncertain response.
-      const rollback = await Promise.all((error.mayHaveSaved ? [] : applied).map(change =>
-        Promise.resolve(SupabaseSync.saveAppointmentAtomic(change.before, change.after)).catch(() => ({ error: 'Connessione assente' }))
-      ));
-      try { await SupabaseSync.pullAll(); } catch (_) { /* Keep the failure visible. */ }
-      console.warn('[Trasferimento PT]', error);
-      UI.showToast('Trasferimento non confermato: ' + error.message + (rollback.some(result => result?.error) ? '. Alcune sedute richiedono verifica: ricarica il Calendario.' : '. Verifica il PT attuale prima di riprovare.'), 'error');
-      return;
+      UI.showToast(error.message || 'Trasferimento da verificare prima di riprovare', 'error');
     } finally {
       App._clientTransferBusy = false;
       if (button?.isConnected) button.disabled = false;
-    }
-
-    const changesById = new Map(applied.map(change => [change.after.id, change.after]));
-    State.saveAppointments(State.getAppointments().map(appt => changesById.get(appt.id) || appt));
-    State.saveClients(State.getClients().map(client => client.id === clientId ? updatedClient : client));
-    if (CONFIG.SHEETS.enabled) {
-      Sheets.pushClient(updatedClient);
-      changes.forEach(change => Sheets.pushAppointment(change.after));
-    }
-
-    UI.closeModal();
-    Calendar.render();
-    if (document.getElementById('view-clients')?.classList.contains('active')) Clients.render();
-    UI.showToast(`Cliente trasferito a ${newTrainerName} · ${changes.length} sedute aggiornate`, 'success');
-    if (plan.shared.length) {
-      alert(
-        `Trasferimento completato.\n\n` +
-        `${plan.shared.length} sedute condivise non sono state modificate per non spostare anche gli altri clienti. ` +
-        'Apri il Quadro pacchetto per verificarle.'
-      );
     }
   },
 

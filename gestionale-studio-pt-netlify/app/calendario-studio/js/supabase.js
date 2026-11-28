@@ -849,5 +849,5 @@ const SupabaseSync = (() => {
 
   async function pushLocalSnapshot() { return {success:false,error:'Sincronizzazione locale disabilitata'}; }
 
-  return { joinPairSessions, reactivatePair, savePackageSchedule, clientWriteRevision: '20261111-package-suspension-v1', pullAll, pullDashboard, pullClientHistory, dashboardSnapshot: () => dashboard, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
+  return { joinPairSessions, reactivatePair, savePackageSchedule, clientWriteRevision: '20261128-atomic-pt-transfer-v1', pullAll, pullDashboard, pullClientHistory, dashboardSnapshot: () => dashboard, pullClientJourney, pairRenewalPatch, renewPtPair, planPairSolo, correctPtSessions, saveClientEdit, saveClientAssignment, saveClientGroup, archiveClient, reactivateClient, saveAppointmentAtomic, pushAppointment, pushClient, confirmClientPackageCycle, updateClientPackageFinance, pushOperator, pushLocalSnapshot, deleteAppointment, ensurePackageAppointments, pullOperatorAvailability, pushOperatorAvailability };
 })();

@@ -1,8 +1,8 @@
 'use strict';
 const crypto=require('node:crypto');
 const {authenticate,db}=require('./calendar-audit-auth');
-const calendarRevision='20261111-package-suspension-v1';
-const calendarWrites=new Set(['join_pair_sessions','reactivate_pair','package_schedule','save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
+const calendarRevision='20261128-atomic-pt-transfer-v1';
+const calendarWrites=new Set(['client_transfer','join_pair_sessions','reactivate_pair','package_schedule','save','cancel_and_recover','client_lifecycle','plan_pair_solo','delete','availability','client','operator','assignment','client_group','renew_pt_pair','save_pair_client','correct_pt_sessions','set_client_share','expected_renewals','pt_payments']);
 const reply=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'POST, OPTIONS'},body:JSON.stringify(body)});
 exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})=>async event=>{
  if(event.httpMethod==='OPTIONS')return reply(204,{});
@@ -31,6 +31,21 @@ exports.createHandler=(source,{ownerOnly=false,enforceCalendarRevision=true}={})
    }
    if(typeof payload.active!=='boolean'||!payload.operatorId)return reply(400,{error:'Seleziona il PT e la condivisione'});
    return reply(200,await db('rpc/pt_set_client_share',{method:'POST',body:{p_actor_id:actor.id,p_cliente_id:clientId,p_operator_id:payload.operatorId,p_active:payload.active,p_request_id:crypto.randomUUID()}}));
+  }
+  if(input.operation==='client_transfer'){
+   if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Trasferimento riservato alla Direzione dal Calendario'});
+   const {action,clientId,previousTrainerId,trainerId,effectiveDate,requestId}=input.payload||{};
+   const validId=value=>typeof value==='string'&&value.trim()===value&&value.length>0&&value.length<=120;
+   const validSchedule=validId(trainerId)&&(previousTrainerId===null||validId(previousTrainerId))&&
+    typeof effectiveDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)&&
+    typeof requestId==='string'&&/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestId);
+   if(!validId(clientId)||!['status','schedule'].includes(action)||action==='schedule'&&!validSchedule){
+    return reply(400,{error:'Seleziona cliente, nuovo PT e decorrenza'});
+   }
+   return reply(200,await db('rpc/calendar_pt_client_transfer',{method:'POST',body:{
+    p_actor_id:actor.id,p_request_id:action==='schedule'?requestId:null,
+    p_payload:action==='schedule'?{action,clientId,previousTrainerId,trainerId,effectiveDate}:{action,clientId},
+   }}));
   }
   if(input.operation==='join_pair_sessions'){
    if(source!=='calendar'||actor.role!=='owner')return reply(403,{error:'Conversione sedute riservata alla Direzione dal Calendario'});
